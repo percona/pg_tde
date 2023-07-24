@@ -1,4 +1,4 @@
-# pg_tde
+# postgres_tde_ext
 
 This is based on the heap code as of the following commit:
 
