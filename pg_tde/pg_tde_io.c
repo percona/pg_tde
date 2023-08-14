@@ -15,9 +15,9 @@
 
 #include "postgres.h"
 
-#include "pg_tdeam.h"
-#include "pg_tde_io.h"
-#include "pg_tde_visibilitymap.h"
+#include "pg_tde/pg_tdeam.h"
+#include "pg_tde/pg_tde_io.h"
+#include "pg_tde/pg_tde_visibilitymap.h"
 
 #include "access/htup_details.h"
 #include "storage/bufmgr.h"

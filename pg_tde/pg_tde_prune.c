@@ -14,8 +14,8 @@
  */
 #include "postgres.h"
 
-#include "pg_tdeam.h"
-#include "pg_tdeam_xlog.h"
+#include "pg_tde/pg_tdeam.h"
+#include "pg_tde/pg_tdeam_xlog.h"
 
 #include "access/htup_details.h"
 #include "access/transam.h"

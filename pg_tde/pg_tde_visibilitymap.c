@@ -86,8 +86,8 @@
  */
 #include "postgres.h"
 
-#include "pg_tdeam_xlog.h"
-#include "pg_tde_visibilitymap.h"
+#include "pg_tde/pg_tdeam_xlog.h"
+#include "pg_tde/pg_tde_visibilitymap.h"
 
 #include "access/xloginsert.h"
 #include "access/xlogutils.h"

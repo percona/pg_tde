@@ -104,10 +104,10 @@
 
 #include <unistd.h>
 
-#include "pg_tdeam.h"
-#include "pg_tdeam_xlog.h"
-#include "pg_tdetoast.h"
-#include "pg_tde_rewrite.h"
+#include "pg_tde/pg_tdeam.h"
+#include "pg_tde/pg_tdeam_xlog.h"
+#include "pg_tde/pg_tdetoast.h"
+#include "pg_tde/pg_tde_rewrite.h"
 
 #include "access/transam.h"
 #include "access/xact.h"

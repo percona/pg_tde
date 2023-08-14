@@ -19,11 +19,11 @@
  */
 #include "postgres.h"
 
-#include "pg_tdeam.h"
-#include "pg_tdetoast.h"
-#include "pg_tde_rewrite.h"
+#include "pg_tde/pg_tdeam.h"
+#include "pg_tde/pg_tdetoast.h"
+#include "pg_tde/pg_tde_rewrite.h"
 
-#include "pg_tde_defines.h"
+#include "pg_tde/pg_tde_defines.h"
 
 #include "access/genam.h"
 #include "access/multixact.h"

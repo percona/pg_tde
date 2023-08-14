@@ -66,7 +66,7 @@
 
 #include "postgres.h"
 
-#include "pg_tdeam.h"
+#include "pg_tde/pg_tdeam.h"
 
 #include "access/htup_details.h"
 #include "access/multixact.h"

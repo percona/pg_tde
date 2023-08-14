@@ -31,13 +31,13 @@
  */
 #include "postgres.h"
 
-#include "pg_tdeam.h"
-#include "pg_tdeam_xlog.h"
-#include "pg_tdetoast.h"
-#include "pg_tde_io.h"
-#include "pg_tde_visibilitymap.h"
+#include "pg_tde/pg_tdeam.h"
+#include "pg_tde/pg_tdeam_xlog.h"
+#include "pg_tde/pg_tdetoast.h"
+#include "pg_tde/pg_tde_io.h"
+#include "pg_tde/pg_tde_visibilitymap.h"
 
-#include "pg_tde_defines.h"
+#include "pg_tde/pg_tde_defines.h"
 
 #include "access/bufmask.h"
 #include "access/genam.h"
