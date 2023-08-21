@@ -1,6 +1,5 @@
 #include "access/pg_tde_defines.h"
 #define ENCRYPTION_DEBUG 1
-#define FULL_TUPLE_ENCRYPTION 0
 
 #include "postgres.h"
 
@@ -80,7 +79,7 @@ static void PGTdeDecryptTupInternal2(BlockNumber bn, Page page, HeapTuple tuple,
 	// Most of the time we can't decrypt in place, so we allocate some memory... and leek it for now :(
 	if(allocNew)
 	{
-		newPtr = palloc0(tuple->t_len);
+		newPtr = malloc(tuple->t_len);
 		memcpy(newPtr, tuple->t_data, tuple->t_len);
 	}
 
