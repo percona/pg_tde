@@ -4,7 +4,7 @@
 #include "storage/bufpage.h"
 #include "executor/tuptable.h"
 
-// A wrapper for encryption a tuple before adding it to the buffer
+/* A wrapper to encrypt a tuple before adding it to the buffer */
 OffsetNumber
 PGTdePageAddItemExtended(Oid oid, BlockNumber bn, Page page,
 					Item item,
@@ -12,7 +12,7 @@ PGTdePageAddItemExtended(Oid oid, BlockNumber bn, Page page,
 					OffsetNumber offsetNumber,
 					int flags);
 
-// Wrapper functions for reading decrypted tuple into a given slot
+/* Wrapper functions for reading decrypted tuple into a given slot */
 TupleTableSlot *
 PGTdeExecStoreBufferHeapTuple(HeapTuple tuple, TupleTableSlot *slot, Buffer buffer);
 TupleTableSlot *
