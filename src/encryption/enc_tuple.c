@@ -80,7 +80,7 @@ static void PGTdeDecryptTupInternal2(BlockNumber bn, Page page, HeapTuple tuple,
 	// Most of the time we can't decrypt in place, so we allocate some memory... and leek it for now :(
 	if(allocNew)
 	{
-		newPtr = malloc(tuple->t_len);
+		newPtr = palloc0(tuple->t_len);
 		memcpy(newPtr, tuple->t_data, tuple->t_len);
 	}
 
@@ -92,33 +92,9 @@ static void PGTdeDecryptTupInternal2(BlockNumber bn, Page page, HeapTuple tuple,
 	}
 }
 
-void PGTdeDecryptTupHeaderTo(Oid tableOid, BlockNumber bn, Page page, HeapTupleHeader in, HeapTupleHeader out)
+static void PGTdeDecryptTupData(BlockNumber bn, Page page, HeapTuple tuple) 
 {
-#if FULL_TUPLE_ENCRYPTION
-	PGTdeDecryptTupInternal(tableOid, bn, page, t_data, (char*)in, (char*)out, 0, sizeof(HeapTupleHeader));
-#endif
-}
-
-void PGTdeDecryptTupFull(BlockNumber bn, Page page, HeapTuple tuple) 
-{
-#if FULL_TUPLE_ENCRYPTION
-	PGTdeDecryptTupInternal2(bn, page, tuple, 0, tuple->t_len, true);
-#endif
-}
-
-static void PGTdeDecryptTupDataOnly(BlockNumber bn, Page page, HeapTuple tuple) 
-{
-#if !FULL_TUPLE_ENCRYPTION
 	PGTdeDecryptTupInternal2(bn, page, tuple, sizeof(HeapTupleHeaderData), tuple->t_len, true);
-#endif
-}
-
-
-void PGTdeEncryptTupHeaderTo(Oid tableOid, BlockNumber bn, char* page, HeapTupleHeader in, HeapTupleHeader out) 
-{
-#if FULL_TUPLE_ENCRYPTION
-	PGTdeEncryptTupInternal(tableOid, bn, page, (char*)t_data, (char*)out 0, 0);
-#endif
 }
 
 OffsetNumber
@@ -138,11 +114,8 @@ PGTdePageAddItemExtended(Oid oid,
 
 	char* toAddr = ((char*)phdr) + phdr->pd_upper;
 
-#if FULL_TUPLE_ENCRYPTION
-	PGTdeEncryptTupInternal(oid, bn, page, item, toAddr, 0, size);
-#else
+
 	PGTdeEncryptTupInternal(oid, bn, page, item, toAddr, headerSize, size);
-#endif
 
 	return off;
 }
@@ -150,12 +123,10 @@ PGTdePageAddItemExtended(Oid oid,
 TupleTableSlot *
 PGTdeExecStoreBufferHeapTuple(HeapTuple tuple, TupleTableSlot *slot, Buffer buffer)
 {
-#if !FULL_TUPLE_ENCRYPTION
 	Page pageHeader;
 
 	pageHeader = BufferGetPage(buffer);
-	PGTdeDecryptTupDataOnly(BufferGetBlockNumber(buffer), pageHeader, tuple);
-#endif
+	PGTdeDecryptTupData(BufferGetBlockNumber(buffer), pageHeader, tuple);
 
 	return  ExecStoreBufferHeapTuple(tuple, slot, buffer);
 }
@@ -163,12 +134,10 @@ PGTdeExecStoreBufferHeapTuple(HeapTuple tuple, TupleTableSlot *slot, Buffer buff
 TupleTableSlot *
 PGTdeExecStorePinnedBufferHeapTuple(HeapTuple tuple, TupleTableSlot *slot, Buffer buffer)
 {
-#if !FULL_TUPLE_ENCRYPTION
 	Page pageHeader;
 
 	pageHeader = BufferGetPage(buffer);
-	PGTdeDecryptTupDataOnly(BufferGetBlockNumber(buffer), pageHeader, tuple);
-#endif 
+	PGTdeDecryptTupData(BufferGetBlockNumber(buffer), pageHeader, tuple);
 
 	return  ExecStorePinnedBufferHeapTuple(tuple, slot, buffer);
 }
