@@ -77,7 +77,6 @@ static void PGTdeDecryptTupInternal2(BlockNumber bn, Page page, HeapTuple tuple,
 {
 	char* newPtr = (char*)tuple->t_data;
 
-	// Most of the time we can't decrypt in place, so we allocate some memory... and leek it for now :(
 	if(allocNew)
 	{
 		MemoryContext oldctx = MemoryContextSwitchTo(CurTransactionContext);
