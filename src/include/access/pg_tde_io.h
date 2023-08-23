@@ -51,6 +51,5 @@ extern Buffer pg_tde_RelationGetBufferForTuple(Relation relation, Size len,
 										BulkInsertStateData *bistate,
 										Buffer *vmbuffer, Buffer *vmbuffer_other,
 										int num_pages);
-extern void pg_tde_create_key_fork(const RelFileLocator *newrlocator, Relation rel);
 
 #endif							/* PG_TDE_IO_H */
