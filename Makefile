@@ -9,7 +9,6 @@ TAP_TESTS = 0
 
 OBJS = src/encryption/enc_tuple.o \
 src/encryption/enc_aes.o \
-src/encryption/test.o \
 src/access/pg_tde_io.o \
 src/access/pg_tdeam_visibility.o \
 src/access/pg_tde_tdemap.o \
