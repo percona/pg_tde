@@ -17,7 +17,7 @@
  * This frees up the memory space dedicated to storing dead TIDs.
  *
  * In practice VACUUM will often complete its initial pass over the target
- * pg_tde relation without ever running out of space to store TIDs.  This means
+ * heap relation without ever running out of space to store TIDs.  This means
  * that there only needs to be one call to lazy_vacuum, after the initial pass
  * completes.
  *
@@ -26,26 +26,22 @@
  *
  *
  * IDENTIFICATION
- *	  src/backend/access/pg_tde/vacuumlazy.c
+ *	  src/backend/access/heap/vacuumlazy.c
  *
  *-------------------------------------------------------------------------
  */
-#include "pg_tde_defines.h"
-
 #include "postgres.h"
 
 #include <math.h>
 
-#include "access/pg_tdeam.h"
-#include "access/pg_tdeam_xlog.h"
-#include "access/pg_tde_visibilitymap.h"
-#include "encryption/enc_tuple.h"
-
 #include "access/amapi.h"
 #include "access/genam.h"
+#include "access/heapam.h"
+#include "access/heapam_xlog.h"
 #include "access/htup_details.h"
 #include "access/multixact.h"
 #include "access/transam.h"
+#include "access/visibilitymap.h"
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"
@@ -187,7 +183,7 @@ typedef struct LVRelState
 	 * dead_items stores TIDs whose index tuples are deleted by index
 	 * vacuuming. Each TID points to an LP_DEAD line pointer from a heap page
 	 * that has been processed by lazy_scan_prune.  Also needed by
-	 * lazy_vacuum_pg_tde_rel, which marks the same LP_DEAD line pointers as
+	 * lazy_vacuum_heap_rel, which marks the same LP_DEAD line pointers as
 	 * LP_UNUSED during second heap pass.
 	 */
 	VacDeadItems *dead_items;	/* TIDs whose index tuples we'll delete */
@@ -260,8 +256,8 @@ static bool lazy_scan_noprune(LVRelState *vacrel, Buffer buf,
 							  bool *hastup, bool *recordfreespace);
 static void lazy_vacuum(LVRelState *vacrel);
 static bool lazy_vacuum_all_indexes(LVRelState *vacrel);
-static void lazy_vacuum_pg_tde_rel(LVRelState *vacrel);
-static int	lazy_vacuum_pg_tde_page(LVRelState *vacrel, BlockNumber blkno,
+static void lazy_vacuum_heap_rel(LVRelState *vacrel);
+static int	lazy_vacuum_heap_page(LVRelState *vacrel, BlockNumber blkno,
 								  Buffer buffer, int index, Buffer vmbuffer);
 static bool lazy_check_wraparound_failsafe(LVRelState *vacrel);
 static void lazy_cleanup_all_indexes(LVRelState *vacrel);
@@ -280,7 +276,7 @@ static BlockNumber count_nondeletable_pages(LVRelState *vacrel,
 											bool *lock_waiter_detected);
 static void dead_items_alloc(LVRelState *vacrel, int nworkers);
 static void dead_items_cleanup(LVRelState *vacrel);
-static bool pg_tde_page_is_all_visible(LVRelState *vacrel, Buffer buf,
+static bool heap_page_is_all_visible(LVRelState *vacrel, Buffer buf,
 									 TransactionId *visibility_cutoff_xid, bool *all_frozen);
 static void update_relstats_all_indexes(LVRelState *vacrel);
 static void vacuum_error_callback(void *arg);
@@ -293,7 +289,7 @@ static void restore_vacuum_error_info(LVRelState *vacrel,
 
 
 /*
- *	pg_tde_vacuum_rel() -- perform VACUUM for one heap relation
+ *	heap_vacuum_rel() -- perform VACUUM for one heap relation
  *
  *		This routine sets things up for and then calls lazy_scan_heap, where
  *		almost all work actually takes place.  Finalizes everything after call
@@ -304,7 +300,7 @@ static void restore_vacuum_error_info(LVRelState *vacrel,
  *		and locked the relation.
  */
 void
-pg_tde_vacuum_rel(Relation rel, VacuumParams *params,
+heap_vacuum_rel(Relation rel, VacuumParams *params,
 				BufferAccessStrategy bstrategy)
 {
 	LVRelState *vacrel;
@@ -452,8 +448,8 @@ pg_tde_vacuum_rel(Relation rel, VacuumParams *params,
 	 * as an upper bound on the XIDs stored in the pages we'll actually scan
 	 * (NewRelfrozenXid tracking must never be allowed to miss unfrozen XIDs).
 	 *
-	 * Next acquire vistest, a related cutoff that's used in pg_tde_page_prune.
-	 * We expect vistest will always make pg_tde_page_prune remove any deleted
+	 * Next acquire vistest, a related cutoff that's used in heap_page_prune.
+	 * We expect vistest will always make heap_page_prune remove any deleted
 	 * tuple whose xmax is < OldestXmin.  lazy_scan_prune must never become
 	 * confused about whether a tuple should be frozen or removed.  (In the
 	 * future we might want to teach lazy_scan_prune to recompute vistest from
@@ -571,7 +567,7 @@ pg_tde_vacuum_rel(Relation rel, VacuumParams *params,
 	 * pg_class.relpages to
 	 */
 	new_rel_pages = vacrel->rel_pages;	/* After possible rel truncation */
-	pg_tde_visibilitymap_count(rel, &new_rel_allvisible, NULL);
+	visibilitymap_count(rel, &new_rel_allvisible, NULL);
 	if (new_rel_allvisible > new_rel_pages)
 		new_rel_allvisible = new_rel_pages;
 
@@ -803,7 +799,7 @@ pg_tde_vacuum_rel(Relation rel, VacuumParams *params,
  *		heap pages following pruning.  Earlier initial pass over the heap will
  *		have collected the TIDs whose index tuples need to be removed.
  *
- *		Finally, invokes lazy_vacuum_pg_tde_rel to vacuum heap pages, which
+ *		Finally, invokes lazy_vacuum_heap_rel to vacuum heap pages, which
  *		largely consists of marking LP_DEAD items (from collected TID array)
  *		as LP_UNUSED.  This has to happen in a second, final pass over the
  *		heap, to preserve a basic invariant that all index AMs rely on: no
@@ -950,7 +946,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		 * all-visible.  In most cases this will be very cheap, because we'll
 		 * already have the correct page pinned anyway.
 		 */
-		pg_tde_visibilitymap_pin(vacrel->rel, blkno, &vmbuffer);
+		visibilitymap_pin(vacrel->rel, blkno, &vmbuffer);
 
 		/*
 		 * We need a buffer cleanup lock to prune HOT chains and defragment
@@ -1045,7 +1041,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			{
 				Size		freespace;
 
-				lazy_vacuum_pg_tde_page(vacrel, blkno, buf, 0, vmbuffer);
+				lazy_vacuum_heap_page(vacrel, blkno, buf, 0, vmbuffer);
 
 				/* Forget the LP_DEAD items that we just vacuumed */
 				dead_items->num_items = 0;
@@ -1066,10 +1062,10 @@ lazy_scan_heap(LVRelState *vacrel)
 				 * Now perform FSM processing for blkno, and move on to next
 				 * page.
 				 *
-				 * Our call to lazy_vacuum_pg_tde_page() will have considered if
+				 * Our call to lazy_vacuum_heap_page() will have considered if
 				 * it's possible to set all_visible/all_frozen independently
 				 * of lazy_scan_prune().  Note that prunestate was invalidated
-				 * by lazy_vacuum_pg_tde_page() call.
+				 * by lazy_vacuum_heap_page() call.
 				 */
 				freespace = PageGetHeapFreeSpace(page);
 
@@ -1079,7 +1075,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			}
 
 			/*
-			 * There was no call to lazy_vacuum_pg_tde_page() because pruning
+			 * There was no call to lazy_vacuum_heap_page() because pruning
 			 * didn't encounter/create any LP_DEAD items that needed to be
 			 * vacuumed.  Prune state has not been invalidated, so proceed
 			 * with prunestate-driven visibility map and FSM steps (just like
@@ -1111,13 +1107,13 @@ lazy_scan_heap(LVRelState *vacrel)
 			 * NB: If the heap page is all-visible but the VM bit is not set,
 			 * we don't need to dirty the heap page.  However, if checksums
 			 * are enabled, we do need to make sure that the heap page is
-			 * dirtied before passing it to pg_tde_visibilitymap_set(), because it
+			 * dirtied before passing it to visibilitymap_set(), because it
 			 * may be logged.  Given that this situation should only happen in
 			 * rare cases after a crash, it is not worth optimizing.
 			 */
 			PageSetAllVisible(page);
 			MarkBufferDirty(buf);
-			pg_tde_visibilitymap_set(vacrel->rel, blkno, buf, InvalidXLogRecPtr,
+			visibilitymap_set(vacrel->rel, blkno, buf, InvalidXLogRecPtr,
 							  vmbuffer, prunestate.visibility_cutoff_xid,
 							  flags);
 		}
@@ -1129,11 +1125,11 @@ lazy_scan_heap(LVRelState *vacrel)
 		 * with buffer lock before concluding that the VM is corrupt.
 		 */
 		else if (all_visible_according_to_vm && !PageIsAllVisible(page) &&
-				 pg_tde_visibilitymap_get_status(vacrel->rel, blkno, &vmbuffer) != 0)
+				 visibilitymap_get_status(vacrel->rel, blkno, &vmbuffer) != 0)
 		{
 			elog(WARNING, "page is not marked all-visible but visibility map bit is set in relation \"%s\" page %u",
 				 vacrel->relname, blkno);
-			pg_tde_visibilitymap_clear(vacrel->rel, blkno, vmbuffer,
+			visibilitymap_clear(vacrel->rel, blkno, vmbuffer,
 								VISIBILITYMAP_VALID_BITS);
 		}
 
@@ -1158,7 +1154,7 @@ lazy_scan_heap(LVRelState *vacrel)
 				 vacrel->relname, blkno);
 			PageClearAllVisible(page);
 			MarkBufferDirty(buf);
-			pg_tde_visibilitymap_clear(vacrel->rel, blkno, vmbuffer,
+			visibilitymap_clear(vacrel->rel, blkno, vmbuffer,
 								VISIBILITYMAP_VALID_BITS);
 		}
 
@@ -1190,7 +1186,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			 * safe for REDO was logged when the page's tuples were frozen.
 			 */
 			Assert(!TransactionIdIsValid(prunestate.visibility_cutoff_xid));
-			pg_tde_visibilitymap_set(vacrel->rel, blkno, buf, InvalidXLogRecPtr,
+			visibilitymap_set(vacrel->rel, blkno, buf, InvalidXLogRecPtr,
 							  vmbuffer, InvalidTransactionId,
 							  VISIBILITYMAP_ALL_VISIBLE |
 							  VISIBILITYMAP_ALL_FROZEN);
@@ -1203,14 +1199,14 @@ lazy_scan_heap(LVRelState *vacrel)
 		if (prunestate.has_lpdead_items && vacrel->do_index_vacuuming)
 		{
 			/*
-			 * Wait until lazy_vacuum_pg_tde_rel() to save free space.  This
+			 * Wait until lazy_vacuum_heap_rel() to save free space.  This
 			 * doesn't just save us some cycles; it also allows us to record
-			 * any additional free space that lazy_vacuum_pg_tde_page() will
+			 * any additional free space that lazy_vacuum_heap_page() will
 			 * make available in cases where it's possible to truncate the
 			 * page's line pointer array.
 			 *
 			 * Note: It's not in fact 100% certain that we really will call
-			 * lazy_vacuum_pg_tde_rel() -- lazy_vacuum() might yet opt to skip
+			 * lazy_vacuum_heap_rel() -- lazy_vacuum() might yet opt to skip
 			 * index vacuuming (and so must skip heap vacuuming).  This is
 			 * deemed okay because it only happens in emergencies, or when
 			 * there is very little free space anyway. (Besides, we start
@@ -1308,7 +1304,7 @@ lazy_scan_skip(LVRelState *vacrel, Buffer *vmbuffer, BlockNumber next_block,
 	*next_unskippable_allvis = true;
 	while (next_unskippable_block < rel_pages)
 	{
-		uint8		mapbits = pg_tde_visibilitymap_get_status(vacrel->rel,
+		uint8		mapbits = visibilitymap_get_status(vacrel->rel,
 													   next_unskippable_block,
 													   vmbuffer);
 
@@ -1427,7 +1423,7 @@ lazy_scan_new_or_empty(LVRelState *vacrel, Buffer buf, BlockNumber blkno,
 		 * (which creates a number of empty pages at the tail end of the
 		 * relation), and then enters them into the FSM.
 		 *
-		 * Note we do not enter the page into the pg_tde_visibilitymap. That has the
+		 * Note we do not enter the page into the visibilitymap. That has the
 		 * downside that we repeatedly visit this page in subsequent vacuums,
 		 * but otherwise we'll never discover the space on a promoted standby.
 		 * The harm of repeated checking ought to normally not be too bad. The
@@ -1499,7 +1495,7 @@ lazy_scan_new_or_empty(LVRelState *vacrel, Buffer buf, BlockNumber blkno,
 				log_newpage_buffer(buf, true);
 
 			PageSetAllVisible(page);
-			pg_tde_visibilitymap_set(vacrel->rel, blkno, buf, InvalidXLogRecPtr,
+			visibilitymap_set(vacrel->rel, blkno, buf, InvalidXLogRecPtr,
 							  vmbuffer, InvalidTransactionId,
 							  VISIBILITYMAP_ALL_VISIBLE | VISIBILITYMAP_ALL_FROZEN);
 			END_CRIT_SECTION();
@@ -1520,16 +1516,16 @@ lazy_scan_new_or_empty(LVRelState *vacrel, Buffer buf, BlockNumber blkno,
  *
  * Caller must hold pin and buffer cleanup lock on the buffer.
  *
- * Prior to PostgreSQL 14 there were very rare cases where pg_tde_page_prune()
+ * Prior to PostgreSQL 14 there were very rare cases where heap_page_prune()
  * was allowed to disagree with our HeapTupleSatisfiesVacuum() call about
  * whether or not a tuple should be considered DEAD.  This happened when an
- * inserting transaction concurrently aborted (after our pg_tde_page_prune()
+ * inserting transaction concurrently aborted (after our heap_page_prune()
  * call, before our HeapTupleSatisfiesVacuum() call).  There was rather a lot
  * of complexity just so we could deal with tuples that were DEAD to VACUUM,
  * but nevertheless were left with storage after pruning.
  *
  * The approach we take now is to restart pruning when the race condition is
- * detected.  This allows pg_tde_page_prune() to prune the tuples inserted by
+ * detected.  This allows heap_page_prune() to prune the tuples inserted by
  * the now-aborted transaction.  This is a little crude, but it guarantees
  * that any items that make it into the dead_items array are simple LP_DEAD
  * line pointers, and that every remaining item with tuple storage is
@@ -1563,7 +1559,7 @@ lazy_scan_prune(LVRelState *vacrel,
 
 	/*
 	 * maxoff might be reduced following line pointer array truncation in
-	 * pg_tde_page_prune.  That's safe for us to ignore, since the reclaimed
+	 * heap_page_prune.  That's safe for us to ignore, since the reclaimed
 	 * space will continue to look like LP_UNUSED items below.
 	 */
 	maxoff = PageGetMaxOffsetNumber(page);
@@ -1591,7 +1587,7 @@ retry:
 	 * lpdead_items's final value can be thought of as the number of tuples
 	 * that were deleted from indexes.
 	 */
-	tuples_deleted = pg_tde_page_prune(rel, buf, vacrel->vistest,
+	tuples_deleted = heap_page_prune(rel, buf, vacrel->vistest,
 									 InvalidTransactionId, 0, &nnewlpdead,
 									 &vacrel->offnum);
 
@@ -1658,8 +1654,8 @@ retry:
 
 		/*
 		 * DEAD tuples are almost always pruned into LP_DEAD line pointers by
-		 * pg_tde_page_prune(), but it's possible that the tuple state changed
-		 * since pg_tde_page_prune() looked.  Handle that here by restarting.
+		 * heap_page_prune(), but it's possible that the tuple state changed
+		 * since heap_page_prune() looked.  Handle that here by restarting.
 		 * (See comments at the top of function for a full explanation.)
 		 */
 		res = HeapTupleSatisfiesVacuum(&tuple, vacrel->cutoffs.OldestXmin,
@@ -1773,7 +1769,7 @@ retry:
 		prunestate->hastup = true;	/* page makes rel truncation unsafe */
 
 		/* Tuple with storage -- consider need to freeze */
-		if (pg_tde_prepare_freeze_tuple(tuple.t_data, &vacrel->cutoffs, &pagefrz,
+		if (heap_prepare_freeze_tuple(tuple.t_data, &vacrel->cutoffs, &pagefrz,
 									  &frozen[tuples_frozen], &totally_frozen))
 		{
 			/* Save prepared freeze plan for later */
@@ -1798,7 +1794,7 @@ retry:
 	vacrel->offnum = InvalidOffsetNumber;
 
 	/*
-	 * Freeze the page when pg_tde_prepare_freeze_tuple indicates that at least
+	 * Freeze the page when heap_prepare_freeze_tuple indicates that at least
 	 * one XID/MXID from before FreezeLimit/MultiXactCutoff is present.  Also
 	 * freeze when pruning generated an FPI, if doing so means that we set the
 	 * page all-frozen afterwards (might not happen until final heap pass).
@@ -1856,7 +1852,7 @@ retry:
 			}
 
 			/* Execute all freeze plans for page as a single atomic action */
-			pg_tde_freeze_execute_prepared(vacrel->rel, buf,
+			heap_freeze_execute_prepared(vacrel->rel, buf,
 										 snapshotConflictHorizon,
 										 frozen, tuples_frozen);
 		}
@@ -1874,11 +1870,11 @@ retry:
 	}
 
 	/*
-	 * VACUUM will call pg_tde_page_is_all_visible() during the second pass over
+	 * VACUUM will call heap_page_is_all_visible() during the second pass over
 	 * the heap to determine all_visible and all_frozen for the page -- this
 	 * is a specialized version of the logic from this function.  Now that
 	 * we've finished pruning and freezing, make sure that we're in total
-	 * agreement with pg_tde_page_is_all_visible() using an assertion.
+	 * agreement with heap_page_is_all_visible() using an assertion.
 	 */
 #ifdef USE_ASSERT_CHECKING
 	/* Note that all_frozen value does not matter when !all_visible */
@@ -1887,7 +1883,7 @@ retry:
 		TransactionId cutoff;
 		bool		all_frozen;
 
-		if (!pg_tde_page_is_all_visible(vacrel, buf, &cutoff, &all_frozen))
+		if (!heap_page_is_all_visible(vacrel, buf, &cutoff, &all_frozen))
 			Assert(false);
 
 		Assert(!TransactionIdIsValid(cutoff) ||
@@ -2020,8 +2016,7 @@ lazy_scan_noprune(LVRelState *vacrel,
 
 		*hastup = true;			/* page prevents rel truncation */
 		tupleheader = (HeapTupleHeader) PageGetItem(page, itemid);
-		// TODO: decrypt
-		if (pg_tde_tuple_should_freeze(tupleheader, &vacrel->cutoffs,
+		if (heap_tuple_should_freeze(tupleheader, &vacrel->cutoffs,
 									 &NoFreezePageRelfrozenXid,
 									 &NoFreezePageRelminMxid))
 		{
@@ -2286,7 +2281,7 @@ lazy_vacuum(LVRelState *vacrel)
 		 * We successfully completed a round of index vacuuming.  Do related
 		 * heap vacuuming now.
 		 */
-		lazy_vacuum_pg_tde_rel(vacrel);
+		lazy_vacuum_heap_rel(vacrel);
 	}
 	else
 	{
@@ -2376,7 +2371,7 @@ lazy_vacuum_all_indexes(LVRelState *vacrel)
 	/*
 	 * We delete all LP_DEAD items from the first heap pass in all indexes on
 	 * each call here (except calls where we choose to do the failsafe). This
-	 * makes the next call to lazy_vacuum_pg_tde_rel() safe (except in the event
+	 * makes the next call to lazy_vacuum_heap_rel() safe (except in the event
 	 * of the failsafe triggering, which prevents the next call from taking
 	 * place).
 	 */
@@ -2398,7 +2393,7 @@ lazy_vacuum_all_indexes(LVRelState *vacrel)
 }
 
 /*
- *	lazy_vacuum_pg_tde_rel() -- second pass over the heap for two pass strategy
+ *	lazy_vacuum_heap_rel() -- second pass over the heap for two pass strategy
  *
  * This routine marks LP_DEAD items in vacrel->dead_items array as LP_UNUSED.
  * Pages that never had lazy_scan_prune record LP_DEAD items are not visited
@@ -2416,7 +2411,7 @@ lazy_vacuum_all_indexes(LVRelState *vacrel)
  * index entry removal in batches as large as possible.
  */
 static void
-lazy_vacuum_pg_tde_rel(LVRelState *vacrel)
+lazy_vacuum_heap_rel(LVRelState *vacrel)
 {
 	int			index = 0;
 	BlockNumber vacuumed_pages = 0;
@@ -2453,13 +2448,13 @@ lazy_vacuum_pg_tde_rel(LVRelState *vacrel)
 		 * all-visible.  In most cases this will be very cheap, because we'll
 		 * already have the correct page pinned anyway.
 		 */
-		pg_tde_visibilitymap_pin(vacrel->rel, blkno, &vmbuffer);
+		visibilitymap_pin(vacrel->rel, blkno, &vmbuffer);
 
 		/* We need a non-cleanup exclusive lock to mark dead_items unused */
 		buf = ReadBufferExtended(vacrel->rel, MAIN_FORKNUM, blkno, RBM_NORMAL,
 								 vacrel->bstrategy);
 		LockBuffer(buf, BUFFER_LOCK_EXCLUSIVE);
-		index = lazy_vacuum_pg_tde_page(vacrel, blkno, buf, index, vmbuffer);
+		index = lazy_vacuum_heap_page(vacrel, blkno, buf, index, vmbuffer);
 
 		/* Now that we've vacuumed the page, record its available space */
 		page = BufferGetPage(buf);
@@ -2492,7 +2487,7 @@ lazy_vacuum_pg_tde_rel(LVRelState *vacrel)
 }
 
 /*
- *	lazy_vacuum_pg_tde_page() -- free page's LP_DEAD items listed in the
+ *	lazy_vacuum_heap_page() -- free page's LP_DEAD items listed in the
  *						  vacrel->dead_items array.
  *
  * Caller must have an exclusive buffer lock on the buffer (though a full
@@ -2504,7 +2499,7 @@ lazy_vacuum_pg_tde_rel(LVRelState *vacrel)
  * after all LP_DEAD items for the same page in the array.
  */
 static int
-lazy_vacuum_pg_tde_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
+lazy_vacuum_heap_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 					  int index, Buffer vmbuffer)
 {
 	VacDeadItems *dead_items = vacrel->dead_items;
@@ -2556,7 +2551,7 @@ lazy_vacuum_pg_tde_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 	/* XLOG stuff */
 	if (RelationNeedsWAL(vacrel->rel))
 	{
-		xl_pg_tde_vacuum xlrec;
+		xl_heap_vacuum xlrec;
 		XLogRecPtr	recptr;
 
 		xlrec.nunused = nunused;
@@ -2587,7 +2582,7 @@ lazy_vacuum_pg_tde_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 	 * emitted.
 	 */
 	Assert(!PageIsAllVisible(page));
-	if (pg_tde_page_is_all_visible(vacrel, buffer, &visibility_cutoff_xid,
+	if (heap_page_is_all_visible(vacrel, buffer, &visibility_cutoff_xid,
 								 &all_frozen))
 	{
 		uint8		flags = VISIBILITYMAP_ALL_VISIBLE;
@@ -2599,7 +2594,7 @@ lazy_vacuum_pg_tde_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 		}
 
 		PageSetAllVisible(page);
-		pg_tde_visibilitymap_set(vacrel->rel, blkno, buffer, InvalidXLogRecPtr,
+		visibilitymap_set(vacrel->rel, blkno, buffer, InvalidXLogRecPtr,
 						  vmbuffer, visibility_cutoff_xid, flags);
 	}
 
@@ -3240,7 +3235,7 @@ dead_items_cleanup(LVRelState *vacrel)
  * introducing new side-effects here.
  */
 static bool
-pg_tde_page_is_all_visible(LVRelState *vacrel, Buffer buf,
+heap_page_is_all_visible(LVRelState *vacrel, Buffer buf,
 						 TransactionId *visibility_cutoff_xid,
 						 bool *all_frozen)
 {
@@ -3326,7 +3321,7 @@ pg_tde_page_is_all_visible(LVRelState *vacrel, Buffer buf,
 
 					/* Check whether this tuple is already frozen or not */
 					if (all_visible && *all_frozen &&
-						pg_tde_tuple_needs_eventual_freeze(tuple.t_data))
+						heap_tuple_needs_eventual_freeze(tuple.t_data))
 						*all_frozen = false;
 				}
 				break;

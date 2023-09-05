@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * pg_tdeam.h
+ * heapam.h
  *	  POSTGRES heap access method definitions.
  *
  *
@@ -11,8 +11,8 @@
  *
  *-------------------------------------------------------------------------
  */
-#ifndef PG_TDEAM_H
-#define PG_TDEAM_H
+#ifndef HEAPAM_H
+#define HEAPAM_H
 
 #include "access/relation.h"	/* for backward compatibility */
 #include "access/relscan.h"
@@ -30,7 +30,7 @@
 #include "utils/snapshot.h"
 
 
-/* "options" flag bits for pg_tde_insert */
+/* "options" flag bits for heap_insert */
 #define HEAP_INSERT_SKIP_FSM	TABLE_INSERT_SKIP_FSM
 #define HEAP_INSERT_FROZEN		TABLE_INSERT_FROZEN
 #define HEAP_INSERT_NO_LOGICAL	TABLE_INSERT_NO_LOGICAL
@@ -101,13 +101,13 @@ typedef enum
 } HTSV_Result;
 
 /*
- * pg_tde_prepare_freeze_tuple may request that pg_tde_freeze_execute_prepared
+ * heap_prepare_freeze_tuple may request that heap_freeze_execute_prepared
  * check any tuple's to-be-frozen xmin and/or xmax status using pg_xact
  */
 #define		HEAP_FREEZE_CHECK_XMIN_COMMITTED	0x01
 #define		HEAP_FREEZE_CHECK_XMAX_ABORTED		0x02
 
-/* pg_tde_prepare_freeze_tuple state describing how to freeze a tuple */
+/* heap_prepare_freeze_tuple state describing how to freeze a tuple */
 typedef struct HeapTupleFreeze
 {
 	/* Fields describing how to process tuple */
@@ -126,7 +126,7 @@ typedef struct HeapTupleFreeze
  * State used by VACUUM to track the details of freezing all eligible tuples
  * on a given heap page.
  *
- * VACUUM prepares freeze plans for each page via pg_tde_prepare_freeze_tuple
+ * VACUUM prepares freeze plans for each page via heap_prepare_freeze_tuple
  * calls (every tuple with storage gets its own call).  This page-level freeze
  * state is updated across each call, which ultimately determines whether or
  * not freezing the page is required.
@@ -134,7 +134,7 @@ typedef struct HeapTupleFreeze
  * Aside from the basic question of whether or not freezing will go ahead, the
  * state also tracks the oldest extant XID/MXID in the table as a whole, for
  * the purposes of advancing relfrozenxid/relminmxid values in pg_class later
- * on.  Each pg_tde_prepare_freeze_tuple call pushes NewRelfrozenXid and/or
+ * on.  Each heap_prepare_freeze_tuple call pushes NewRelfrozenXid and/or
  * NewRelminMxid back as required to avoid unsafe final pg_class values.  Any
  * and all unfrozen XIDs or MXIDs that remain after VACUUM finishes _must_
  * have values >= the final relfrozenxid/relminmxid values in pg_class.  This
@@ -148,17 +148,17 @@ typedef struct HeapTupleFreeze
  */
 typedef struct HeapPageFreeze
 {
-	/* Is pg_tde_prepare_freeze_tuple caller required to freeze page? */
+	/* Is heap_prepare_freeze_tuple caller required to freeze page? */
 	bool		freeze_required;
 
 	/*
 	 * "Freeze" NewRelfrozenXid/NewRelminMxid trackers.
 	 *
-	 * Trackers used when pg_tde_freeze_execute_prepared freezes, or when there
+	 * Trackers used when heap_freeze_execute_prepared freezes, or when there
 	 * are zero freeze plans for a page.  It is always valid for vacuumlazy.c
 	 * to freeze any page, by definition.  This even includes pages that have
 	 * no tuples with storage to consider in the first place.  That way the
-	 * 'totally_frozen' results from pg_tde_prepare_freeze_tuple can always be
+	 * 'totally_frozen' results from heap_prepare_freeze_tuple can always be
 	 * used in the same way, even when no freeze plans need to be executed to
 	 * "freeze the page".  Only the "freeze" path needs to consider the need
 	 * to set pages all-frozen in the visibility map under this scheme.
@@ -170,7 +170,7 @@ typedef struct HeapPageFreeze
 	 * ratchet back the top-level NewRelfrozenXid/NewRelminMxid trackers?
 	 *
 	 * It is useful to use a definition of "freeze the page" that does not
-	 * overspecify how MultiXacts are affected.  pg_tde_prepare_freeze_tuple
+	 * overspecify how MultiXacts are affected.  heap_prepare_freeze_tuple
 	 * generally prefers to remove Multis eagerly, but lazy processing is used
 	 * in cases where laziness allows VACUUM to avoid allocating a new Multi.
 	 * The "freeze the page" trackers enable this flexibility.
@@ -194,7 +194,7 @@ typedef struct HeapPageFreeze
 /* ----------------
  *		function prototypes for heap access method
  *
- * pg_tde_create, pg_tde_create_with_catalog, and pg_tde_drop_with_catalog
+ * heap_create, heap_create_with_catalog, and heap_drop_with_catalog
  * are declared in catalog/heap.h
  * ----------------
  */
@@ -206,99 +206,99 @@ typedef struct HeapPageFreeze
  */
 #define HeapScanIsValid(scan) PointerIsValid(scan)
 
-extern TableScanDesc pg_tde_beginscan(Relation relation, Snapshot snapshot,
+extern TableScanDesc heap_beginscan(Relation relation, Snapshot snapshot,
 									int nkeys, ScanKey key,
 									ParallelTableScanDesc parallel_scan,
 									uint32 flags);
-extern void pg_tde_setscanlimits(TableScanDesc sscan, BlockNumber startBlk,
+extern void heap_setscanlimits(TableScanDesc sscan, BlockNumber startBlk,
 							   BlockNumber numBlks);
-extern void pg_tde_getpage(TableScanDesc sscan, BlockNumber block);
-extern void pg_tde_rescan(TableScanDesc sscan, ScanKey key, bool set_params,
+extern void heapgetpage(TableScanDesc sscan, BlockNumber block);
+extern void heap_rescan(TableScanDesc sscan, ScanKey key, bool set_params,
 						bool allow_strat, bool allow_sync, bool allow_pagemode);
-extern void pg_tde_endscan(TableScanDesc sscan);
-extern HeapTuple pg_tde_getnext(TableScanDesc sscan, ScanDirection direction);
-extern bool pg_tde_getnextslot(TableScanDesc sscan,
+extern void heap_endscan(TableScanDesc sscan);
+extern HeapTuple heap_getnext(TableScanDesc sscan, ScanDirection direction);
+extern bool heap_getnextslot(TableScanDesc sscan,
 							 ScanDirection direction, struct TupleTableSlot *slot);
-extern void pg_tde_set_tidrange(TableScanDesc sscan, ItemPointer mintid,
+extern void heap_set_tidrange(TableScanDesc sscan, ItemPointer mintid,
 							  ItemPointer maxtid);
-extern bool pg_tde_getnextslot_tidrange(TableScanDesc sscan,
+extern bool heap_getnextslot_tidrange(TableScanDesc sscan,
 									  ScanDirection direction,
 									  TupleTableSlot *slot);
-extern bool pg_tde_fetch(Relation relation, Snapshot snapshot,
+extern bool heap_fetch(Relation relation, Snapshot snapshot,
 					   HeapTuple tuple, Buffer *userbuf, bool keep_buf);
-extern bool pg_tde_hot_search_buffer(ItemPointer tid, Relation relation,
+extern bool heap_hot_search_buffer(ItemPointer tid, Relation relation,
 								   Buffer buffer, Snapshot snapshot, HeapTuple heapTuple,
 								   bool *all_dead, bool first_call);
 
-extern void pg_tde_get_latest_tid(TableScanDesc sscan, ItemPointer tid);
+extern void heap_get_latest_tid(TableScanDesc sscan, ItemPointer tid);
 
 extern BulkInsertState GetBulkInsertState(void);
 extern void FreeBulkInsertState(BulkInsertState);
 extern void ReleaseBulkInsertStatePin(BulkInsertState bistate);
 
-extern void pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
+extern void heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 						int options, BulkInsertState bistate);
-extern void pg_tde_multi_insert(Relation relation, struct TupleTableSlot **slots,
+extern void heap_multi_insert(Relation relation, struct TupleTableSlot **slots,
 							  int ntuples, CommandId cid, int options,
 							  BulkInsertState bistate);
-extern TM_Result pg_tde_delete(Relation relation, ItemPointer tid,
+extern TM_Result heap_delete(Relation relation, ItemPointer tid,
 							 CommandId cid, Snapshot crosscheck, bool wait,
 							 struct TM_FailureData *tmfd, bool changingPart);
-extern void pg_tde_finish_speculative(Relation relation, ItemPointer tid);
-extern void pg_tde_abort_speculative(Relation relation, ItemPointer tid);
-extern TM_Result pg_tde_update(Relation relation, ItemPointer otid,
+extern void heap_finish_speculative(Relation relation, ItemPointer tid);
+extern void heap_abort_speculative(Relation relation, ItemPointer tid);
+extern TM_Result heap_update(Relation relation, ItemPointer otid,
 							 HeapTuple newtup,
 							 CommandId cid, Snapshot crosscheck, bool wait,
 							 struct TM_FailureData *tmfd, LockTupleMode *lockmode,
 							 TU_UpdateIndexes *update_indexes);
-extern TM_Result pg_tde_lock_tuple(Relation relation, HeapTuple tuple,
+extern TM_Result heap_lock_tuple(Relation relation, HeapTuple tuple,
 								 CommandId cid, LockTupleMode mode, LockWaitPolicy wait_policy,
 								 bool follow_updates,
 								 Buffer *buffer, struct TM_FailureData *tmfd);
 
-extern void pg_tde_inplace_update(Relation relation, HeapTuple tuple);
-extern bool pg_tde_prepare_freeze_tuple(HeapTupleHeader tuple,
+extern void heap_inplace_update(Relation relation, HeapTuple tuple);
+extern bool heap_prepare_freeze_tuple(HeapTupleHeader tuple,
 									  const struct VacuumCutoffs *cutoffs,
 									  HeapPageFreeze *pagefrz,
 									  HeapTupleFreeze *frz, bool *totally_frozen);
-extern void pg_tde_freeze_execute_prepared(Relation rel, Buffer buffer,
+extern void heap_freeze_execute_prepared(Relation rel, Buffer buffer,
 										 TransactionId snapshotConflictHorizon,
 										 HeapTupleFreeze *tuples, int ntuples);
-extern bool pg_tde_freeze_tuple(HeapTupleHeader tuple,
+extern bool heap_freeze_tuple(HeapTupleHeader tuple,
 							  TransactionId relfrozenxid, TransactionId relminmxid,
 							  TransactionId FreezeLimit, TransactionId MultiXactCutoff);
-extern bool pg_tde_tuple_should_freeze(HeapTupleHeader tuple,
+extern bool heap_tuple_should_freeze(HeapTupleHeader tuple,
 									 const struct VacuumCutoffs *cutoffs,
 									 TransactionId *NoFreezePageRelfrozenXid,
 									 MultiXactId *NoFreezePageRelminMxid);
-extern bool pg_tde_tuple_needs_eventual_freeze(HeapTupleHeader tuple);
+extern bool heap_tuple_needs_eventual_freeze(HeapTupleHeader tuple);
 
-extern void simple_pg_tde_insert(Relation relation, HeapTuple tup);
-extern void simple_pg_tde_delete(Relation relation, ItemPointer tid);
-extern void simple_pg_tde_update(Relation relation, ItemPointer otid,
+extern void simple_heap_insert(Relation relation, HeapTuple tup);
+extern void simple_heap_delete(Relation relation, ItemPointer tid);
+extern void simple_heap_update(Relation relation, ItemPointer otid,
 							   HeapTuple tup, TU_UpdateIndexes *update_indexes);
 
-extern TransactionId pg_tde_index_delete_tuples(Relation rel,
+extern TransactionId heap_index_delete_tuples(Relation rel,
 											  TM_IndexDeleteOp *delstate);
 
 /* in heap/pruneheap.c */
 struct GlobalVisState;
-extern void pg_tde_page_prune_opt(Relation relation, Buffer buffer);
-extern int	pg_tde_page_prune(Relation relation, Buffer buffer,
+extern void heap_page_prune_opt(Relation relation, Buffer buffer);
+extern int	heap_page_prune(Relation relation, Buffer buffer,
 							struct GlobalVisState *vistest,
 							TransactionId old_snap_xmin,
 							TimestampTz old_snap_ts,
 							int *nnewlpdead,
 							OffsetNumber *off_loc);
-extern void pg_tde_page_prune_execute(Buffer buffer,
+extern void heap_page_prune_execute(Buffer buffer,
 									OffsetNumber *redirected, int nredirected,
 									OffsetNumber *nowdead, int ndead,
 									OffsetNumber *nowunused, int nunused);
-extern void pg_tde_get_root_tuples(Page page, OffsetNumber *root_offsets);
+extern void heap_get_root_tuples(Page page, OffsetNumber *root_offsets);
 
 /* in heap/vacuumlazy.c */
 struct VacuumParams;
-extern void pg_tde_vacuum_rel(Relation rel,
+extern void heap_vacuum_rel(Relation rel,
 							struct VacuumParams *params, BufferAccessStrategy bstrategy);
 
 /* in heap/heapam_visibility.c */
@@ -329,4 +329,4 @@ extern bool ResolveCminCmaxDuringDecoding(struct HTAB *tuplecid_data,
 extern void HeapCheckForSerializableConflictOut(bool visible, Relation relation, HeapTuple tuple,
 												Buffer buffer, Snapshot snapshot);
 
-#endif							/* PG_TDEAM_H */
+#endif							/* HEAPAM_H */

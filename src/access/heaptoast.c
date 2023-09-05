@@ -12,37 +12,35 @@
  *
  *
  * INTERFACE ROUTINES
- *		pg_tde_toast_insert_or_update -
+ *		heap_toast_insert_or_update -
  *			Try to make a given tuple fit into one page by compressing
  *			or moving off attributes
  *
- *		pg_tde_toast_delete -
+ *		heap_toast_delete -
  *			Reclaim toast storage when a tuple is deleted
  *
  *-------------------------------------------------------------------------
  */
-#include "pg_tde_defines.h"
 
 #include "postgres.h"
 
-#include "access/pg_tdeam.h"
-#include "access/pg_tdetoast.h"
-
 #include "access/detoast.h"
 #include "access/genam.h"
+#include "access/heapam.h"
+#include "access/heaptoast.h"
 #include "access/toast_helper.h"
 #include "access/toast_internals.h"
 #include "utils/fmgroids.h"
 
 
 /* ----------
- * pg_tde_toast_delete -
+ * heap_toast_delete -
  *
  *	Cascaded delete toast-entries on DELETE
  * ----------
  */
 void
-pg_tde_toast_delete(Relation rel, HeapTuple oldtup, bool is_speculative)
+heap_toast_delete(Relation rel, HeapTuple oldtup, bool is_speculative)
 {
 	TupleDesc	tupleDesc;
 	Datum		toast_values[MaxHeapAttributeNumber];
@@ -58,10 +56,10 @@ pg_tde_toast_delete(Relation rel, HeapTuple oldtup, bool is_speculative)
 	/*
 	 * Get the tuple descriptor and break down the tuple into fields.
 	 *
-	 * NOTE: it's debatable whether to use pg_tde_deform_tuple() here or just
-	 * pg_tde_getattr() only the varlena columns.  The latter could win if there
+	 * NOTE: it's debatable whether to use heap_deform_tuple() here or just
+	 * heap_getattr() only the varlena columns.  The latter could win if there
 	 * are few varlena columns and many non-varlena ones. However,
-	 * pg_tde_deform_tuple costs only O(N) while the pg_tde_getattr way would cost
+	 * heap_deform_tuple costs only O(N) while the heap_getattr way would cost
 	 * O(N^2) if there are many varlena columns, so it seems better to err on
 	 * the side of linear cost.  (We won't even be here unless there's at
 	 * least one varlena column, by the way.)
@@ -69,7 +67,7 @@ pg_tde_toast_delete(Relation rel, HeapTuple oldtup, bool is_speculative)
 	tupleDesc = rel->rd_att;
 
 	Assert(tupleDesc->natts <= MaxHeapAttributeNumber);
-	pg_tde_deform_tuple(oldtup, tupleDesc, toast_values, toast_isnull);
+	heap_deform_tuple(oldtup, tupleDesc, toast_values, toast_isnull);
 
 	/* Do the real work. */
 	toast_delete_external(rel, toast_values, toast_isnull, is_speculative);
@@ -77,7 +75,7 @@ pg_tde_toast_delete(Relation rel, HeapTuple oldtup, bool is_speculative)
 
 
 /* ----------
- * pg_tde_toast_insert_or_update -
+ * heap_toast_insert_or_update -
  *
  *	Delete no-longer-used toast-entries and create new ones to
  *	make the new tuple fit on INSERT or UPDATE
@@ -85,7 +83,7 @@ pg_tde_toast_delete(Relation rel, HeapTuple oldtup, bool is_speculative)
  * Inputs:
  *	newtup: the candidate new tuple to be inserted
  *	oldtup: the old row version for UPDATE, or NULL for INSERT
- *	options: options to be passed to pg_tde_insert() for toast rows
+ *	options: options to be passed to heap_insert() for toast rows
  * Result:
  *	either newtup if no toasting is needed, or a palloc'd modified tuple
  *	that is what should actually get stored
@@ -95,7 +93,7 @@ pg_tde_toast_delete(Relation rel, HeapTuple oldtup, bool is_speculative)
  * ----------
  */
 HeapTuple
-pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
+heap_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 							int options)
 {
 	HeapTuple	result_tuple;
@@ -134,9 +132,9 @@ pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 	numAttrs = tupleDesc->natts;
 
 	Assert(numAttrs <= MaxHeapAttributeNumber);
-	pg_tde_deform_tuple(newtup, tupleDesc, toast_values, toast_isnull);
+	heap_deform_tuple(newtup, tupleDesc, toast_values, toast_isnull);
 	if (oldtup != NULL)
-		pg_tde_deform_tuple(oldtup, tupleDesc, toast_oldvalues, toast_oldisnull);
+		heap_deform_tuple(oldtup, tupleDesc, toast_oldvalues, toast_oldisnull);
 
 	/* ----------
 	 * Prepare for toasting
@@ -170,7 +168,7 @@ pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 	 * ----------
 	 */
 
-	/* compute header overhead --- this should match pg_tde_form_tuple() */
+	/* compute header overhead --- this should match heap_form_tuple() */
 	hoff = SizeofHeapTupleHeader;
 	if ((ttc.ttc_flags & TOAST_HAS_NULLS) != 0)
 		hoff += BITMAPLEN(numAttrs);
@@ -183,7 +181,7 @@ pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 	 * large attributes with attstorage EXTENDED or EXTERNAL, and store them
 	 * external.
 	 */
-	while (pg_tde_compute_data_size(tupleDesc,
+	while (heap_compute_data_size(tupleDesc,
 								  toast_values, toast_isnull) > maxDataLen)
 	{
 		int			biggest_attno;
@@ -224,7 +222,7 @@ pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 	 * are still inline, and make them external.  But skip this if there's no
 	 * toast table to push them to.
 	 */
-	while (pg_tde_compute_data_size(tupleDesc,
+	while (heap_compute_data_size(tupleDesc,
 								  toast_values, toast_isnull) > maxDataLen &&
 		   rel->rd_rel->reltoastrelid != InvalidOid)
 	{
@@ -240,7 +238,7 @@ pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 	 * Round 3 - this time we take attributes with storage MAIN into
 	 * compression
 	 */
-	while (pg_tde_compute_data_size(tupleDesc,
+	while (heap_compute_data_size(tupleDesc,
 								  toast_values, toast_isnull) > maxDataLen)
 	{
 		int			biggest_attno;
@@ -259,7 +257,7 @@ pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 	 */
 	maxDataLen = TOAST_TUPLE_TARGET_MAIN - hoff;
 
-	while (pg_tde_compute_data_size(tupleDesc,
+	while (heap_compute_data_size(tupleDesc,
 								  toast_values, toast_isnull) > maxDataLen &&
 		   rel->rd_rel->reltoastrelid != InvalidOid)
 	{
@@ -298,7 +296,7 @@ pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 		if ((ttc.ttc_flags & TOAST_HAS_NULLS) != 0)
 			new_header_len += BITMAPLEN(numAttrs);
 		new_header_len = MAXALIGN(new_header_len);
-		new_data_len = pg_tde_compute_data_size(tupleDesc,
+		new_data_len = heap_compute_data_size(tupleDesc,
 											  toast_values, toast_isnull);
 		new_tuple_len = new_header_len + new_data_len;
 
@@ -320,7 +318,7 @@ pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 		new_data->t_hoff = new_header_len;
 
 		/* Copy over the data, and fill the null bitmap if needed */
-		pg_tde_fill_tuple(tupleDesc,
+		heap_fill_tuple(tupleDesc,
 						toast_values,
 						toast_isnull,
 						(char *) new_data + new_header_len,
@@ -362,7 +360,7 @@ toast_flatten_tuple(HeapTuple tup, TupleDesc tupleDesc)
 	 * Break down the tuple into fields.
 	 */
 	Assert(numAttrs <= MaxTupleAttributeNumber);
-	pg_tde_deform_tuple(tup, tupleDesc, toast_values, toast_isnull);
+	heap_deform_tuple(tup, tupleDesc, toast_values, toast_isnull);
 
 	memset(toast_free, 0, numAttrs * sizeof(bool));
 
@@ -388,7 +386,7 @@ toast_flatten_tuple(HeapTuple tup, TupleDesc tupleDesc)
 	/*
 	 * Form the reconfigured tuple.
 	 */
-	new_tuple = pg_tde_form_tuple(tupleDesc, toast_values, toast_isnull);
+	new_tuple = heap_form_tuple(tupleDesc, toast_values, toast_isnull);
 
 	/*
 	 * Be sure to copy the tuple's identity fields.  We also make a point of
@@ -444,7 +442,7 @@ toast_flatten_tuple(HeapTuple tup, TupleDesc tupleDesc)
  *
  *	On the other hand, in-line short-header varlena fields are left alone.
  *	If we "untoasted" them here, they'd just get changed back to short-header
- *	format anyway within pg_tde_fill_tuple.
+ *	format anyway within heap_fill_tuple.
  * ----------
  */
 Datum
@@ -474,7 +472,7 @@ toast_flatten_tuple_to_datum(HeapTupleHeader tup,
 	 * Break down the tuple into fields.
 	 */
 	Assert(numAttrs <= MaxTupleAttributeNumber);
-	pg_tde_deform_tuple(&tmptup, tupleDesc, toast_values, toast_isnull);
+	heap_deform_tuple(&tmptup, tupleDesc, toast_values, toast_isnull);
 
 	memset(toast_free, 0, numAttrs * sizeof(bool));
 
@@ -504,13 +502,13 @@ toast_flatten_tuple_to_datum(HeapTupleHeader tup,
 	 * Calculate the new size of the tuple.
 	 *
 	 * This should match the reconstruction code in
-	 * pg_tde_toast_insert_or_update.
+	 * heap_toast_insert_or_update.
 	 */
 	new_header_len = SizeofHeapTupleHeader;
 	if (has_nulls)
 		new_header_len += BITMAPLEN(numAttrs);
 	new_header_len = MAXALIGN(new_header_len);
-	new_data_len = pg_tde_compute_data_size(tupleDesc,
+	new_data_len = heap_compute_data_size(tupleDesc,
 										  toast_values, toast_isnull);
 	new_tuple_len = new_header_len + new_data_len;
 
@@ -529,7 +527,7 @@ toast_flatten_tuple_to_datum(HeapTupleHeader tup,
 	HeapTupleHeaderSetTypMod(new_data, tupleDesc->tdtypmod);
 
 	/* Copy over the data, and fill the null bitmap if needed */
-	pg_tde_fill_tuple(tupleDesc,
+	heap_fill_tuple(tupleDesc,
 					toast_values,
 					toast_isnull,
 					(char *) new_data + new_header_len,
@@ -554,7 +552,7 @@ toast_flatten_tuple_to_datum(HeapTupleHeader tup,
  *	Build a tuple containing no out-of-line toasted fields.
  *	(This does not eliminate compressed or short-header datums.)
  *
- *	This is essentially just like pg_tde_form_tuple, except that it will
+ *	This is essentially just like heap_form_tuple, except that it will
  *	expand any external-data pointers beforehand.
  *
  *	It's not very clear whether it would be preferable to decompress
@@ -574,7 +572,7 @@ toast_build_flattened_tuple(TupleDesc tupleDesc,
 	Pointer		freeable_values[MaxTupleAttributeNumber];
 
 	/*
-	 * We can pass the caller's isnull array directly to pg_tde_form_tuple, but
+	 * We can pass the caller's isnull array directly to heap_form_tuple, but
 	 * we potentially need to modify the values array.
 	 */
 	Assert(numAttrs <= MaxTupleAttributeNumber);
@@ -603,7 +601,7 @@ toast_build_flattened_tuple(TupleDesc tupleDesc,
 	/*
 	 * Form the reconfigured tuple.
 	 */
-	new_tuple = pg_tde_form_tuple(tupleDesc, new_values, isnull);
+	new_tuple = heap_form_tuple(tupleDesc, new_values, isnull);
 
 	/*
 	 * Free allocated temp values
@@ -625,7 +623,7 @@ toast_build_flattened_tuple(TupleDesc tupleDesc,
  * result is the varlena into which the results should be written.
  */
 void
-pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
+heap_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
 					   int32 sliceoffset, int32 slicelength,
 					   struct varlena *result)
 {
@@ -722,7 +720,7 @@ pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
 		}
 		else if (VARATT_IS_SHORT(chunk))
 		{
-			/* could happen due to pg_tde_form_tuple doing its thing */
+			/* could happen due to heap_form_tuple doing its thing */
 			chunksize = VARSIZE_SHORT(chunk) - VARHDRSZ_SHORT;
 			chunkdata = VARDATA_SHORT(chunk);
 		}

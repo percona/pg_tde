@@ -12,13 +12,10 @@
  *
  *-------------------------------------------------------------------------
  */
-#include "pg_tde_defines.h"
-
 #include "postgres.h"
 
-#include "access/pg_tdeam.h"
-#include "access/pg_tdeam_xlog.h"
-
+#include "access/heapam.h"
+#include "access/heapam_xlog.h"
 #include "access/htup_details.h"
 #include "access/transam.h"
 #include "access/xlog.h"
@@ -31,7 +28,7 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
-/* Working data for pg_tde_page_prune and subroutines */
+/* Working data for heap_page_prune and subroutines */
 typedef struct
 {
 	Relation	rel;
@@ -71,7 +68,7 @@ typedef struct
 
 	/*
 	 * Tuple visibility is only computed once for each tuple, for correctness
-	 * and efficiency reasons; see comment in pg_tde_page_prune() for details.
+	 * and efficiency reasons; see comment in heap_page_prune() for details.
 	 * This is of type int8[], instead of HTSV_Result[], so we can use -1 to
 	 * indicate no visibility has been computed, e.g. for LP_DEAD items.
 	 *
@@ -108,7 +105,7 @@ static void page_verify_redirects(Page page);
  * Caller must have pin on the buffer, and must *not* have a lock on it.
  */
 void
-pg_tde_page_prune_opt(Relation relation, Buffer buffer)
+heap_page_prune_opt(Relation relation, Buffer buffer)
 {
 	Page		page = BufferGetPage(buffer);
 	TransactionId prune_xid;
@@ -208,7 +205,7 @@ pg_tde_page_prune_opt(Relation relation, Buffer buffer)
 			int			ndeleted,
 						nnewlpdead;
 
-			ndeleted = pg_tde_page_prune(relation, buffer, vistest, limited_xmin,
+			ndeleted = heap_page_prune(relation, buffer, vistest, limited_xmin,
 									   limited_ts, &nnewlpdead, NULL);
 
 			/*
@@ -265,7 +262,7 @@ pg_tde_page_prune_opt(Relation relation, Buffer buffer)
  * Returns the number of tuples deleted from the page during this call.
  */
 int
-pg_tde_page_prune(Relation relation, Buffer buffer,
+heap_page_prune(Relation relation, Buffer buffer,
 				GlobalVisState *vistest,
 				TransactionId old_snap_xmin,
 				TimestampTz old_snap_ts,
@@ -392,7 +389,7 @@ pg_tde_page_prune(Relation relation, Buffer buffer,
 		 * Apply the planned item changes, then repair page fragmentation, and
 		 * update the page's hint bit about whether it has free line pointers.
 		 */
-		pg_tde_page_prune_execute(buffer,
+		heap_page_prune_execute(buffer,
 								prstate.redirected, prstate.nredirected,
 								prstate.nowdead, prstate.ndead,
 								prstate.nowunused, prstate.nunused);
@@ -417,7 +414,7 @@ pg_tde_page_prune(Relation relation, Buffer buffer,
 		 */
 		if (RelationNeedsWAL(relation))
 		{
-			xl_pg_tde_prune xlrec;
+			xl_heap_prune xlrec;
 			XLogRecPtr	recptr;
 
 			xlrec.isCatalogRel = RelationIsAccessibleInLogicalDecoding(relation);
@@ -492,7 +489,7 @@ pg_tde_page_prune(Relation relation, Buffer buffer,
  *
  * Due to its cost we also only want to call
  * TransactionIdLimitedForOldSnapshots() if necessary, i.e. we might not have
- * done so in pg_tde_page_prune_opt() if pd_prune_xid was old enough. But we
+ * done so in heap_page_prune_opt() if pd_prune_xid was old enough. But we
  * still want to be able to remove rows that are too new to be removed
  * according to prstate->vistest, but that can be removed based on
  * old_snapshot_threshold. So we call TransactionIdLimitedForOldSnapshots() on
@@ -843,7 +840,7 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 	{
 		/*
 		 * We found a redirect item that doesn't point to a valid follow-on
-		 * item.  This can happen if the loop in pg_tde_page_prune caused us to
+		 * item.  This can happen if the loop in heap_page_prune caused us to
 		 * visit the dead successor of a redirect item before visiting the
 		 * redirect item.  We can clean up by setting the redirect item to
 		 * DEAD state.
@@ -907,12 +904,12 @@ heap_prune_record_unused(PruneState *prstate, OffsetNumber offnum)
 
 
 /*
- * Perform the actual page changes needed by pg_tde_page_prune.
+ * Perform the actual page changes needed by heap_page_prune.
  * It is expected that the caller has a full cleanup lock on the
  * buffer.
  */
 void
-pg_tde_page_prune_execute(Buffer buffer,
+heap_page_prune_execute(Buffer buffer,
 						OffsetNumber *redirected, int nredirected,
 						OffsetNumber *nowdead, int ndead,
 						OffsetNumber *nowunused, int nunused)
@@ -1056,11 +1053,11 @@ pg_tde_page_prune_execute(Buffer buffer,
  * One way that bugs related to HOT pruning show is redirect items pointing to
  * removed tuples. It's not trivial to reliably check that marking an item
  * unused will not orphan a redirect item during heap_prune_chain() /
- * pg_tde_page_prune_execute(), so we additionally check the whole page after
+ * heap_page_prune_execute(), so we additionally check the whole page after
  * pruning. Without this check such bugs would typically only cause asserts
  * later, potentially well after the corruption has been introduced.
  *
- * Also check comments in pg_tde_page_prune_execute()'s redirection loop.
+ * Also check comments in heap_page_prune_execute()'s redirection loop.
  */
 static void
 page_verify_redirects(Page page)
@@ -1111,7 +1108,7 @@ page_verify_redirects(Page page)
  * and reused by a completely unrelated tuple.
  */
 void
-pg_tde_get_root_tuples(Page page, OffsetNumber *root_offsets)
+heap_get_root_tuples(Page page, OffsetNumber *root_offsets)
 {
 	OffsetNumber offnum,
 				maxoff;

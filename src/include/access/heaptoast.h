@@ -10,9 +10,8 @@
  *
  *-------------------------------------------------------------------------
  */
-#ifndef PG_TDE_TOAST_H
-#define PG_TDE_TOAST_H
-
+#ifndef HEAPTOAST_H
+#define HEAPTOAST_H
 
 #include "access/htup_details.h"
 #include "storage/lockdefs.h"
@@ -90,21 +89,21 @@
 	 VARHDRSZ)
 
 /* ----------
- * pg_tde_toast_insert_or_update -
+ * heap_toast_insert_or_update -
  *
- *	Called by pg_tde_insert() and pg_tde_update().
+ *	Called by heap_insert() and heap_update().
  * ----------
  */
-extern HeapTuple pg_tde_toast_insert_or_update(Relation rel, HeapTuple newtup,
+extern HeapTuple heap_toast_insert_or_update(Relation rel, HeapTuple newtup,
 											 HeapTuple oldtup, int options);
 
 /* ----------
- * pg_tde_toast_delete -
+ * heap_toast_delete -
  *
- *	Called by pg_tde_delete().
+ *	Called by heap_delete().
  * ----------
  */
-extern void pg_tde_toast_delete(Relation rel, HeapTuple oldtup,
+extern void heap_toast_delete(Relation rel, HeapTuple oldtup,
 							  bool is_speculative);
 
 /* ----------
@@ -138,13 +137,13 @@ extern HeapTuple toast_build_flattened_tuple(TupleDesc tupleDesc,
 											 bool *isnull);
 
 /* ----------
- * pg_tde_fetch_toast_slice
+ * heap_fetch_toast_slice
  *
  *	Fetch a slice from a toast value stored in a heap table.
  * ----------
  */
-extern void pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid,
+extern void heap_fetch_toast_slice(Relation toastrel, Oid valueid,
 								   int32 attrsize, int32 sliceoffset,
 								   int32 slicelength, struct varlena *result);
 
-#endif							/* PG_TDE_TOAST_H */
+#endif							/* HEAPTOAST_H */

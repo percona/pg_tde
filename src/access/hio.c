@@ -17,12 +17,11 @@
 
 #include "postgres.h"
 
-#include "access/pg_tdeam.h"
-#include "access/pg_tde_io.h"
-#include "access/pg_tde_visibilitymap.h"
-#include "encryption/enc_tuple.h"
-
+#include "access/heapam.h"
+#include "access/hio.h"
 #include "access/htup_details.h"
+#include "access/visibilitymap.h"
+#include "encryption/enc_tuple.h"
 #include "storage/bufmgr.h"
 #include "storage/freespace.h"
 #include "storage/lmgr.h"
@@ -30,14 +29,14 @@
 
 
 /*
- * pg_tde_RelationPutHeapTuple - place tuple at specified page
+ * RelationPutHeapTuple - place tuple at specified page
  *
  * !!! EREPORT(ERROR) IS DISALLOWED HERE !!!  Must PANIC on failure!!!
  *
  * Note - caller must hold BUFFER_LOCK_EXCLUSIVE on the buffer.
  */
 void
-pg_tde_RelationPutHeapTuple(Relation relation,
+RelationPutHeapTuple(Relation relation,
 					 Buffer buffer,
 					 HeapTuple tuple,
 					 bool token)
@@ -64,7 +63,7 @@ pg_tde_RelationPutHeapTuple(Relation relation,
 	pageHeader = BufferGetPage(buffer);
 
 	offnum = TDE_PageAddItem(tuple->t_tableOid, BufferGetBlockNumber(buffer), pageHeader, (Item) tuple->t_data,
-						 tuple->t_len, InvalidOffsetNumber, false, true);
+						tuple->t_len, InvalidOffsetNumber, false, true);
 
 	if (offnum == InvalidOffsetNumber)
 		elog(PANIC, "failed to add tuple to page");
@@ -177,10 +176,10 @@ GetVisibilityMapPins(Relation relation, Buffer buffer1, Buffer buffer2,
 	{
 		/* Figure out which pins we need but don't have. */
 		need_to_pin_buffer1 = PageIsAllVisible(BufferGetPage(buffer1))
-			&& !pg_tde_visibilitymap_pin_ok(block1, *vmbuffer1);
+			&& !visibilitymap_pin_ok(block1, *vmbuffer1);
 		need_to_pin_buffer2 = buffer2 != InvalidBuffer
 			&& PageIsAllVisible(BufferGetPage(buffer2))
-			&& !pg_tde_visibilitymap_pin_ok(block2, *vmbuffer2);
+			&& !visibilitymap_pin_ok(block2, *vmbuffer2);
 		if (!need_to_pin_buffer1 && !need_to_pin_buffer2)
 			break;
 
@@ -192,9 +191,9 @@ GetVisibilityMapPins(Relation relation, Buffer buffer1, Buffer buffer2,
 
 		/* Get pins. */
 		if (need_to_pin_buffer1)
-			pg_tde_visibilitymap_pin(relation, block1, vmbuffer1);
+			visibilitymap_pin(relation, block1, vmbuffer1);
 		if (need_to_pin_buffer2)
-			pg_tde_visibilitymap_pin(relation, block2, vmbuffer2);
+			visibilitymap_pin(relation, block2, vmbuffer2);
 
 		/* Relock buffers. */
 		LockBuffer(buffer1, BUFFER_LOCK_EXCLUSIVE);
@@ -287,6 +286,24 @@ RelationAddBlocks(Relation relation, BulkInsertState bistate,
 		 */
 		extend_by_pages += extend_by_pages * waitcount;
 
+		/* ---
+		 * If we previously extended using the same bistate, it's very likely
+		 * we'll extend some more. Try to extend by as many pages as
+		 * before. This can be important for performance for several reasons,
+		 * including:
+		 *
+		 * - It prevents mdzeroextend() switching between extending the
+		 *   relation in different ways, which is inefficient for some
+		 *   filesystems.
+		 *
+		 * - Contention is often intermittent. Even if we currently don't see
+		 *   other waiters (see above), extending by larger amounts can
+		 *   prevent future contention.
+		 * ---
+		 */
+		if (bistate)
+			extend_by_pages = Max(extend_by_pages, bistate->already_extended_by);
+
 		/*
 		 * Can't extend by more than MAX_BUFFERS_TO_EXTEND_BY, we need to pin
 		 * them all concurrently.
@@ -325,7 +342,7 @@ RelationAddBlocks(Relation relation, BulkInsertState bistate,
 	 * [auto]vacuum trying to truncate later pages as REL_TRUNCATE_MINIMUM is
 	 * way larger.
 	 */
-	first_block = ExtendBufferedRelBy(EB_REL(relation), MAIN_FORKNUM,
+	first_block = ExtendBufferedRelBy(BMR_REL(relation), MAIN_FORKNUM,
 									  bistate ? bistate->strategy : NULL,
 									  EB_LOCK_FIRST,
 									  extend_by_pages,
@@ -413,6 +430,7 @@ RelationAddBlocks(Relation relation, BulkInsertState bistate,
 		/* maintain bistate->current_buf */
 		IncrBufferRefCount(buffer);
 		bistate->current_buf = buffer;
+		bistate->already_extended_by += extend_by_pages;
 	}
 
 	return buffer;
@@ -420,7 +438,7 @@ RelationAddBlocks(Relation relation, BulkInsertState bistate,
 }
 
 /*
- * pg_tde_RelationGetBufferForTuple
+ * RelationGetBufferForTuple
  *
  *	Returns pinned and exclusive-locked buffer of a page in given relation
  *	with free space >= given len.
@@ -440,7 +458,7 @@ RelationAddBlocks(Relation relation, BulkInsertState bistate,
  *	to lock the same two buffers in opposite orders.  To ensure that this
  *	can't happen, we impose the rule that buffers of a relation must be
  *	locked in increasing page number order.  This is most conveniently done
- *	by having pg_tde_RelationGetBufferForTuple lock them both, with suitable care
+ *	by having RelationGetBufferForTuple lock them both, with suitable care
  *	for ordering.
  *
  *	NOTE: it is unlikely, but not quite impossible, for otherBuffer to be the
@@ -485,7 +503,7 @@ RelationAddBlocks(Relation relation, BulkInsertState bistate,
  *	before any (unlogged) changes are made in buffer pool.
  */
 Buffer
-pg_tde_RelationGetBufferForTuple(Relation relation, Size len,
+RelationGetBufferForTuple(Relation relation, Size len,
 						  Buffer otherBuffer, int options,
 						  BulkInsertState bistate,
 						  Buffer *vmbuffer, Buffer *vmbuffer_other,
@@ -604,14 +622,14 @@ loop:
 			/* easy case */
 			buffer = ReadBufferBI(relation, targetBlock, RBM_NORMAL, bistate);
 			if (PageIsAllVisible(BufferGetPage(buffer)))
-				pg_tde_visibilitymap_pin(relation, targetBlock, vmbuffer);
+				visibilitymap_pin(relation, targetBlock, vmbuffer);
 
 			/*
 			 * If the page is empty, pin vmbuffer to set all_frozen bit later.
 			 */
 			if ((options & HEAP_INSERT_FROZEN) &&
 				(PageGetMaxOffsetNumber(BufferGetPage(buffer)) == 0))
-				pg_tde_visibilitymap_pin(relation, targetBlock, vmbuffer);
+				visibilitymap_pin(relation, targetBlock, vmbuffer);
 
 			LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 		}
@@ -620,7 +638,7 @@ loop:
 			/* also easy case */
 			buffer = otherBuffer;
 			if (PageIsAllVisible(BufferGetPage(buffer)))
-				pg_tde_visibilitymap_pin(relation, targetBlock, vmbuffer);
+				visibilitymap_pin(relation, targetBlock, vmbuffer);
 			LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 		}
 		else if (otherBlock < targetBlock)
@@ -628,7 +646,7 @@ loop:
 			/* lock other buffer first */
 			buffer = ReadBuffer(relation, targetBlock);
 			if (PageIsAllVisible(BufferGetPage(buffer)))
-				pg_tde_visibilitymap_pin(relation, targetBlock, vmbuffer);
+				visibilitymap_pin(relation, targetBlock, vmbuffer);
 			LockBuffer(otherBuffer, BUFFER_LOCK_EXCLUSIVE);
 			LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 		}
@@ -637,7 +655,7 @@ loop:
 			/* lock target buffer first */
 			buffer = ReadBuffer(relation, targetBlock);
 			if (PageIsAllVisible(BufferGetPage(buffer)))
-				pg_tde_visibilitymap_pin(relation, targetBlock, vmbuffer);
+				visibilitymap_pin(relation, targetBlock, vmbuffer);
 			LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 			LockBuffer(otherBuffer, BUFFER_LOCK_EXCLUSIVE);
 		}
@@ -765,12 +783,12 @@ loop:
 	{
 		Assert(PageGetMaxOffsetNumber(page) == 0);
 
-		if (!pg_tde_visibilitymap_pin_ok(targetBlock, *vmbuffer))
+		if (!visibilitymap_pin_ok(targetBlock, *vmbuffer))
 		{
 			if (!unlockedTargetBuffer)
 				LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
 			unlockedTargetBuffer = true;
-			pg_tde_visibilitymap_pin(relation, targetBlock, vmbuffer);
+			visibilitymap_pin(relation, targetBlock, vmbuffer);
 		}
 	}
 

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * pg_tde_rewrite.h
+ * rewriteheap.h
  *	  Declarations for heap rewrite support functions
  *
  * Portions Copyright (c) 1996-2023, PostgreSQL Global Development Group
@@ -10,8 +10,8 @@
  *
  *-------------------------------------------------------------------------
  */
-#ifndef PG_TDE_REWRITE_H
-#define PG_TDE_REWRITE_H
+#ifndef REWRITE_HEAP_H
+#define REWRITE_HEAP_H
 
 #include "access/htup.h"
 #include "storage/itemptr.h"
@@ -21,13 +21,13 @@
 /* struct definition is private to rewriteheap.c */
 typedef struct RewriteStateData *RewriteState;
 
-extern RewriteState begin_pg_tde_rewrite(Relation old_heap, Relation new_heap,
+extern RewriteState begin_heap_rewrite(Relation old_heap, Relation new_heap,
 									   TransactionId oldest_xmin, TransactionId freeze_xid,
 									   MultiXactId cutoff_multi);
-extern void end_pg_tde_rewrite(RewriteState state);
-extern void rewrite_pg_tde_tuple(RewriteState state, HeapTuple old_tuple,
+extern void end_heap_rewrite(RewriteState state);
+extern void rewrite_heap_tuple(RewriteState state, HeapTuple old_tuple,
 							   HeapTuple new_tuple);
-extern bool rewrite_pg_tde_dead_tuple(RewriteState state, HeapTuple old_tuple);
+extern bool rewrite_heap_dead_tuple(RewriteState state, HeapTuple old_tuple);
 
 /*
  * On-Disk data format for an individual logical rewrite mapping.
@@ -54,4 +54,4 @@ typedef struct LogicalRewriteMappingData
 #define LOGICAL_REWRITE_FORMAT "map-%x-%x-%X_%X-%x-%x"
 extern void CheckPointLogicalRewriteHeap(void);
 
-#endif							/* PG_TDE_REWRITE_H */
+#endif							/* REWRITE_HEAP_H */

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * pg_tde_io.h
+ * hio.h
  *	  POSTGRES heap access method input/output definitions.
  *
  *
@@ -11,8 +11,8 @@
  *
  *-------------------------------------------------------------------------
  */
-#ifndef PG_TDE_IO_H
-#define PG_TDE_IO_H
+#ifndef HIO_H
+#define HIO_H
 
 #include "access/htup.h"
 #include "storage/buf.h"
@@ -32,24 +32,31 @@ typedef struct BulkInsertStateData
 	Buffer		current_buf;	/* current insertion target page */
 
 	/*
-	 * State for bulk extensions. Further pages that were unused at the time
-	 * of the extension. They might be in use by the time we use them though,
-	 * so rechecks are needed.
+	 * State for bulk extensions.
+	 *
+	 * last_free..next_free are further pages that were unused at the time of
+	 * the last extension. They might be in use by the time we use them
+	 * though, so rechecks are needed.
 	 *
 	 * XXX: Eventually these should probably live in RelationData instead,
 	 * alongside targetblock.
+	 *
+	 * already_extended_by is the number of pages that this bulk inserted
+	 * extended by. If we already extended by a significant number of pages,
+	 * we can be more aggressive about extending going forward.
 	 */
 	BlockNumber next_free;
 	BlockNumber last_free;
+	uint32		already_extended_by;
 } BulkInsertStateData;
 
 
-extern void pg_tde_RelationPutHeapTuple(Relation relation, Buffer buffer,
+extern void RelationPutHeapTuple(Relation relation, Buffer buffer,
 								 HeapTuple tuple, bool token);
-extern Buffer pg_tde_RelationGetBufferForTuple(Relation relation, Size len,
+extern Buffer RelationGetBufferForTuple(Relation relation, Size len,
 										Buffer otherBuffer, int options,
 										BulkInsertStateData *bistate,
 										Buffer *vmbuffer, Buffer *vmbuffer_other,
 										int num_pages);
 
-#endif							/* PG_TDE_IO_H */
+#endif							/* HIO_H */

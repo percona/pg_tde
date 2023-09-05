@@ -5,16 +5,18 @@ jsondep = dependency('json-c')
 pg_tde_sources = files(
         'src/pg_tde.c',
         'src/transam/pg_tde_xact_handler.c',
+
         'src/access/pg_tde_tdemap.c',
-        'src/access/pg_tdeam.c',
-        'src/access/pg_tdeam_handler.c',
-        'src/access/pg_tdeam_visibility.c',
-        'src/access/pg_tdetoast.c',
-        'src/access/pg_tde_io.c',
-        'src/access/pg_tde_prune.c',
-        'src/access/pg_tde_rewrite.c',
-        'src/access/pg_tde_vacuumlazy.c',
-        'src/access/pg_tde_visibilitymap.c',
+        
+        'src/access/heapam_handler.c',
+        'src/access/heapam_visibility.c',
+        'src/access/heapam.c',
+        'src/access/heaptoast.c',
+        'src/access/hio.c',
+        'src/access/pruneheap.c',
+        'src/access/rewriteheap.c',
+        'src/access/vacuumlazy.c',
+        'src/access/visibilitymap.c',
 
         'src/encryption/enc_tuple.c',
         'src/encryption/enc_aes.c',

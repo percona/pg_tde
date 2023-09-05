@@ -1,30 +1,30 @@
 /*-------------------------------------------------------------------------
  *
- * pg_tdeam.c
- *	  pg_tde access method code
+ * heapam.c
+ *	  heap access method code
  *
  * Portions Copyright (c) 1996-2023, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
  * IDENTIFICATION
- *	  contrib/pg_tde/pg_tdeam.c
+ *	  src/backend/access/heap/heapam.c
  *
  *
  * INTERFACE ROUTINES
- *		pg_tde_beginscan	- begin relation scan
- *		pg_tde_rescan		- restart a relation scan
- *		pg_tde_endscan	- end relation scan
- *		pg_tde_getnext	- retrieve next tuple in scan
- *		pg_tde_fetch		- retrieve tuple with given tid
- *		pg_tde_insert		- insert tuple into a relation
- *		pg_tde_multi_insert - insert multiple tuples into a relation
- *		pg_tde_delete		- delete a tuple from a relation
- *		pg_tde_update		- replace a tuple in a relation with another tuple
+ *		heap_beginscan	- begin relation scan
+ *		heap_rescan		- restart a relation scan
+ *		heap_endscan	- end relation scan
+ *		heap_getnext	- retrieve next tuple in scan
+ *		heap_fetch		- retrieve tuple with given tid
+ *		heap_insert		- insert tuple into a relation
+ *		heap_multi_insert - insert multiple tuples into a relation
+ *		heap_delete		- delete a tuple from a relation
+ *		heap_update		- replace a tuple in a relation with another tuple
  *
  * NOTES
- *	  This file contains the pg_tde_ routines which implement
- *	  the POSTGRES pg_tde access method used for all POSTGRES
+ *	  This file contains the heap_ routines which implement
+ *	  the POSTGRES heap access method used for all POSTGRES
  *	  relations.
  *
  *-------------------------------------------------------------------------
@@ -34,15 +34,12 @@
 
 #include "postgres.h"
 
-#include "access/pg_tdeam.h"
-#include "access/pg_tdeam_xlog.h"
-#include "access/pg_tdetoast.h"
-#include "access/pg_tde_io.h"
-#include "access/pg_tde_visibilitymap.h"
-#include "encryption/enc_tuple.h"
-
 #include "access/bufmask.h"
 #include "access/genam.h"
+#include "access/heapam.h"
+#include "access/heapam_xlog.h"
+#include "access/heaptoast.h"
+#include "access/hio.h"
 #include "access/multixact.h"
 #include "access/parallel.h"
 #include "access/relscan.h"
@@ -52,6 +49,8 @@
 #include "access/tableam.h"
 #include "access/transam.h"
 #include "access/valid.h"
+#include "access/visibilitymap.h"
+#include "encryption/enc_tuple.h"
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"
@@ -78,9 +77,9 @@
 #include "utils/spccache.h"
 
 
-static HeapTuple pg_tde_prepare_insert(Relation relation, HeapTuple tup,
+static HeapTuple heap_prepare_insert(Relation relation, HeapTuple tup,
 									 TransactionId xid, CommandId cid, int options);
-static XLogRecPtr log_pg_tde_update(Relation reln, Buffer oldbuf,
+static XLogRecPtr log_heap_update(Relation reln, Buffer oldbuf,
 								  Buffer newbuf, HeapTuple oldtup,
 								  HeapTuple newtup, HeapTuple old_key_tuple,
 								  bool all_visible_cleared, bool new_all_visible_cleared);
@@ -89,7 +88,7 @@ static Bitmapset *HeapDetermineColumnsInfo(Relation relation,
 										   Bitmapset *external_cols,
 										   HeapTuple oldtup, HeapTuple newtup,
 										   bool *has_external);
-static bool pg_tde_acquire_tuplock(Relation relation, ItemPointer tid,
+static bool heap_acquire_tuplock(Relation relation, ItemPointer tid,
 								 LockTupleMode mode, LockWaitPolicy wait_policy,
 								 bool *have_tuple_lock);
 static void compute_new_xmax_infomask(TransactionId xmax, uint16 old_infomask,
@@ -97,11 +96,11 @@ static void compute_new_xmax_infomask(TransactionId xmax, uint16 old_infomask,
 									  LockTupleMode mode, bool is_update,
 									  TransactionId *result_xmax, uint16 *result_infomask,
 									  uint16 *result_infomask2);
-static TM_Result pg_tde_lock_updated_tuple(Relation rel, HeapTuple tuple,
+static TM_Result heap_lock_updated_tuple(Relation rel, HeapTuple tuple,
 										 ItemPointer ctid, TransactionId xid,
 										 LockTupleMode mode);
-static int	pg_tde_log_freeze_plan(HeapTupleFreeze *tuples, int ntuples,
-								 xl_pg_tde_freeze_plan *plans_out,
+static int	heap_log_freeze_plan(HeapTupleFreeze *tuples, int ntuples,
+								 xl_heap_freeze_plan *plans_out,
 								 OffsetNumber *offsets_out);
 static void GetMultiXactIdHintBits(MultiXactId multi, uint16 *new_infomask,
 								   uint16 *new_infomask2);
@@ -116,7 +115,7 @@ static bool ConditionalMultiXactIdWait(MultiXactId multi, MultiXactStatus status
 									   uint16 infomask, Relation rel, int *remaining);
 static void index_delete_sort(TM_IndexDeleteOp *delstate);
 static int	bottomup_sort_and_shrink(TM_IndexDeleteOp *delstate);
-static XLogRecPtr log_pg_tde_new_cid(Relation relation, HeapTuple tup);
+static XLogRecPtr log_heap_new_cid(Relation relation, HeapTuple tup);
 static HeapTuple ExtractReplicaIdentity(Relation relation, HeapTuple tp, bool key_required,
 										bool *copy);
 
@@ -180,7 +179,7 @@ static const struct
 
 #ifdef USE_PREFETCH
 /*
- * pg_tde_index_delete_tuples and index_delete_prefetch_buffer use this
+ * heap_index_delete_tuples and index_delete_prefetch_buffer use this
  * structure to coordinate prefetching activity
  */
 typedef struct
@@ -192,12 +191,12 @@ typedef struct
 } IndexDeletePrefetchState;
 #endif
 
-/* pg_tde_index_delete_tuples bottom-up index deletion costing constants */
+/* heap_index_delete_tuples bottom-up index deletion costing constants */
 #define BOTTOMUP_MAX_NBLOCKS			6
 #define BOTTOMUP_TOLERANCE_NBLOCKS		3
 
 /*
- * pg_tde_index_delete_tuples uses this when determining which heap blocks it
+ * heap_index_delete_tuples uses this when determining which heap blocks it
  * must visit to help its bottom-up index deletion caller
  */
 typedef struct IndexDeleteCounts
@@ -231,7 +230,7 @@ static const int MultiXactStatusLock[MaxMultiXactStatus + 1] =
  */
 
 /* ----------------
- *		initscan - scan code common to pg_tde_beginscan and pg_tde_rescan
+ *		initscan - scan code common to heap_beginscan and heap_rescan
  * ----------------
  */
 static void
@@ -346,17 +345,17 @@ initscan(HeapScanDesc scan, ScanKey key, bool keep_startblock)
 	 * and for sample scans we update stats for tuple fetches).
 	 */
 	if (scan->rs_base.rs_flags & SO_TYPE_SEQSCAN)
-		pgstat_count_pg_tde_scan(scan->rs_base.rs_rd);
+		pgstat_count_heap_scan(scan->rs_base.rs_rd);
 }
 
 /*
- * pg_tde_setscanlimits - restrict range of a heapscan
+ * heap_setscanlimits - restrict range of a heapscan
  *
  * startBlk is the page to start at
  * numBlks is number of pages to scan (InvalidBlockNumber means "all")
  */
 void
-pg_tde_setscanlimits(TableScanDesc sscan, BlockNumber startBlk, BlockNumber numBlks)
+heap_setscanlimits(TableScanDesc sscan, BlockNumber startBlk, BlockNumber numBlks)
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
 
@@ -372,14 +371,14 @@ pg_tde_setscanlimits(TableScanDesc sscan, BlockNumber startBlk, BlockNumber numB
 }
 
 /*
- * pg_tde_getpage - subroutine for pg_tde_gettup()
+ * heapgetpage - subroutine for heapgettup()
  *
  * This routine reads and pins the specified page of the relation.
  * In page-at-a-time mode it performs additional work, namely determining
  * which tuples on the page are visible.
  */
 void
-pg_tde_getpage(TableScanDesc sscan, BlockNumber block)
+heapgetpage(TableScanDesc sscan, BlockNumber block)
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
 	Buffer		buffer;
@@ -420,7 +419,7 @@ pg_tde_getpage(TableScanDesc sscan, BlockNumber block)
 	/*
 	 * Prune and repair fragmentation for the whole page, if possible.
 	 */
-	pg_tde_page_prune_opt(scan->rs_base.rs_rd, buffer);
+	heap_page_prune_opt(scan->rs_base.rs_rd, buffer);
 
 	/*
 	 * We must hold share lock on the buffer content while examining tuple
@@ -489,14 +488,14 @@ pg_tde_getpage(TableScanDesc sscan, BlockNumber block)
 }
 
 /*
- * pg_tde_gettup_initial_block - return the first BlockNumber to scan
+ * heapgettup_initial_block - return the first BlockNumber to scan
  *
  * Returns InvalidBlockNumber when there are no blocks to scan.  This can
  * occur with empty tables and in parallel scans when parallel workers get all
  * of the pages before we can get a chance to get our first page.
  */
 static BlockNumber
-pg_tde_gettup_initial_block(HeapScanDesc scan, ScanDirection dir)
+heapgettup_initial_block(HeapScanDesc scan, ScanDirection dir)
 {
 	Assert(!scan->rs_inited);
 
@@ -537,7 +536,7 @@ pg_tde_gettup_initial_block(HeapScanDesc scan, ScanDirection dir)
 
 		/*
 		 * Start from last page of the scan.  Ensure we take into account
-		 * rs_numblocks if it's been adjusted by pg_tde_setscanlimits().
+		 * rs_numblocks if it's been adjusted by heap_setscanlimits().
 		 */
 		if (scan->rs_numblocks != InvalidBlockNumber)
 			return (scan->rs_startblock + scan->rs_numblocks - 1) % scan->rs_nblocks;
@@ -551,7 +550,7 @@ pg_tde_gettup_initial_block(HeapScanDesc scan, ScanDirection dir)
 
 
 /*
- * pg_tde_gettup_start_page - helper function for pg_tde_gettup()
+ * heapgettup_start_page - helper function for heapgettup()
  *
  * Return the next page to scan based on the scan->rs_cbuf and set *linesleft
  * to the number of tuples on this page.  Also set *lineoff to the first
@@ -559,7 +558,7 @@ pg_tde_gettup_initial_block(HeapScanDesc scan, ScanDirection dir)
  * getting the final offset on the page.
  */
 static Page
-pg_tde_gettup_start_page(HeapScanDesc scan, ScanDirection dir, int *linesleft,
+heapgettup_start_page(HeapScanDesc scan, ScanDirection dir, int *linesleft,
 					  OffsetNumber *lineoff)
 {
 	Page		page;
@@ -585,14 +584,14 @@ pg_tde_gettup_start_page(HeapScanDesc scan, ScanDirection dir, int *linesleft,
 
 
 /*
- * pg_tde_gettup_continue_page - helper function for pg_tde_gettup()
+ * heapgettup_continue_page - helper function for heapgettup()
  *
  * Return the next page to scan based on the scan->rs_cbuf and set *linesleft
  * to the number of tuples left to scan on this page.  Also set *lineoff to
  * the next offset to scan according to the ScanDirection in 'dir'.
  */
 static inline Page
-pg_tde_gettup_continue_page(HeapScanDesc scan, ScanDirection dir, int *linesleft,
+heapgettup_continue_page(HeapScanDesc scan, ScanDirection dir, int *linesleft,
 						 OffsetNumber *lineoff)
 {
 	Page		page;
@@ -626,7 +625,7 @@ pg_tde_gettup_continue_page(HeapScanDesc scan, ScanDirection dir, int *linesleft
 }
 
 /*
- * pg_tde_gettup_advance_block - helper for pg_tde_gettup() and pg_tde_gettup_pagemode()
+ * heapgettup_advance_block - helper for heapgettup() and heapgettup_pagemode()
  *
  * Given the current block number, the scan direction, and various information
  * contained in the scan descriptor, calculate the BlockNumber to scan next
@@ -637,10 +636,10 @@ pg_tde_gettup_continue_page(HeapScanDesc scan, ScanDirection dir, int *linesleft
  * subsequent blocks.
  *
  * This also adjusts rs_numblocks when a limit has been imposed by
- * pg_tde_setscanlimits().
+ * heap_setscanlimits().
  */
 static inline BlockNumber
-pg_tde_gettup_advance_block(HeapScanDesc scan, BlockNumber block, ScanDirection dir)
+heapgettup_advance_block(HeapScanDesc scan, BlockNumber block, ScanDirection dir)
 {
 	if (ScanDirectionIsForward(dir))
 	{
@@ -651,17 +650,6 @@ pg_tde_gettup_advance_block(HeapScanDesc scan, BlockNumber block, ScanDirection 
 			/* wrap back to the start of the heap */
 			if (block >= scan->rs_nblocks)
 				block = 0;
-
-			/* we're done if we're back at where we started */
-			if (block == scan->rs_startblock)
-				return InvalidBlockNumber;
-
-			/* check if the limit imposed by pg_tde_setscanlimits() is met */
-			if (scan->rs_numblocks != InvalidBlockNumber)
-			{
-				if (--scan->rs_numblocks == 0)
-					return InvalidBlockNumber;
-			}
 
 			/*
 			 * Report our new scan position for synchronization purposes. We
@@ -678,6 +666,17 @@ pg_tde_gettup_advance_block(HeapScanDesc scan, BlockNumber block, ScanDirection 
 			if (scan->rs_base.rs_flags & SO_ALLOW_SYNC)
 				ss_report_location(scan->rs_base.rs_rd, block);
 
+			/* we're done if we're back at where we started */
+			if (block == scan->rs_startblock)
+				return InvalidBlockNumber;
+
+			/* check if the limit imposed by heap_setscanlimits() is met */
+			if (scan->rs_numblocks != InvalidBlockNumber)
+			{
+				if (--scan->rs_numblocks == 0)
+					return InvalidBlockNumber;
+			}
+
 			return block;
 		}
 		else
@@ -693,7 +692,7 @@ pg_tde_gettup_advance_block(HeapScanDesc scan, BlockNumber block, ScanDirection 
 		if (block == scan->rs_startblock)
 			return InvalidBlockNumber;
 
-		/* check if the limit imposed by pg_tde_setscanlimits() is met */
+		/* check if the limit imposed by heap_setscanlimits() is met */
 		if (scan->rs_numblocks != InvalidBlockNumber)
 		{
 			if (--scan->rs_numblocks == 0)
@@ -711,7 +710,7 @@ pg_tde_gettup_advance_block(HeapScanDesc scan, BlockNumber block, ScanDirection 
 }
 
 /* ----------------
- *		pg_tde_gettup - fetch next heap tuple
+ *		heapgettup - fetch next heap tuple
  *
  *		Initialize the scan if not already done; then advance to the next
  *		tuple as indicated by "dir"; return the next tuple in scan->rs_ctup,
@@ -731,7 +730,7 @@ pg_tde_gettup_advance_block(HeapScanDesc scan, BlockNumber block, ScanDirection 
  * ----------------
  */
 static void
-pg_tde_gettup(HeapScanDesc scan,
+heapgettup(HeapScanDesc scan,
 		   ScanDirection dir,
 		   int nkeys,
 		   ScanKey key)
@@ -744,7 +743,7 @@ pg_tde_gettup(HeapScanDesc scan,
 
 	if (unlikely(!scan->rs_inited))
 	{
-		block = pg_tde_gettup_initial_block(scan, dir);
+		block = heapgettup_initial_block(scan, dir);
 		/* ensure rs_cbuf is invalid when we get InvalidBlockNumber */
 		Assert(block != InvalidBlockNumber || !BufferIsValid(scan->rs_cbuf));
 		scan->rs_inited = true;
@@ -755,7 +754,7 @@ pg_tde_gettup(HeapScanDesc scan,
 		block = scan->rs_cblock;
 
 		LockBuffer(scan->rs_cbuf, BUFFER_LOCK_SHARE);
-		page = pg_tde_gettup_continue_page(scan, dir, &linesleft, &lineoff);
+		page = heapgettup_continue_page(scan, dir, &linesleft, &lineoff);
 		goto continue_page;
 	}
 
@@ -765,9 +764,9 @@ pg_tde_gettup(HeapScanDesc scan,
 	 */
 	while (block != InvalidBlockNumber)
 	{
-		pg_tde_getpage((TableScanDesc) scan, block);
+		heapgetpage((TableScanDesc) scan, block);
 		LockBuffer(scan->rs_cbuf, BUFFER_LOCK_SHARE);
-		page = pg_tde_gettup_start_page(scan, dir, &linesleft, &lineoff);
+		page = heapgettup_start_page(scan, dir, &linesleft, &lineoff);
 continue_page:
 
 		/*
@@ -819,7 +818,7 @@ continue_page:
 		LockBuffer(scan->rs_cbuf, BUFFER_LOCK_UNLOCK);
 
 		/* get the BlockNumber to scan next */
-		block = pg_tde_gettup_advance_block(scan, block, dir);
+		block = heapgettup_advance_block(scan, block, dir);
 	}
 
 	/* end of scan */
@@ -833,20 +832,20 @@ continue_page:
 }
 
 /* ----------------
- *		pg_tde_gettup_pagemode - fetch next heap tuple in page-at-a-time mode
+ *		heapgettup_pagemode - fetch next heap tuple in page-at-a-time mode
  *
- *		Same API as pg_tde_gettup, but used in page-at-a-time mode
+ *		Same API as heapgettup, but used in page-at-a-time mode
  *
- * The internal logic is much the same as pg_tde_gettup's too, but there are some
+ * The internal logic is much the same as heapgettup's too, but there are some
  * differences: we do not take the buffer content lock (that only needs to
- * happen inside pg_tde_getpage), and we iterate through just the tuples listed
+ * happen inside heapgetpage), and we iterate through just the tuples listed
  * in rs_vistuples[] rather than all tuples on the page.  Notice that
  * lineindex is 0-based, where the corresponding loop variable lineoff in
- * pg_tde_gettup is 1-based.
+ * heapgettup is 1-based.
  * ----------------
  */
 static void
-pg_tde_gettup_pagemode(HeapScanDesc scan,
+heapgettup_pagemode(HeapScanDesc scan,
 					ScanDirection dir,
 					int nkeys,
 					ScanKey key)
@@ -859,7 +858,7 @@ pg_tde_gettup_pagemode(HeapScanDesc scan,
 
 	if (unlikely(!scan->rs_inited))
 	{
-		block = pg_tde_gettup_initial_block(scan, dir);
+		block = heapgettup_initial_block(scan, dir);
 		/* ensure rs_cbuf is invalid when we get InvalidBlockNumber */
 		Assert(block != InvalidBlockNumber || !BufferIsValid(scan->rs_cbuf));
 		scan->rs_inited = true;
@@ -887,7 +886,7 @@ pg_tde_gettup_pagemode(HeapScanDesc scan,
 	 */
 	while (block != InvalidBlockNumber)
 	{
-		pg_tde_getpage((TableScanDesc) scan, block);
+		heapgetpage((TableScanDesc) scan, block);
 		page = BufferGetPage(scan->rs_cbuf);
 		TestForOldSnapshot(scan->rs_base.rs_snapshot, scan->rs_base.rs_rd, page);
 		linesleft = scan->rs_ntuples;
@@ -920,7 +919,7 @@ continue_page:
 		}
 
 		/* get the BlockNumber to scan next */
-		block = pg_tde_gettup_advance_block(scan, block, dir);
+		block = heapgettup_advance_block(scan, block, dir);
 	}
 
 	/* end of scan */
@@ -940,7 +939,7 @@ continue_page:
 
 
 TableScanDesc
-pg_tde_beginscan(Relation relation, Snapshot snapshot,
+heap_beginscan(Relation relation, Snapshot snapshot,
 			   int nkeys, ScanKey key,
 			   ParallelTableScanDesc parallel_scan,
 			   uint32 flags)
@@ -1011,7 +1010,7 @@ pg_tde_beginscan(Relation relation, Snapshot snapshot,
 		scan->rs_parallelworkerdata = NULL;
 
 	/*
-	 * we do this here instead of in initscan() because pg_tde_rescan also calls
+	 * we do this here instead of in initscan() because heap_rescan also calls
 	 * initscan() and we don't want to allocate memory again
 	 */
 	if (nkeys > 0)
@@ -1025,7 +1024,7 @@ pg_tde_beginscan(Relation relation, Snapshot snapshot,
 }
 
 void
-pg_tde_rescan(TableScanDesc sscan, ScanKey key, bool set_params,
+heap_rescan(TableScanDesc sscan, ScanKey key, bool set_params,
 			bool allow_strat, bool allow_sync, bool allow_pagemode)
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
@@ -1062,7 +1061,7 @@ pg_tde_rescan(TableScanDesc sscan, ScanKey key, bool set_params,
 }
 
 void
-pg_tde_endscan(TableScanDesc sscan)
+heap_endscan(TableScanDesc sscan)
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
 
@@ -1095,7 +1094,7 @@ pg_tde_endscan(TableScanDesc sscan)
 }
 
 HeapTuple
-pg_tde_getnext(TableScanDesc sscan, ScanDirection direction)
+heap_getnext(TableScanDesc sscan, ScanDirection direction)
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
 
@@ -1112,22 +1111,22 @@ pg_tde_getnext(TableScanDesc sscan, ScanDirection direction)
 				 errmsg_internal("only heap AM is supported")));
 
 	/*
-	 * We don't expect direct calls to pg_tde_getnext with valid CheckXidAlive
+	 * We don't expect direct calls to heap_getnext with valid CheckXidAlive
 	 * for catalog or regular tables.  See detailed comments in xact.c where
 	 * these variables are declared.  Normally we have such a check at tableam
 	 * level API but this is called from many places so we need to ensure it
 	 * here.
 	 */
 	if (unlikely(TransactionIdIsValid(CheckXidAlive) && !bsysscan))
-		elog(ERROR, "unexpected pg_tde_getnext call during logical decoding");
+		elog(ERROR, "unexpected heap_getnext call during logical decoding");
 
 	/* Note: no locking manipulations needed */
 
 	if (scan->rs_base.rs_flags & SO_ALLOW_PAGEMODE)
-		pg_tde_gettup_pagemode(scan, direction,
+		heapgettup_pagemode(scan, direction,
 							scan->rs_base.rs_nkeys, scan->rs_base.rs_key);
 	else
-		pg_tde_gettup(scan, direction,
+		heapgettup(scan, direction,
 				   scan->rs_base.rs_nkeys, scan->rs_base.rs_key);
 
 	if (scan->rs_ctup.t_data == NULL)
@@ -1138,22 +1137,22 @@ pg_tde_getnext(TableScanDesc sscan, ScanDirection direction)
 	 * the proper return buffer and return the tuple.
 	 */
 
-	pgstat_count_pg_tde_getnext(scan->rs_base.rs_rd);
+	pgstat_count_heap_getnext(scan->rs_base.rs_rd);
 
 	return &scan->rs_ctup;
 }
 
 bool
-pg_tde_getnextslot(TableScanDesc sscan, ScanDirection direction, TupleTableSlot *slot)
+heap_getnextslot(TableScanDesc sscan, ScanDirection direction, TupleTableSlot *slot)
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
 
 	/* Note: no locking manipulations needed */
 
 	if (sscan->rs_flags & SO_ALLOW_PAGEMODE)
-		pg_tde_gettup_pagemode(scan, direction, sscan->rs_nkeys, sscan->rs_key);
+		heapgettup_pagemode(scan, direction, sscan->rs_nkeys, sscan->rs_key);
 	else
-		pg_tde_gettup(scan, direction, sscan->rs_nkeys, sscan->rs_key);
+		heapgettup(scan, direction, sscan->rs_nkeys, sscan->rs_key);
 
 	if (scan->rs_ctup.t_data == NULL)
 	{
@@ -1166,7 +1165,7 @@ pg_tde_getnextslot(TableScanDesc sscan, ScanDirection direction, TupleTableSlot 
 	 * the proper return buffer and return the tuple.
 	 */
 
-	pgstat_count_pg_tde_getnext(scan->rs_base.rs_rd);
+	pgstat_count_heap_getnext(scan->rs_base.rs_rd);
 
 	PGTdeExecStoreBufferHeapTuple(sscan->rs_rd, &scan->rs_ctup, slot,
 							 scan->rs_cbuf);
@@ -1174,7 +1173,7 @@ pg_tde_getnextslot(TableScanDesc sscan, ScanDirection direction, TupleTableSlot 
 }
 
 void
-pg_tde_set_tidrange(TableScanDesc sscan, ItemPointer mintid,
+heap_set_tidrange(TableScanDesc sscan, ItemPointer mintid,
 				  ItemPointer maxtid)
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
@@ -1220,7 +1219,7 @@ pg_tde_set_tidrange(TableScanDesc sscan, ItemPointer mintid,
 	if (ItemPointerCompare(&highestItem, &lowestItem) < 0)
 	{
 		/* Set an empty range of blocks to scan */
-		pg_tde_setscanlimits(sscan, 0, 0);
+		heap_setscanlimits(sscan, 0, 0);
 		return;
 	}
 
@@ -1239,7 +1238,7 @@ pg_tde_set_tidrange(TableScanDesc sscan, ItemPointer mintid,
 		ItemPointerGetBlockNumberNoCheck(&lowestItem) + 1;
 
 	/* Set the start block and number of blocks to scan */
-	pg_tde_setscanlimits(sscan, startBlk, numBlks);
+	heap_setscanlimits(sscan, startBlk, numBlks);
 
 	/* Finally, set the TID range in sscan */
 	ItemPointerCopy(&lowestItem, &sscan->rs_mintid);
@@ -1247,7 +1246,7 @@ pg_tde_set_tidrange(TableScanDesc sscan, ItemPointer mintid,
 }
 
 bool
-pg_tde_getnextslot_tidrange(TableScanDesc sscan, ScanDirection direction,
+heap_getnextslot_tidrange(TableScanDesc sscan, ScanDirection direction,
 						  TupleTableSlot *slot)
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
@@ -1258,9 +1257,9 @@ pg_tde_getnextslot_tidrange(TableScanDesc sscan, ScanDirection direction,
 	for (;;)
 	{
 		if (sscan->rs_flags & SO_ALLOW_PAGEMODE)
-			pg_tde_gettup_pagemode(scan, direction, sscan->rs_nkeys, sscan->rs_key);
+			heapgettup_pagemode(scan, direction, sscan->rs_nkeys, sscan->rs_key);
 		else
-			pg_tde_gettup(scan, direction, sscan->rs_nkeys, sscan->rs_key);
+			heapgettup(scan, direction, sscan->rs_nkeys, sscan->rs_key);
 
 		if (scan->rs_ctup.t_data == NULL)
 		{
@@ -1269,7 +1268,7 @@ pg_tde_getnextslot_tidrange(TableScanDesc sscan, ScanDirection direction,
 		}
 
 		/*
-		 * pg_tde_set_tidrange will have used pg_tde_setscanlimits to limit the
+		 * heap_set_tidrange will have used heap_setscanlimits to limit the
 		 * range of pages we scan to only ones that can contain the TID range
 		 * we're scanning for.  Here we must filter out any tuples from these
 		 * pages that are outside of that range.
@@ -1314,14 +1313,14 @@ pg_tde_getnextslot_tidrange(TableScanDesc sscan, ScanDirection direction,
 	 * if we get here it means we have a new current scan tuple, so point to
 	 * the proper return buffer and return the tuple.
 	 */
-	pgstat_count_pg_tde_getnext(scan->rs_base.rs_rd);
+	pgstat_count_heap_getnext(scan->rs_base.rs_rd);
 
 	PGTdeExecStoreBufferHeapTuple(sscan->rs_rd, &scan->rs_ctup, slot, scan->rs_cbuf);
 	return true;
 }
 
 /*
- *	pg_tde_fetch		- retrieve tuple with given tid
+ *	heap_fetch		- retrieve tuple with given tid
  *
  * On entry, tuple->t_self is the TID to fetch.  We pin the buffer holding
  * the tuple, fill in the remaining fields of *tuple, and check the tuple
@@ -1341,7 +1340,7 @@ pg_tde_getnextslot_tidrange(TableScanDesc sscan, ScanDirection direction,
  * then tuple->t_data and *userbuf are returned as for the success case,
  * and again the caller must unpin the buffer; but false is returned.
  *
- * pg_tde_fetch does not follow HOT chains: only the exact TID requested will
+ * heap_fetch does not follow HOT chains: only the exact TID requested will
  * be fetched.
  *
  * It is somewhat inconsistent that we ereport() on invalid block number but
@@ -1354,7 +1353,7 @@ pg_tde_getnextslot_tidrange(TableScanDesc sscan, ScanDirection direction,
  * tuple first), but the item number might well not be good.
  */
 bool
-pg_tde_fetch(Relation relation,
+heap_fetch(Relation relation,
 		   Snapshot snapshot,
 		   HeapTuple tuple,
 		   Buffer *userbuf,
@@ -1455,7 +1454,7 @@ pg_tde_fetch(Relation relation,
 }
 
 /*
- *	pg_tde_hot_search_buffer	- search HOT chain for tuple satisfying snapshot
+ *	heap_hot_search_buffer	- search HOT chain for tuple satisfying snapshot
  *
  * On entry, *tid is the TID of a tuple (either a simple tuple, or the root
  * of a HOT chain), and buffer is the buffer holding this tuple.  We search
@@ -1471,11 +1470,11 @@ pg_tde_fetch(Relation relation,
  * globally dead; *all_dead is set true if all members of the HOT chain
  * are vacuumable, false if not.
  *
- * Unlike pg_tde_fetch, the caller must already have pin and (at least) share
+ * Unlike heap_fetch, the caller must already have pin and (at least) share
  * lock on the buffer; it is still pinned/locked at exit.
  */
 bool
-pg_tde_hot_search_buffer(ItemPointer tid, Relation relation, Buffer buffer,
+heap_hot_search_buffer(ItemPointer tid, Relation relation, Buffer buffer,
 					   Snapshot snapshot, HeapTuple heapTuple,
 					   bool *all_dead, bool first_call)
 {
@@ -1616,7 +1615,7 @@ pg_tde_hot_search_buffer(ItemPointer tid, Relation relation, Buffer buffer,
 }
 
 /*
- *	pg_tde_get_latest_tid -  get the latest tid of a specified tuple
+ *	heap_get_latest_tid -  get the latest tid of a specified tuple
  *
  * Actually, this gets the latest version that is visible according to the
  * scan's snapshot.  Create a scan using SnapshotDirty to get the very latest,
@@ -1627,7 +1626,7 @@ pg_tde_hot_search_buffer(ItemPointer tid, Relation relation, Buffer buffer,
  * if no version of the row passes the snapshot test.
  */
 void
-pg_tde_get_latest_tid(TableScanDesc sscan,
+heap_get_latest_tid(TableScanDesc sscan,
 					ItemPointer tid)
 {
 	Relation	relation = sscan->rs_rd;
@@ -1781,6 +1780,7 @@ GetBulkInsertState(void)
 	bistate->current_buf = InvalidBuffer;
 	bistate->next_free = InvalidBlockNumber;
 	bistate->last_free = InvalidBlockNumber;
+	bistate->already_extended_by = 0;
 	return bistate;
 }
 
@@ -1809,7 +1809,7 @@ ReleaseBulkInsertStatePin(BulkInsertState bistate)
 
 
 /*
- *	pg_tde_insert		- insert tuple into a heap
+ *	heap_insert		- insert tuple into a heap
  *
  * The new tuple is stamped with current transaction ID and the specified
  * command ID.
@@ -1827,7 +1827,7 @@ ReleaseBulkInsertStatePin(BulkInsertState bistate)
  * reflected into *tup.
  */
 void
-pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
+heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 			int options, BulkInsertState bistate)
 {
 	TransactionId xid = GetCurrentTransactionId();
@@ -1846,13 +1846,13 @@ pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 	 * Note: below this point, heaptup is the data we actually intend to store
 	 * into the relation; tup is the caller's original untoasted data.
 	 */
-	heaptup = pg_tde_prepare_insert(relation, tup, xid, cid, options);
+	heaptup = heap_prepare_insert(relation, tup, xid, cid, options);
 
 	/*
 	 * Find buffer to insert this tuple into.  If the page is all visible,
 	 * this will also pin the requisite visibility map page.
 	 */
-	buffer = pg_tde_RelationGetBufferForTuple(relation, heaptup->t_len,
+	buffer = RelationGetBufferForTuple(relation, heaptup->t_len,
 									   InvalidBuffer, options, bistate,
 									   &vmbuffer, NULL,
 									   0);
@@ -1877,14 +1877,14 @@ pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 	/* NO EREPORT(ERROR) from here till changes are logged */
 	START_CRIT_SECTION();
 
-	pg_tde_RelationPutHeapTuple(relation, buffer, heaptup,
+	RelationPutHeapTuple(relation, buffer, heaptup,
 						 (options & HEAP_INSERT_SPECULATIVE) != 0);
 
 	if (PageIsAllVisible(BufferGetPage(buffer)))
 	{
 		all_visible_cleared = true;
 		PageClearAllVisible(BufferGetPage(buffer));
-		pg_tde_visibilitymap_clear(relation,
+		visibilitymap_clear(relation,
 							ItemPointerGetBlockNumber(&(heaptup->t_self)),
 							vmbuffer, VISIBILITYMAP_VALID_BITS);
 	}
@@ -1897,7 +1897,7 @@ pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 	 * for aborts, if no other tuple in this page is UPDATEd/DELETEd, the
 	 * aborted tuple will never be pruned until next vacuum is triggered.
 	 *
-	 * If you do add PageSetPrunable here, add it in pg_tde_xlog_insert too.
+	 * If you do add PageSetPrunable here, add it in heap_xlog_insert too.
 	 */
 
 	MarkBufferDirty(buffer);
@@ -1905,8 +1905,8 @@ pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 	/* XLOG stuff */
 	if (RelationNeedsWAL(relation))
 	{
-		xl_pg_tde_insert xlrec;
-		xl_pg_tde_header xlhdr;
+		xl_heap_insert xlrec;
+		xl_heap_header xlhdr;
 		XLogRecPtr	recptr;
 		Page		page = BufferGetPage(buffer);
 		uint8		info = XLOG_HEAP_INSERT;
@@ -1917,7 +1917,7 @@ pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 		 * decode, so log that as well.
 		 */
 		if (RelationIsAccessibleInLogicalDecoding(relation))
-			log_pg_tde_new_cid(relation, heaptup);
+			log_heap_new_cid(relation, heaptup);
 
 		/*
 		 * If this is the single and first tuple on page, we can reinit the
@@ -1964,7 +1964,7 @@ pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 		/*
 		 * note we mark xlhdr as belonging to buffer; if XLogInsert decides to
 		 * write the whole page to the xlog, we don't need to store
-		 * xl_pg_tde_header in the xlog.
+		 * xl_heap_header in the xlog.
 		 */
 		XLogRegisterBuffer(0, buffer, REGBUF_STANDARD | bufflags);
 		XLogRegisterBufData(0, (char *) &xlhdr, SizeOfHeapHeader);
@@ -1996,7 +1996,7 @@ pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 	CacheInvalidateHeapTuple(relation, heaptup, NULL);
 
 	/* Note: speculative insertions are counted too, even if aborted later */
-	pgstat_count_pg_tde_insert(relation, 1);
+	pgstat_count_heap_insert(relation, 1);
 
 	/*
 	 * If heaptup is a private copy, release it.  Don't forget to copy t_self
@@ -2005,18 +2005,18 @@ pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 	if (heaptup != tup)
 	{
 		tup->t_self = heaptup->t_self;
-		pg_tde_freetuple(heaptup);
+		heap_freetuple(heaptup);
 	}
 }
 
 /*
- * Subroutine for pg_tde_insert(). Prepares a tuple for insertion. This sets the
+ * Subroutine for heap_insert(). Prepares a tuple for insertion. This sets the
  * tuple header fields and toasts the tuple if necessary.  Returns a toasted
  * version of the tuple if it was toasted, or the original tuple if not. Note
  * that in any case, the header fields are also set in the original tuple.
  */
 static HeapTuple
-pg_tde_prepare_insert(Relation relation, HeapTuple tup, TransactionId xid,
+heap_prepare_insert(Relation relation, HeapTuple tup, TransactionId xid,
 					CommandId cid, int options)
 {
 	/*
@@ -2053,18 +2053,18 @@ pg_tde_prepare_insert(Relation relation, HeapTuple tup, TransactionId xid,
 		return tup;
 	}
 	else if (HeapTupleHasExternal(tup) || tup->t_len > TOAST_TUPLE_THRESHOLD)
-		return pg_tde_toast_insert_or_update(relation, tup, NULL, options);
+		return heap_toast_insert_or_update(relation, tup, NULL, options);
 	else
 		return tup;
 }
 
 /*
- * Helper for pg_tde_multi_insert() that computes the number of entire pages
+ * Helper for heap_multi_insert() that computes the number of entire pages
  * that inserting the remaining heaptuples requires. Used to determine how
  * much the relation needs to be extended by.
  */
 static int
-pg_tde_multi_insert_pages(HeapTuple *heaptuples, int done, int ntuples, Size saveFreeSpace)
+heap_multi_insert_pages(HeapTuple *heaptuples, int done, int ntuples, Size saveFreeSpace)
 {
 	size_t		page_avail = BLCKSZ - SizeOfPageHeaderData - saveFreeSpace;
 	int			npages = 1;
@@ -2085,10 +2085,10 @@ pg_tde_multi_insert_pages(HeapTuple *heaptuples, int done, int ntuples, Size sav
 }
 
 /*
- *	pg_tde_multi_insert	- insert multiple tuples into a heap
+ *	heap_multi_insert	- insert multiple tuples into a heap
  *
- * This is like pg_tde_insert(), but inserts multiple tuples in one operation.
- * That's faster than calling pg_tde_insert() in a loop, because when multiple
+ * This is like heap_insert(), but inserts multiple tuples in one operation.
+ * That's faster than calling heap_insert() in a loop, because when multiple
  * tuples can be inserted on a single page, we can write just a single WAL
  * record covering all of them, and only need to lock/unlock the page once.
  *
@@ -2096,7 +2096,7 @@ pg_tde_multi_insert_pages(HeapTuple *heaptuples, int done, int ntuples, Size sav
  * temporary context before calling this, if that's a problem.
  */
 void
-pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
+heap_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 				  CommandId cid, int options, BulkInsertState bistate)
 {
 	TransactionId xid = GetCurrentTransactionId();
@@ -2114,7 +2114,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 	int			npages = 0;
 	int			npages_used = 0;
 
-	/* currently not needed (thus unsupported) for pg_tde_multi_insert() */
+	/* currently not needed (thus unsupported) for heap_multi_insert() */
 	Assert(!(options & HEAP_INSERT_NO_LOGICAL));
 
 	needwal = RelationNeedsWAL(relation);
@@ -2130,7 +2130,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		tuple = ExecFetchSlotHeapTuple(slots[i], true, NULL);
 		slots[i]->tts_tableOid = RelationGetRelid(relation);
 		tuple->t_tableOid = slots[i]->tts_tableOid;
-		heaptuples[i] = pg_tde_prepare_insert(relation, tuple, xid, cid,
+		heaptuples[i] = heap_prepare_insert(relation, tuple, xid, cid,
 											options);
 	}
 
@@ -2172,7 +2172,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		/*
 		 * Compute number of pages needed to fit the to-be-inserted tuples in
 		 * the worst case.  This will be used to determine how much to extend
-		 * the relation by in pg_tde_RelationGetBufferForTuple(), if needed.  If we
+		 * the relation by in RelationGetBufferForTuple(), if needed.  If we
 		 * filled a prior page from scratch, we can just update our last
 		 * computation, but if we started with a partially filled page,
 		 * recompute from scratch, the number of potentially required pages
@@ -2181,7 +2181,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		 */
 		if (ndone == 0 || !starting_with_empty_page)
 		{
-			npages = pg_tde_multi_insert_pages(heaptuples, ndone, ntuples,
+			npages = heap_multi_insert_pages(heaptuples, ndone, ntuples,
 											 saveFreeSpace);
 			npages_used = 0;
 		}
@@ -2195,7 +2195,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		 * Also pin visibility map page if COPY FREEZE inserts tuples into an
 		 * empty page. See all_frozen_set below.
 		 */
-		buffer = pg_tde_RelationGetBufferForTuple(relation, heaptuples[ndone]->t_len,
+		buffer = RelationGetBufferForTuple(relation, heaptuples[ndone]->t_len,
 										   InvalidBuffer, options, bistate,
 										   &vmbuffer, NULL,
 										   npages - npages_used);
@@ -2210,17 +2210,17 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		START_CRIT_SECTION();
 
 		/*
-		 * pg_tde_RelationGetBufferForTuple has ensured that the first tuple fits.
+		 * RelationGetBufferForTuple has ensured that the first tuple fits.
 		 * Put that on the page, and then as many other tuples as fit.
 		 */
-		pg_tde_RelationPutHeapTuple(relation, buffer, heaptuples[ndone], false);
+		RelationPutHeapTuple(relation, buffer, heaptuples[ndone], false);
 
 		/*
 		 * For logical decoding we need combo CIDs to properly decode the
 		 * catalog.
 		 */
 		if (needwal && need_cids)
-			log_pg_tde_new_cid(relation, heaptuples[ndone]);
+			log_heap_new_cid(relation, heaptuples[ndone]);
 
 		for (nthispage = 1; ndone + nthispage < ntuples; nthispage++)
 		{
@@ -2229,14 +2229,14 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 			if (PageGetHeapFreeSpace(page) < MAXALIGN(heaptup->t_len) + saveFreeSpace)
 				break;
 
-			pg_tde_RelationPutHeapTuple(relation, buffer, heaptup, false);
+			RelationPutHeapTuple(relation, buffer, heaptup, false);
 
 			/*
 			 * For logical decoding we need combo CIDs to properly decode the
 			 * catalog.
 			 */
 			if (needwal && need_cids)
-				log_pg_tde_new_cid(relation, heaptup);
+				log_heap_new_cid(relation, heaptup);
 		}
 
 		/*
@@ -2250,7 +2250,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		{
 			all_visible_cleared = true;
 			PageClearAllVisible(page);
-			pg_tde_visibilitymap_clear(relation,
+			visibilitymap_clear(relation,
 								BufferGetBlockNumber(buffer),
 								vmbuffer, VISIBILITYMAP_VALID_BITS);
 		}
@@ -2258,7 +2258,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 			PageSetAllVisible(page);
 
 		/*
-		 * XXX Should we set PageSetPrunable on this page ? See pg_tde_insert()
+		 * XXX Should we set PageSetPrunable on this page ? See heap_insert()
 		 */
 
 		MarkBufferDirty(buffer);
@@ -2267,7 +2267,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		if (needwal)
 		{
 			XLogRecPtr	recptr;
-			xl_pg_tde_multi_insert *xlrec;
+			xl_heap_multi_insert *xlrec;
 			uint8		info = XLOG_HEAP2_MULTI_INSERT;
 			char	   *tupledata;
 			int			totaldatalen;
@@ -2281,8 +2281,8 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 			 */
 			init = starting_with_empty_page;
 
-			/* allocate xl_pg_tde_multi_insert struct from the scratch area */
-			xlrec = (xl_pg_tde_multi_insert *) scratchptr;
+			/* allocate xl_heap_multi_insert struct from the scratch area */
+			xlrec = (xl_heap_multi_insert *) scratchptr;
 			scratchptr += SizeOfHeapMultiInsert;
 
 			/*
@@ -2343,8 +2343,8 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 				xlrec->flags |= XLH_INSERT_CONTAINS_NEW_TUPLE;
 
 			/*
-			 * Signal that this is the last xl_pg_tde_multi_insert record
-			 * emitted by this call to pg_tde_multi_insert(). Needed for logical
+			 * Signal that this is the last xl_heap_multi_insert record
+			 * emitted by this call to heap_multi_insert(). Needed for logical
 			 * decoding so it knows when to cleanup temporary data.
 			 */
 			if (ndone + nthispage == ntuples)
@@ -2386,14 +2386,14 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 		if (all_frozen_set)
 		{
 			Assert(PageIsAllVisible(page));
-			Assert(pg_tde_visibilitymap_pin_ok(BufferGetBlockNumber(buffer), vmbuffer));
+			Assert(visibilitymap_pin_ok(BufferGetBlockNumber(buffer), vmbuffer));
 
 			/*
 			 * It's fine to use InvalidTransactionId here - this is only used
 			 * when HEAP_INSERT_FROZEN is specified, which intentionally
 			 * violates visibility rules.
 			 */
-			pg_tde_visibilitymap_set(relation, BufferGetBlockNumber(buffer), buffer,
+			visibilitymap_set(relation, BufferGetBlockNumber(buffer), buffer,
 							  InvalidXLogRecPtr, vmbuffer,
 							  InvalidTransactionId,
 							  VISIBILITYMAP_ALL_VISIBLE | VISIBILITYMAP_ALL_FROZEN);
@@ -2445,28 +2445,28 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 	for (i = 0; i < ntuples; i++)
 		slots[i]->tts_tid = heaptuples[i]->t_self;
 
-	pgstat_count_pg_tde_insert(relation, ntuples);
+	pgstat_count_heap_insert(relation, ntuples);
 }
 
 /*
- *	simple_pg_tde_insert - insert a tuple
+ *	simple_heap_insert - insert a tuple
  *
- * Currently, this routine differs from pg_tde_insert only in supplying
+ * Currently, this routine differs from heap_insert only in supplying
  * a default command ID and not allowing access to the speedup options.
  *
- * This should be used rather than using pg_tde_insert directly in most places
+ * This should be used rather than using heap_insert directly in most places
  * where we are modifying system catalogs.
  */
 void
-simple_pg_tde_insert(Relation relation, HeapTuple tup)
+simple_heap_insert(Relation relation, HeapTuple tup)
 {
-	pg_tde_insert(relation, tup, GetCurrentCommandId(true), 0, NULL);
+	heap_insert(relation, tup, GetCurrentCommandId(true), 0, NULL);
 }
 
 /*
  * Given infomask/infomask2, compute the bits that must be saved in the
- * "infobits" field of xl_pg_tde_delete, xl_pg_tde_update, xl_pg_tde_lock,
- * xl_pg_tde_lock_updated WAL records.
+ * "infobits" field of xl_heap_delete, xl_heap_update, xl_heap_lock,
+ * xl_heap_lock_updated WAL records.
  *
  * See fix_infomask_from_infobits.
  */
@@ -2505,7 +2505,7 @@ xmax_infomask_changed(uint16 new_infomask, uint16 old_infomask)
 }
 
 /*
- *	pg_tde_delete - delete a tuple
+ *	heap_delete - delete a tuple
  *
  * See table_tuple_delete() for an explanation of the parameters, except that
  * this routine directly takes a tuple rather than a slot.
@@ -2516,7 +2516,7 @@ xmax_infomask_changed(uint16 new_infomask, uint16 old_infomask)
  * generated by another transaction).
  */
 TM_Result
-pg_tde_delete(Relation relation, ItemPointer tid,
+heap_delete(Relation relation, ItemPointer tid,
 			CommandId cid, Snapshot crosscheck, bool wait,
 			TM_FailureData *tmfd, bool changingPart)
 {
@@ -2560,7 +2560,7 @@ pg_tde_delete(Relation relation, ItemPointer tid,
 	 * the lock.
 	 */
 	if (PageIsAllVisible(page))
-		pg_tde_visibilitymap_pin(relation, block, &vmbuffer);
+		visibilitymap_pin(relation, block, &vmbuffer);
 
 	LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 
@@ -2583,7 +2583,7 @@ l1:
 	if (vmbuffer == InvalidBuffer && PageIsAllVisible(page))
 	{
 		LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-		pg_tde_visibilitymap_pin(relation, block, &vmbuffer);
+		visibilitymap_pin(relation, block, &vmbuffer);
 		LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 	}
 
@@ -2611,7 +2611,7 @@ l1:
 		 * which lock mode the locker has, because we need the strongest one.
 		 *
 		 * Before sleeping, we need to acquire tuple lock to establish our
-		 * priority for the tuple (see pg_tde_lock_tuple).  LockTuple will
+		 * priority for the tuple (see heap_lock_tuple).  LockTuple will
 		 * release us when we are next-in-line for the tuple.
 		 *
 		 * If we are forced to "start over" below, we keep the tuple lock;
@@ -2632,7 +2632,7 @@ l1:
 				 * requesting a lock and already have one; avoids deadlock).
 				 */
 				if (!current_is_member)
-					pg_tde_acquire_tuplock(relation, &(tp.t_self), LockTupleExclusive,
+					heap_acquire_tuplock(relation, &(tp.t_self), LockTupleExclusive,
 										 LockWaitBlock, &have_tuple_lock);
 
 				/* wait for multixact */
@@ -2673,7 +2673,7 @@ l1:
 			 * lock.
 			 */
 			LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-			pg_tde_acquire_tuplock(relation, &(tp.t_self), LockTupleExclusive,
+			heap_acquire_tuplock(relation, &(tp.t_self), LockTupleExclusive,
 								 LockWaitBlock, &have_tuple_lock);
 			XactLockTableWait(xwait, relation, &(tp.t_self), XLTW_Delete);
 			LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
@@ -2790,7 +2790,7 @@ l1:
 	{
 		all_visible_cleared = true;
 		PageClearAllVisible(page);
-		pg_tde_visibilitymap_clear(relation, BufferGetBlockNumber(buffer),
+		visibilitymap_clear(relation, BufferGetBlockNumber(buffer),
 							vmbuffer, VISIBILITYMAP_VALID_BITS);
 	}
 
@@ -2814,13 +2814,13 @@ l1:
 	/*
 	 * XLOG stuff
 	 *
-	 * NB: pg_tde_abort_speculative() uses the same xlog record and replay
+	 * NB: heap_abort_speculative() uses the same xlog record and replay
 	 * routines.
 	 */
 	if (RelationNeedsWAL(relation))
 	{
-		xl_pg_tde_delete xlrec;
-		xl_pg_tde_header xlhdr;
+		xl_heap_delete xlrec;
+		xl_heap_header xlhdr;
 		XLogRecPtr	recptr;
 
 		/*
@@ -2828,7 +2828,7 @@ l1:
 		 * catalog
 		 */
 		if (RelationIsAccessibleInLogicalDecoding(relation))
-			log_pg_tde_new_cid(relation, &tp);
+			log_heap_new_cid(relation, &tp);
 
 		xlrec.flags = 0;
 		if (all_visible_cleared)
@@ -2897,7 +2897,7 @@ l1:
 		Assert(!HeapTupleHasExternal(&tp));
 	}
 	else if (HeapTupleHasExternal(&tp))
-		pg_tde_toast_delete(relation, &tp, false);
+		heap_toast_delete(relation, &tp, false);
 
 	/*
 	 * Mark tuple for invalidation from system caches at next command
@@ -2915,16 +2915,16 @@ l1:
 	if (have_tuple_lock)
 		UnlockTupleTuplock(relation, &(tp.t_self), LockTupleExclusive);
 
-	pgstat_count_pg_tde_delete(relation);
+	pgstat_count_heap_delete(relation);
 
 	if (old_key_tuple != NULL && old_key_copied)
-		pg_tde_freetuple(old_key_tuple);
+		heap_freetuple(old_key_tuple);
 
 	return TM_Ok;
 }
 
 /*
- *	simple_pg_tde_delete - delete a tuple
+ *	simple_heap_delete - delete a tuple
  *
  * This routine may be used to delete a tuple when concurrent updates of
  * the target tuple are not expected (for example, because we have a lock
@@ -2932,12 +2932,12 @@ l1:
  * via ereport().
  */
 void
-simple_pg_tde_delete(Relation relation, ItemPointer tid)
+simple_heap_delete(Relation relation, ItemPointer tid)
 {
 	TM_Result	result;
 	TM_FailureData tmfd;
 
-	result = pg_tde_delete(relation, tid,
+	result = heap_delete(relation, tid,
 						 GetCurrentCommandId(true), InvalidSnapshot,
 						 true /* wait for commit */ ,
 						 &tmfd, false /* changingPart */ );
@@ -2961,13 +2961,13 @@ simple_pg_tde_delete(Relation relation, ItemPointer tid)
 			break;
 
 		default:
-			elog(ERROR, "unrecognized pg_tde_delete status: %u", result);
+			elog(ERROR, "unrecognized heap_delete status: %u", result);
 			break;
 	}
 }
 
 /*
- *	pg_tde_update - replace a tuple
+ *	heap_update - replace a tuple
  *
  * See table_tuple_update() for an explanation of the parameters, except that
  * this routine directly takes a tuple rather than a slot.
@@ -2978,7 +2978,7 @@ simple_pg_tde_delete(Relation relation, ItemPointer tid)
  * generated by another transaction).
  */
 TM_Result
-pg_tde_update(Relation relation, ItemPointer otid, HeapTuple newtup,
+heap_update(Relation relation, ItemPointer otid, HeapTuple newtup,
 			CommandId cid, Snapshot crosscheck, bool wait,
 			TM_FailureData *tmfd, LockTupleMode *lockmode,
 			TU_UpdateIndexes *update_indexes)
@@ -3079,7 +3079,7 @@ pg_tde_update(Relation relation, ItemPointer otid, HeapTuple newtup,
 	 * the lock.
 	 */
 	if (PageIsAllVisible(page))
-		pg_tde_visibilitymap_pin(relation, block, &vmbuffer);
+		visibilitymap_pin(relation, block, &vmbuffer);
 
 	LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 
@@ -3183,7 +3183,7 @@ l2:
 		 * specially.
 		 *
 		 * This may cause failures with third-party code that calls
-		 * pg_tde_update directly.
+		 * heap_update directly.
 		 */
 
 		/* must copy state data before unlocking buffer */
@@ -3202,7 +3202,7 @@ l2:
 		 * it is preserved).
 		 *
 		 * Before sleeping, we need to acquire tuple lock to establish our
-		 * priority for the tuple (see pg_tde_lock_tuple).  LockTuple will
+		 * priority for the tuple (see heap_lock_tuple).  LockTuple will
 		 * release us when we are next-in-line for the tuple.  Note we must
 		 * not acquire the tuple lock until we're sure we're going to sleep;
 		 * otherwise we're open for race conditions with other transactions
@@ -3228,7 +3228,7 @@ l2:
 				 * requesting a lock and already have one; avoids deadlock).
 				 */
 				if (!current_is_member)
-					pg_tde_acquire_tuplock(relation, &(oldtup.t_self), *lockmode,
+					heap_acquire_tuplock(relation, &(oldtup.t_self), *lockmode,
 										 LockWaitBlock, &have_tuple_lock);
 
 				/* wait for multixact */
@@ -3313,7 +3313,7 @@ l2:
 			 * lock.
 			 */
 			LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-			pg_tde_acquire_tuplock(relation, &(oldtup.t_self), *lockmode,
+			heap_acquire_tuplock(relation, &(oldtup.t_self), *lockmode,
 								 LockWaitBlock, &have_tuple_lock);
 			XactLockTableWait(xwait, relation, &oldtup.t_self,
 							  XLTW_Update);
@@ -3397,7 +3397,7 @@ l2:
 	if (vmbuffer == InvalidBuffer && PageIsAllVisible(page))
 	{
 		LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
-		pg_tde_visibilitymap_pin(relation, block, &vmbuffer);
+		visibilitymap_pin(relation, block, &vmbuffer);
 		LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 		goto l2;
 	}
@@ -3513,7 +3513,7 @@ l2:
 		 *
 		 * To satisfy the rule that any xid potentially appearing in a buffer
 		 * written out to disk, we unfortunately have to WAL log this
-		 * temporary modification.  We can reuse xl_pg_tde_lock for this
+		 * temporary modification.  We can reuse xl_heap_lock for this
 		 * purpose.  If we crash/error before following through with the
 		 * actual update, xmax will be of an aborted transaction, allowing
 		 * other sessions to proceed.
@@ -3557,7 +3557,7 @@ l2:
 		 * worthwhile.
 		 */
 		if (PageIsAllVisible(page) &&
-			pg_tde_visibilitymap_clear(relation, block, vmbuffer,
+			visibilitymap_clear(relation, block, vmbuffer,
 								VISIBILITYMAP_ALL_FROZEN))
 			cleared_all_frozen = true;
 
@@ -3565,7 +3565,7 @@ l2:
 
 		if (RelationNeedsWAL(relation))
 		{
-			xl_pg_tde_lock xlrec;
+			xl_heap_lock xlrec;
 			XLogRecPtr	recptr;
 
 			XLogBeginInsert();
@@ -3596,7 +3596,7 @@ l2:
 		if (need_toast)
 		{
 			/* Note we always use WAL and FSM during updates */
-			heaptup = pg_tde_toast_insert_or_update(relation, newtup, &oldtup, 0);
+			heaptup = heap_toast_insert_or_update(relation, newtup, &oldtup, 0);
 			newtupsize = MAXALIGN(heaptup->t_len);
 		}
 		else
@@ -3615,13 +3615,13 @@ l2:
 		 * some other backend trying to get the same two locks in the other
 		 * order, we must be consistent about the order we get the locks in.
 		 * We use the rule "lock the lower-numbered page of the relation
-		 * first".  To implement this, we must do pg_tde_RelationGetBufferForTuple
+		 * first".  To implement this, we must do RelationGetBufferForTuple
 		 * while not holding the lock on the old page, and we must rely on it
 		 * to get the locks on both pages in the correct order.
 		 *
 		 * Another consideration is that we need visibility map page pin(s) if
 		 * we will have to clear the all-visible flag on either page.  If we
-		 * call pg_tde_RelationGetBufferForTuple, we rely on it to acquire any such
+		 * call RelationGetBufferForTuple, we rely on it to acquire any such
 		 * pins; but if we don't, we have to handle that here.  Hence we need
 		 * a loop.
 		 */
@@ -3629,8 +3629,8 @@ l2:
 		{
 			if (newtupsize > pagefree)
 			{
-				/* It doesn't fit, must use pg_tde_RelationGetBufferForTuple. */
-				newbuf = pg_tde_RelationGetBufferForTuple(relation, heaptup->t_len,
+				/* It doesn't fit, must use RelationGetBufferForTuple. */
+				newbuf = RelationGetBufferForTuple(relation, heaptup->t_len,
 												   buffer, 0, NULL,
 												   &vmbuffer_new, &vmbuffer,
 												   0);
@@ -3639,7 +3639,7 @@ l2:
 			}
 			/* Acquire VM page pin if needed and we don't have it. */
 			if (vmbuffer == InvalidBuffer && PageIsAllVisible(page))
-				pg_tde_visibilitymap_pin(relation, block, &vmbuffer);
+				visibilitymap_pin(relation, block, &vmbuffer);
 			/* Re-acquire the lock on the old tuple's page. */
 			LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 			/* Re-check using the up-to-date free space */
@@ -3744,7 +3744,7 @@ l2:
 	 *
 	 * XXX Should we set hint on newbuf as well?  If the transaction aborts,
 	 * there would be a prunable tuple in the newbuf; but for now we choose
-	 * not to optimize for aborts.  Note that pg_tde_xlog_update must be kept in
+	 * not to optimize for aborts.  Note that heap_xlog_update must be kept in
 	 * sync if this decision changes.
 	 */
 	PageSetPrunable(page, xid);
@@ -3766,7 +3766,7 @@ l2:
 		HeapTupleClearHeapOnly(newtup);
 	}
 
-	pg_tde_RelationPutHeapTuple(relation, newbuf, heaptup, false); /* insert new tuple */
+	RelationPutHeapTuple(relation, newbuf, heaptup, false); /* insert new tuple */
 
 
 	/* Clear obsolete visibility flags, possibly set by ourselves above... */
@@ -3787,14 +3787,14 @@ l2:
 	{
 		all_visible_cleared = true;
 		PageClearAllVisible(BufferGetPage(buffer));
-		pg_tde_visibilitymap_clear(relation, BufferGetBlockNumber(buffer),
+		visibilitymap_clear(relation, BufferGetBlockNumber(buffer),
 							vmbuffer, VISIBILITYMAP_VALID_BITS);
 	}
 	if (newbuf != buffer && PageIsAllVisible(BufferGetPage(newbuf)))
 	{
 		all_visible_cleared_new = true;
 		PageClearAllVisible(BufferGetPage(newbuf));
-		pg_tde_visibilitymap_clear(relation, BufferGetBlockNumber(newbuf),
+		visibilitymap_clear(relation, BufferGetBlockNumber(newbuf),
 							vmbuffer_new, VISIBILITYMAP_VALID_BITS);
 	}
 
@@ -3813,11 +3813,11 @@ l2:
 		 */
 		if (RelationIsAccessibleInLogicalDecoding(relation))
 		{
-			log_pg_tde_new_cid(relation, &oldtup);
-			log_pg_tde_new_cid(relation, heaptup);
+			log_heap_new_cid(relation, &oldtup);
+			log_heap_new_cid(relation, heaptup);
 		}
 
-		recptr = log_pg_tde_update(relation, buffer,
+		recptr = log_heap_update(relation, buffer,
 								 newbuf, &oldtup, heaptup,
 								 old_key_tuple,
 								 all_visible_cleared,
@@ -3860,7 +3860,7 @@ l2:
 	if (have_tuple_lock)
 		UnlockTupleTuplock(relation, &(oldtup.t_self), *lockmode);
 
-	pgstat_count_pg_tde_update(relation, use_hot_update, newbuf != buffer);
+	pgstat_count_heap_update(relation, use_hot_update, newbuf != buffer);
 
 	/*
 	 * If heaptup is a private copy, release it.  Don't forget to copy t_self
@@ -3869,7 +3869,7 @@ l2:
 	if (heaptup != newtup)
 	{
 		newtup->t_self = heaptup->t_self;
-		pg_tde_freetuple(heaptup);
+		heap_freetuple(heaptup);
 	}
 
 	/*
@@ -3889,7 +3889,7 @@ l2:
 		*update_indexes = TU_All;
 
 	if (old_key_tuple != NULL && old_key_copied)
-		pg_tde_freetuple(old_key_tuple);
+		heap_freetuple(old_key_tuple);
 
 	bms_free(hot_attrs);
 	bms_free(sum_attrs);
@@ -3906,7 +3906,7 @@ l2:
  * HeapDetermineColumnsInfo.
  */
 static bool
-pg_tde_attr_equals(TupleDesc tupdesc, int attrnum, Datum value1, Datum value2,
+heap_attr_equals(TupleDesc tupdesc, int attrnum, Datum value1, Datum value2,
 				 bool isnull1, bool isnull2)
 {
 	Form_pg_attribute att;
@@ -4005,13 +4005,13 @@ HeapDetermineColumnsInfo(Relation relation,
 		/*
 		 * Extract the corresponding values.  XXX this is pretty inefficient
 		 * if there are many indexed columns.  Should we do a single
-		 * pg_tde_deform_tuple call on each tuple, instead?	But that doesn't
+		 * heap_deform_tuple call on each tuple, instead?	But that doesn't
 		 * work for system columns ...
 		 */
-		value1 = pg_tde_getattr(oldtup, attrnum, tupdesc, &isnull1);
-		value2 = pg_tde_getattr(newtup, attrnum, tupdesc, &isnull2);
+		value1 = heap_getattr(oldtup, attrnum, tupdesc, &isnull1);
+		value2 = heap_getattr(newtup, attrnum, tupdesc, &isnull2);
 
-		if (!pg_tde_attr_equals(tupdesc, attrnum, value1,
+		if (!heap_attr_equals(tupdesc, attrnum, value1,
 							  value2, isnull1, isnull2))
 		{
 			modified = bms_add_member(modified, attidx);
@@ -4039,7 +4039,7 @@ HeapDetermineColumnsInfo(Relation relation,
 }
 
 /*
- *	simple_pg_tde_update - replace a tuple
+ *	simple_heap_update - replace a tuple
  *
  * This routine may be used to update a tuple when concurrent updates of
  * the target tuple are not expected (for example, because we have a lock
@@ -4047,14 +4047,14 @@ HeapDetermineColumnsInfo(Relation relation,
  * via ereport().
  */
 void
-simple_pg_tde_update(Relation relation, ItemPointer otid, HeapTuple tup,
+simple_heap_update(Relation relation, ItemPointer otid, HeapTuple tup,
 				   TU_UpdateIndexes *update_indexes)
 {
 	TM_Result	result;
 	TM_FailureData tmfd;
 	LockTupleMode lockmode;
 
-	result = pg_tde_update(relation, otid, tup,
+	result = heap_update(relation, otid, tup,
 						 GetCurrentCommandId(true), InvalidSnapshot,
 						 true /* wait for commit */ ,
 						 &tmfd, &lockmode, update_indexes);
@@ -4078,7 +4078,7 @@ simple_pg_tde_update(Relation relation, ItemPointer otid, HeapTuple tup,
 			break;
 
 		default:
-			elog(ERROR, "unrecognized pg_tde_update status: %u", result);
+			elog(ERROR, "unrecognized heap_update status: %u", result);
 			break;
 	}
 }
@@ -4105,7 +4105,7 @@ get_mxact_status_for_lock(LockTupleMode mode, bool is_update)
 }
 
 /*
- *	pg_tde_lock_tuple - lock a tuple in shared or exclusive mode
+ *	heap_lock_tuple - lock a tuple in shared or exclusive mode
  *
  * Note that this acquires a buffer pin, which the caller must release.
  *
@@ -4136,7 +4136,7 @@ get_mxact_status_for_lock(LockTupleMode mode, bool is_update)
  * See README.tuplock for a thorough explanation of this mechanism.
  */
 TM_Result
-pg_tde_lock_tuple(Relation relation, HeapTuple tuple,
+heap_lock_tuple(Relation relation, HeapTuple tuple,
 				CommandId cid, LockTupleMode mode, LockWaitPolicy wait_policy,
 				bool follow_updates,
 				Buffer *buffer, TM_FailureData *tmfd)
@@ -4167,7 +4167,7 @@ pg_tde_lock_tuple(Relation relation, HeapTuple tuple,
 	 * the lock.
 	 */
 	if (PageIsAllVisible(BufferGetPage(*buffer)))
-		pg_tde_visibilitymap_pin(relation, block, &vmbuffer);
+		visibilitymap_pin(relation, block, &vmbuffer);
 
 	LockBuffer(*buffer, BUFFER_LOCK_EXCLUSIVE);
 
@@ -4354,7 +4354,7 @@ l3:
 				{
 					TM_Result	res;
 
-					res = pg_tde_lock_updated_tuple(relation, tuple, &t_ctid,
+					res = heap_lock_updated_tuple(relation, tuple, &t_ctid,
 												  GetCurrentTransactionId(),
 												  mode);
 					if (res != TM_Ok)
@@ -4507,7 +4507,7 @@ l3:
 			 * rechecking tuple state.
 			 */
 			if (!skip_tuple_lock &&
-				!pg_tde_acquire_tuplock(relation, tid, mode, wait_policy,
+				!heap_acquire_tuplock(relation, tid, mode, wait_policy,
 									  &have_tuple_lock))
 			{
 				/*
@@ -4526,7 +4526,7 @@ l3:
 
 				/* We only ever lock tuples, never update them */
 				if (status >= MultiXactStatusNoKeyUpdate)
-					elog(ERROR, "invalid lock mode in pg_tde_lock_tuple");
+					elog(ERROR, "invalid lock mode in heap_lock_tuple");
 
 				/* wait for multixact to end, or die trying  */
 				switch (wait_policy)
@@ -4601,7 +4601,7 @@ l3:
 			{
 				TM_Result	res;
 
-				res = pg_tde_lock_updated_tuple(relation, tuple, &t_ctid,
+				res = heap_lock_updated_tuple(relation, tuple, &t_ctid,
 											  GetCurrentTransactionId(),
 											  mode);
 				if (res != TM_Ok)
@@ -4668,7 +4668,7 @@ failed:
 		 * TM_WouldBlock above, it's possible for concurrent transactions to
 		 * release the lock and set HEAP_XMAX_INVALID in the meantime.  So
 		 * this assert is slightly different from the equivalent one in
-		 * pg_tde_delete and pg_tde_update.
+		 * heap_delete and heap_update.
 		 */
 		Assert((result == TM_WouldBlock) ||
 			   !(tuple->t_data->t_infomask & HEAP_XMAX_INVALID));
@@ -4695,7 +4695,7 @@ failed:
 	if (vmbuffer == InvalidBuffer && PageIsAllVisible(page))
 	{
 		LockBuffer(*buffer, BUFFER_LOCK_UNLOCK);
-		pg_tde_visibilitymap_pin(relation, block, &vmbuffer);
+		visibilitymap_pin(relation, block, &vmbuffer);
 		LockBuffer(*buffer, BUFFER_LOCK_EXCLUSIVE);
 		goto l3;
 	}
@@ -4754,7 +4754,7 @@ failed:
 
 	/* Clear only the all-frozen bit on visibility map if needed */
 	if (PageIsAllVisible(page) &&
-		pg_tde_visibilitymap_clear(relation, block, vmbuffer,
+		visibilitymap_clear(relation, block, vmbuffer,
 							VISIBILITYMAP_ALL_FROZEN))
 		cleared_all_frozen = true;
 
@@ -4775,7 +4775,7 @@ failed:
 	 */
 	if (RelationNeedsWAL(relation))
 	{
-		xl_pg_tde_lock xlrec;
+		xl_heap_lock xlrec;
 		XLogRecPtr	recptr;
 
 		XLogBeginInsert();
@@ -4834,7 +4834,7 @@ out_unlocked:
  * wait_policy is Skip.
  */
 static bool
-pg_tde_acquire_tuplock(Relation relation, ItemPointer tid, LockTupleMode mode,
+heap_acquire_tuplock(Relation relation, ItemPointer tid, LockTupleMode mode,
 					 LockWaitPolicy wait_policy, bool *have_tuple_lock)
 {
 	if (*have_tuple_lock)
@@ -5149,7 +5149,7 @@ l5:
 }
 
 /*
- * Subroutine for pg_tde_lock_updated_tuple_rec.
+ * Subroutine for heap_lock_updated_tuple_rec.
  *
  * Given a hypothetical multixact status held by the transaction identified
  * with the given xid, does the current transaction need to wait, fail, or can
@@ -5248,14 +5248,14 @@ test_lockmode_for_conflict(MultiXactStatus status, TransactionId xid,
 
 
 /*
- * Recursive part of pg_tde_lock_updated_tuple
+ * Recursive part of heap_lock_updated_tuple
  *
  * Fetch the tuple pointed to by tid in rel, and mark it as locked by the given
  * xid with the given mode; if this tuple is updated, recurse to lock the new
  * version as well.
  */
 static TM_Result
-pg_tde_lock_updated_tuple_rec(Relation rel, ItemPointer tid, TransactionId xid,
+heap_lock_updated_tuple_rec(Relation rel, ItemPointer tid, TransactionId xid,
 							LockTupleMode mode)
 {
 	TM_Result	result;
@@ -5283,7 +5283,7 @@ pg_tde_lock_updated_tuple_rec(Relation rel, ItemPointer tid, TransactionId xid,
 		block = ItemPointerGetBlockNumber(&tupid);
 		ItemPointerCopy(&tupid, &(mytup.t_self));
 
-		if (!pg_tde_fetch(rel, SnapshotAny, &mytup, &buf, false))
+		if (!heap_fetch(rel, SnapshotAny, &mytup, &buf, false))
 		{
 			/*
 			 * if we fail to find the updated version of the tuple, it's
@@ -5307,7 +5307,7 @@ l4:
 		 */
 		if (PageIsAllVisible(BufferGetPage(buf)))
 		{
-			pg_tde_visibilitymap_pin(rel, block, &vmbuffer);
+			visibilitymap_pin(rel, block, &vmbuffer);
 			pinned_desired_page = true;
 		}
 		else
@@ -5329,7 +5329,7 @@ l4:
 		if (!pinned_desired_page && PageIsAllVisible(BufferGetPage(buf)))
 		{
 			LockBuffer(buf, BUFFER_LOCK_UNLOCK);
-			pg_tde_visibilitymap_pin(rel, block, &vmbuffer);
+			visibilitymap_pin(rel, block, &vmbuffer);
 			LockBuffer(buf, BUFFER_LOCK_EXCLUSIVE);
 		}
 
@@ -5401,7 +5401,7 @@ l4:
 
 					/*
 					 * If the tuple was already locked by ourselves in a
-					 * previous iteration of this (say pg_tde_lock_tuple was
+					 * previous iteration of this (say heap_lock_tuple was
 					 * forced to restart the locking loop because of a change
 					 * in xmax), then we hold the lock already on this tuple
 					 * version and we don't need to do anything; and this is
@@ -5478,7 +5478,7 @@ l4:
 
 				/*
 				 * If the tuple was already locked by ourselves in a previous
-				 * iteration of this (say pg_tde_lock_tuple was forced to
+				 * iteration of this (say heap_lock_tuple was forced to
 				 * restart the locking loop because of a change in xmax), then
 				 * we hold the lock already on this tuple version and we don't
 				 * need to do anything; and this is not an error condition
@@ -5508,7 +5508,7 @@ l4:
 								  &new_xmax, &new_infomask, &new_infomask2);
 
 		if (PageIsAllVisible(BufferGetPage(buf)) &&
-			pg_tde_visibilitymap_clear(rel, block, vmbuffer,
+			visibilitymap_clear(rel, block, vmbuffer,
 								VISIBILITYMAP_ALL_FROZEN))
 			cleared_all_frozen = true;
 
@@ -5526,7 +5526,7 @@ l4:
 		/* XLOG stuff */
 		if (RelationNeedsWAL(rel))
 		{
-			xl_pg_tde_lock_updated xlrec;
+			xl_heap_lock_updated xlrec;
 			XLogRecPtr	recptr;
 			Page		page = BufferGetPage(buf);
 
@@ -5578,7 +5578,7 @@ out_unlocked:
 }
 
 /*
- * pg_tde_lock_updated_tuple
+ * heap_lock_updated_tuple
  *		Follow update chain when locking an updated tuple, acquiring locks (row
  *		marks) on the updated versions.
  *
@@ -5591,7 +5591,7 @@ out_unlocked:
  *
  * Note that we don't acquire heavyweight tuple locks on the tuples we walk
  * when we have to wait for other transactions to release them, as opposed to
- * what pg_tde_lock_tuple does.  The reason is that having more than one
+ * what heap_lock_tuple does.  The reason is that having more than one
  * transaction walking the chain is probably uncommon enough that risk of
  * starvation is not likely: one of the preconditions for being here is that
  * the snapshot in use predates the update that created this tuple (because we
@@ -5600,7 +5600,7 @@ out_unlocked:
  * levels, because that would lead to a serializability failure.
  */
 static TM_Result
-pg_tde_lock_updated_tuple(Relation rel, HeapTuple tuple, ItemPointer ctid,
+heap_lock_updated_tuple(Relation rel, HeapTuple tuple, ItemPointer ctid,
 						TransactionId xid, LockTupleMode mode)
 {
 	/*
@@ -5621,7 +5621,7 @@ pg_tde_lock_updated_tuple(Relation rel, HeapTuple tuple, ItemPointer ctid,
 		 */
 		MultiXactIdSetOldestMember();
 
-		return pg_tde_lock_updated_tuple_rec(rel, ctid, xid, mode);
+		return heap_lock_updated_tuple_rec(rel, ctid, xid, mode);
 	}
 
 	/* nothing to lock */
@@ -5629,7 +5629,7 @@ pg_tde_lock_updated_tuple(Relation rel, HeapTuple tuple, ItemPointer ctid,
 }
 
 /*
- *	pg_tde_finish_speculative - mark speculative insertion as successful
+ *	heap_finish_speculative - mark speculative insertion as successful
  *
  * To successfully finish a speculative insertion we have to clear speculative
  * token from tuple.  To do so the t_ctid field, which will contain a
@@ -5645,7 +5645,7 @@ pg_tde_lock_updated_tuple(Relation rel, HeapTuple tuple, ItemPointer ctid,
  * An explicit confirmation WAL record also makes logical decoding simpler.
  */
 void
-pg_tde_finish_speculative(Relation relation, ItemPointer tid)
+heap_finish_speculative(Relation relation, ItemPointer tid)
 {
 	Buffer		buffer;
 	Page		page;
@@ -5682,7 +5682,7 @@ pg_tde_finish_speculative(Relation relation, ItemPointer tid)
 	/* XLOG stuff */
 	if (RelationNeedsWAL(relation))
 	{
-		xl_pg_tde_confirm xlrec;
+		xl_heap_confirm xlrec;
 		XLogRecPtr	recptr;
 
 		xlrec.offnum = ItemPointerGetOffsetNumber(tid);
@@ -5706,7 +5706,7 @@ pg_tde_finish_speculative(Relation relation, ItemPointer tid)
 }
 
 /*
- *	pg_tde_abort_speculative - kill a speculatively inserted tuple
+ *	heap_abort_speculative - kill a speculatively inserted tuple
  *
  * Marks a tuple that was speculatively inserted in the same command as dead,
  * by setting its xmin as invalid.  That makes it immediately appear as dead
@@ -5724,7 +5724,7 @@ pg_tde_finish_speculative(Relation relation, ItemPointer tid)
  * inserters did not take this precaution, then under high concurrency they
  * could deadlock with each other, which would not be acceptable.
  *
- * This is somewhat redundant with pg_tde_delete, but we prefer to have a
+ * This is somewhat redundant with heap_delete, but we prefer to have a
  * dedicated routine with stripped down requirements.  Note that this is also
  * used to delete the TOAST tuples created during speculative insertion.
  *
@@ -5732,7 +5732,7 @@ pg_tde_finish_speculative(Relation relation, ItemPointer tid)
  * confirmation records.
  */
 void
-pg_tde_abort_speculative(Relation relation, ItemPointer tid)
+heap_abort_speculative(Relation relation, ItemPointer tid)
 {
 	TransactionId xid = GetCurrentTransactionId();
 	ItemId		lp;
@@ -5818,12 +5818,12 @@ pg_tde_abort_speculative(Relation relation, ItemPointer tid)
 	/*
 	 * XLOG stuff
 	 *
-	 * The WAL records generated here match pg_tde_delete().  The same recovery
+	 * The WAL records generated here match heap_delete().  The same recovery
 	 * routines are used.
 	 */
 	if (RelationNeedsWAL(relation))
 	{
-		xl_pg_tde_delete xlrec;
+		xl_heap_delete xlrec;
 		XLogRecPtr	recptr;
 
 		xlrec.flags = XLH_DELETE_IS_SUPER;
@@ -5850,7 +5850,7 @@ pg_tde_abort_speculative(Relation relation, ItemPointer tid)
 	if (HeapTupleHasExternal(&tp))
 	{
 		Assert(!IsToastRelation(relation));
-		pg_tde_toast_delete(relation, &tp, true);
+		heap_toast_delete(relation, &tp, true);
 	}
 
 	/*
@@ -5862,11 +5862,11 @@ pg_tde_abort_speculative(Relation relation, ItemPointer tid)
 	ReleaseBuffer(buffer);
 
 	/* count deletion, as we counted the insertion too */
-	pgstat_count_pg_tde_delete(relation);
+	pgstat_count_heap_delete(relation);
 }
 
 /*
- * pg_tde_inplace_update - update a tuple "in place" (ie, overwrite it)
+ * heap_inplace_update - update a tuple "in place" (ie, overwrite it)
  *
  * Overwriting violates both MVCC and transactional safety, so the uses
  * of this function in Postgres are extremely limited.  Nonetheless we
@@ -5885,7 +5885,7 @@ pg_tde_abort_speculative(Relation relation, ItemPointer tid)
  * include toast values that have been expanded, causing a failure here.
  */
 void
-pg_tde_inplace_update(Relation relation, HeapTuple tuple)
+heap_inplace_update(Relation relation, HeapTuple tuple)
 {
 	Buffer		buffer;
 	Page		page;
@@ -5918,7 +5918,6 @@ pg_tde_inplace_update(Relation relation, HeapTuple tuple)
 		elog(ERROR, "invalid lp");
 
 	htup = (HeapTupleHeader) PageGetItem(page, lp);
-	// encryption / decryption here: HOW?
 
 	oldlen = ItemIdGetLength(lp) - htup->t_hoff;
 	newlen = tuple->t_len - tuple->t_data->t_hoff;
@@ -5937,7 +5936,7 @@ pg_tde_inplace_update(Relation relation, HeapTuple tuple)
 	/* XLOG stuff */
 	if (RelationNeedsWAL(relation))
 	{
-		xl_pg_tde_inplace xlrec;
+		xl_heap_inplace xlrec;
 		XLogRecPtr	recptr;
 
 		xlrec.offnum = ItemPointerGetOffsetNumber(&tuple->t_self);
@@ -6015,9 +6014,9 @@ pg_tde_inplace_update(Relation relation, HeapTuple tuple)
  * its own special risks.
  *
  * NB: Caller must maintain "no freeze" NewRelfrozenXid/NewRelminMxid trackers
- * using pg_tde_tuple_should_freeze when we haven't forced page-level freezing.
+ * using heap_tuple_should_freeze when we haven't forced page-level freezing.
  *
- * NB: Caller should avoid needlessly calling pg_tde_tuple_should_freeze when we
+ * NB: Caller should avoid needlessly calling heap_tuple_should_freeze when we
  * have already forced page-level freezing, since that might incur the same
  * SLRU buffer misses that we specifically intended to avoid by freezing.
  */
@@ -6329,7 +6328,7 @@ FreezeMultiXactId(MultiXactId multi, uint16 t_infomask,
 }
 
 /*
- * pg_tde_prepare_freeze_tuple
+ * heap_prepare_freeze_tuple
  *
  * Check to see whether any of the XID fields of a tuple (xmin, xmax, xvac)
  * are older than the OldestXmin and/or OldestMxact freeze cutoffs.  If so,
@@ -6343,7 +6342,7 @@ FreezeMultiXactId(MultiXactId multi, uint16 t_infomask,
  * XIDs or MultiXactIds that will need to be processed by a future VACUUM.
  *
  * VACUUM caller must assemble HeapTupleFreeze freeze plan entries for every
- * tuple that we returned true for, and call pg_tde_freeze_execute_prepared to
+ * tuple that we returned true for, and call heap_freeze_execute_prepared to
  * execute freezing.  Caller must initialize pagefrz fields for page as a
  * whole before first call here for each heap page.
  *
@@ -6368,11 +6367,11 @@ FreezeMultiXactId(MultiXactId multi, uint16 t_infomask,
  *
  * NB: This function has side effects: it might allocate a new MultiXactId.
  * It will be set as tuple's new xmax when our *frz output is processed within
- * pg_tde_execute_freeze_tuple later on.  If the tuple is in a shared buffer
+ * heap_execute_freeze_tuple later on.  If the tuple is in a shared buffer
  * then caller had better have an exclusive lock on it already.
  */
 bool
-pg_tde_prepare_freeze_tuple(HeapTupleHeader tuple,
+heap_prepare_freeze_tuple(HeapTupleHeader tuple,
 						  const struct VacuumCutoffs *cutoffs,
 						  HeapPageFreeze *pagefrz,
 						  HeapTupleFreeze *frz, bool *totally_frozen)
@@ -6467,7 +6466,7 @@ pg_tde_prepare_freeze_tuple(HeapTupleHeader tuple,
 			 *
 			 * FreezeMultiXactId is _not_ responsible for the "no freeze"
 			 * NewRelfrozenXid/NewRelminMxid trackers, though -- that's our
-			 * job.  A call to pg_tde_tuple_should_freeze for this same tuple
+			 * job.  A call to heap_tuple_should_freeze for this same tuple
 			 * will take place below if 'freeze_required' isn't set already.
 			 * (This repeats work from FreezeMultiXactId, but allows "no
 			 * freeze" tracker maintenance to happen in only one place.)
@@ -6627,7 +6626,7 @@ pg_tde_prepare_freeze_tuple(HeapTupleHeader tuple,
 		 * Does this tuple force caller to freeze the entire page?
 		 */
 		pagefrz->freeze_required =
-			pg_tde_tuple_should_freeze(tuple, cutoffs,
+			heap_tuple_should_freeze(tuple, cutoffs,
 									 &pagefrz->NoFreezePageRelfrozenXid,
 									 &pagefrz->NoFreezePageRelminMxid);
 	}
@@ -6637,7 +6636,7 @@ pg_tde_prepare_freeze_tuple(HeapTupleHeader tuple,
 }
 
 /*
- * pg_tde_execute_freeze_tuple
+ * heap_execute_freeze_tuple
  *		Execute the prepared freezing of a tuple with caller's freeze plan.
  *
  * Caller is responsible for ensuring that no other backend can access the
@@ -6646,7 +6645,7 @@ pg_tde_prepare_freeze_tuple(HeapTupleHeader tuple,
  * in private storage (which is what CLUSTER and friends do).
  */
 static inline void
-pg_tde_execute_freeze_tuple(HeapTupleHeader tuple, HeapTupleFreeze *frz)
+heap_execute_freeze_tuple(HeapTupleHeader tuple, HeapTupleFreeze *frz)
 {
 	HeapTupleHeaderSetXmax(tuple, frz->xmax);
 
@@ -6661,10 +6660,10 @@ pg_tde_execute_freeze_tuple(HeapTupleHeader tuple, HeapTupleFreeze *frz)
 }
 
 /*
- * pg_tde_freeze_execute_prepared
+ * heap_freeze_execute_prepared
  *
  * Executes freezing of one or more heap tuples on a page on behalf of caller.
- * Caller passes an array of tuple plans from pg_tde_prepare_freeze_tuple.
+ * Caller passes an array of tuple plans from heap_prepare_freeze_tuple.
  * Caller must set 'offset' in each plan for us.  Note that we destructively
  * sort caller's tuples array in-place, so caller had better be done with it.
  *
@@ -6675,7 +6674,7 @@ pg_tde_execute_freeze_tuple(HeapTupleHeader tuple, HeapTupleFreeze *frz)
  * See section on buffer access rules in src/backend/storage/buffer/README.
  */
 void
-pg_tde_freeze_execute_prepared(Relation rel, Buffer buffer,
+heap_freeze_execute_prepared(Relation rel, Buffer buffer,
 							 TransactionId snapshotConflictHorizon,
 							 HeapTupleFreeze *tuples, int ntuples)
 {
@@ -6686,7 +6685,7 @@ pg_tde_freeze_execute_prepared(Relation rel, Buffer buffer,
 	/*
 	 * Perform xmin/xmax XID status sanity checks before critical section.
 	 *
-	 * pg_tde_prepare_freeze_tuple doesn't perform these checks directly because
+	 * heap_prepare_freeze_tuple doesn't perform these checks directly because
 	 * pg_xact lookups are relatively expensive.  They shouldn't be repeated
 	 * by successive VACUUMs that each decide against freezing the same page.
 	 */
@@ -6701,7 +6700,6 @@ pg_tde_freeze_execute_prepared(Relation rel, Buffer buffer,
 		/* Deliberately avoid relying on tuple hint bits here */
 		if (frz->checkflags & HEAP_FREEZE_CHECK_XMIN_COMMITTED)
 		{
-			// TODO: how to keep compiling both?
 			TransactionId xmin = HeapTupleHeaderGetRawXmin(htup);
 
 			Assert(!HeapTupleHeaderXminFrozen(htup));
@@ -6739,8 +6737,7 @@ pg_tde_freeze_execute_prepared(Relation rel, Buffer buffer,
 		HeapTupleHeader htup;
 
 		htup = (HeapTupleHeader) PageGetItem(page, itemid);
-		// TODO: Decryption/encryption here
-		pg_tde_execute_freeze_tuple(htup, frz);
+		heap_execute_freeze_tuple(htup, frz);
 	}
 
 	MarkBufferDirty(buffer);
@@ -6748,14 +6745,14 @@ pg_tde_freeze_execute_prepared(Relation rel, Buffer buffer,
 	/* Now WAL-log freezing if necessary */
 	if (RelationNeedsWAL(rel))
 	{
-		xl_pg_tde_freeze_plan plans[MaxHeapTuplesPerPage];
+		xl_heap_freeze_plan plans[MaxHeapTuplesPerPage];
 		OffsetNumber offsets[MaxHeapTuplesPerPage];
 		int			nplans;
-		xl_pg_tde_freeze_page xlrec;
+		xl_heap_freeze_page xlrec;
 		XLogRecPtr	recptr;
 
 		/* Prepare deduplicated representation for use in WAL record */
-		nplans = pg_tde_log_freeze_plan(tuples, ntuples, plans, offsets);
+		nplans = heap_log_freeze_plan(tuples, ntuples, plans, offsets);
 
 		xlrec.snapshotConflictHorizon = snapshotConflictHorizon;
 		xlrec.isCatalogRel = RelationIsAccessibleInLogicalDecoding(rel);
@@ -6771,7 +6768,7 @@ pg_tde_freeze_execute_prepared(Relation rel, Buffer buffer,
 		 */
 		XLogRegisterBuffer(0, buffer, REGBUF_STANDARD);
 		XLogRegisterBufData(0, (char *) plans,
-							nplans * sizeof(xl_pg_tde_freeze_plan));
+							nplans * sizeof(xl_heap_freeze_plan));
 		XLogRegisterBufData(0, (char *) offsets,
 							ntuples * sizeof(OffsetNumber));
 
@@ -6787,7 +6784,7 @@ pg_tde_freeze_execute_prepared(Relation rel, Buffer buffer,
  * Comparator used to deduplicate XLOG_HEAP2_FREEZE_PAGE freeze plans
  */
 static int
-pg_tde_log_freeze_cmp(const void *arg1, const void *arg2)
+heap_log_freeze_cmp(const void *arg1, const void *arg2)
 {
 	HeapTupleFreeze *frz1 = (HeapTupleFreeze *) arg1;
 	HeapTupleFreeze *frz2 = (HeapTupleFreeze *) arg2;
@@ -6813,7 +6810,7 @@ pg_tde_log_freeze_cmp(const void *arg1, const void *arg2)
 		return 1;
 
 	/*
-	 * pg_tde_log_freeze_eq would consider these tuple-wise plans to be equal.
+	 * heap_log_freeze_eq would consider these tuple-wise plans to be equal.
 	 * (So the tuples will share a single canonical freeze plan.)
 	 *
 	 * We tiebreak on page offset number to keep each freeze plan's page
@@ -6834,7 +6831,7 @@ pg_tde_log_freeze_cmp(const void *arg1, const void *arg2)
  * caller's plan.
  */
 static inline bool
-pg_tde_log_freeze_eq(xl_pg_tde_freeze_plan *plan, HeapTupleFreeze *frz)
+heap_log_freeze_eq(xl_heap_freeze_plan *plan, HeapTupleFreeze *frz)
 {
 	if (plan->xmax == frz->xmax &&
 		plan->t_infomask2 == frz->t_infomask2 &&
@@ -6842,7 +6839,7 @@ pg_tde_log_freeze_eq(xl_pg_tde_freeze_plan *plan, HeapTupleFreeze *frz)
 		plan->frzflags == frz->frzflags)
 		return true;
 
-	/* Caller must call pg_tde_log_freeze_new_plan again for frz */
+	/* Caller must call heap_log_freeze_new_plan again for frz */
 	return false;
 }
 
@@ -6851,7 +6848,7 @@ pg_tde_log_freeze_eq(xl_pg_tde_freeze_plan *plan, HeapTupleFreeze *frz)
  * will have steps required to freeze described by caller's plan during REDO.
  */
 static inline void
-pg_tde_log_freeze_new_plan(xl_pg_tde_freeze_plan *plan, HeapTupleFreeze *frz)
+heap_log_freeze_new_plan(xl_heap_freeze_plan *plan, HeapTupleFreeze *frz)
 {
 	plan->xmax = frz->xmax;
 	plan->t_infomask2 = frz->t_infomask2;
@@ -6871,14 +6868,14 @@ pg_tde_log_freeze_new_plan(xl_pg_tde_freeze_plan *plan, HeapTupleFreeze *frz)
  * concern to our caller).
  */
 static int
-pg_tde_log_freeze_plan(HeapTupleFreeze *tuples, int ntuples,
-					 xl_pg_tde_freeze_plan *plans_out,
+heap_log_freeze_plan(HeapTupleFreeze *tuples, int ntuples,
+					 xl_heap_freeze_plan *plans_out,
 					 OffsetNumber *offsets_out)
 {
 	int			nplans = 0;
 
 	/* Sort tuple-based freeze plans in the order required to deduplicate */
-	qsort(tuples, ntuples, sizeof(HeapTupleFreeze), pg_tde_log_freeze_cmp);
+	qsort(tuples, ntuples, sizeof(HeapTupleFreeze), heap_log_freeze_cmp);
 
 	for (int i = 0; i < ntuples; i++)
 	{
@@ -6887,10 +6884,10 @@ pg_tde_log_freeze_plan(HeapTupleFreeze *tuples, int ntuples,
 		if (i == 0)
 		{
 			/* New canonical freeze plan starting with first tup */
-			pg_tde_log_freeze_new_plan(plans_out, frz);
+			heap_log_freeze_new_plan(plans_out, frz);
 			nplans++;
 		}
-		else if (pg_tde_log_freeze_eq(plans_out, frz))
+		else if (heap_log_freeze_eq(plans_out, frz))
 		{
 			/* tup matches open canonical plan -- include tup in it */
 			Assert(offsets_out[i - 1] < frz->offset);
@@ -6902,7 +6899,7 @@ pg_tde_log_freeze_plan(HeapTupleFreeze *tuples, int ntuples,
 			plans_out++;
 
 			/* New canonical freeze plan starting with this tup */
-			pg_tde_log_freeze_new_plan(plans_out, frz);
+			heap_log_freeze_new_plan(plans_out, frz);
 			nplans++;
 		}
 
@@ -6922,13 +6919,13 @@ pg_tde_log_freeze_plan(HeapTupleFreeze *tuples, int ntuples,
 }
 
 /*
- * pg_tde_freeze_tuple
+ * heap_freeze_tuple
  *		Freeze tuple in place, without WAL logging.
  *
  * Useful for callers like CLUSTER that perform their own WAL logging.
  */
 bool
-pg_tde_freeze_tuple(HeapTupleHeader tuple,
+heap_freeze_tuple(HeapTupleHeader tuple,
 				  TransactionId relfrozenxid, TransactionId relminmxid,
 				  TransactionId FreezeLimit, TransactionId MultiXactCutoff)
 {
@@ -6951,7 +6948,7 @@ pg_tde_freeze_tuple(HeapTupleHeader tuple,
 	pagefrz.NoFreezePageRelfrozenXid = FreezeLimit;
 	pagefrz.NoFreezePageRelminMxid = MultiXactCutoff;
 
-	do_freeze = pg_tde_prepare_freeze_tuple(tuple, &cutoffs,
+	do_freeze = heap_prepare_freeze_tuple(tuple, &cutoffs,
 										  &pagefrz, &frz, &totally_frozen);
 
 	/*
@@ -6960,7 +6957,7 @@ pg_tde_freeze_tuple(HeapTupleHeader tuple,
 	 */
 
 	if (do_freeze)
-		pg_tde_execute_freeze_tuple(tuple, &frz);
+		heap_execute_freeze_tuple(tuple, &frz);
 	return do_freeze;
 }
 
@@ -7328,13 +7325,13 @@ ConditionalMultiXactIdWait(MultiXactId multi, MultiXactStatus status,
 }
 
 /*
- * pg_tde_tuple_needs_eventual_freeze
+ * heap_tuple_needs_eventual_freeze
  *
  * Check to see whether any of the XID fields of a tuple (xmin, xmax, xvac)
  * will eventually require freezing (if tuple isn't removed by pruning first).
  */
 bool
-pg_tde_tuple_needs_eventual_freeze(HeapTupleHeader tuple)
+heap_tuple_needs_eventual_freeze(HeapTupleHeader tuple)
 {
 	TransactionId xid;
 
@@ -7375,9 +7372,9 @@ pg_tde_tuple_needs_eventual_freeze(HeapTupleHeader tuple)
 }
 
 /*
- * pg_tde_tuple_should_freeze
+ * heap_tuple_should_freeze
  *
- * Return value indicates if pg_tde_prepare_freeze_tuple sibling function would
+ * Return value indicates if heap_prepare_freeze_tuple sibling function would
  * (or should) force freezing of the heap page that contains caller's tuple.
  * Tuple header XIDs/MXIDs < FreezeLimit/MultiXactCutoff trigger freezing.
  * This includes (xmin, xmax, xvac) fields, as well as MultiXact member XIDs.
@@ -7389,7 +7386,7 @@ pg_tde_tuple_needs_eventual_freeze(HeapTupleHeader tuple)
  * point that it fully commits to not freezing the tuple/page in question.
  */
 bool
-pg_tde_tuple_should_freeze(HeapTupleHeader tuple,
+heap_tuple_should_freeze(HeapTupleHeader tuple,
 						 const struct VacuumCutoffs *cutoffs,
 						 TransactionId *NoFreezePageRelfrozenXid,
 						 MultiXactId *NoFreezePageRelminMxid)
@@ -7435,7 +7432,7 @@ pg_tde_tuple_should_freeze(HeapTupleHeader tuple,
 		/* xmax is a pg_upgrade'd MultiXact, which can't have updater XID */
 		if (MultiXactIdPrecedes(multi, *NoFreezePageRelminMxid))
 			*NoFreezePageRelminMxid = multi;
-		/* pg_tde_prepare_freeze_tuple always freezes pg_upgrade'd xmax */
+		/* heap_prepare_freeze_tuple always freezes pg_upgrade'd xmax */
 		freeze = true;
 	}
 	else
@@ -7475,7 +7472,7 @@ pg_tde_tuple_should_freeze(HeapTupleHeader tuple,
 			Assert(TransactionIdPrecedesOrEquals(cutoffs->relfrozenxid, xid));
 			if (TransactionIdPrecedes(xid, *NoFreezePageRelfrozenXid))
 				*NoFreezePageRelfrozenXid = xid;
-			/* pg_tde_prepare_freeze_tuple forces xvac freezing */
+			/* heap_prepare_freeze_tuple forces xvac freezing */
 			freeze = true;
 		}
 	}
@@ -7527,7 +7524,7 @@ HeapTupleHeaderAdvanceConflictHorizon(HeapTupleHeader tuple,
 
 #ifdef USE_PREFETCH
 /*
- * Helper function for pg_tde_index_delete_tuples.  Issues prefetch requests for
+ * Helper function for heap_index_delete_tuples.  Issues prefetch requests for
  * prefetch_count buffers.  The prefetch_state keeps track of all the buffers
  * we can prefetch, and which have already been prefetched; each call to this
  * function picks up where the previous call left off.
@@ -7572,7 +7569,7 @@ index_delete_prefetch_buffer(Relation rel,
 #endif
 
 /*
- * Helper function for pg_tde_index_delete_tuples.  Checks for index corruption
+ * Helper function for heap_index_delete_tuples.  Checks for index corruption
  * involving an invalid TID in index AM caller's index page.
  *
  * This is an ideal place for these checks.  The index AM must hold a buffer
@@ -7616,7 +7613,6 @@ index_delete_check_htid(TM_IndexDeleteOp *delstate,
 
 		Assert(ItemIdIsNormal(iid));
 		htup = (HeapTupleHeader) PageGetItem(page, iid);
-		// TODO: Decryption/encryption here
 
 		if (unlikely(HeapTupleHeaderIsHeapOnly(htup)))
 			ereport(ERROR,
@@ -7643,7 +7639,7 @@ index_delete_check_htid(TM_IndexDeleteOp *delstate,
  * the same heap block.
  */
 TransactionId
-pg_tde_index_delete_tuples(Relation rel, TM_IndexDeleteOp *delstate)
+heap_index_delete_tuples(Relation rel, TM_IndexDeleteOp *delstate)
 {
 	/* Initial assumption is that earlier pruning took care of conflict */
 	TransactionId snapshotConflictHorizon = InvalidTransactionId;
@@ -7839,7 +7835,7 @@ pg_tde_index_delete_tuples(Relation rel, TM_IndexDeleteOp *delstate)
 			HeapTupleData heapTuple;
 
 			/* Are any tuples from this HOT chain non-vacuumable? */
-			if (pg_tde_hot_search_buffer(&tmp, rel, buf, &SnapshotNonVacuumable,
+			if (heap_hot_search_buffer(&tmp, rel, buf, &SnapshotNonVacuumable,
 									   &heapTuple, NULL, true))
 				continue;		/* can't delete entry */
 
@@ -7904,7 +7900,6 @@ pg_tde_index_delete_tuples(Relation rel, TM_IndexDeleteOp *delstate)
 				break;
 
 			htup = (HeapTupleHeader) PageGetItem(page, lp);
-			// TODO: Decryption/encryption here
 
 			/*
 			 * Check the tuple XMIN against prior XMAX, if any
@@ -7980,7 +7975,7 @@ index_delete_sort_cmp(TM_IndexDelete *deltid1, TM_IndexDelete *deltid2)
 
 /*
  * Sort deltids array from delstate by TID.  This prepares it for further
- * processing by pg_tde_index_delete_tuples().
+ * processing by heap_index_delete_tuples().
  *
  * This operation becomes a noticeable consumer of CPU cycles with some
  * workloads, so we go to the trouble of specialization/micro optimization.
@@ -8033,10 +8028,10 @@ index_delete_sort(TM_IndexDeleteOp *delstate)
  * deletion.  In the worst case (i.e. with totally random heap blocks) the
  * first block in line (the only favorable block) can be thought of as a
  * degenerate array of contiguous blocks that consists of a single block.
- * pg_tde_index_delete_tuples() will expect this.
+ * heap_index_delete_tuples() will expect this.
  *
  * Caller passes blockgroups, a description of the final order that deltids
- * will be sorted in for pg_tde_index_delete_tuples() bottom-up index deletion
+ * will be sorted in for heap_index_delete_tuples() bottom-up index deletion
  * processing.  Note that deltids need not actually be sorted just yet (caller
  * only passes deltids to us so that we can interpret blockgroups).
  *
@@ -8077,7 +8072,7 @@ index_delete_sort(TM_IndexDeleteOp *delstate)
  * the indexes are logically modified by the UPDATE statements (if they were
  * then bottom-up index deletion would not be triggered in the first place).
  * Naturally, each new round of index tuples (for each heap tuple that gets a
- * pg_tde_update() call) will have the same heap TID in each and every index.
+ * heap_update() call) will have the same heap TID in each and every index.
  * Since these indexes are low cardinality and never get logically modified,
  * heapam processing during bottom-up deletion passes will access heap blocks
  * in approximately sequential order.  Temporal locality of access occurs due
@@ -8184,7 +8179,7 @@ bottomup_sort_and_shrink_cmp(const void *arg1, const void *arg2)
 }
 
 /*
- * pg_tde_index_delete_tuples() helper function for bottom-up deletion callers.
+ * heap_index_delete_tuples() helper function for bottom-up deletion callers.
  *
  * Sorts deltids array in the order needed for useful processing by bottom-up
  * deletion.  The array should already be sorted in TID order when we're
@@ -8326,19 +8321,19 @@ bottomup_sort_and_shrink(TM_IndexDeleteOp *delstate)
  * marked all-visible.  REDO routine uses it to generate recovery conflicts.
  *
  * If checksums or wal_log_hints are enabled, we may also generate a full-page
- * image of pg_tde_buffer. Otherwise, we optimize away the FPI (by specifying
+ * image of heap_buffer. Otherwise, we optimize away the FPI (by specifying
  * REGBUF_NO_IMAGE for the heap buffer), in which case the caller should *not*
  * update the heap page's LSN.
  */
 XLogRecPtr
-log_pg_tde_visible(Relation rel, Buffer pg_tde_buffer, Buffer vm_buffer,
+log_heap_visible(Relation rel, Buffer heap_buffer, Buffer vm_buffer,
 				 TransactionId snapshotConflictHorizon, uint8 vmflags)
 {
-	xl_pg_tde_visible xlrec;
+	xl_heap_visible xlrec;
 	XLogRecPtr	recptr;
 	uint8		flags;
 
-	Assert(BufferIsValid(pg_tde_buffer));
+	Assert(BufferIsValid(heap_buffer));
 	Assert(BufferIsValid(vm_buffer));
 
 	xlrec.snapshotConflictHorizon = snapshotConflictHorizon;
@@ -8353,7 +8348,7 @@ log_pg_tde_visible(Relation rel, Buffer pg_tde_buffer, Buffer vm_buffer,
 	flags = REGBUF_STANDARD;
 	if (!XLogHintBitIsNeeded())
 		flags |= REGBUF_NO_IMAGE;
-	XLogRegisterBuffer(1, pg_tde_buffer, flags);
+	XLogRegisterBuffer(1, heap_buffer, flags);
 
 	recptr = XLogInsert(RM_HEAP2_ID, XLOG_HEAP2_VISIBLE);
 
@@ -8365,14 +8360,14 @@ log_pg_tde_visible(Relation rel, Buffer pg_tde_buffer, Buffer vm_buffer,
  * have modified the buffer(s) and marked them dirty.
  */
 static XLogRecPtr
-log_pg_tde_update(Relation reln, Buffer oldbuf,
+log_heap_update(Relation reln, Buffer oldbuf,
 				Buffer newbuf, HeapTuple oldtup, HeapTuple newtup,
 				HeapTuple old_key_tuple,
 				bool all_visible_cleared, bool new_all_visible_cleared)
 {
-	xl_pg_tde_update xlrec;
-	xl_pg_tde_header xlhdr;
-	xl_pg_tde_header xlhdr_idx;
+	xl_heap_update xlrec;
+	xl_heap_header xlhdr;
+	xl_heap_header xlhdr_idx;
 	uint8		info;
 	uint16		prefix_suffix[2];
 	uint16		prefixlen = 0,
@@ -8587,9 +8582,9 @@ log_pg_tde_update(Relation reln, Buffer oldbuf,
  * tuples.
  */
 static XLogRecPtr
-log_pg_tde_new_cid(Relation relation, HeapTuple tup)
+log_heap_new_cid(Relation relation, HeapTuple tup)
 {
-	xl_pg_tde_new_cid xlrec;
+	xl_heap_new_cid xlrec;
 
 	XLogRecPtr	recptr;
 	HeapTupleHeader hdr = tup->t_data;
@@ -8710,8 +8705,8 @@ ExtractReplicaIdentity(Relation relation, HeapTuple tp, bool key_required,
 
 	/*
 	 * If there's no defined replica identity columns, treat as !key_required.
-	 * (This case should not be reachable from pg_tde_update, since that should
-	 * calculate key_required accurately.  But pg_tde_delete just passes
+	 * (This case should not be reachable from heap_update, since that should
+	 * calculate key_required accurately.  But heap_delete just passes
 	 * constant true for key_required, so we can hit this case in deletes.)
 	 */
 	if (bms_is_empty(idattrs))
@@ -8722,7 +8717,7 @@ ExtractReplicaIdentity(Relation relation, HeapTuple tp, bool key_required,
 	 * with nulls elsewhere.  While we're at it, assert that the replica
 	 * identity columns aren't null.
 	 */
-	pg_tde_deform_tuple(tp, desc, values, nulls);
+	heap_deform_tuple(tp, desc, values, nulls);
 
 	for (int i = 0; i < desc->natts; i++)
 	{
@@ -8733,7 +8728,7 @@ ExtractReplicaIdentity(Relation relation, HeapTuple tp, bool key_required,
 			nulls[i] = true;
 	}
 
-	key_tuple = pg_tde_form_tuple(desc, values, nulls);
+	key_tuple = heap_form_tuple(desc, values, nulls);
 	*copy = true;
 
 	bms_free(idattrs);
@@ -8750,7 +8745,7 @@ ExtractReplicaIdentity(Relation relation, HeapTuple tp, bool key_required,
 		HeapTuple	oldtup = key_tuple;
 
 		key_tuple = toast_flatten_tuple(oldtup, desc);
-		pg_tde_freetuple(oldtup);
+		heap_freetuple(oldtup);
 	}
 
 	return key_tuple;
@@ -8762,10 +8757,10 @@ ExtractReplicaIdentity(Relation relation, HeapTuple tp, bool key_required,
  * Acquires a full cleanup lock.
  */
 static void
-pg_tde_xlog_prune(XLogReaderState *record)
+heap_xlog_prune(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_prune *xlrec = (xl_pg_tde_prune *) XLogRecGetData(record);
+	xl_heap_prune *xlrec = (xl_heap_prune *) XLogRecGetData(record);
 	Buffer		buffer;
 	RelFileLocator rlocator;
 	BlockNumber blkno;
@@ -8811,7 +8806,7 @@ pg_tde_xlog_prune(XLogReaderState *record)
 		Assert(nunused >= 0);
 
 		/* Update all line pointers per the record, and repair fragmentation */
-		pg_tde_page_prune_execute(buffer,
+		heap_page_prune_execute(buffer,
 								redirected, nredirected,
 								nowdead, ndead,
 								nowunused, nunused);
@@ -8850,10 +8845,10 @@ pg_tde_xlog_prune(XLogReaderState *record)
  * Acquires an ordinary exclusive lock only.
  */
 static void
-pg_tde_xlog_vacuum(XLogReaderState *record)
+heap_xlog_vacuum(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_vacuum *xlrec = (xl_pg_tde_vacuum *) XLogRecGetData(record);
+	xl_heap_vacuum *xlrec = (xl_heap_vacuum *) XLogRecGetData(record);
 	Buffer		buffer;
 	BlockNumber blkno;
 	XLogRedoAction action;
@@ -8925,10 +8920,10 @@ pg_tde_xlog_vacuum(XLogReaderState *record)
  * page modification would fail to clear the visibility map bit.
  */
 static void
-pg_tde_xlog_visible(XLogReaderState *record)
+heap_xlog_visible(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_visible *xlrec = (xl_pg_tde_visible *) XLogRecGetData(record);
+	xl_heap_visible *xlrec = (xl_heap_visible *) XLogRecGetData(record);
 	Buffer		vmbuffer = InvalidBuffer;
 	Buffer		buffer;
 	Page		page;
@@ -9036,14 +9031,14 @@ pg_tde_xlog_visible(XLogReaderState *record)
 
 		/*
 		 * XLogReadBufferForRedoExtended locked the buffer. But
-		 * pg_tde_visibilitymap_set will handle locking itself.
+		 * visibilitymap_set will handle locking itself.
 		 */
 		LockBuffer(vmbuffer, BUFFER_LOCK_UNLOCK);
 
 		reln = CreateFakeRelcacheEntry(rlocator);
-		pg_tde_visibilitymap_pin(reln, blkno, &vmbuffer);
+		visibilitymap_pin(reln, blkno, &vmbuffer);
 
-		pg_tde_visibilitymap_set(reln, blkno, InvalidBuffer, lsn, vmbuffer,
+		visibilitymap_set(reln, blkno, InvalidBuffer, lsn, vmbuffer,
 						  xlrec->snapshotConflictHorizon, vmbits);
 
 		ReleaseBuffer(vmbuffer);
@@ -9057,10 +9052,10 @@ pg_tde_xlog_visible(XLogReaderState *record)
  * Replay XLOG_HEAP2_FREEZE_PAGE records
  */
 static void
-pg_tde_xlog_freeze_page(XLogReaderState *record)
+heap_xlog_freeze_page(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_freeze_page *xlrec = (xl_pg_tde_freeze_page *) XLogRecGetData(record);
+	xl_heap_freeze_page *xlrec = (xl_heap_freeze_page *) XLogRecGetData(record);
 	Buffer		buffer;
 
 	/*
@@ -9080,21 +9075,21 @@ pg_tde_xlog_freeze_page(XLogReaderState *record)
 	if (XLogReadBufferForRedo(record, 0, &buffer) == BLK_NEEDS_REDO)
 	{
 		Page		page = BufferGetPage(buffer);
-		xl_pg_tde_freeze_plan *plans;
+		xl_heap_freeze_plan *plans;
 		OffsetNumber *offsets;
 		int			curoff = 0;
 
-		plans = (xl_pg_tde_freeze_plan *) XLogRecGetBlockData(record, 0, NULL);
+		plans = (xl_heap_freeze_plan *) XLogRecGetBlockData(record, 0, NULL);
 		offsets = (OffsetNumber *) ((char *) plans +
 									(xlrec->nplans *
-									 sizeof(xl_pg_tde_freeze_plan)));
+									 sizeof(xl_heap_freeze_plan)));
 		for (int p = 0; p < xlrec->nplans; p++)
 		{
 			HeapTupleFreeze frz;
 
 			/*
 			 * Convert freeze plan representation from WAL record into
-			 * per-tuple format used by pg_tde_execute_freeze_tuple
+			 * per-tuple format used by heap_execute_freeze_tuple
 			 */
 			frz.xmax = plans[p].xmax;
 			frz.t_infomask2 = plans[p].t_infomask2;
@@ -9110,8 +9105,7 @@ pg_tde_xlog_freeze_page(XLogReaderState *record)
 
 				lp = PageGetItemId(page, offset);
 				tuple = (HeapTupleHeader) PageGetItem(page, lp);
-				// TODO: Decryption/encryption here
-				pg_tde_execute_freeze_tuple(tuple, &frz);
+				heap_execute_freeze_tuple(tuple, &frz);
 			}
 		}
 
@@ -9150,10 +9144,10 @@ fix_infomask_from_infobits(uint8 infobits, uint16 *infomask, uint16 *infomask2)
 }
 
 static void
-pg_tde_xlog_delete(XLogReaderState *record)
+heap_xlog_delete(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_delete *xlrec = (xl_pg_tde_delete *) XLogRecGetData(record);
+	xl_heap_delete *xlrec = (xl_heap_delete *) XLogRecGetData(record);
 	Buffer		buffer;
 	Page		page;
 	ItemId		lp = NULL;
@@ -9175,8 +9169,8 @@ pg_tde_xlog_delete(XLogReaderState *record)
 		Relation	reln = CreateFakeRelcacheEntry(target_locator);
 		Buffer		vmbuffer = InvalidBuffer;
 
-		pg_tde_visibilitymap_pin(reln, blkno, &vmbuffer);
-		pg_tde_visibilitymap_clear(reln, blkno, vmbuffer, VISIBILITYMAP_VALID_BITS);
+		visibilitymap_pin(reln, blkno, &vmbuffer);
+		visibilitymap_clear(reln, blkno, vmbuffer, VISIBILITYMAP_VALID_BITS);
 		ReleaseBuffer(vmbuffer);
 		FreeFakeRelcacheEntry(reln);
 	}
@@ -9192,7 +9186,6 @@ pg_tde_xlog_delete(XLogReaderState *record)
 			elog(PANIC, "invalid lp");
 
 		htup = (HeapTupleHeader) PageGetItem(page, lp);
-		// TODO: Decryption/encryption here
 
 		htup->t_infomask &= ~(HEAP_XMAX_BITS | HEAP_MOVED);
 		htup->t_infomask2 &= ~HEAP_KEYS_UPDATED;
@@ -9224,10 +9217,10 @@ pg_tde_xlog_delete(XLogReaderState *record)
 }
 
 static void
-pg_tde_xlog_insert(XLogReaderState *record)
+heap_xlog_insert(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_insert *xlrec = (xl_pg_tde_insert *) XLogRecGetData(record);
+	xl_heap_insert *xlrec = (xl_heap_insert *) XLogRecGetData(record);
 	Buffer		buffer;
 	Page		page;
 	union
@@ -9236,7 +9229,7 @@ pg_tde_xlog_insert(XLogReaderState *record)
 		char		data[MaxHeapTupleSize];
 	}			tbuf;
 	HeapTupleHeader htup;
-	xl_pg_tde_header xlhdr;
+	xl_heap_header xlhdr;
 	uint32		newlen;
 	Size		freespace = 0;
 	RelFileLocator target_locator;
@@ -9257,8 +9250,8 @@ pg_tde_xlog_insert(XLogReaderState *record)
 		Relation	reln = CreateFakeRelcacheEntry(target_locator);
 		Buffer		vmbuffer = InvalidBuffer;
 
-		pg_tde_visibilitymap_pin(reln, blkno, &vmbuffer);
-		pg_tde_visibilitymap_clear(reln, blkno, vmbuffer, VISIBILITYMAP_VALID_BITS);
+		visibilitymap_pin(reln, blkno, &vmbuffer);
+		visibilitymap_clear(reln, blkno, vmbuffer, VISIBILITYMAP_VALID_BITS);
 		ReleaseBuffer(vmbuffer);
 		FreeFakeRelcacheEntry(reln);
 	}
@@ -9344,10 +9337,10 @@ pg_tde_xlog_insert(XLogReaderState *record)
  * Handles MULTI_INSERT record type.
  */
 static void
-pg_tde_xlog_multi_insert(XLogReaderState *record)
+heap_xlog_multi_insert(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_multi_insert *xlrec;
+	xl_heap_multi_insert *xlrec;
 	RelFileLocator rlocator;
 	BlockNumber blkno;
 	Buffer		buffer;
@@ -9368,7 +9361,7 @@ pg_tde_xlog_multi_insert(XLogReaderState *record)
 	 * Insertion doesn't overwrite MVCC data, so no conflict processing is
 	 * required.
 	 */
-	xlrec = (xl_pg_tde_multi_insert *) XLogRecGetData(record);
+	xlrec = (xl_heap_multi_insert *) XLogRecGetData(record);
 
 	XLogRecGetBlockTag(record, 0, &rlocator, NULL, &blkno);
 
@@ -9385,8 +9378,8 @@ pg_tde_xlog_multi_insert(XLogReaderState *record)
 		Relation	reln = CreateFakeRelcacheEntry(rlocator);
 		Buffer		vmbuffer = InvalidBuffer;
 
-		pg_tde_visibilitymap_pin(reln, blkno, &vmbuffer);
-		pg_tde_visibilitymap_clear(reln, blkno, vmbuffer, VISIBILITYMAP_VALID_BITS);
+		visibilitymap_pin(reln, blkno, &vmbuffer);
+		visibilitymap_clear(reln, blkno, vmbuffer, VISIBILITYMAP_VALID_BITS);
 		ReleaseBuffer(vmbuffer);
 		FreeFakeRelcacheEntry(reln);
 	}
@@ -9491,10 +9484,10 @@ pg_tde_xlog_multi_insert(XLogReaderState *record)
  * Handles UPDATE and HOT_UPDATE
  */
 static void
-pg_tde_xlog_update(XLogReaderState *record, bool hot_update)
+heap_xlog_update(XLogReaderState *record, bool hot_update)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_update *xlrec = (xl_pg_tde_update *) XLogRecGetData(record);
+	xl_heap_update *xlrec = (xl_heap_update *) XLogRecGetData(record);
 	RelFileLocator rlocator;
 	BlockNumber oldblk;
 	BlockNumber newblk;
@@ -9514,7 +9507,7 @@ pg_tde_xlog_update(XLogReaderState *record, bool hot_update)
 		HeapTupleHeaderData hdr;
 		char		data[MaxHeapTupleSize];
 	}			tbuf;
-	xl_pg_tde_header xlhdr;
+	xl_heap_header xlhdr;
 	uint32		newlen;
 	Size		freespace = 0;
 	XLogRedoAction oldaction;
@@ -9544,8 +9537,8 @@ pg_tde_xlog_update(XLogReaderState *record, bool hot_update)
 		Relation	reln = CreateFakeRelcacheEntry(rlocator);
 		Buffer		vmbuffer = InvalidBuffer;
 
-		pg_tde_visibilitymap_pin(reln, oldblk, &vmbuffer);
-		pg_tde_visibilitymap_clear(reln, oldblk, vmbuffer, VISIBILITYMAP_VALID_BITS);
+		visibilitymap_pin(reln, oldblk, &vmbuffer);
+		visibilitymap_clear(reln, oldblk, vmbuffer, VISIBILITYMAP_VALID_BITS);
 		ReleaseBuffer(vmbuffer);
 		FreeFakeRelcacheEntry(reln);
 	}
@@ -9574,7 +9567,6 @@ pg_tde_xlog_update(XLogReaderState *record, bool hot_update)
 			elog(PANIC, "invalid lp");
 
 		htup = (HeapTupleHeader) PageGetItem(page, lp);
-		// TODO: Decryption/encryption here
 
 		oldtup.t_data = htup;
 		oldtup.t_len = ItemIdGetLength(lp);
@@ -9629,8 +9621,8 @@ pg_tde_xlog_update(XLogReaderState *record, bool hot_update)
 		Relation	reln = CreateFakeRelcacheEntry(rlocator);
 		Buffer		vmbuffer = InvalidBuffer;
 
-		pg_tde_visibilitymap_pin(reln, newblk, &vmbuffer);
-		pg_tde_visibilitymap_clear(reln, newblk, vmbuffer, VISIBILITYMAP_VALID_BITS);
+		visibilitymap_pin(reln, newblk, &vmbuffer);
+		visibilitymap_clear(reln, newblk, vmbuffer, VISIBILITYMAP_VALID_BITS);
 		ReleaseBuffer(vmbuffer);
 		FreeFakeRelcacheEntry(reln);
 	}
@@ -9764,10 +9756,10 @@ pg_tde_xlog_update(XLogReaderState *record, bool hot_update)
 }
 
 static void
-pg_tde_xlog_confirm(XLogReaderState *record)
+heap_xlog_confirm(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_confirm *xlrec = (xl_pg_tde_confirm *) XLogRecGetData(record);
+	xl_heap_confirm *xlrec = (xl_heap_confirm *) XLogRecGetData(record);
 	Buffer		buffer;
 	Page		page;
 	OffsetNumber offnum;
@@ -9786,7 +9778,6 @@ pg_tde_xlog_confirm(XLogReaderState *record)
 			elog(PANIC, "invalid lp");
 
 		htup = (HeapTupleHeader) PageGetItem(page, lp);
-		// TODO: Decryption/encryption here
 
 		/*
 		 * Confirm tuple as actually inserted
@@ -9801,10 +9792,10 @@ pg_tde_xlog_confirm(XLogReaderState *record)
 }
 
 static void
-pg_tde_xlog_lock(XLogReaderState *record)
+heap_xlog_lock(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_lock *xlrec = (xl_pg_tde_lock *) XLogRecGetData(record);
+	xl_heap_lock *xlrec = (xl_heap_lock *) XLogRecGetData(record);
 	Buffer		buffer;
 	Page		page;
 	OffsetNumber offnum;
@@ -9825,8 +9816,8 @@ pg_tde_xlog_lock(XLogReaderState *record)
 		XLogRecGetBlockTag(record, 0, &rlocator, NULL, &block);
 		reln = CreateFakeRelcacheEntry(rlocator);
 
-		pg_tde_visibilitymap_pin(reln, block, &vmbuffer);
-		pg_tde_visibilitymap_clear(reln, block, vmbuffer, VISIBILITYMAP_ALL_FROZEN);
+		visibilitymap_pin(reln, block, &vmbuffer);
+		visibilitymap_clear(reln, block, vmbuffer, VISIBILITYMAP_ALL_FROZEN);
 
 		ReleaseBuffer(vmbuffer);
 		FreeFakeRelcacheEntry(reln);
@@ -9844,7 +9835,6 @@ pg_tde_xlog_lock(XLogReaderState *record)
 			elog(PANIC, "invalid lp");
 
 		htup = (HeapTupleHeader) PageGetItem(page, lp);
-		// TODO: Decryption/encryption here
 
 		htup->t_infomask &= ~(HEAP_XMAX_BITS | HEAP_MOVED);
 		htup->t_infomask2 &= ~HEAP_KEYS_UPDATED;
@@ -9873,17 +9863,17 @@ pg_tde_xlog_lock(XLogReaderState *record)
 }
 
 static void
-pg_tde_xlog_lock_updated(XLogReaderState *record)
+heap_xlog_lock_updated(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_lock_updated *xlrec;
+	xl_heap_lock_updated *xlrec;
 	Buffer		buffer;
 	Page		page;
 	OffsetNumber offnum;
 	ItemId		lp = NULL;
 	HeapTupleHeader htup;
 
-	xlrec = (xl_pg_tde_lock_updated *) XLogRecGetData(record);
+	xlrec = (xl_heap_lock_updated *) XLogRecGetData(record);
 
 	/*
 	 * The visibility map may need to be fixed even if the heap page is
@@ -9899,8 +9889,8 @@ pg_tde_xlog_lock_updated(XLogReaderState *record)
 		XLogRecGetBlockTag(record, 0, &rlocator, NULL, &block);
 		reln = CreateFakeRelcacheEntry(rlocator);
 
-		pg_tde_visibilitymap_pin(reln, block, &vmbuffer);
-		pg_tde_visibilitymap_clear(reln, block, vmbuffer, VISIBILITYMAP_ALL_FROZEN);
+		visibilitymap_pin(reln, block, &vmbuffer);
+		visibilitymap_clear(reln, block, vmbuffer, VISIBILITYMAP_ALL_FROZEN);
 
 		ReleaseBuffer(vmbuffer);
 		FreeFakeRelcacheEntry(reln);
@@ -9918,7 +9908,6 @@ pg_tde_xlog_lock_updated(XLogReaderState *record)
 			elog(PANIC, "invalid lp");
 
 		htup = (HeapTupleHeader) PageGetItem(page, lp);
-		// TODO: Decryption/encryption here
 
 		htup->t_infomask &= ~(HEAP_XMAX_BITS | HEAP_MOVED);
 		htup->t_infomask2 &= ~HEAP_KEYS_UPDATED;
@@ -9934,10 +9923,10 @@ pg_tde_xlog_lock_updated(XLogReaderState *record)
 }
 
 static void
-pg_tde_xlog_inplace(XLogReaderState *record)
+heap_xlog_inplace(XLogReaderState *record)
 {
 	XLogRecPtr	lsn = record->EndRecPtr;
-	xl_pg_tde_inplace *xlrec = (xl_pg_tde_inplace *) XLogRecGetData(record);
+	xl_heap_inplace *xlrec = (xl_heap_inplace *) XLogRecGetData(record);
 	Buffer		buffer;
 	Page		page;
 	OffsetNumber offnum;
@@ -9960,7 +9949,6 @@ pg_tde_xlog_inplace(XLogReaderState *record)
 			elog(PANIC, "invalid lp");
 
 		htup = (HeapTupleHeader) PageGetItem(page, lp);
-		// TODO: Decryption/encryption here
 
 		oldlen = ItemIdGetLength(lp) - htup->t_hoff;
 		if (oldlen != newlen)
@@ -9976,7 +9964,7 @@ pg_tde_xlog_inplace(XLogReaderState *record)
 }
 
 void
-pg_tde_redo(XLogReaderState *record)
+heap_redo(XLogReaderState *record)
 {
 	uint8		info = XLogRecGetInfo(record) & ~XLR_INFO_MASK;
 
@@ -9988,13 +9976,13 @@ pg_tde_redo(XLogReaderState *record)
 	switch (info & XLOG_HEAP_OPMASK)
 	{
 		case XLOG_HEAP_INSERT:
-			pg_tde_xlog_insert(record);
+			heap_xlog_insert(record);
 			break;
 		case XLOG_HEAP_DELETE:
-			pg_tde_xlog_delete(record);
+			heap_xlog_delete(record);
 			break;
 		case XLOG_HEAP_UPDATE:
-			pg_tde_xlog_update(record, false);
+			heap_xlog_update(record, false);
 			break;
 		case XLOG_HEAP_TRUNCATE:
 
@@ -10005,46 +9993,46 @@ pg_tde_redo(XLogReaderState *record)
 			 */
 			break;
 		case XLOG_HEAP_HOT_UPDATE:
-			pg_tde_xlog_update(record, true);
+			heap_xlog_update(record, true);
 			break;
 		case XLOG_HEAP_CONFIRM:
-			pg_tde_xlog_confirm(record);
+			heap_xlog_confirm(record);
 			break;
 		case XLOG_HEAP_LOCK:
-			pg_tde_xlog_lock(record);
+			heap_xlog_lock(record);
 			break;
 		case XLOG_HEAP_INPLACE:
-			pg_tde_xlog_inplace(record);
+			heap_xlog_inplace(record);
 			break;
 		default:
-			elog(PANIC, "pg_tde_redo: unknown op code %u", info);
+			elog(PANIC, "heap_redo: unknown op code %u", info);
 	}
 }
 
 void
-pg_tde2_redo(XLogReaderState *record)
+heap2_redo(XLogReaderState *record)
 {
 	uint8		info = XLogRecGetInfo(record) & ~XLR_INFO_MASK;
 
 	switch (info & XLOG_HEAP_OPMASK)
 	{
 		case XLOG_HEAP2_PRUNE:
-			pg_tde_xlog_prune(record);
+			heap_xlog_prune(record);
 			break;
 		case XLOG_HEAP2_VACUUM:
-			pg_tde_xlog_vacuum(record);
+			heap_xlog_vacuum(record);
 			break;
 		case XLOG_HEAP2_FREEZE_PAGE:
-			pg_tde_xlog_freeze_page(record);
+			heap_xlog_freeze_page(record);
 			break;
 		case XLOG_HEAP2_VISIBLE:
-			pg_tde_xlog_visible(record);
+			heap_xlog_visible(record);
 			break;
 		case XLOG_HEAP2_MULTI_INSERT:
-			pg_tde_xlog_multi_insert(record);
+			heap_xlog_multi_insert(record);
 			break;
 		case XLOG_HEAP2_LOCK_UPDATED:
-			pg_tde_xlog_lock_updated(record);
+			heap_xlog_lock_updated(record);
 			break;
 		case XLOG_HEAP2_NEW_CID:
 
@@ -10054,7 +10042,7 @@ pg_tde2_redo(XLogReaderState *record)
 			 */
 			break;
 		case XLOG_HEAP2_REWRITE:
-			pg_tde_xlog_logical_rewrite(record);
+			heap_xlog_logical_rewrite(record);
 			break;
 		default:
 			elog(PANIC, "heap2_redo: unknown op code %u", info);
@@ -10065,7 +10053,7 @@ pg_tde2_redo(XLogReaderState *record)
  * Mask a heap page before performing consistency checks on it.
  */
 void
-pg_tde_mask(char *pagedata, BlockNumber blkno)
+heap_mask(char *pagedata, BlockNumber blkno)
 {
 	Page		page = (Page) pagedata;
 	OffsetNumber off;
@@ -10102,18 +10090,18 @@ pg_tde_mask(char *pagedata, BlockNumber blkno)
 
 			/*
 			 * During replay, we set Command Id to FirstCommandId. Hence, mask
-			 * it. See pg_tde_xlog_insert() for details.
+			 * it. See heap_xlog_insert() for details.
 			 */
 			page_htup->t_choice.t_heap.t_field3.t_cid = MASK_MARKER;
 
 			/*
-			 * For a speculative tuple, pg_tde_insert() does not set ctid in the
+			 * For a speculative tuple, heap_insert() does not set ctid in the
 			 * caller-passed heap tuple itself, leaving the ctid field to
 			 * contain a speculative token value - a per-backend monotonically
 			 * increasing identifier. Besides, it does not WAL-log ctid under
 			 * any circumstances.
 			 *
-			 * During redo, pg_tde_xlog_insert() sets t_ctid to current block
+			 * During redo, heap_xlog_insert() sets t_ctid to current block
 			 * number and self offset number. It doesn't care about any
 			 * speculative insertions on the primary. Hence, we set t_ctid to
 			 * current block number and self offset number to ignore any

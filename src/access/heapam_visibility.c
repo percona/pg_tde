@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * pg_tdeam_visibility.c
+ * heapam_visibility.c
  *	  Tuple visibility rules for tuples stored in heap.
  *
  * NOTE: all the HeapTupleSatisfies routines will update the tuple's
@@ -59,17 +59,14 @@
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
- *	  src/backend/access/heap/pg_tdeam_visibility.c
+ *	  src/backend/access/heap/heapam_visibility.c
  *
  *-------------------------------------------------------------------------
  */
 
-#include "pg_tde_defines.h"
-
 #include "postgres.h"
 
-#include "access/pg_tdeam.h"
-
+#include "access/heapam.h"
 #include "access/htup_details.h"
 #include "access/multixact.h"
 #include "access/subtrans.h"
@@ -99,7 +96,7 @@
  * future re-examination of the tuple.
  *
  * We can always set hint bits when marking a transaction aborted.  (Some
- * code in pg_tdeam.c relies on that!)
+ * code in heapam.c relies on that!)
  *
  * Also, if we are cleaning up HEAP_MOVED_IN or HEAP_MOVED_OFF entries, then
  * we can always set the hint bits, since pre-9.0 VACUUM FULL always used

@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * pg_tde_visibilitymap.c
+ * visibilitymap.c
  *	  bitmap for tracking visibility of heap tuples
  *
  * Portions Copyright (c) 1996-2023, PostgreSQL Global Development Group
@@ -8,16 +8,16 @@
  *
  *
  * IDENTIFICATION
- *	  src/backend/access/heap/pg_tde_visibilitymap.c
+ *	  src/backend/access/heap/visibilitymap.c
  *
  * INTERFACE ROUTINES
- *		pg_tde_visibilitymap_clear  - clear bits for one page in the visibility map
- *		pg_tde_visibilitymap_pin	 - pin a map page for setting a bit
- *		pg_tde_visibilitymap_pin_ok - check whether correct map page is already pinned
- *		pg_tde_visibilitymap_set	 - set a bit in a previously pinned page
- *		pg_tde_visibilitymap_get_status - get status of bits
- *		pg_tde_visibilitymap_count  - count number of bits set in visibility map
- *		pg_tde_visibilitymap_prepare_truncate -
+ *		visibilitymap_clear  - clear bits for one page in the visibility map
+ *		visibilitymap_pin	 - pin a map page for setting a bit
+ *		visibilitymap_pin_ok - check whether correct map page is already pinned
+ *		visibilitymap_set	 - set a bit in a previously pinned page
+ *		visibilitymap_get_status - get status of bits
+ *		visibilitymap_count  - count number of bits set in visibility map
+ *		visibilitymap_prepare_truncate -
  *			prepare for truncation of the visibility map
  *
  * NOTES
@@ -84,13 +84,10 @@
  *
  *-------------------------------------------------------------------------
  */
-#include "pg_tde_defines.h"
-
 #include "postgres.h"
 
-#include "access/pg_tdeam_xlog.h"
-#include "access/pg_tde_visibilitymap.h"
-
+#include "access/heapam_xlog.h"
+#include "access/visibilitymap.h"
 #include "access/xloginsert.h"
 #include "access/xlogutils.h"
 #include "miscadmin.h"
@@ -133,14 +130,14 @@ static Buffer vm_extend(Relation rel, BlockNumber vm_nblocks);
 
 
 /*
- *	pg_tde_visibilitymap_clear - clear specified bits for one page in visibility map
+ *	visibilitymap_clear - clear specified bits for one page in visibility map
  *
  * You must pass a buffer containing the correct map page to this function.
- * Call pg_tde_visibilitymap_pin first to pin the right one. This function doesn't do
+ * Call visibilitymap_pin first to pin the right one. This function doesn't do
  * any I/O.  Returns true if any bits have been cleared and false otherwise.
  */
 bool
-pg_tde_visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint8 flags)
+visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint8 flags)
 {
 	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk);
 	int			mapByte = HEAPBLK_TO_MAPBYTE(heapBlk);
@@ -158,7 +155,7 @@ pg_tde_visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint
 #endif
 
 	if (!BufferIsValid(vmbuf) || BufferGetBlockNumber(vmbuf) != mapBlock)
-		elog(ERROR, "wrong buffer passed to pg_tde_visibilitymap_clear");
+		elog(ERROR, "wrong buffer passed to visibilitymap_clear");
 
 	LockBuffer(vmbuf, BUFFER_LOCK_EXCLUSIVE);
 	map = PageGetContents(BufferGetPage(vmbuf));
@@ -177,23 +174,23 @@ pg_tde_visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint
 }
 
 /*
- *	pg_tde_visibilitymap_pin - pin a map page for setting a bit
+ *	visibilitymap_pin - pin a map page for setting a bit
  *
  * Setting a bit in the visibility map is a two-phase operation. First, call
- * pg_tde_visibilitymap_pin, to pin the visibility map page containing the bit for
+ * visibilitymap_pin, to pin the visibility map page containing the bit for
  * the heap page. Because that can require I/O to read the map page, you
  * shouldn't hold a lock on the heap page while doing that. Then, call
- * pg_tde_visibilitymap_set to actually set the bit.
+ * visibilitymap_set to actually set the bit.
  *
  * On entry, *vmbuf should be InvalidBuffer or a valid buffer returned by
- * an earlier call to pg_tde_visibilitymap_pin or pg_tde_visibilitymap_get_status on the same
+ * an earlier call to visibilitymap_pin or visibilitymap_get_status on the same
  * relation. On return, *vmbuf is a valid buffer with the map page containing
  * the bit for heapBlk.
  *
  * If the page doesn't exist in the map file yet, it is extended.
  */
 void
-pg_tde_visibilitymap_pin(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
+visibilitymap_pin(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 {
 	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk);
 
@@ -209,15 +206,15 @@ pg_tde_visibilitymap_pin(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 }
 
 /*
- *	pg_tde_visibilitymap_pin_ok - do we already have the correct page pinned?
+ *	visibilitymap_pin_ok - do we already have the correct page pinned?
  *
  * On entry, vmbuf should be InvalidBuffer or a valid buffer returned by
- * an earlier call to pg_tde_visibilitymap_pin or pg_tde_visibilitymap_get_status on the same
+ * an earlier call to visibilitymap_pin or visibilitymap_get_status on the same
  * relation.  The return value indicates whether the buffer covers the
  * given heapBlk.
  */
 bool
-pg_tde_visibilitymap_pin_ok(BlockNumber heapBlk, Buffer vmbuf)
+visibilitymap_pin_ok(BlockNumber heapBlk, Buffer vmbuf)
 {
 	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk);
 
@@ -225,7 +222,7 @@ pg_tde_visibilitymap_pin_ok(BlockNumber heapBlk, Buffer vmbuf)
 }
 
 /*
- *	pg_tde_visibilitymap_set - set bit(s) on a previously pinned page
+ *	visibilitymap_set - set bit(s) on a previously pinned page
  *
  * recptr is the LSN of the XLOG record we're replaying, if we're in recovery,
  * or InvalidXLogRecPtr in normal running.  The VM page LSN is advanced to the
@@ -242,11 +239,11 @@ pg_tde_visibilitymap_pin_ok(BlockNumber heapBlk, Buffer vmbuf)
  * the heap buffer to the WAL chain to protect it from being torn.
  *
  * You must pass a buffer containing the correct map page to this function.
- * Call pg_tde_visibilitymap_pin first to pin the right one. This function doesn't do
+ * Call visibilitymap_pin first to pin the right one. This function doesn't do
  * any I/O.
  */
 void
-pg_tde_visibilitymap_set(Relation rel, BlockNumber heapBlk, Buffer heapBuf,
+visibilitymap_set(Relation rel, BlockNumber heapBlk, Buffer heapBuf,
 				  XLogRecPtr recptr, Buffer vmBuf, TransactionId cutoff_xid,
 				  uint8 flags)
 {
@@ -269,11 +266,11 @@ pg_tde_visibilitymap_set(Relation rel, BlockNumber heapBlk, Buffer heapBuf,
 
 	/* Check that we have the right heap page pinned, if present */
 	if (BufferIsValid(heapBuf) && BufferGetBlockNumber(heapBuf) != heapBlk)
-		elog(ERROR, "wrong heap buffer passed to pg_tde_visibilitymap_set");
+		elog(ERROR, "wrong heap buffer passed to visibilitymap_set");
 
 	/* Check that we have the right VM page pinned */
 	if (!BufferIsValid(vmBuf) || BufferGetBlockNumber(vmBuf) != mapBlock)
-		elog(ERROR, "wrong VM buffer passed to pg_tde_visibilitymap_set");
+		elog(ERROR, "wrong VM buffer passed to visibilitymap_set");
 
 	page = BufferGetPage(vmBuf);
 	map = (uint8 *) PageGetContents(page);
@@ -291,7 +288,7 @@ pg_tde_visibilitymap_set(Relation rel, BlockNumber heapBlk, Buffer heapBuf,
 			if (XLogRecPtrIsInvalid(recptr))
 			{
 				Assert(!InRecovery);
-				recptr = log_pg_tde_visible(rel, heapBuf, vmBuf, cutoff_xid, flags);
+				recptr = log_heap_visible(rel, heapBuf, vmBuf, cutoff_xid, flags);
 
 				/*
 				 * If data checksums are enabled (or wal_log_hints=on), we
@@ -319,13 +316,13 @@ pg_tde_visibilitymap_set(Relation rel, BlockNumber heapBlk, Buffer heapBuf,
 }
 
 /*
- *	pg_tde_visibilitymap_get_status - get status of bits
+ *	visibilitymap_get_status - get status of bits
  *
  * Are all tuples on heapBlk visible to all or are marked frozen, according
  * to the visibility map?
  *
  * On entry, *vmbuf should be InvalidBuffer or a valid buffer returned by an
- * earlier call to pg_tde_visibilitymap_pin or pg_tde_visibilitymap_get_status on the same
+ * earlier call to visibilitymap_pin or visibilitymap_get_status on the same
  * relation. On return, *vmbuf is a valid buffer with the map page containing
  * the bit for heapBlk, or InvalidBuffer. The caller is responsible for
  * releasing *vmbuf after it's done testing and setting bits.
@@ -338,7 +335,7 @@ pg_tde_visibilitymap_set(Relation rel, BlockNumber heapBlk, Buffer heapBuf,
  * all concurrency issues!
  */
 uint8
-pg_tde_visibilitymap_get_status(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
+visibilitymap_get_status(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 {
 	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk);
 	uint32		mapByte = HEAPBLK_TO_MAPBYTE(heapBlk);
@@ -379,14 +376,14 @@ pg_tde_visibilitymap_get_status(Relation rel, BlockNumber heapBlk, Buffer *vmbuf
 }
 
 /*
- *	pg_tde_visibilitymap_count  - count number of bits set in visibility map
+ *	visibilitymap_count  - count number of bits set in visibility map
  *
  * Note: we ignore the possibility of race conditions when the table is being
  * extended concurrently with the call.  New pages added to the table aren't
  * going to be marked all-visible or all-frozen, so they won't affect the result.
  */
 void
-pg_tde_visibilitymap_count(Relation rel, BlockNumber *all_visible, BlockNumber *all_frozen)
+visibilitymap_count(Relation rel, BlockNumber *all_visible, BlockNumber *all_frozen)
 {
 	BlockNumber mapBlock;
 	BlockNumber nvisible = 0;
@@ -442,7 +439,7 @@ pg_tde_visibilitymap_count(Relation rel, BlockNumber *all_visible, BlockNumber *
 }
 
 /*
- *	pg_tde_visibilitymap_prepare_truncate -
+ *	visibilitymap_prepare_truncate -
  *			prepare for truncation of the visibility map
  *
  * nheapblocks is the new size of the heap.
@@ -453,7 +450,7 @@ pg_tde_visibilitymap_count(Relation rel, BlockNumber *all_visible, BlockNumber *
  * to truncate the visibility map pages.
  */
 BlockNumber
-pg_tde_visibilitymap_prepare_truncate(Relation rel, BlockNumber nheapblocks)
+visibilitymap_prepare_truncate(Relation rel, BlockNumber nheapblocks)
 {
 	BlockNumber newnblocks;
 
@@ -631,7 +628,7 @@ vm_extend(Relation rel, BlockNumber vm_nblocks)
 {
 	Buffer		buf;
 
-	buf = ExtendBufferedRelTo(EB_REL(rel), VISIBILITYMAP_FORKNUM, NULL,
+	buf = ExtendBufferedRelTo(BMR_REL(rel), VISIBILITYMAP_FORKNUM, NULL,
 							  EB_CREATE_FORK_IF_NEEDED |
 							  EB_CLEAR_SIZE_CACHE,
 							  vm_nblocks,

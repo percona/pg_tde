@@ -9,16 +9,16 @@ TAP_TESTS = 0
 
 OBJS = src/encryption/enc_tuple.o \
 src/encryption/enc_aes.o \
-src/access/pg_tde_io.o \
-src/access/pg_tdeam_visibility.o \
+src/access/heapam_visibility.o \
+src/access/heapam_handler.o \
+src/access/heapam.o \
+src/access/heaptoast.o \
+src/access/hio.o \
+src/access/pruneheap.o \
+src/access/rewriteheap.o \
+src/access/vacuumlazy.o \
+src/access/visibilitymap.o \
 src/access/pg_tde_tdemap.o \
-src/access/pg_tdeam.o \
-src/access/pg_tdetoast.o \
-src/access/pg_tde_prune.o \
-src/access/pg_tde_vacuumlazy.o \
-src/access/pg_tde_visibilitymap.o \
-src/access/pg_tde_rewrite.o \
-src/access/pg_tdeam_handler.o \
 src/transam/pg_tde_xact_handler.o \
 src/keyring/keyring_config.o \
 src/keyring/keyring_file.o \
