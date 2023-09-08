@@ -3,7 +3,7 @@
 This is based on the heap code as of the following commit:
 
 ```
-commit 93dcdfa88f5f9befb781558920e02d3ee86dc629
-Author: Tom Lane <tgl@sss.pgh.pa.us>
-Date:   Mon Jul 10 12:14:34 2023 -0400
+commit 9ddecd40664f7523b18f760aea0e04936e8a2302
+Author: Peter Eisentraut <peter@eisentraut.org>
+Date:   Tue Sep 5 11:36:55 2023 +0200
 ```
