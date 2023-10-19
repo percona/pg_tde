@@ -173,7 +173,8 @@ PGTdeExecStoreBufferHeapTuple(Relation rel, HeapTuple tuple, TupleTableSlot *slo
 		MemoryContextSwitchTo(oldContext);
 
 		PG_TDE_DECRYPT_TUPLE_EX(BufferGetBlockNumber(buffer), pageHeader, tuple, decrypted_tuple, keys, "ExecStoreBuffer");
-		tuple_ptr = &decrypted_tuple;
+		tuple->t_data = decrypted_tuple->t_data;
+//		tuple_ptr = &decrypted_tuple;
 
     }
 	return  ExecStoreBufferHeapTuple(*tuple_ptr, slot, buffer);
@@ -197,7 +198,8 @@ PGTdeExecStorePinnedBufferHeapTuple(Relation rel, HeapTuple tuple, TupleTableSlo
 		MemoryContextSwitchTo(oldContext);
 
 		PG_TDE_DECRYPT_TUPLE_EX(BufferGetBlockNumber(buffer), pageHeader, tuple, decrypted_tuple, keys, "ExecStoreBuffer");
-		tuple_ptr = &decrypted_tuple;
+		tuple->t_data = decrypted_tuple->t_data;
+//		tuple_ptr = &decrypted_tuple;
     }
 	return  ExecStorePinnedBufferHeapTuple(*tuple_ptr, slot, buffer);
 }
