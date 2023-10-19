@@ -11,10 +11,11 @@
 
 #define AES_BLOCK_SIZE 16
 
-const int enc_log_elevel = LOG;
-#if ENCRYPTION_DEBUG
-    /* While in active development, We are emmiting a LOG message for debug data when ENCRYPTION_DEBUG is enabled.*/
-    enc_log_elevel = LOG;
+#ifdef ENCRYPTION_DEBUG
+	/* While in active development, We are emmiting a LOG message for debug data when ENCRYPTION_DEBUG is enabled.*/
+	const int enc_log_elevel = LOG;
+#else
+	const int enc_log_elevel = DEBUG2;
 #endif
 
 
