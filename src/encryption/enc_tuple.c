@@ -168,7 +168,7 @@ PGTdeExecStoreBufferHeapTuple(Relation rel, HeapTuple tuple, TupleTableSlot *slo
         RelKeysData *keys = GetRelationKeys(rel->rd_locator);
         pageHeader = BufferGetPage(buffer);
 
-		oldContext = MemoryContextSwitchTo(slot->tts_mcxt);
+		oldContext = MemoryContextSwitchTo(CurTransactionContext);
 		decrypted_tuple = heap_copytuple(tuple);
 		MemoryContextSwitchTo(oldContext);
 
@@ -192,7 +192,7 @@ PGTdeExecStorePinnedBufferHeapTuple(Relation rel, HeapTuple tuple, TupleTableSlo
         RelKeysData *keys = GetRelationKeys(rel->rd_locator);
         pageHeader = BufferGetPage(buffer);
 
-		oldContext = MemoryContextSwitchTo(slot->tts_mcxt);
+		oldContext = MemoryContextSwitchTo(CurTransactionContext);
 		decrypted_tuple = heap_copytuple(tuple);
 		MemoryContextSwitchTo(oldContext);
 
