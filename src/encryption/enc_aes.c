@@ -113,10 +113,7 @@ void Aes128EncryptedZeroBlocks(const unsigned char* key, uint64_t blockNumber1, 
 	unsigned char iv[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 	unsigned dataLen = (blockNumber2 - blockNumber1 + 1) * 16;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvla"
-	unsigned char data[dataLen];
-#pragma GCC diagnostic pop
+	unsigned char data[MAX_AES_ENC_KEY_SIZE];
 	int outLen;
 
 	assert(blockNumber2 >= blockNumber1);
@@ -147,10 +144,7 @@ void Aes128EncryptedZeroBlocks2(void* ctxPtr, const unsigned char* key, uint64_t
 	unsigned char iv[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 	unsigned dataLen = (blockNumber2 - blockNumber1 + 1) * 16;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvla"
-	unsigned char data[dataLen];
-#pragma GCC diagnostic pop
+	unsigned char data[MAX_AES_ENC_KEY_SIZE];
 	int outLen;
 
 	assert(blockNumber2 >= blockNumber1);
