@@ -9,13 +9,6 @@
 #include "storage/bufmgr.h"
 #include "keyring/keyring_api.h"
 
-#ifdef ENCRYPTION_DEBUG
-	/* While in active development, We are emmiting a LOG message for debug data when ENCRYPTION_DEBUG is enabled.*/
-	const int enc_log_elevel = LOG;
-#else
-	const int enc_log_elevel = DEBUG2;
-#endif
-
 
 
 /* ================================================================
@@ -44,9 +37,11 @@ pg_tde_crypt(uint64 start_offset, const char* data, uint32 data_len, char* out, 
 		uint64 batch_end_block = Min(batch_start_block + NUM_AES_BLOCKS_IN_BATCH, aes_end_block);
 
 	    Aes128EncryptedZeroBlocks2(&(keys->internal_key[0].ctx), keys->internal_key[0].key, batch_start_block, batch_end_block, encKey);
-		ereport(enc_log_elevel,
+#ifdef ENCRYPTION_DEBUG
+		ereport(LOG,
 			(errmsg("%s: Batch-No:%d Start offset: %lu Data_Len: %u, batch_start_block: %lu, batch_end_block: %lu",
 				context?context:"", batch_no, start_offset, data_len, batch_start_block, batch_end_block)));
+#endif
 
 		for(uint32 i = 0; i < DATA_BYTES_PER_AES_BATCH; ++i)
 		{
@@ -129,11 +124,12 @@ pg_tde_crypt_tuple(BlockNumber bn, Page page, HeapTuple tuple, HeapTuple out_tup
     char *tup_data = (char*)tuple->t_data + tuple->t_data->t_hoff;
     char *out_data = (char*)out_tuple->t_data + out_tuple->t_data->t_hoff;
 
-    ereport(enc_log_elevel,
+#ifdef ENCRYPTION_DEBUG
+    ereport(LOG,
         (errmsg("%s: table Oid: %u block no: %u data size: %u, tuple offset in file: %lu",
                 context?context:"", tuple->t_tableOid, bn,
                 data_len, tuple_offset_in_file)));
-
+#endif
     pg_tde_crypt(tuple_offset_in_file, tup_data, data_len, out_data, keys, context);
 }
 
