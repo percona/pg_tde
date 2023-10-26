@@ -1,3 +1,4 @@
+#define FRONTEND
 
 #include "encryption/enc_aes.h"
 
