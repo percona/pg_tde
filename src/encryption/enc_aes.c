@@ -1,5 +1,11 @@
 
+#ifndef FRONTEND
 #include "postgres.h"
+#else
+#include <assert.h>
+#define Assert(p) assert(p)
+#endif
+
 #include "encryption/enc_aes.h"
 
 #include <stdio.h>
@@ -59,7 +65,8 @@ void AesInit(void)
 }
 
 // TODO: a few things could be optimized in this. It's good enough for a prototype.
-static void AesRun2(EVP_CIPHER_CTX** ctxPtr, int enc, const unsigned char* key, const unsigned char* iv, const unsigned char* in, int in_len, unsigned char* out, int* out_len)
+static void
+AesRun2(EVP_CIPHER_CTX** ctxPtr, int enc, const unsigned char* key, const unsigned char* iv, const unsigned char* in, int in_len, unsigned char* out, int* out_len)
 {
 	if (*ctxPtr == NULL)
 	{
@@ -68,14 +75,27 @@ static void AesRun2(EVP_CIPHER_CTX** ctxPtr, int enc, const unsigned char* key, 
 		
 		EVP_CIPHER_CTX_set_padding(*ctxPtr, 0);
 
-		if(EVP_CipherInit_ex(*ctxPtr, cipher2, NULL, key, iv, enc) == 0) {
-			fprintf(stderr, "ERROR: EVP_CipherInit_ex failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+		if(EVP_CipherInit_ex(*ctxPtr, cipher2, NULL, key, iv, enc) == 0)
+		{
+			#ifdef FRONTEND
+				fprintf(stderr, "ERROR: EVP_CipherInit_ex failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+			#else
+				ereport(ERROR,
+					(errmsg("EVP_CipherInit_ex failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL))));
+			#endif
+
 			return;
 		}
 	}
 
-	if(EVP_CipherUpdate(*ctxPtr, out, out_len, in, in_len) == 0) {
-		fprintf(stderr, "ERROR: EVP_CipherUpdate failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+	if(EVP_CipherUpdate(*ctxPtr, out, out_len, in, in_len) == 0)
+	{
+		#ifdef FRONTEND
+			fprintf(stderr, "ERROR: EVP_CipherUpdate failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+		#else
+			ereport(ERROR,
+				(errmsg("EVP_CipherUpdate failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL))));
+		#endif
 		return;
 	}
 }
@@ -88,18 +108,36 @@ static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, c
 
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
 
-	if(EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, enc) == 0) {
-		fprintf(stderr, "ERROR: EVP_CipherInit_ex failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+	if(EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, enc) == 0)
+	{
+		#ifdef FRONTEND
+			fprintf(stderr, "ERROR: EVP_CipherInit_ex failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+		#else
+			ereport(ERROR,
+				(errmsg("EVP_CipherInit_ex failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL))));
+		#endif
 		goto cleanup;
 	}
 
-	if(EVP_CipherUpdate(ctx, out, out_len, in, in_len) == 0) {
-		fprintf(stderr, "ERROR: EVP_CipherUpdate failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+	if(EVP_CipherUpdate(ctx, out, out_len, in, in_len) == 0)
+	{
+		#ifdef FRONTEND
+			fprintf(stderr, "ERROR: EVP_CipherUpdate failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+		#else
+			ereport(ERROR,
+				(errmsg("EVP_CipherUpdate failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL))));
+		#endif
 		goto cleanup;
 	}
 
-	if(EVP_CipherFinal_ex(ctx, out, out_len) == 0) {
-		fprintf(stderr, "ERROR: EVP_CipherFinal_ex failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+	if(EVP_CipherFinal_ex(ctx, out, out_len) == 0)
+	{
+		#ifdef FRONTEND
+			fprintf(stderr, "ERROR: EVP_CipherFinal_ex failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
+		#else
+			ereport(ERROR,
+				(errmsg("EVP_CipherFinal_ex failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL))));
+		#endif
 		goto cleanup;
 	}
 

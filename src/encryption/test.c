@@ -1,5 +1,3 @@
-#define FRONTEND
-
 #include "encryption/enc_aes.h"
 
 #include <stdio.h>
