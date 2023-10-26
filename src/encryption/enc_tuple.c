@@ -26,14 +26,12 @@ pg_tde_crypt(uint64 start_offset, const char* data, uint32 data_len, char* out, 
     uint64 aes_start_block = start_offset / AES_BLOCK_SIZE;
     uint64 aes_end_block = (start_offset + data_len + (AES_BLOCK_SIZE -1)) / AES_BLOCK_SIZE;
     uint64 aes_block_no = start_offset % AES_BLOCK_SIZE;
-	unsigned char encKey[MAX_AES_ENC_KEY_SIZE];
-	uint64 block_no;
+	unsigned char encKey[MAX_AES_ENC_BATCH_KEY_SIZE];
 	uint32 batch_no = 0;
 
 	/* do max NUM_AES_BLOCKS_IN_BATCH blocks at a time */
-	for (block_no = aes_start_block; block_no < aes_end_block; block_no += NUM_AES_BLOCKS_IN_BATCH)
+	for (uint64 batch_start_block = aes_start_block; batch_start_block < aes_end_block; batch_start_block += NUM_AES_BLOCKS_IN_BATCH)
 	{
-		uint64 batch_start_block = block_no;
 		uint64 batch_end_block = Min(batch_start_block + NUM_AES_BLOCKS_IN_BATCH, aes_end_block);
 
 	    Aes128EncryptedZeroBlocks2(&(keys->internal_key[0].ctx), keys->internal_key[0].key, batch_start_block, batch_end_block, encKey);
@@ -50,9 +48,6 @@ pg_tde_crypt(uint64 start_offset, const char* data, uint32 data_len, char* out, 
 			if (data_index >= data_len)
 				break;
 
-			#if ENCRYPTION_DEBUG > 1
-	        fprintf(stderr, " >> 0x%02hhX 0x%02hhX\n", v & 0xFF, (v ^ encKey[aes_block_no + i]) & 0xFF);
-			#endif
 	        out[data_index] = data[data_index] ^ encKey[enc_key_index];
 		}
 		batch_no++;
@@ -70,12 +65,12 @@ pg_tde_move_encrypted_data(uint64 read_start_offset, const char* read_data,
     uint64 read_aes_start_block = read_start_offset / AES_BLOCK_SIZE;
     uint64 read_aes_end_block = (read_start_offset + data_len + (AES_BLOCK_SIZE -1)) / AES_BLOCK_SIZE;
     uint64 read_aes_block_no = read_start_offset % AES_BLOCK_SIZE;
-	unsigned char read_encKey[MAX_AES_ENC_KEY_SIZE];
+	unsigned char read_encKey[MAX_AES_ENC_BATCH_KEY_SIZE];
 
     uint64 write_aes_start_block = write_start_offset / AES_BLOCK_SIZE;
     uint64 write_aes_end_block = (write_start_offset + data_len + (AES_BLOCK_SIZE -1)) / AES_BLOCK_SIZE;
     uint64 write_aes_block_no = write_start_offset % AES_BLOCK_SIZE;
-	unsigned char write_encKey[MAX_AES_ENC_KEY_SIZE];
+	unsigned char write_encKey[MAX_AES_ENC_BATCH_KEY_SIZE];
 
 	uint64 read_batch_start_block, write_batch_start_block;
 	uint32 batch_no = 0;
