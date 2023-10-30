@@ -7,7 +7,7 @@ PG_REPLICATION=${PG_REPLICATION:-"false"}
 REPL_PASS=${REPL_PASS:-"replpass"}
 
 if [ !PG_REPLICATION = "true "] ; then
-    exit(0)
+    exit 0
 fi
 
 if [ $PG_PRIMARY == "true" ] ; then
