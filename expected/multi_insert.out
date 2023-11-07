@@ -47,9 +47,9 @@ SELECT * FROM albums where album_id > 5;
 --         7 |         7 | Pure Ella  | 1994-02-15
 -- (2 rows)
 -- 
+DROP TABLE albums;
 -- multi_insert2
 -- more data to take multiple pages
-DROP TABLE albums;
 CREATE TABLE Towns (
    id SERIAL UNIQUE NOT NULL,
    code VARCHAR(10) NOT NULL,
