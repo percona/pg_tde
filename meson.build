@@ -70,7 +70,7 @@ tests += {
       'non_sorted_off_compact',
       'update_compare_indexes',
       'pgtde_is_encrypted',
-      'xlog_fork_multi_insert',
+      'multi_insert',
     ],
     'regress_args': ['--temp-config', files('postgres-tde-ext.conf')],
     'runningcheck': false,

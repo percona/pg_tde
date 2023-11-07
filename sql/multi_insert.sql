@@ -2,7 +2,6 @@
 -- 
 CREATE EXTENSION pg_tde;
 
-DROP table IF EXISTS albums;
 CREATE TABLE albums (
     album_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     artist_id INTEGER,
@@ -22,7 +21,7 @@ album_id,artist_id,title,released
 \.
 
 SELECT * FROM albums;
-select *from albums where album_id > 5;
+SELECT * FROM albums where album_id > 5;
 -- On replica:
 -- SELECT * FROM albums;
 --  album_id | artist_id |       title        |  released
@@ -36,17 +35,17 @@ select *from albums where album_id > 5;
 --         7 |         7 | Pure Ella          | 1994-02-15
 -- (7 rows)
 -- 
---  select *from albums where album_id > 5;
+--  SELECT * FROM albums where album_id > 5;
 --  album_id | artist_id |   title    |  released
 -- ----------+-----------+------------+------------
 --         6 |         6 | It's Alive | 2013-10-15
 --         7 |         7 | Pure Ella  | 1994-02-15
 -- (2 rows)
 -- 
+DROP TABLE albums;
 
 -- multi_insert2
 -- more data to take multiple pages
-DROP table IF EXISTS Towns;
 CREATE TABLE Towns (
    id SERIAL UNIQUE NOT NULL,
    code VARCHAR(10) NOT NULL,
@@ -1372,8 +1371,8 @@ COPY towns (id, code, article, name, department) FROM stdin;
 1313	078	some_text	Chouvigny	03
 \.
 
-select count(*) from towns;
-select * from towns where id in (13, 666);
+SELECT count(*) FROM towns;
+SELECT * FROM towns where id in (13, 666);
 -- ON REPLICA
 -- 
 -- select count(*) from towns;
@@ -1389,3 +1388,6 @@ select * from towns where id in (13, 666);
 --  666 | 252  | some_text | Cuissy-et-Geny | 02
 -- (2 rows)
 -- 
+
+DROP TABLE towns;
+DROP EXTENSION pg_tde;

@@ -1,8 +1,6 @@
 -- trigger multi_insert path
 -- 
 CREATE EXTENSION pg_tde;
-DROP table IF EXISTS albums;
-NOTICE:  table "albums" does not exist, skipping
 CREATE TABLE albums (
     album_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     artist_id INTEGER,
@@ -22,7 +20,7 @@ SELECT * FROM albums;
         7 |         7 | Pure Ella          | 02-15-1994
 (7 rows)
 
-select *from albums where album_id > 5;
+SELECT * FROM albums where album_id > 5;
  album_id | artist_id |   title    |  released  
 ----------+-----------+------------+------------
         6 |         6 | It's Alive | 10-15-2013
@@ -42,7 +40,7 @@ select *from albums where album_id > 5;
 --         7 |         7 | Pure Ella          | 1994-02-15
 -- (7 rows)
 -- 
---  select *from albums where album_id > 5;
+--  SELECT * FROM albums where album_id > 5;
 --  album_id | artist_id |   title    |  released
 -- ----------+-----------+------------+------------
 --         6 |         6 | It's Alive | 2013-10-15
@@ -51,8 +49,7 @@ select *from albums where album_id > 5;
 -- 
 -- multi_insert2
 -- more data to take multiple pages
-DROP table IF EXISTS Towns;
-NOTICE:  table "towns" does not exist, skipping
+DROP TABLE albums;
 CREATE TABLE Towns (
    id SERIAL UNIQUE NOT NULL,
    code VARCHAR(10) NOT NULL,
@@ -62,13 +59,13 @@ CREATE TABLE Towns (
    UNIQUE (code, department)
 )  USING pg_tde;
 COPY towns (id, code, article, name, department) FROM stdin;
-select count(*) from towns;
+SELECT count(*) FROM towns;
  count 
 -------
   1313
 (1 row)
 
-select * from towns where id in (13, 666);
+SELECT * FROM towns where id in (13, 666);
  id  | code |  article  |      name      | department 
 -----+------+-----------+----------------+------------
   13 | 014  | some_text | Arbent         | 01
@@ -90,3 +87,5 @@ select * from towns where id in (13, 666);
 --  666 | 252  | some_text | Cuissy-et-Geny | 02
 -- (2 rows)
 -- 
+DROP TABLE towns;
+DROP EXTENSION pg_tde;
