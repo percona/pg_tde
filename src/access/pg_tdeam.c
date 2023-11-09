@@ -3115,11 +3115,8 @@ pg_tde_update(Relation relation, ItemPointer otid, HeapTuple newtup,
 	oldtup.t_self = *otid;
 	/* decrypt the old tuple */
 	{
-		MemoryContext oldContext;
 		char* new_ptr = NULL;
-		oldContext = MemoryContextSwitchTo(CurTransactionContext);
-		new_ptr = palloc(oldtup.t_len);
-		MemoryContextSwitchTo(oldContext);
+		new_ptr = MemoryContextAlloc(CurTransactionContext, oldtup.t_len);
 		memcpy(new_ptr, oldtup.t_data, oldtup.t_len);
 		// only neccessary field
 		oldtup2.t_data = (HeapTupleHeader)new_ptr;
