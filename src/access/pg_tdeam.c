@@ -3012,6 +3012,7 @@ pg_tde_update(Relation relation, ItemPointer otid, HeapTuple newtup,
 	ItemId		lp;
 	HeapTupleData oldtup;
 	HeapTupleData oldtup2;
+	void*		oldtupptr;
 	HeapTuple	heaptup;
 	HeapTuple	old_key_tuple = NULL;
 	bool		old_key_copied = false;
@@ -3111,6 +3112,7 @@ pg_tde_update(Relation relation, ItemPointer otid, HeapTuple newtup,
 	 */
 	oldtup.t_tableOid = RelationGetRelid(relation);
 	oldtup.t_data = (HeapTupleHeader) PageGetItem(page, lp);
+	oldtupptr = oldtup.t_data;
 	oldtup.t_len = ItemIdGetLength(lp);
 	oldtup.t_self = *otid;
 	/* decrypt the old tuple */
@@ -3185,6 +3187,8 @@ pg_tde_update(Relation relation, ItemPointer otid, HeapTuple newtup,
 	 * with the new tuple's location, so there's great risk of confusion if we
 	 * use otid anymore.
 	 */
+
+	oldtup.t_data = oldtupptr;
 
 l2:
 	checked_lockers = false;
