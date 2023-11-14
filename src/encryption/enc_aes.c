@@ -189,12 +189,12 @@ void Aes128EncryptedZeroBlocks2(void* ctxPtr, const unsigned char* key, uint64_t
 {
 	unsigned char iv[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-	unsigned dataLen = (blockNumber2 - blockNumber1 + 1) * 16;
+	unsigned dataLen = (blockNumber2 - blockNumber1) * 16;
 	unsigned char data[MAX_AES_ENC_BATCH_KEY_SIZE];
 	int outLen;
 
 	Assert(blockNumber2 >= blockNumber1);
-	Assert(dataLen < MAX_AES_ENC_BATCH_KEY_SIZE);
+	Assert(dataLen <= MAX_AES_ENC_BATCH_KEY_SIZE);
 
 	memset(data, 0, dataLen);
 	for(int j=blockNumber1;j<blockNumber2;++j)
