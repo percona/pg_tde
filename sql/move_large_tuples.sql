@@ -3,26 +3,25 @@ CREATE EXTENSION pg_tde;
 
 CREATE TABLE sbtest2(
 	  id SERIAL,
-	  k text,
+	  k TEXT STORAGE PLAIN,
 	  PRIMARY KEY (id)
 	) USING pg_tde;
-alter table sbtest2 alter column k set storage plain;
 
-INSERT INTO sbtest2(k) values(repeat('a', 2500));
-INSERT INTO sbtest2(k) values(repeat('b', 2500));
-INSERT INTO sbtest2(k) values(repeat('c', 2500));
-INSERT INTO sbtest2(k) values(repeat('d', 2500));
-INSERT INTO sbtest2(k) values(repeat('e', 2500));
+INSERT INTO sbtest2(k) VALUES(repeat('a', 2500));
+INSERT INTO sbtest2(k) VALUES(repeat('b', 2500));
+INSERT INTO sbtest2(k) VALUES(repeat('c', 2500));
+INSERT INTO sbtest2(k) VALUES(repeat('d', 2500));
+INSERT INTO sbtest2(k) VALUES(repeat('e', 2500));
 
 DELETE FROM sbtest2 WHERE id IN (2,3,4);
 VACUUM sbtest2;
 SELECT * FROM sbtest2;
 
-INSERT INTO sbtest2(k) values(repeat('b', 2500));
-INSERT INTO sbtest2(k) values(repeat('c', 2500));
-INSERT INTO sbtest2(k) values(repeat('d', 2500));
+INSERT INTO sbtest2(k) VALUES(repeat('b', 2500));
+INSERT INTO sbtest2(k) VALUES(repeat('c', 2500));
+INSERT INTO sbtest2(k) VALUES(repeat('d', 2500));
 
-DELETE FROM sbtest2 where id in (7);
+DELETE FROM sbtest2 WHERE id IN (7);
 VACUUM sbtest2;
 
 SELECT * FROM sbtest2;

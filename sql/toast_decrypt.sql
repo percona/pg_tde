@@ -1,8 +1,7 @@
 CREATE EXTENSION pg_tde;
 
-CREATE TABLE src (f1 text) using pg_tde;
-ALTER TABLE src ALTER column f1 SET storage external;
-INSERT INTO src values(repeat('abcdeF',1000));
+CREATE TABLE src (f1 TEXT STORAGE EXTERNAL) USING pg_tde;
+INSERT INTO src VALUES(repeat('abcdeF',1000));
 SELECT * FROM src;
 
 DROP TABLE src;
