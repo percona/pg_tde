@@ -88,13 +88,13 @@ pg_tde_move_encrypted_data(uint64 read_start_offset, const char* read_data,
 				uint32 data_len, RelKeysData* keys, const char* context)
 {
 	uint32	batch_len;
-	uint32	byes_left;
+	uint32	bytes_left;
 	uint32	curr_offset = 0;
 	char 	decrypted[DATA_BYTES_PER_AES_BATCH];
 
-	for (byes_left = data_len; byes_left > 0; byes_left -= batch_len)
+	for (bytes_left = data_len; bytes_left > 0; bytes_left -= batch_len)
 	{
-		batch_len = Min(Min(DATA_BYTES_PER_AES_BATCH, data_len), byes_left);
+		batch_len = Min(Min(DATA_BYTES_PER_AES_BATCH, data_len), bytes_left);
 		
 		pg_tde_crypt(read_start_offset + curr_offset, read_data + curr_offset, batch_len, decrypted, keys, context);
 		pg_tde_crypt(write_start_offset + curr_offset, decrypted, batch_len, write_data + curr_offset, keys, context);
