@@ -18,9 +18,9 @@ theme:
   name: material
   logo: _images/percona-logo.svg
   favicon: _images/percona-favicon.ico
-  custom_dir: _resource/overrides
+#  custom_dir: _resource/overrides
   font:
-    text: Poppins
+    text: Roboto
 
   palette:
 
@@ -105,9 +105,9 @@ plugins:
       include_yaml:
         - 'variables.yml' # Use in markdown as '{{ VAR }}'   
 
-#extra:
-#  version:
-#    provider: mike
+extra:
+  version:
+    provider: mike
 #  homepage: https://docs.percona.com
 #  consent:
 #    title: Cookie consent
