@@ -1,15 +1,15 @@
 # MkDocs general configuration
 
-site_name: pg_stat_monitor Documentation
+site_name: pg_tde documentation
 site_description: Documentation
 site_author: Percona LLC
 copyright: >
   <a href="https://www.percona.com/about">Percona LLC</a> and/or its affiliates © 2023 — <a href="#__consent">Cookie Consent</a>
 
  
-repo_name: percona/pgsm-docs
-repo_url: https://github.com/percona/pgsm-docs
-edit_uri: edit/main/docs/
+repo_name: Percona-Lab/postgres-tde-ext
+repo_url: https://github.com/Percona-Lab/postgres-tde-ext
+edit_uri: edit/main/documentation/docs/
 
 use_directory_urls: false
 
@@ -54,10 +54,8 @@ theme:
 extra_css:
   - https://unicons.iconscout.com/release/v3.0.3/css/line.css
   - https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.min.css
-  - css/version-select.css
-  - css/toctree.css
   - css/percona.css
-  - css/extra.css
+  - css/design.css
 
 extra_javascript:
   - js/version-select.js
@@ -85,8 +83,8 @@ markdown_extensions:
   - pymdownx.highlight:
         linenums: false
   - pymdownx.emoji:
-       emoji_index: !!python/name:materialx.emoji.twemoji
-       emoji_generator: !!python/name:materialx.emoji.to_svg
+       emoji_index: !!python/name:material.extensions.emoji.twemoji
+       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 
 plugins:
@@ -107,46 +105,26 @@ plugins:
       include_yaml:
         - 'variables.yml' # Use in markdown as '{{ VAR }}'   
 
-extra:
-  version:
-    provider: mike
-  homepage: https://docs.percona.com
-  consent:
-    title: Cookie consent
-    description: >- 
-      We use cookies to recognize your repeated visits and preferences, as well
-      as to measure the effectiveness of our documentation and whether users
-      find what they're searching for. With your consent, you're helping us to
-      make our documentation better. Read more about <a class="reference external" href="https://www.percona.com/20180524-cookie-policy" target="_blank">Percona Cookie Policy</a>.
+#extra:
+#  version:
+#    provider: mike
+#  homepage: https://docs.percona.com
+#  consent:
+#    title: Cookie consent
+#    description: >- 
+#      We use cookies to recognize your repeated visits and preferences, as well
+#      as to measure the effectiveness of our documentation and whether users
+#      find what they're searching for. With your consent, you're helping us to
+#      make our documentation better. Read more about <a class="reference external" href="https://www.percona.com/20180524-cookie-policy" target="_blank">Percona Cookie Policy</a>.
 
 nav:
   - Home: index.md
-  - comparison.md
-  - Release notes:
-    - Release notes index: release-notes/release_notes.md
-    - release_notes/2.0.3.md
-    - release_notes/2.0.2.md
-    - release-notes/2.0.1.md
-    - release-notes/2.0.0.md
-    - release-notes/1.x.md
-  - Install and set up:
+  - tde.md
+  - Get started:
     - "Install": "install.md"
     - "Set up": "setup.md"
-  - Upgrade: upgrade.md
-  - User guide:
-    - "Features": "user_guide.md"
-    - views.md
-    - functions.md
-  - pmm.md
-  - How to:
-    - Auto-create pg_stat_monitor for new databases: auto-enable.md
-  - Reference:
-    - pg_stat_monitor view reference:
-      - reference.md
-    - configuration.md
-  - Uninstall: uninstall.md
+    - Configure streaming replication: replication.md
   - contributing.md
-  - copyright.md
-  - trademark-policy.md
+
 # - Version Selector: "../"
 

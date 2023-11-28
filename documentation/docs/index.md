@@ -2,14 +2,19 @@
 
 `pg_tde` is the extension that brings in [Transparent Data Encryption (TDE)](tde.md) to PostgreSQL and enables users to keep sensitive data safe and secure. 
 
-**NOTE**: This is the MVP version of the extension.
+!!! important 
+
+    This is the MVP version of the extension.
 
 `pg_tde` encrypts the following:
 
 * user data in tables, including TOAST tables, that are created using the extension. Metadata of those tables is not encrypted. 
-* Write-Ahead Log (WAL) files and temporary tables created during the database operation. Note that only WAL records for tables created using the extension and temporary tables associated with those data tables are encrypted.
+* Write-Ahead Log (WAL) data for tables created using the extension 
+* Temporary tables created during the database operation for data tables created using the extension
 
 The encryption of indexes is planned for the next releases of `pg_tde`.
+
+[Get started](installation.md){.md-button}
 
 ## Supported PostgreSQL versions
 
