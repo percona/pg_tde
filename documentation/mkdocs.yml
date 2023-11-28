@@ -123,6 +123,8 @@ nav:
   - Get started:
     - "Install": "install.md"
     - "Set up": "setup.md"
+    - Test TDE: "test.md"
+  - How to:
     - Configure streaming replication: replication.md
   - contributing.md
 

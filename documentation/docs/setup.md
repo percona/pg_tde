@@ -27,6 +27,16 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
     ```sql
     CREATE EXTENSION pg_tde;
     ```
+    
+    By default, the `pg_tde` extension is created for the `postgres` database or the database which your user owns. To encrypt the data in other databases, you must explicitly run the `CREATE EXTENSION` command for them. 
+
+    !!! tip
+
+        You can have the `pg_tde` extension automatically enabled for every newly created database. Modify the template `template1` database as follows: 
+
+        ```
+        psql -d template1 -c 'CREATE EXTENSION pg_tde;'
+        ```
 
 4. Set the location of the keyring configuration file in postgresql.conf: `pg_tde.keyringConfigFile = '/where/to/put/the/keyring.json'`
 5. Create the [keyring configuration file](#keyring-configuration)

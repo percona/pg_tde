@@ -50,6 +50,7 @@ jobs:
           cd documentation
           mike deploy main -p
           mike set-default main -p
+          mike retitle main "MVP" -p
           
 
 # - name: Install Node.js 14.x

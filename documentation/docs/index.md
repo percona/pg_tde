@@ -4,26 +4,37 @@
 
 !!! important 
 
-    This is the MVP version of the extension.
+    This is the MVP version of the extension and is not meant for production use yet.
+
+## What's encrypted
 
 `pg_tde` encrypts the following:
 
-* user data in tables, including TOAST tables, that are created using the extension. Metadata of those tables is not encrypted. 
+* User data in tables, including TOAST tables, that are created using the extension. Metadata of those tables is not encrypted. 
 * Write-Ahead Log (WAL) data for tables created using the extension 
 * Temporary tables created during the database operation for data tables created using the extension
 
-The encryption of indexes is planned for the next releases of `pg_tde`.
+## What's not encrypted
 
-<i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show appr. 10% performance overhead.
+In the MVP version of `pg_tde`, the following remains unencrypted:
+
+* Indexes
+* Logical replication
+* `NULL` bitmaps of tuples
+* Keys in the keyring file
+
+Their encryption is planned for the next releases of `pg_tde`.
+
+<i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead.
 
 [Get started](install.md){.md-button}
 
 ## Supported PostgreSQL versions
 
-`pg_tde` is currently supported for Percona Distribution for PostgreSQL 16 and PostgreSQL 16. 
+`pg_tde` is currently supported for Percona Distribution for PostgreSQL 16 and upstream PostgreSQL 16. 
 
 
-## Useful links:
+## Useful links
 
 * [What is Transparent Data Encryption](tde.md)
 
