@@ -6,17 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Load the pg_tde at the start time. The extension requires additional shared memory; therefore,  add the pg_tde value for the shared_preload_libraries parameter and restart the postgresql instance.">
+        <meta name="description" content="uninstall.md">
       
       
         <meta name="author" content="Percona LLC">
       
       
       
-        <link rel="prev" href="install.html">
-      
-      
-        <link rel="next" href="test.html">
       
       
       <link rel="icon" href="_images/percona-favicon.ico">
@@ -24,7 +20,7 @@
     
     
       
-        <title>Set up - pg_tde documentation</title>
+        <title>Uninstall - pg_tde documentation</title>
       
     
     
@@ -86,11 +82,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#setup" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -126,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Set up
+              Uninstall
             
           </span>
         </div>
@@ -307,21 +298,19 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -335,7 +324,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Get started
@@ -367,30 +356,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Set up
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="setup.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="setup.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -399,35 +368,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#keyring-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Keyring configuration
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -563,25 +503,6 @@
   
   
   
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#keyring-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Keyring configuration
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -596,7 +517,7 @@
                   
 
   
-    <a href="https://github.com/Percona-Lab/postgres-tde-ext/edit/main/documentation/docs/setup.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/Percona-Lab/postgres-tde-ext/edit/main/documentation/docs/uninstall.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -605,73 +526,16 @@
     
       
     
-    <a href="https://github.com/Percona-Lab/postgres-tde-ext/raw/main/documentation/docs/setup.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/Percona-Lab/postgres-tde-ext/raw/main/documentation/docs/uninstall.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.15 8.15 0 0 1-1.23-2Z"/></svg>
     </a>
   
 
 
-<h1 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h1>
-<p>Load the <code>pg_tde</code> at the start time. The extension requires additional shared memory; therefore,  add the <code>pg_tde</code> value for the <code>shared_preload_libraries</code> parameter and restart the <code>postgresql</code> instance.</p>
-<ol>
-<li>
-<p>Use the <a href="https://www.postgresql.org/docs/current/sql-altersystem.html">ALTER SYSTEM</a> command from <code>psql</code> terminal to modify the <code>shared_preload_libraries</code> parameter.</p>
-<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">SYSTEM</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">shared_preload_libraries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;pg_tde&#39;</span><span class="p">;</span>
-</code></pre></div>
-</li>
-<li>
-<p>Start or restart the <code>postgresql</code> instance to apply the changes.</p>
-<ul>
-<li>On Debian and Ubuntu:    </li>
-</ul>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>postgresql.service
-</code></pre></div>
-<ul>
-<li>On RHEL and derivatives</li>
-</ul>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>postgresql-16
-</code></pre></div>
-</li>
-<li>
-<p>Create the extension using the <a href="https://www.postgresql.org/docs/current/sql-createextension.html">CREATE EXTENSION</a> command. You must have the privileges of a superuser or a database owner to use this command. Connect to <code>psql</code> as a superuser for a database and run the following command:</p>
-<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="n">pg_tde</span><span class="p">;</span>
-</code></pre></div>
-<p>By default, the <code>pg_tde</code> extension is created for the <code>postgres</code> database or the database which your user owns. To encrypt the data in other databases, you must explicitly run the <code>CREATE EXTENSION</code> command for them. </p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>You can have the <code>pg_tde</code> extension automatically enabled for every newly created database. Modify the template <code>template1</code> database as follows: </p>
-<div class="highlight"><pre><span></span><code>psql -d template1 -c &#39;CREATE EXTENSION pg_tde;&#39;
-</code></pre></div>
-</div>
-</li>
-<li>
-<p>Set the location of the keyring configuration file in postgresql.conf: <code>pg_tde.keyringConfigFile = '/where/to/put/the/keyring.json'</code></p>
-</li>
-<li>Create the <a href="#keyring-configuration">keyring configuration file</a></li>
-<li>
-<p>Start or restart the <code>postgresql</code> instance to apply the changes.</p>
-<ul>
-<li>On Debian and Ubuntu:    </li>
-</ul>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>postgresql.service
-</code></pre></div>
-<ul>
-<li>On RHEL and derivatives</li>
-</ul>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>postgresql-16
-</code></pre></div>
-</li>
-</ol>
-<h2 id="keyring-configuration">Keyring configuration<a class="headerlink" href="#keyring-configuration" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">        </span><span class="err">&#39;provider&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;</span><span class="kc">f</span><span class="err">ile&#39;</span><span class="p">,</span>
-<span class="w">        </span><span class="err">&#39;da</span><span class="kc">taf</span><span class="err">ile&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;/</span><span class="kc">t</span><span class="err">mp/pgkeyri</span><span class="kc">n</span><span class="err">g&#39;</span><span class="p">,</span>
-<span class="p">}</span>
-</code></pre></div>
-<p>Currently the keyring configuration only supports the file provider, with a single datafile parameter.</p>
-<p>This datafile is created and managed by PostgreSQL, the only requirement is that <code>postgres</code> should be able to write to the specified path.</p>
-<p>This setup is intended for development, and stores the keys unencrypted in the specified data file.</p>
+  <h1>Uninstall</h1>
+
+<p>uninstall.md</p>
 
   <hr>
 <div class="md-source-file">

@@ -666,7 +666,7 @@
 <p><code>pg_tde</code> is the extension that brings in <a href="tde.html">Transparent Data Encryption (TDE)</a> to PostgreSQL and enables users to keep sensitive data safe and secure. </p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p>This is the MVP version of the extension.</p>
+<p>This is the MVP version of the extension and is not meant for production use yet.</p>
 </div>
 <h2 id="whats-encrypted">What&rsquo;s encrypted<a class="headerlink" href="#whats-encrypted" title="Permanent link">&para;</a></h2>
 <p><code>pg_tde</code> encrypts the following:</p>
@@ -684,10 +684,10 @@
 <li>Keys in the keyring file</li>
 </ul>
 <p>Their encryption is planned for the next releases of <code>pg_tde</code>.</p>
-<p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21Z"/></svg></span> Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show appr. 10% performance overhead.</p>
+<p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21Z"/></svg></span> Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead.</p>
 <p><a class="md-button" href="install.html">Get started</a></p>
 <h2 id="supported-postgresql-versions">Supported PostgreSQL versions<a class="headerlink" href="#supported-postgresql-versions" title="Permanent link">&para;</a></h2>
-<p><code>pg_tde</code> is currently supported for Percona Distribution for PostgreSQL 16 and PostgreSQL 16. </p>
+<p><code>pg_tde</code> is currently supported for Percona Distribution for PostgreSQL 16 and upstream PostgreSQL 16. </p>
 <h2 id="useful-links">Useful links<a class="headerlink" href="#useful-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="tde.html">What is Transparent Data Encryption</a></li>
