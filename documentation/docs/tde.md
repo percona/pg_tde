@@ -2,6 +2,15 @@
 
 Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is completely transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.
 
+## How does it work?
+
+In the MVP version of `pg_tde`, the keyring configuration file is used to store encryption keys. 
+
+When a user creates an encrypted table using `pg_tde`, a new random key is generated for that table. This key is used to encrypt all data the user inserts in that table. Eventually the encrypted data gets stored in the underlying storage. 
+
+Similarly when the user queries the encrypted table, the same unique key for that table is used to decrypt the data, and unencrypted data gets returned to the user. So effectively every TDE table has a unique key, and each table key is encrypted using the master key.
+
+
 ## Why do you need TDE?
 
 Using TDE has the following benefits:
