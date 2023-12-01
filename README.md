@@ -79,6 +79,7 @@ Compile and install the extension
 
 ```
 cd postgres-tde-ext
+./configure
 make USE_PGXS=1
 sudo make USE_PGXS=1 install
 ```
