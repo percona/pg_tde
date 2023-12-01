@@ -336,6 +336,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#how-does-it-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      How does it work?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#why-do-you-need-tde" class="md-nav__link">
     <span class="md-ellipsis">
       Why do you need TDE?
@@ -571,6 +580,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#how-does-it-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      How does it work?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#why-do-you-need-tde" class="md-nav__link">
     <span class="md-ellipsis">
       Why do you need TDE?
@@ -612,6 +630,10 @@
 
 <h1 id="what-is-transparent-data-encryption-tde">What is Transparent Data Encryption (TDE)<a class="headerlink" href="#what-is-transparent-data-encryption-tde" title="Permanent link">&para;</a></h1>
 <p>Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is completely transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.</p>
+<h2 id="how-does-it-work">How does it work?<a class="headerlink" href="#how-does-it-work" title="Permanent link">&para;</a></h2>
+<p>In the MVP version of <code>pg_tde</code>, the keyring configuration file is used to store encryption keys. </p>
+<p>When a user creates an encrypted table using <code>pg_tde</code>, a new random key is generated for that table. This key is used to encrypt all data the user inserts in that table. Eventually the encrypted data gets stored in the underlying storage. </p>
+<p>Similarly when the user queries the encrypted table, the same unique key for that table is used to decrypt the data, and unencrypted data gets returned to the user. So effectively every TDE table has a unique key, and each table key is encrypted using the master key.</p>
 <h2 id="why-do-you-need-tde">Why do you need TDE?<a class="headerlink" href="#why-do-you-need-tde" title="Permanent link">&para;</a></h2>
 <p>Using TDE has the following benefits:</p>
 <ul>
@@ -640,7 +662,7 @@
   <small>
     
       Last update:
-      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 28, 2023</span>
+      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 1, 2023</span>
       
         <br>
         Created:

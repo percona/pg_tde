@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="uninstall.md">
+        <meta name="description" content="If you no longer wish to use TDE in your deployment, you can remove the pg_tde extension. To do that, your user must have the privileges of the superuser or a database owner.">
       
       
         <meta name="author" content="Percona LLC">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Uninstall - pg_tde documentation</title>
+        <title>Uninstall `pg_tde` - pg_tde documentation</title>
       
     
     
@@ -82,6 +82,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#uninstall-pg_tde" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -117,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Uninstall
+              Uninstall `pg_tde`
             
           </span>
         </div>
@@ -503,6 +508,8 @@
   
   
   
+    
+  
   
 </nav>
                   </div>
@@ -533,16 +540,43 @@
   
 
 
-  <h1>Uninstall</h1>
-
-<p>uninstall.md</p>
+<h1 id="uninstall-pg_tde">Uninstall <code>pg_tde</code><a class="headerlink" href="#uninstall-pg_tde" title="Permanent link">&para;</a></h1>
+<p>If you no longer wish to use TDE in your deployment, you can remove the <code>pg_tde</code> extension. To do that, your user must have the privileges of the superuser or a database owner.</p>
+<p>Here&rsquo;s how to do it:</p>
+<ol>
+<li>Drop the extension using the <code>DROP EXTENSION</code> with <code>CASCADE</code> command</li>
+</ol>
+<p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21Z"/></svg></span> Warning:</i> The use of the CASCADE parameter deletes all tables that were created in the database with <code>pg_tde</code> enabled.</p>
+<div class="highlight"><pre><span></span><code><span class="k">DROP</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="n">pg_tde</span><span class="w"> </span><span class="k">CASCADE</span>
+</code></pre></div>
+<ol>
+<li>
+<p>Run the <code>DROP EXTENSION</code> command against every database where you have enabled the <code>pg_tde</code> extension</p>
+</li>
+<li>
+<p>Modify the <code>shared_preload_libraries</code> and remove the &lsquo;pg_tde&rsquo; from it. Use the <code>ALTER SYSTEM SET</code> command for this purpose</p>
+</li>
+<li>
+<p>Start or restart the <code>postgresql</code> instance to apply the changes.</p>
+<ul>
+<li>On Debian and Ubuntu:    </li>
+</ul>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>postgresql.service
+</code></pre></div>
+<ul>
+<li>On RHEL and derivatives</li>
+</ul>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>postgresql-16
+</code></pre></div>
+</li>
+</ol>
 
   <hr>
 <div class="md-source-file">
   <small>
     
       Last update:
-      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 28, 2023</span>
+      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 1, 2023</span>
       
         <br>
         Created:
