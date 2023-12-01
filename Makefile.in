@@ -36,7 +36,10 @@ src/keyring/keyring_api.o \
 src/pg_tde.o
 
 override PG_CPPFLAGS += @tde_CPPFLAGS@
+
+ifneq "$(findstring -L, @tde_LDFLAGS@)" ""
 override SHLIB_LINK += @tde_LDFLAGS@
+endif
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
