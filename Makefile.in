@@ -37,10 +37,6 @@ src/pg_tde.o
 
 override PG_CPPFLAGS += @tde_CPPFLAGS@
 
-ifneq "$(findstring -L, @tde_LDFLAGS@)" ""
-override SHLIB_LINK += @tde_LDFLAGS@
-endif
-
 ifdef USE_PGXS
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
@@ -54,4 +50,4 @@ include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
-SHLIB_LINK += -ljson-c -lcrypto -lssl
+override SHLIB_LINK += @tde_LDFLAGS@ -ljson-c -lcrypto -lssl
