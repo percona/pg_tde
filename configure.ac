@@ -18,12 +18,13 @@ AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $4 is instal
 		case $host_os in
 			darwin*) libpathx=($HOMEBREW_CELLAR/$2/*)
 						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include/$2"
-						tde_LDFLAGS="$tde_LDFLAGS -L$libpathx/lib" ;;
-				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/$2" ;;
+						tde_LDFLAGS="$tde_LDFLAGS -L$libpathx/lib -l$2" ;;
+				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/$2" 
+				  		tde_LDFLAGS="$tde_LDFLAGS -l$2" ;;
 		esac
 	], [ #AS_ELSE
 		tde_CPPFLAGS="$tde_CPPFLAGS -I${with_$1}/include"
-		tde_LDFLAGS="$tde_LDFLAGS -L${with_$1}/lib"
+		tde_LDFLAGS="$tde_LDFLAGS -L${with_$1}/lib -l$2"
 	])
 
 	LDFLAGS="$LDFLAGS $tde_LDFLAGS"
