@@ -63,7 +63,18 @@
     
     
     
-  </head>
+   <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"/><style>
+        html.glightbox-open { overflow: initial; height: 100%; }
+        .gslide-title { margin-top: 0px; user-select: text; }
+        .gslide-desc { color: #666; user-select: text; }
+        .gslide-image img { background: white; }
+        
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color);}
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color);}
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color);}
+            </style> <script src="assets/javascripts/glightbox.min.js"></script></head>
   
   
     
@@ -556,11 +567,11 @@
   
   
     <li class="md-nav__item">
-      <a href="contributing.md" class="md-nav__link">
+      <a href="contribute.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    None
+    Contributing guide
   </span>
   
 
@@ -676,18 +687,18 @@
 <li>Temporary tables created during the database operation for data tables created using the extension</li>
 </ul>
 <h2 id="whats-not-encrypted">What&rsquo;s not encrypted<a class="headerlink" href="#whats-not-encrypted" title="Permanent link">&para;</a></h2>
-<p>In the MVP version of <code>pg_tde</code>, the following remains unencrypted:</p>
+<p>In the MVP version of <code>pg_tde</code>, the following is unencrypted:</p>
 <ul>
 <li>Indexes</li>
 <li>Logical replication</li>
 <li><code>NULL</code> bitmaps of tuples</li>
-<li>Keys in the keyring file</li>
+<li>Keys in the keyfile if local keyfile is used</li>
 </ul>
-<p>Their encryption is planned for the next releases of <code>pg_tde</code>.</p>
+<p>The encryption of indexes and <code>NULL</code> bitmaps of tuples is planned for the next releases of <code>pg_tde</code>.</p>
 <p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21Z"/></svg></span> Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead.</p>
 <p><a class="md-button" href="install.html">Get started</a></p>
 <h2 id="supported-postgresql-versions">Supported PostgreSQL versions<a class="headerlink" href="#supported-postgresql-versions" title="Permanent link">&para;</a></h2>
-<p><code>pg_tde</code> is currently supported for Percona Distribution for PostgreSQL 16 and upstream PostgreSQL 16. </p>
+<p><code>pg_tde</code> is currently based on PostgreSQL 16.0 and supported for Percona Distribution for PostgreSQL 16.x and upstream PostgreSQL 16.x. </p>
 <h2 id="useful-links">Useful links<a class="headerlink" href="#useful-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="tde.html">What is Transparent Data Encryption</a></li>
@@ -698,7 +709,7 @@
   <small>
     
       Last update:
-      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 28, 2023</span>
+      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 6, 2023</span>
       
         <br>
         Created:
@@ -768,5 +779,5 @@
         <script src="js/promptremover.js"></script>
       
     
-  </body>
+  <script>document$.subscribe(() => {const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});})</script></body>
 </html>

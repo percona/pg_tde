@@ -65,7 +65,18 @@
     
     
     
-  </head>
+   <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"/><style>
+        html.glightbox-open { overflow: initial; height: 100%; }
+        .gslide-title { margin-top: 0px; user-select: text; }
+        .gslide-desc { color: #666; user-select: text; }
+        .gslide-image img { background: white; }
+        
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color);}
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color);}
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color);}
+            </style> <script src="assets/javascripts/glightbox.min.js"></script></head>
   
   
     
@@ -533,11 +544,11 @@
   
   
     <li class="md-nav__item">
-      <a href="contributing.md" class="md-nav__link">
+      <a href="contribute.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    None
+    Contributing guide
   </span>
   
 
@@ -637,7 +648,7 @@
 <p>Create the extension using the <a href="https://www.postgresql.org/docs/current/sql-createextension.html">CREATE EXTENSION</a> command. You must have the privileges of a superuser or a database owner to use this command. Connect to <code>psql</code> as a superuser for a database and run the following command:</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="n">pg_tde</span><span class="p">;</span>
 </code></pre></div>
-<p>By default, the <code>pg_tde</code> extension is created for the <code>postgres</code> database or the database which your user owns. To encrypt the data in other databases, you must explicitly run the <code>CREATE EXTENSION</code> command for them. </p>
+<p>By default, the <code>pg_tde</code> extension is created for the currently used database. To encrypt the data in other databases, you must explicitly run the <code>CREATE EXTENSION</code> command against them. </p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>You can have the <code>pg_tde</code> extension automatically enabled for every newly created database. Modify the template <code>template1</code> database as follows: </p>
@@ -664,21 +675,46 @@
 </li>
 </ol>
 <h2 id="keyring-configuration">Keyring configuration<a class="headerlink" href="#keyring-configuration" title="Permanent link">&para;</a></h2>
+<p>Create the keyring configuration file with the following contents:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">HashiCorp Vault</label><label for="__tabbed_1_2">Local keyfile</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">        </span><span class="err">&#39;provider&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;vaul</span><span class="kc">t</span><span class="mi">-</span><span class="err">v</span><span class="mi">2</span><span class="err">&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="err">&#39;</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="err">&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;ROOT_TOKEN&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="err">&#39;url&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;h</span><span class="kc">tt</span><span class="err">p</span><span class="p">:</span><span class="c1">//127.0.0.1:8200&#39;,</span>
+<span class="w">        </span><span class="err">&#39;mou</span><span class="kc">nt</span><span class="err">Pa</span><span class="kc">t</span><span class="err">h&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;secre</span><span class="kc">t</span><span class="err">&#39;</span>
+<span class="w">        </span><span class="err">&#39;caPa</span><span class="kc">t</span><span class="err">h&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;&lt;pa</span><span class="kc">t</span><span class="err">h/</span><span class="kc">t</span><span class="err">o/caFile&gt;&#39;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>where:</p>
+<ul>
+<li><code>provider</code> is set to <code>vault-v2</code> since only the version 2 of the KV secrets engine is supported</li>
+<li><code>url</code> is the URL of the Vault server</li>
+<li><code>mountPath</code> is the mount point where the keyring should store the keys</li>
+<li><code>token</code> is an access token with read and write access to the above mount point</li>
+<li>[optional] <code>caPath</code> is the path of the CA file used for SSL verification</li>
+</ul>
+</div>
+<div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">        </span><span class="err">&#39;provider&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;</span><span class="kc">f</span><span class="err">ile&#39;</span><span class="p">,</span>
 <span class="w">        </span><span class="err">&#39;da</span><span class="kc">taf</span><span class="err">ile&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;/</span><span class="kc">t</span><span class="err">mp/pgkeyri</span><span class="kc">n</span><span class="err">g&#39;</span><span class="p">,</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Currently the keyring configuration only supports the file provider, with a single datafile parameter.</p>
-<p>This datafile is created and managed by PostgreSQL, the only requirement is that <code>postgres</code> should be able to write to the specified path.</p>
+<p>This keyring configuration has the file provider, with a single datafile parameter.     </p>
+<p>This datafile is created and managed by PostgreSQL, the only requirement is that <code>postgres</code> should be able to write to the specified path.     </p>
 <p>This setup is intended for development, and stores the keys unencrypted in the specified data file.</p>
+</div>
+</div>
+</div>
 
   <hr>
 <div class="md-source-file">
   <small>
     
       Last update:
-      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 28, 2023</span>
+      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 6, 2023</span>
       
         <br>
         Created:
@@ -748,5 +784,5 @@
         <script src="js/promptremover.js"></script>
       
     
-  </body>
+  <script>document$.subscribe(() => {const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});})</script></body>
 </html>

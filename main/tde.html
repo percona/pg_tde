@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is completely transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.">
+        <meta name="description" content="Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.">
       
       
         <meta name="author" content="Percona LLC">
@@ -65,7 +65,18 @@
     
     
     
-  </head>
+   <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"/><style>
+        html.glightbox-open { overflow: initial; height: 100%; }
+        .gslide-title { margin-top: 0px; user-select: text; }
+        .gslide-desc { color: #666; user-select: text; }
+        .gslide-image img { background: white; }
+        
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color);}
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color);}
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color);}
+            </style> <script src="assets/javascripts/glightbox.min.js"></script></head>
   
   
     
@@ -540,11 +551,11 @@
   
   
     <li class="md-nav__item">
-      <a href="contributing.md" class="md-nav__link">
+      <a href="contribute.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    None
+    Contributing guide
   </span>
   
 
@@ -629,11 +640,19 @@
 
 
 <h1 id="what-is-transparent-data-encryption-tde">What is Transparent Data Encryption (TDE)<a class="headerlink" href="#what-is-transparent-data-encryption-tde" title="Permanent link">&para;</a></h1>
-<p>Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is completely transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.</p>
+<p>Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.</p>
 <h2 id="how-does-it-work">How does it work?<a class="headerlink" href="#how-does-it-work" title="Permanent link">&para;</a></h2>
-<p>In the MVP version of <code>pg_tde</code>, the keyring configuration file is used to store encryption keys. </p>
+<p>To encrypt the data, two types of keys are used:</p>
+<ul>
+<li>Database keys to encrypt user data. These are stored internally, near the data that they encrypt.</li>
+<li>The master key to encrypt database keys. It is kept separately from the database keys and is managed externally. </li>
+</ul>
+<p><code>pg_tde</code> is integrated with HashiCorp Vault server to store and manage master keys. Only the back end KV Secrets Engine - Version 2 (API) is supported.</p>
+<p>The encryption process is the following:</p>
+<p><a class="glightbox" href="_images/tde-flow.png" data-type="image" data-width="100%" data-height="auto" data-desc-position="bottom"><img alt="image" src="_images/tde-flow.png" /></a></p>
 <p>When a user creates an encrypted table using <code>pg_tde</code>, a new random key is generated for that table. This key is used to encrypt all data the user inserts in that table. Eventually the encrypted data gets stored in the underlying storage. </p>
-<p>Similarly when the user queries the encrypted table, the same unique key for that table is used to decrypt the data, and unencrypted data gets returned to the user. So effectively every TDE table has a unique key, and each table key is encrypted using the master key.</p>
+<p>The table itself is encrypted using the master key. The master key is stored externally in the Vault key management store. </p>
+<p>Similarly when the user queries the encrypted table, the master key is retrieved from the key store to decrypt the table. Then the same unique internal key for that table is used to decrypt the data, and unencrypted data gets returned to the user. So, effectively, every TDE table has a unique key, and each table key is encrypted using the master key.</p>
 <h2 id="why-do-you-need-tde">Why do you need TDE?<a class="headerlink" href="#why-do-you-need-tde" title="Permanent link">&para;</a></h2>
 <p>Using TDE has the following benefits:</p>
 <ul>
@@ -662,7 +681,7 @@
   <small>
     
       Last update:
-      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 1, 2023</span>
+      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 6, 2023</span>
       
         <br>
         Created:
@@ -732,5 +751,5 @@
         <script src="js/promptremover.js"></script>
       
     
-  </body>
+  <script>document$.subscribe(() => {const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});})</script></body>
 </html>
