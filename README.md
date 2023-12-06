@@ -84,6 +84,8 @@ make USE_PGXS=1
 sudo make USE_PGXS=1 install
 ```
 
+_See [Make Builds for Developers](https://github.com/Percona-Lab/postgres-tde-ext/wiki/Make-builds-for-developers) for more info on the build infrastructure._
+
 ## Install from package
 
 1. Download the latest [release package](https://github.com/Percona-Lab/postgres-tde-ext/releases)
