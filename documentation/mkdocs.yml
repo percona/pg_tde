@@ -101,6 +101,7 @@ plugins:
       max_length: 160
   - section-index # Adds links to nodes - comment out when creating PDF
 #  - htmlproofer # Uncomment to check links - but extends build time significantly
+  - glightbox
   - macros:
       include_yaml:
         - 'variables.yml' # Use in markdown as '{{ VAR }}'   
@@ -126,7 +127,7 @@ nav:
     - Test TDE: "test.md"
   - How to:
     - Configure streaming replication: replication.md
-  - contributing.md
+  - contribute.md
 
 # - Version Selector: "../"
 

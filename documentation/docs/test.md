@@ -3,8 +3,7 @@
 To check if the data is encrypted, do the following:
 
 1. Create a table in the database for which you have [enabled `pg_tde`](setup.md)
-2. Insert some test data 
-3. Run the following function:
+2. Run the following function:
 
     ```sql
     select pgtde_is_encrypted('table_name');

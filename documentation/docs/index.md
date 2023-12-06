@@ -16,14 +16,14 @@
 
 ## What's not encrypted
 
-In the MVP version of `pg_tde`, the following remains unencrypted:
+In the MVP version of `pg_tde`, the following is unencrypted:
 
 * Indexes
 * Logical replication
 * `NULL` bitmaps of tuples
-* Keys in the keyring file
+* Keys in the keyfile if local keyfile is used
 
-Their encryption is planned for the next releases of `pg_tde`.
+The encryption of indexes and `NULL` bitmaps of tuples is planned for the next releases of `pg_tde`.
 
 <i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead.
 
@@ -31,7 +31,7 @@ Their encryption is planned for the next releases of `pg_tde`.
 
 ## Supported PostgreSQL versions
 
-`pg_tde` is currently supported for Percona Distribution for PostgreSQL 16 and upstream PostgreSQL 16. 
+`pg_tde` is currently based on PostgreSQL 16.0 and supported for Percona Distribution for PostgreSQL 16.x and upstream PostgreSQL 16.x. 
 
 
 ## Useful links

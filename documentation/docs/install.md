@@ -1,5 +1,19 @@
 # Installation
 
+## Considerations
+
+You can use the following options to manage encryption keys:
+
+* Use the HashiCorp Vault server. This is the recommended approach. The Vault server configuration is out of scope of this document. We assume that you have the Vault server up and running. For the  `pg_tde` configuration, you need the following information:
+
+    * The secret access token to the Vault server
+    * The URL to access the Vault server
+    * (Optional) The CA file used for SSL verification
+
+* Use the local keyfile. This approach is rather used for development and testing purposes since the keys are stored unencrypted in the specified keyfile.
+
+## Procedure 
+
 Install `pg_tde` using one of available installation methods:
 
 === "Build from source"
@@ -7,7 +21,7 @@ Install `pg_tde` using one of available installation methods:
     1. To build `pg_tde` from source code, you require the following on Ubuntu/Debian:
 
         ```sh
-        sudo apt install make gcc libjson-c-dev postgresql-server-dev-16
+        sudo apt install make gcc libjson-c-dev postgresql-server-dev-16 libcurl4-openssl-dev
         ```
 
     2. [Install Percona Distribution for PostgreSQL 16](https://docs.percona.com/postgresql/16/installing.html) or [upstream PostgreSQL 16](https://www.postgresql.org/download/)
@@ -24,6 +38,7 @@ Install `pg_tde` using one of available installation methods:
 
         ```
         cd postgres-tde-ext
+        ./configure
         make USE_PGXS=1
         sudo make USE_PGXS=1 install
         ```

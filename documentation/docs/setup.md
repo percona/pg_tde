@@ -28,7 +28,7 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
     CREATE EXTENSION pg_tde;
     ```
     
-    By default, the `pg_tde` extension is created for the `postgres` database or the database which your user owns. To encrypt the data in other databases, you must explicitly run the `CREATE EXTENSION` command for them. 
+    By default, the `pg_tde` extension is created for the currently used database. To encrypt the data in other databases, you must explicitly run the `CREATE EXTENSION` command against them. 
 
     !!! tip
 
@@ -56,15 +56,39 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
 ## Keyring configuration
 
-```json
-{
-        'provider': 'file',
-        'datafile': '/tmp/pgkeyring',
-}
-```
+Create the keyring configuration file with the following contents:
 
-Currently the keyring configuration only supports the file provider, with a single datafile parameter.
+=== "HashiCorp Vault"
 
-This datafile is created and managed by PostgreSQL, the only requirement is that `postgres` should be able to write to the specified path.
+     ```json
+     {
+             'provider': 'vault-v2',
+             'token': 'ROOT_TOKEN',
+             'url': 'http://127.0.0.1:8200',
+             'mountPath': 'secret'
+             'caPath': '<path/to/caFile>'
+     }
+     ```
 
-This setup is intended for development, and stores the keys unencrypted in the specified data file.
+     where:
+
+     * `provider` is set to `vault-v2` since only the version 2 of the KV secrets engine is supported
+     * `url` is the URL of the Vault server
+     * `mountPath` is the mount point where the keyring should store the keys
+     * `token` is an access token with read and write access to the above mount point
+     * [optional] `caPath` is the path of the CA file used for SSL verification
+
+=== "Local keyfile"
+
+     ```json
+     {
+             'provider': 'file',
+             'datafile': '/tmp/pgkeyring',
+     }
+     ```     
+
+     This keyring configuration has the file provider, with a single datafile parameter.     
+
+     This datafile is created and managed by PostgreSQL, the only requirement is that `postgres` should be able to write to the specified path.     
+
+     This setup is intended for development, and stores the keys unencrypted in the specified data file.

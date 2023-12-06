@@ -1,15 +1,25 @@
 # What is Transparent Data Encryption (TDE)
 
-Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is completely transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.
+Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.
 
 ## How does it work?
 
-In the MVP version of `pg_tde`, the keyring configuration file is used to store encryption keys. 
+To encrypt the data, two types of keys are used:
+
+* Database keys to encrypt user data. These are stored internally, near the data that they encrypt.
+* The master key to encrypt database keys. It is kept separately from the database keys and is managed externally. 
+
+`pg_tde` is integrated with HashiCorp Vault server to store and manage master keys. Only the back end KV Secrets Engine - Version 2 (API) is supported.
+
+The encryption process is the following:
+
+![image](_images/tde-flow.png)
 
 When a user creates an encrypted table using `pg_tde`, a new random key is generated for that table. This key is used to encrypt all data the user inserts in that table. Eventually the encrypted data gets stored in the underlying storage. 
 
-Similarly when the user queries the encrypted table, the same unique key for that table is used to decrypt the data, and unencrypted data gets returned to the user. So effectively every TDE table has a unique key, and each table key is encrypted using the master key.
+The table itself is encrypted using the master key. The master key is stored externally in the Vault key management store. 
 
+Similarly when the user queries the encrypted table, the master key is retrieved from the key store to decrypt the table. Then the same unique internal key for that table is used to decrypt the data, and unencrypted data gets returned to the user. So, effectively, every TDE table has a unique key, and each table key is encrypted using the master key.
 
 ## Why do you need TDE?
 
