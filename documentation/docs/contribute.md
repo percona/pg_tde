@@ -36,8 +36,12 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
 1. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) this repository
 2. Clone this repository on your machine. 
 3. Create a separate branch for your changes. If you work on a GitHub issue, please [create a branch from it](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue#manually-linking-a-pull-request-or-branch-to-an-issue-using-the-issue-sidebar). This makes it easier to track your contribution.
-4. Make your changes. Please follow the guidelines outlined in the [C style and Coding rules](https://github.com/MaJerle/c-code-style) to improve code readability.
-5. Test your changes locally. 
+4. Make your changes. Please follow the following guidelines to improve code readability:
+
+    - [PostgreSQL coding conventions](https://www.postgresql.org/docs/current/source.html)
+    - [C style and Coding rules](https://github.com/MaJerle/c-code-style) 
+
+5. [Build `pg_tde`](https://github.com/Percona-Lab/postgres-tde-ext/wiki/Make-builds-for-developers) and test your changes locally. 
 6. Commit the changes. The [commit message guidelines](https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53) will help you with writing great commit messages
 7. Open a PR.
 8. Our team will review your code and if everything is correct, will merge it. 

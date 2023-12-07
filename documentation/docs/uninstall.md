@@ -4,9 +4,9 @@ If you no longer wish to use TDE in your deployment, you can remove the `pg_tde`
 
 Here's how to do it:
 
-1. Drop the extension using the `DROP EXTENSION` with `CASCADE` command
+1. Drop the extension using the `DROP EXTENSION` with `CASCADE` command.
 
-   <i warning>:material-alert: Warning:</i> The use of the CASCADE parameter deletes all tables that were created in the database with `pg_tde` enabled.
+   <i warning>:material-alert: Warning:</i> The use of the CASCADE parameter deletes all tables that were created in the database with `pg_tde` enabled and also all dependencies upon the encrypted table (e.g. foreign keys in a non-encrypted table used in the encrypted one).
 
    ```sql
    DROP EXTENSION pg_tde CASCADE

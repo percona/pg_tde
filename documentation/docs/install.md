@@ -45,7 +45,7 @@ Install `pg_tde` using one of available installation methods:
 
 === "Package manager" 
 
-    Currently only DEB packages are available. If you are running RPM-based operating system, consider [building the extension from source](#build-from-source) or [running it in Docker](#run-in-docker)
+    Currently only DEB packages for Ubuntu 22.04 are available. If you are running RPM-based operating system, consider [building the extension from source](#build-from-source) or [running it in Docker](#run-in-docker)
 
     1. Download the latest [release package](https://github.com/Percona-Lab/postgres-tde-ext/releases)
 

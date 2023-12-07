@@ -14,16 +14,11 @@
 * Write-Ahead Log (WAL) data for tables created using the extension 
 * Temporary tables created during the database operation for data tables created using the extension
 
-## What's not encrypted
+## Known limitations
 
-In the MVP version of `pg_tde`, the following is unencrypted:
-
-* Indexes
-* Logical replication
-* `NULL` bitmaps of tuples
-* Keys in the keyfile if local keyfile is used
-
-The encryption of indexes and `NULL` bitmaps of tuples is planned for the next releases of `pg_tde`.
+* Logical replication is not available as it doesn't work with encrypted tables.
+* Keys in the local keyfile are stored unencrypted.
+* Indexes and `NULL` bitmaps of tuples are currently not encrypted. Their encryption is planned for the next releases of `pg_tde`.
 
 <i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead.
 
