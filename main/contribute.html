@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="_images/percona-favicon.ico">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.0">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.1">
     
     
       
@@ -576,6 +576,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Submitting a pull request">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-local-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run local tests
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -724,6 +739,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Submitting a pull request">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-local-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run local tests
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -862,13 +892,21 @@
 </ul>
 </li>
 <li>
-<p><a href="https://github.com/Percona-Lab/postgres-tde-ext/wiki/Make-builds-for-developers">Build <code>pg_tde</code></a> and test your changes locally. </p>
+<p><a href="https://github.com/Percona-Lab/postgres-tde-ext/wiki/Make-builds-for-developers">Build <code>pg_tde</code></a> and <a href="#run-local-tests">test your changes locally</a>. </p>
 </li>
 <li>Commit the changes. The <a href="https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53">commit message guidelines</a> will help you with writing great commit messages</li>
-<li>Open a PR.</li>
+<li>Open a pull request to Percona.</li>
 <li>Our team will review your code and if everything is correct, will merge it. 
 Otherwise, we will contact you for additional information or with the request to make changes.</li>
 </ol>
+<h3 id="run-local-tests">Run local tests<a class="headerlink" href="#run-local-tests" title="Permanent link">&para;</a></h3>
+<p>When you work, you should periodically run tests to check that your changes don’t break existing code.</p>
+<p>To run the tests, use the following command:</p>
+<div class="highlight"><pre><span></span><code>cd postgres-tde-ext
+./configure
+make USE_PGXS=1 installcheck
+</code></pre></div>
+<p>You can run tests on your local machine with whatever operating system you have. After you submit the pull request, we will check your patch on multiple operating systems.</p>
 <h2 id="contribute-to-documentation">Contribute to documentation<a class="headerlink" href="#contribute-to-documentation" title="Permanent link">&para;</a></h2>
 <p><code>pg_tde</code> documentation is written in Markdown language, so you can 
 <a href="#edit-documentation-online-vi-github">edit it online via GitHub</a>. If you wish to have more control over the doc process, jump to how to <a href="#edit-documentation-locally">edit documentation locally</a>. </p>
@@ -989,7 +1027,7 @@ mkdocs<span class="w"> </span>serve
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 7, 2023</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 8, 2023</span>
   </span>
 
     
