@@ -41,11 +41,25 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
     - [PostgreSQL coding conventions](https://www.postgresql.org/docs/current/source.html)
     - [C style and Coding rules](https://github.com/MaJerle/c-code-style) 
 
-5. [Build `pg_tde`](https://github.com/Percona-Lab/postgres-tde-ext/wiki/Make-builds-for-developers) and test your changes locally. 
+5. [Build `pg_tde`](https://github.com/Percona-Lab/postgres-tde-ext/wiki/Make-builds-for-developers) and [test your changes locally](#run-local-tests). 
 6. Commit the changes. The [commit message guidelines](https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53) will help you with writing great commit messages
-7. Open a PR.
+7. Open a pull request to Percona.
 8. Our team will review your code and if everything is correct, will merge it. 
 Otherwise, we will contact you for additional information or with the request to make changes.
+
+### Run local tests
+
+When you work, you should periodically run tests to check that your changes don’t break existing code.
+
+To run the tests, use the following command:
+
+```
+cd postgres-tde-ext
+./configure
+make USE_PGXS=1 installcheck
+```
+
+You can run tests on your local machine with whatever operating system you have. After you submit the pull request, we will check your patch on multiple operating systems.
 
 ## Contribute to documentation
 
