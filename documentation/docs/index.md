@@ -18,7 +18,7 @@
 
 * Logical replication is not available as it doesn't work with encrypted tables.
 * Keys in the local keyfile are stored unencrypted.
-* Indexes and `NULL` bitmaps of tuples are currently not encrypted. Their encryption is planned for the next releases of `pg_tde`.
+* Indexes and `NULL` bitmaps of tuples are currently not encrypted. 
 
 <i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead.
 
@@ -27,6 +27,16 @@
 ## Supported PostgreSQL versions
 
 `pg_tde` is currently based on PostgreSQL 16.0 and supported for Percona Distribution for PostgreSQL 16.x and upstream PostgreSQL 16.x. 
+
+## Future releases
+
+The following is planned for future releases of `pg_tde`:
+
+* Encryption of indexes and `NULL` bitmaps of tuples
+* Master key rotation
+* Multi-tenancy support
+* Logical replication support
+
 
 
 ## Useful links

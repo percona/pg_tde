@@ -127,6 +127,7 @@ nav:
     - Test TDE: "test.md"
   - How to:
     - Configure streaming replication: replication.md
+  - uninstall.md
   - contribute.md
 
 # - Version Selector: "../"
