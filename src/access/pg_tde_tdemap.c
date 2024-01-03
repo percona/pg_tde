@@ -124,7 +124,7 @@ pg_tde_write_key_fork(const RelFileLocator *rlocator, InternalKey *key, const ch
 	 * the cache as well */
 	data = (RelKeysData *) MemoryContextAlloc(TopMemoryContext, SizeOfRelKeysData(1));
 
-	strcpy(data->master_key_name, master_key_info->name.name);
+	strncpy(data->master_key_name, master_key_info->name.name, MASTER_KEY_NAME_LEN);
 	data->internal_key[0] = *key;
 	data->internal_keys_len = 1;
 
@@ -218,7 +218,7 @@ pg_tde_get_keys_from_fork(const RelFileLocator *rlocator)
 		unsigned char iv[INTERNAL_KEY_LEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 		keyName master_key_name;
-		strncpy(master_key_name.name, keys->master_key_name, 256);
+		strncpy(master_key_name.name, keys->master_key_name, MASTER_KEY_NAME_LEN);
 		master_key_info = keyringGetKey(master_key_name);
 		if(master_key_info == NULL)
 		{
