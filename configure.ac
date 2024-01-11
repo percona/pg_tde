@@ -18,7 +18,7 @@ AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $5 is instal
 	[
 		case $host_os in
 			darwin*) libpathx=($HOMEBREW_CELLAR/$3/*)
-						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include/$2"
+						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include"
 						tde_LDFLAGS="$tde_LDFLAGS -L$libpathx/lib -l$2" ;;
 				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/$2" 
 				  		tde_LDFLAGS="$tde_LDFLAGS -l$2" ;;
@@ -27,7 +27,6 @@ AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $5 is instal
 		tde_CPPFLAGS="$tde_CPPFLAGS -I${with_$1}/include"
 		tde_LDFLAGS="$tde_LDFLAGS -L${with_$1}/lib -l$2"
 	])
-
 	LDFLAGS="$LDFLAGS $tde_LDFLAGS"
 	CPPFLAGS="$CPPFLAGS $tde_CPPFLAGS"
 
@@ -44,7 +43,7 @@ AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $5 is instal
 
 #=======================================
 
-REQUIRE_LIB(jsonc, json-c, json-c, json_object_get, json_object.h)
+REQUIRE_LIB(jsonc, json-c, json-c, json_object_get, json-c/json_object.h)
 REQUIRE_LIB(libcurl, curl, curl, curl_easy_setopt, curl/curl.h)
 REQUIRE_LIB(libintl, intl, gettext, gettext, libintl.h)
 
