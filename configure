@@ -1335,7 +1335,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-jsonc=<path>     Location where json-c/json_object.h is installed
+  --with-jsonc=<path>     Location where json_object.h is installed
   --with-libcurl=<path>   Location where curl/curl.h is installed
   --with-libintl=<path>   Location where libintl.h is installed
 
@@ -2433,6 +2433,7 @@ case $host_os in *\ *) host_os=`echo "$host_os" | sed 's/ /-/g'`;; esac
 # lib = The name of the library file without the 'lib' prefix and without the extension.
 # package = The name of the package that holds the library
 # testfn = One function included in the library that can be used for a test compilation.
+# headerdir = directory that contains required header
 # header = header file to check for
 # if there's a problem during the test compilation.
 
@@ -3510,7 +3511,7 @@ then :
 
 		case $host_os in
 			darwin*) libpathx=($HOMEBREW_CELLAR/json-c/*)
-						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include"
+						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include/json-c"
 						tde_LDFLAGS="$tde_LDFLAGS -L$libpathx/lib -ljson-c" ;;
 				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/json-c"
 				  		tde_LDFLAGS="$tde_LDFLAGS -ljson-c" ;;
@@ -3526,16 +3527,17 @@ fi
 	LDFLAGS="$LDFLAGS $tde_LDFLAGS"
 	CPPFLAGS="$CPPFLAGS $tde_CPPFLAGS"
 
-	ac_fn_c_check_header_compile "$LINENO" "json-c/json_object.h" "ac_cv_header_json_c_json_object_h" "$ac_includes_default"
-if test "x$ac_cv_header_json_c_json_object_h" = xyes
+	ac_fn_c_check_header_compile "$LINENO" "json_object.h" "ac_cv_header_json_object_h" "$ac_includes_default"
+if test "x$ac_cv_header_json_object_h" = xyes
 then :
 
 else case e in #(
   e)
-		as_fn_error $? "header file <json-c/json_object.h> is required, try specifying --with-jsonc" "$LINENO" 5
+		as_fn_error $? "header file <json_object.h> is required, try specifying --with-jsonc" "$LINENO" 5
 	 ;;
 esac
 fi
+
 
 
 	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for json_object_get in -ljson-c" >&5
@@ -3611,7 +3613,7 @@ then :
 
 		case $host_os in
 			darwin*) libpathx=($HOMEBREW_CELLAR/curl/*)
-						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include"
+						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include/curl"
 						tde_LDFLAGS="$tde_LDFLAGS -L$libpathx/lib -lcurl" ;;
 				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/curl"
 				  		tde_LDFLAGS="$tde_LDFLAGS -lcurl" ;;
@@ -3637,6 +3639,7 @@ else case e in #(
 	 ;;
 esac
 fi
+
 
 
 	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for curl_easy_setopt in -lcurl" >&5
@@ -3715,9 +3718,9 @@ then :
 
 		case $host_os in
 			darwin*) libpathx=($HOMEBREW_CELLAR/gettext/*)
-						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include"
+						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include/"
 						tde_LDFLAGS="$tde_LDFLAGS -L$libpathx/lib -lintl" ;;
-				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/intl"
+				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/"
 				  		tde_LDFLAGS="$tde_LDFLAGS -lintl" ;;
 		esac
 
@@ -3743,9 +3746,10 @@ esac
 fi
 
 
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for gettext in -lintl" >&5
-printf %s "checking for gettext in -lintl... " >&6; }
-if test ${ac_cv_lib_intl_gettext+y}
+
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ngettext in -lintl" >&5
+printf %s "checking for ngettext in -lintl... " >&6; }
+if test ${ac_cv_lib_intl_ngettext+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
@@ -3763,20 +3767,20 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char gettext (void);
+char ngettext (void);
 int
 main (void)
 {
-return gettext ();
+return ngettext ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
-  ac_cv_lib_intl_gettext=yes
+  ac_cv_lib_intl_ngettext=yes
 else case e in #(
-  e) ac_cv_lib_intl_gettext=no ;;
+  e) ac_cv_lib_intl_ngettext=no ;;
 esac
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
@@ -3784,9 +3788,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
 LIBS=$ac_check_lib_save_LIBS ;;
 esac
 fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_intl_gettext" >&5
-printf "%s\n" "$ac_cv_lib_intl_gettext" >&6; }
-if test "x$ac_cv_lib_intl_gettext" = xyes
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_intl_ngettext" >&5
+printf "%s\n" "$ac_cv_lib_intl_ngettext" >&6; }
+if test "x$ac_cv_lib_intl_ngettext" = xyes
 then :
   printf "%s\n" "#define HAVE_LIBINTL 1" >>confdefs.h
 

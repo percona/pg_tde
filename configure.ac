@@ -10,17 +10,18 @@ AC_CANONICAL_HOST
 # lib = The name of the library file without the 'lib' prefix and without the extension.
 # package = The name of the package that holds the library
 # testfn = One function included in the library that can be used for a test compilation.
+# headerdir = directory that contains required header
 # header = header file to check for
 # if there's a problem during the test compilation.
 AC_DEFUN([REQUIRE_LIB], [ {
-AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $5 is installed]),[],[with_$1=default])
+	AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $6 is installed]),[],[with_$1=default])
 	AS_IF([test "x$with_$1" == xdefault],
 	[
 		case $host_os in
 			darwin*) libpathx=($HOMEBREW_CELLAR/$3/*)
-						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include"
+						tde_CPPFLAGS="$tde_CPPFLAGS -I$libpathx/include/$5"
 						tde_LDFLAGS="$tde_LDFLAGS -L$libpathx/lib -l$2" ;;
-				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/$2" 
+				  *) tde_CPPFLAGS="$tde_CPPFLAGS -I/usr/include/$5" 
 				  		tde_LDFLAGS="$tde_LDFLAGS -l$2" ;;
 		esac
 	], [ #AS_ELSE
@@ -30,10 +31,11 @@ AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $5 is instal
 	LDFLAGS="$LDFLAGS $tde_LDFLAGS"
 	CPPFLAGS="$CPPFLAGS $tde_CPPFLAGS"
 
-	AC_CHECK_HEADER($5, [],
+	AC_CHECK_HEADER($6, [],
 	[
-		AC_MSG_ERROR([header file <$5> is required, try specifying --with-$1])
+		AC_MSG_ERROR([header file <$6> is required, try specifying --with-$1])
 	])
+
 
 	AC_CHECK_LIB($2, $4, [],
 	[
@@ -43,12 +45,12 @@ AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $5 is instal
 
 #=======================================
 
-REQUIRE_LIB(jsonc, json-c, json-c, json_object_get, json-c/json_object.h)
-REQUIRE_LIB(libcurl, curl, curl, curl_easy_setopt, curl/curl.h)
+REQUIRE_LIB(jsonc, json-c, json-c, json_object_get, json-c, json_object.h)
+REQUIRE_LIB(libcurl, curl, curl, curl_easy_setopt, curl, curl/curl.h)
 
 case $host_os in
 	# on other systems libintl is a part of glibc
-	darwin*) REQUIRE_LIB(libintl, intl, gettext, gettext, libintl.h)
+	darwin*) REQUIRE_LIB(libintl, intl, gettext, ngettext, [], libintl.h)
 esac
 
 
