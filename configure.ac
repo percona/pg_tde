@@ -5,7 +5,7 @@ AC_INIT([pg_tde], [0.1-mvp], [https://github.com/Percona-Lab/postgres-tde-ext/is
 
 AC_CANONICAL_HOST
 
-# REQUIRE_LIB(name,lib,package,testfn,test_include.h)
+# REQUIRE_LIB(name,lib,package,testfn,test_header_dir,test_include.h)
 # name = The complete name of the library file without the extension.
 # lib = The name of the library file without the 'lib' prefix and without the extension.
 # package = The name of the package that holds the library
