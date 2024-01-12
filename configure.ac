@@ -10,8 +10,8 @@ AC_CANONICAL_HOST
 # lib = The name of the library file without the 'lib' prefix and without the extension.
 # package = The name of the package that holds the library
 # testfn = One function included in the library that can be used for a test compilation.
-# headerdir = directory that contains required header
-# header = header file to check for
+# headerdir = The directory that contains required header.
+# header = The header file to check for
 # if there's a problem during the test compilation.
 AC_DEFUN([REQUIRE_LIB], [ {
 	AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $6 is installed]),[],[with_$1=default])
