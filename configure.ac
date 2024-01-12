@@ -45,7 +45,12 @@ AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1=<path>],[Location where $5 is instal
 
 REQUIRE_LIB(jsonc, json-c, json-c, json_object_get, json-c/json_object.h)
 REQUIRE_LIB(libcurl, curl, curl, curl_easy_setopt, curl/curl.h)
-REQUIRE_LIB(libintl, intl, gettext, gettext, libintl.h)
+
+case $host_os in
+	# on other systems libintl is a part of glibc
+	darwin*) REQUIRE_LIB(libintl, intl, gettext, gettext, libintl.h)
+esac
+
 
 AC_SUBST(tde_CPPFLAGS)
 AC_SUBST(tde_LDFLAGS)

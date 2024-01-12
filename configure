@@ -3696,7 +3696,10 @@ esac
 fi
 
 }
- {
+
+case $host_os in
+	# on other systems libintl is a part of glibc
+	darwin*)  {
 
 # Check whether --with-libintl was given.
 if test ${with_libintl+y}
@@ -3797,6 +3800,8 @@ esac
 fi
 
 }
+esac
+
 
 
 
