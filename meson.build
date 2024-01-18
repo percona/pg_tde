@@ -35,7 +35,6 @@ deps_update = {'dependencies': contrib_mod_args.get('dependencies') + [jsondep, 
 
 mod_args = contrib_mod_args + deps_update
 
-
 pg_tde = shared_module('pg_tde',
   pg_tde_sources,
   c_pch: pch_postgres_h,
