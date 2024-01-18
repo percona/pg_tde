@@ -35,6 +35,7 @@ deps_update = {'dependencies': contrib_mod_args.get('dependencies') + [jsondep, 
 
 mod_args = contrib_mod_args + deps_update
 
+
 pg_tde = shared_module('pg_tde',
   pg_tde_sources,
   c_pch: pch_postgres_h,
@@ -44,7 +45,7 @@ pg_tde = shared_module('pg_tde',
 contrib_targets += pg_tde
 
 ldflags = []
-if host_machine.system() == 'darwin'
+if host_system == 'darwin'
   # On MacOS Shared Libraries and Loadable Modules are different things,
   # so we need to pass an extra flag to the linker.
   ldflags += '-bundle'
