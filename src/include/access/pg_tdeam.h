@@ -236,7 +236,7 @@ extern BulkInsertState GetBulkInsertState(void);
 extern void FreeBulkInsertState(BulkInsertState);
 extern void ReleaseBulkInsertStatePin(BulkInsertState bistate);
 
-extern void pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
+extern void pg_tde_insert(bool encrypt, Relation relation, HeapTuple tup, CommandId cid,
 						int options, BulkInsertState bistate);
 extern void pg_tde_multi_insert(Relation relation, struct TupleTableSlot **slots,
 							  int ntuples, CommandId cid, int options,
