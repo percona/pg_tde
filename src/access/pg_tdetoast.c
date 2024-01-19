@@ -845,7 +845,12 @@ pg_tde_toast_encrypt(Pointer dval, Oid valueid, RelKeysData *keys)
 	char*		data_p;
 	char*		encrypted_data;
 
-    if (VARATT_IS_SHORT(dval))
+	/*
+	 * Encryption specific data_p and data_size as we have to avoid
+	 * encryption of the compression info.
+	 * See https://github.com/Percona-Lab/postgres-tde-ext/commit/dee6e357ef05d217a4c4df131249a80e5e909163
+	 */
+	if (VARATT_IS_SHORT(dval))
 	{
 		data_p = VARDATA_SHORT(dval);
 		data_size = VARSIZE_SHORT(dval) - VARHDRSZ_SHORT;
@@ -870,6 +875,8 @@ pg_tde_toast_encrypt(Pointer dval, Oid valueid, RelKeysData *keys)
 
 /*
  * Move an attribute to external storage.
+ * 
+ * copy from PG src/backend/access/table/toast_helper.c
  */
 static void
 pg_tde_toast_tuple_externalize(ToastTupleContext *ttc, int attribute, int options)
@@ -888,7 +895,7 @@ pg_tde_toast_tuple_externalize(ToastTupleContext *ttc, int attribute, int option
 }
 
 /* ----------
- * toast_save_datum -
+ * pg_tde_toast_save_datum -
  *
  *	Save one single datum into the secondary relation and return
  *	a Datum reference for it.
@@ -898,6 +905,8 @@ pg_tde_toast_tuple_externalize(ToastTupleContext *ttc, int attribute, int option
  * value: datum to be pushed to toast storage
  * oldexternal: if not NULL, toast pointer previously representing the datum
  * options: options to be passed to heap_insert() for toast rows
+ * 
+ * based on toast_save_datum from PG src/backend/access/common/toast_internals.c
  * ----------
  */
 static Datum
@@ -1115,7 +1124,8 @@ pg_tde_toast_save_datum(Relation rel, Datum value,
 		 * The tuple should be insterted not encrypted.
 		 * TOAST data already encrypted.
 		 */
-		pg_tde_insert(false, toastrel, toasttup, mycid, options, NULL);
+		options |= HEAP_INSERT_TDE_NO_ENCRYPT;
+		pg_tde_insert(toastrel, toasttup, mycid, options, NULL);
 
 		/*
 		 * Create the index entry.  We cheat a little here by not using
@@ -1176,6 +1186,8 @@ pg_tde_toast_save_datum(Relation rel, Datum value,
  *	Test whether a toast value with the given ID exists in the toast relation.
  *	For safety, we consider a value to exist if there are either live or dead
  *	toast rows with that ID; see notes for GetNewOidWithIndex().
+ *
+ * copy from PG src/backend/access/common/toast_internals.c
  * ----------
  */
 static bool
@@ -1224,6 +1236,8 @@ toastrel_valueid_exists(Relation toastrel, Oid valueid)
  * toastid_valueid_exists -
  *
  *	As above, but work from toast rel's OID not an open relation
+ *
+ * copy from PG src/backend/access/common/toast_internals.c
  * ----------
  */
 static bool

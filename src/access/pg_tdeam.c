@@ -1829,7 +1829,7 @@ ReleaseBulkInsertStatePin(BulkInsertState bistate)
  * reflected into *tup.
  */
 void
-pg_tde_insert(bool encrypt, Relation relation, HeapTuple tup, CommandId cid,
+pg_tde_insert(Relation relation, HeapTuple tup, CommandId cid,
 			int options, BulkInsertState bistate)
 {
 	TransactionId xid = GetCurrentTransactionId();
@@ -1885,7 +1885,8 @@ pg_tde_insert(bool encrypt, Relation relation, HeapTuple tup, CommandId cid,
 	/* NO EREPORT(ERROR) from here till changes are logged */
 	START_CRIT_SECTION();
 
-	pg_tde_RelationPutHeapTuple(relation, buffer, heaptup, encrypt,
+	pg_tde_RelationPutHeapTuple(relation, buffer, heaptup, 
+						(options & HEAP_INSERT_TDE_NO_ENCRYPT) == 0,
 						(options & HEAP_INSERT_SPECULATIVE) != 0);
 
 	if (PageIsAllVisible(BufferGetPage(buffer)))
@@ -2478,7 +2479,7 @@ pg_tde_multi_insert(Relation relation, TupleTableSlot **slots, int ntuples,
 void
 simple_pg_tde_insert(Relation relation, HeapTuple tup)
 {
-	pg_tde_insert(true, relation, tup, GetCurrentCommandId(true), 0, NULL);
+	pg_tde_insert(relation, tup, GetCurrentCommandId(true), 0, NULL);
 }
 
 /*
