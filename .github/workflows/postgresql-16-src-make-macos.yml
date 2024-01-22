@@ -10,6 +10,9 @@ jobs:
         run: |
           brew install make autoconf curl json-c gettext icu4c
 
+      - name: Debug
+        run : brew info icu4c
+
       - name: Clone postgres repository
         uses: actions/checkout@v4
         with:
