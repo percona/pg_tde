@@ -39,4 +39,13 @@ jobs:
           sudo make install
         working-directory: src/contrib/postgres-tde-ext
 
+      - name: Run debug commands on failure
+        if: ${{ failure() }}
+        run: |
+          env
+          go version
+          go env
+          pwd
+          git status
+
 
