@@ -8,7 +8,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          brew install make autoconf curl json-c gettext icu4c
+          brew install make autoconf openssl@3 curl json-c gettext icu4c
 
       - name: Debug
         run : brew info icu4c
