@@ -8,7 +8,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          brew install make autoconf curl json-c gettext
+          brew install make autoconf curl json-c gettext icu4c
 
       - name: Clone postgres repository
         uses: actions/checkout@v4
