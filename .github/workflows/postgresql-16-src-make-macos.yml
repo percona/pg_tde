@@ -27,14 +27,14 @@ jobs:
 
       - name: Build postgres
         run: |
-          ./configure --with-openssl  --enable-tap-tests=no --prefix=/opt/pg
+          ./configure --with-openssl  --enable-tap-tests=no --prefix=$HOME/postgres
           make -j
           sudo make install
         working-directory: src
 
       - name: Build postgres-tde-ext
         run: |
-          ./configureq
+          ./configure
           make -j
           sudo make install
         working-directory: src/contrib/postgres-tde-ext
@@ -43,8 +43,6 @@ jobs:
         if: ${{ failure() }}
         run: |
           env
-          go version
-          go env
           pwd
           git status
 
