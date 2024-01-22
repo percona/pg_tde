@@ -30,9 +30,9 @@ jobs:
 
       - name: Build postgres
         run: |
-          export LDFLAGS="-L/opt/homebrew/opt/icu4c/lib"
-          export CPPFLAGS="-I/opt/homebrew/opt/icu4c/include"
-          export PKG_CONFIG_PATH="/opt/homebrew/opt/icu4c/lib/pkgconfig"
+          export LDFLAGS="-L/usr/local/opt/icu4c/lib"
+          export CPPFLAGS="-I/usr/local/opt/icu4c/include"
+          export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig"
           ./configure --with-openssl  --enable-tap-tests=no --prefix=$HOME/postgres
           make -j
           sudo make install
