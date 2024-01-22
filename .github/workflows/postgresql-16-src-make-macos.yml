@@ -23,7 +23,7 @@ jobs:
           path: 'src/contrib/postgres-tde-ext'
 
       - name: Create pgsql dir
-        run: mkdir -p /opt/pgsql
+        run: mkdir -p $HOME/pgsql
 
       - name: Build postgres
         run: |
