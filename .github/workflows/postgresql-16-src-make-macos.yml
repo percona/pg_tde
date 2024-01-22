@@ -9,7 +9,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew install make autoconf curl json-c gettext icu4c
-          export LDFLAGS="-L/usr/local/opt/icu4c/lib"
+          export PKG_CONFIG_PATH=/usr/local/opt/icu4c/lib/pkgconfig/
 
       - name: Clone postgres repository
         uses: actions/checkout@v4
