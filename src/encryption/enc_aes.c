@@ -102,11 +102,13 @@ AesRun2(EVP_CIPHER_CTX** ctxPtr, int enc, const unsigned char* key, const unsign
 
 static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, const unsigned char* in, int in_len, unsigned char* out, int* out_len)
 {
+	int out_len2 = 0;
 	EVP_CIPHER_CTX* ctx = NULL;
 	ctx = EVP_CIPHER_CTX_new();
 	EVP_CIPHER_CTX_init(ctx);
 
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
+	Assert(in_len % cipher_block_size == 0);
 
 	if(EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, enc) == 0)
 	{
@@ -119,6 +121,7 @@ static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, c
 		goto cleanup;
 	}
 
+
 	if(EVP_CipherUpdate(ctx, out, out_len, in, in_len) == 0)
 	{
 		#ifdef FRONTEND
@@ -130,7 +133,7 @@ static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, c
 		goto cleanup;
 	}
 
-	if(EVP_CipherFinal_ex(ctx, out, out_len) == 0)
+	if(EVP_CipherFinal_ex(ctx, out + *out_len, &out_len2) == 0)
 	{
 		#ifdef FRONTEND
 			fprintf(stderr, "ERROR: EVP_CipherFinal_ex failed. OpenSSL error: %s\n", ERR_error_string(ERR_get_error(), NULL));
@@ -140,6 +143,11 @@ static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, c
 		#endif
 		goto cleanup;
 	}
+
+	// We encrypt one block (16 bytes)
+	// Our expectation is that the result should also be 16 bytes, without any additional padding
+	*out_len += out_len2;
+	Assert(in_len == *out_len);
 
 cleanup:
  	EVP_CIPHER_CTX_cleanup(ctx);
