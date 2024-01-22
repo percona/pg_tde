@@ -27,7 +27,7 @@ jobs:
 
       - name: Build postgres
         run: |
-          PKG_CONFIG_PATH=/usr/local/opt/icu4c/lib/pkgconfig/
+          PKG_CONFIG_PATH="/opt/homebrew/opt/icu4c/lib/pkgconfig"
           ./configure --with-openssl  --enable-tap-tests=no --prefix=$HOME/postgres
           make -j
           sudo make install
