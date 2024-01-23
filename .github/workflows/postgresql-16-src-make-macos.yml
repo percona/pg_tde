@@ -9,7 +9,6 @@ jobs:
       - name: Install dependencies
         run: |
           brew install make autoconf openssl@3 curl json-c gettext icu4c
-          echo "HOMEBREW_CELLAR=$(brew --cellar)" >> $GITHUB_ENV
 
       - name: Clone postgres repository
         uses: actions/checkout@v4
