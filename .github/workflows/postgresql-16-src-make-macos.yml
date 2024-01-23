@@ -11,7 +11,10 @@ jobs:
           brew install make autoconf openssl@3 curl json-c gettext icu4c
 
       - name: Debug
-        run : brew info icu4c
+        run : |
+          ls /usr/local/opt/
+          ls /usr/local/opt/json-c/
+          ls /usr/local/opt/json-c/include
 
       - name: Clone postgres repository
         uses: actions/checkout@v4
@@ -40,9 +43,6 @@ jobs:
 
       - name: Build postgres-tde-ext
         run: |
-          export LDFLAGS="-L/usr/local/opt/json-c/lib"
-          export CPPFLAGS="-I/usr/local/opt/json-c/include"
-          export PKG_CONFIG_PATH="/usr/local/opt/json-c/lib/pkgconfig"
           ./configure
           make -j
           sudo make install
