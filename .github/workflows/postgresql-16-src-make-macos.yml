@@ -45,7 +45,7 @@ jobs:
       - name: Start postgresql cluster with pg_tde
         run: |
           export PATH="$HOME/postgres/bin:$PATH"
-          sudo cp /usr/local/pgsql/bin/pg_config /usr/bin
+          sudo cp $HOME/postgres/bin/pg_config /usr/bin
           initdb -D $HOME/pgsql/data
           echo "shared_preload_libraries = 'pg_tde'" >> \
             /$HOME/pgsql/data/postgresql.conf
