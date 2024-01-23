@@ -53,6 +53,11 @@ jobs:
           cp src/contrib/postgres-tde-ext/keyring.json /tmp/keyring.json
           pg_ctl -D $HOME/pgsql/data -l logfile start
 
+      - name: Test postgres-tde-ext
+        run: |
+          make installcheck
+        working-directory: src/contrib/postgres-tde-ext
+
       - name: Run debug commands on failure
         if: ${{ failure() }}
         run: |
