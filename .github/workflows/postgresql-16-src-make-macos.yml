@@ -40,6 +40,9 @@ jobs:
 
       - name: Build postgres-tde-ext
         run: |
+          export LDFLAGS="-L/usr/local/opt/json-c/lib"
+          export CPPFLAGS="-I/usr/local/opt/json-c/include"
+          export PKG_CONFIG_PATH="/usr/local/opt/json-c/lib/pkgconfig"
           ./configure
           make -j
           sudo make install
