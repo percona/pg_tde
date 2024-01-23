@@ -37,7 +37,7 @@ jobs:
 
       - name: Build postgres-tde-ext
         run: |
-          export LDFLAGS="-L/usr/local/opt/json-c/lib"
+          export LDFLAGS="-L/usr/local/opt/json-c/lib -ljson-c"
           export CPPFLAGS="-I/usr/local/opt/json-c/include/json-c"
           ./configure
           make -j
