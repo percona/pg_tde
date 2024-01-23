@@ -42,6 +42,18 @@ jobs:
           sudo make install
         working-directory: src/contrib/postgres-tde-ext
 
+      - name: Start postgresql cluster with pg_tde
+        run: |
+          export PATH="$HOME/postgres/bin:$PATH"
+          sudo cp /usr/local/pgsql/bin/pg_config /usr/bin
+          initdb -D $HOME/pgsql/data
+          echo "shared_preload_libraries = 'pg_tde'" >> \
+            /$HOME/pgsql/data/postgresql.conf
+          echo "pg_tde.keyringConfigFile = '/tmp/keyring.json'" >> \
+            $HOME/pgsql/data/postgresql.conf
+          cp src/contrib/postgres-tde-ext/keyring.json /tmp/keyring.json
+          pg_ctl -D $HOME/pgsql/data -l logfile start
+
       - name: Run debug commands on failure
         if: ${{ failure() }}
         run: |
