@@ -27,6 +27,7 @@ jobs:
 
       - name: Build postgres
         run: |
+          export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig"
           meson setup build --prefix `pwd`/../inst --buildtype=debug -Dcassert=true
           cd build && ninja && ninja install
         working-directory: src
