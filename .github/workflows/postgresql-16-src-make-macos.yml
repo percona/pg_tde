@@ -7,8 +7,7 @@ jobs:
     runs-on: macos-12
     steps:
       - name: Install dependencies
-        run: |
-          brew install make autoconf openssl@3 curl json-c gettext icu4c
+        run: brew install json-c # All other required deps already installed in this image.
 
       - name: Clone postgres repository
         uses: actions/checkout@v4
