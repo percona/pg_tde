@@ -47,7 +47,7 @@ jobs:
 
       - name: Build postgres
         run: |
-          ./configure --with-openssl  --enable-tap-tests=no
+          ./configure --with-openssl  --enable-tap-tests=no --enable-cassert
           make -j
           sudo make install
         working-directory: src

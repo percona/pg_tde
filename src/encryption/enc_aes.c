@@ -121,7 +121,6 @@ static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, c
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
 	Assert(in_len % cipher_block_size == 0);
 
-
 	if(EVP_CipherUpdate(ctx, out, out_len, in, in_len) == 0)
 	{
 		#ifdef FRONTEND
@@ -144,8 +143,9 @@ static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, c
 		goto cleanup;
 	}
 
-	// We encrypt one block (16 bytes)
-	// Our expectation is that the result should also be 16 bytes, without any additional padding
+	/* We encrypt one block (16 bytes)
+	 * Our expectation is that the result should also be 16 bytes, without any additional padding
+	 */
 	*out_len += out_len2;
 	Assert(in_len == *out_len);
 
