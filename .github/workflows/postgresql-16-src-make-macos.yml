@@ -11,7 +11,7 @@ jobs:
 
       - name: Debug
         run: |
-          pkg --list-all
+          pkg-config --list-all
           exit 1
 
       - name: Clone postgres repository
