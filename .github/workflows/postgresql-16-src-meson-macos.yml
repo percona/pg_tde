@@ -39,15 +39,6 @@ jobs:
           meson test --suite postgres-tde-ext -v --num-processes 1
         working-directory: src/build
 
-#       - name: Report on test fail
-#         uses: actions/upload-artifact@v2
-#         if: ${{ failure() }}
-#         with:
-#           name: Regressions diff and postgresql log
-#           path: |
-#             src/build/testrun/postgres-tde-ext/regress/
-#           retention-days: 3
-
       - name: Test postgres-tde-ext with keyring_vault
         run: |
           TV=$(mktemp)
@@ -62,11 +53,17 @@ jobs:
           meson test --suite postgres-tde-ext -v --num-processes 1
         working-directory: src/build
 
-#       - name: Report on test fail
-#         uses: actions/upload-artifact@v2
-#         if: ${{ failure() }}
-#         with:
-#           name: Regressions diff and postgresql log
-#           path: |
-#             src/build/testrun/postgres-tde-ext/regress/
-#           retention-days: 3
+      - name: Report on test fail
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: Regressions diff and postgresql log
+          path: |
+            src/build/testrun/postgres-tde-ext/regress/
+          retention-days: 3
+
+      - name: Run debug commands on failure
+        if: ${{ failure() }}
+        run: |
+          env
+          pwd
