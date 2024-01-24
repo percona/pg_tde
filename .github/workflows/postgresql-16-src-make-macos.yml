@@ -26,8 +26,9 @@ jobs:
 
       - name: Build postgres
         run: |
-          export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig"
-          ./configure --with-openssl  --enable-tap-tests=no --prefix=$HOME/postgres --with-libraries=/usr/local/opt/openssl/lib
+          export LDFLAGS="-L/usr/local/opt/icu4c/lib -L/usr/local/opt/openssl/lib"
+          export CPPFLAGS="-I/usr/local/opt/icu4c/include -I/usr/local/opt/openssl/include"
+          ./configure --with-openssl  --enable-tap-tests=no --prefix=$HOME/postgres
           make -j
           sudo make install
         working-directory: src
