@@ -11,7 +11,8 @@ jobs:
 
       - name: Debug
         run: |
-          pkg-config --list-all
+          pkg-config --libs --cflags openssl
+          pkg-config --libs --cflags libcrypto
           exit 1
 
       - name: Clone postgres repository
