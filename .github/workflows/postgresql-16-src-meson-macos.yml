@@ -1,0 +1,71 @@
+name: Build on MacOS with make
+on: [pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    name: build
+    runs-on: macos-12
+    steps:
+      - name: Install dependencies
+        run: brew install json-c meson # All other required deps already installed in this image.
+
+      - name: Clone postgres repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'postgres/postgres'
+          ref: 'a81e5516fa4bc53e332cb35eefe231147c0e1749'
+          path: 'src'
+
+      - name: Clone postgres-tde-ext repository
+        uses: actions/checkout@v4
+        with:
+          path: 'src/contrib/postgres-tde-ext'
+
+      - name: Include postgres-tde-ext in meson build
+        run: |
+          echo "subdir('postgres-tde-ext')" >> src/contrib/meson.build
+
+      - name: Build postgres
+        run: |
+          meson setup build --prefix `pwd`/../inst --buildtype=debug -Dcassert=true
+          cd build && ninja && ninja install
+        working-directory: src
+
+      - name: Test postgres-tde-ext with keyring_file
+        run: |
+          cp ../contrib/postgres-tde-ext/keyring.json /tmp/keyring.json
+          meson test --suite setup -v
+          meson test --suite postgres-tde-ext -v --num-processes 1
+        working-directory: src/build
+
+#       - name: Report on test fail
+#         uses: actions/upload-artifact@v2
+#         if: ${{ failure() }}
+#         with:
+#           name: Regressions diff and postgresql log
+#           path: |
+#             src/build/testrun/postgres-tde-ext/regress/
+#           retention-days: 3
+
+      - name: Test postgres-tde-ext with keyring_vault
+        run: |
+          TV=$(mktemp)
+          { exec >$TV; vault server -dev; } &
+          sleep 10
+          ROOT_TOKEN=$(cat $TV | grep "Root Token" | cut -d ":" -f 2 | xargs echo -n)
+          echo "Root token: $ROOT_TOKEN"
+          cp ../contrib/postgres-tde-ext/keyring-vault.json /tmp/keyring.json
+          sed -i "s/ROOT_TOKEN/$ROOT_TOKEN/g" /tmp/keyring.json
+          cat /tmp/keyring.json
+          meson test --suite setup -v
+          meson test --suite postgres-tde-ext -v --num-processes 1
+        working-directory: src/build
+
+#       - name: Report on test fail
+#         uses: actions/upload-artifact@v2
+#         if: ${{ failure() }}
+#         with:
+#           name: Regressions diff and postgresql log
+#           path: |
+#             src/build/testrun/postgres-tde-ext/regress/
+#           retention-days: 3
