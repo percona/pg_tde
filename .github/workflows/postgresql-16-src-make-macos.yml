@@ -9,12 +9,6 @@ jobs:
       - name: Install dependencies
         run: brew install json-c # All other required deps already installed in this image.
 
-      - name: Debug
-        run: |
-          pkg-config --libs --cflags openssl
-          pkg-config --libs --cflags libcrypto
-          exit 1
-
       - name: Clone postgres repository
         uses: actions/checkout@v4
         with:
@@ -32,8 +26,8 @@ jobs:
 
       - name: Build postgres
         run: |
-          export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/openssl/lib/pkgconfig"
-          ./configure --with-openssl  --enable-tap-tests=no --prefix=$HOME/postgres
+          export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig"
+          ./configure --with-openssl  --enable-tap-tests=no --prefix=$HOME/postgres --with-libraries=/usr/local/opt/openssl/lib
           make -j
           sudo make install
         working-directory: src
