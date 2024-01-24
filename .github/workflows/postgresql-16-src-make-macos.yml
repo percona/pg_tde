@@ -1,4 +1,4 @@
-name: Build on MacOS with make
+name: postgresql-16-src-make-macos
 on: [pull_request, workflow_dispatch]
 
 jobs:
