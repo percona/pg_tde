@@ -107,9 +107,6 @@ static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, c
 	ctx = EVP_CIPHER_CTX_new();
 	EVP_CIPHER_CTX_init(ctx);
 
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
-	Assert(in_len % cipher_block_size == 0);
-
 	if(EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, enc) == 0)
 	{
 		#ifdef FRONTEND
@@ -120,6 +117,9 @@ static void AesRun(int enc, const unsigned char* key, const unsigned char* iv, c
 		#endif
 		goto cleanup;
 	}
+
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
+	Assert(in_len % cipher_block_size == 0);
 
 
 	if(EVP_CipherUpdate(ctx, out, out_len, in, in_len) == 0)
