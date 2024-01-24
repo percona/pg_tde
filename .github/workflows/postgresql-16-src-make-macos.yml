@@ -26,7 +26,7 @@ jobs:
 
       - name: Build postgres
         run: |
-          export LDFLAGS="-L/usr/local/opt/icu4c/lib -licui18n -L/usr/local/opt/openssl/lib"
+          export LDFLAGS="-L/usr/local/opt/icu4c/lib -licui18n -licuuc -licudata -L/usr/local/opt/openssl/lib"
           export CPPFLAGS="-I/usr/local/opt/icu4c/include -I/usr/local/opt/openssl/include"
           ./configure --with-openssl  --enable-tap-tests=no --prefix=$HOME/postgres
           make -j
