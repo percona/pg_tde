@@ -73,8 +73,6 @@ AesRun2(EVP_CIPHER_CTX** ctxPtr, int enc, const unsigned char* key, const unsign
 		*ctxPtr = EVP_CIPHER_CTX_new();
 		EVP_CIPHER_CTX_init(*ctxPtr);
 		
-		EVP_CIPHER_CTX_set_padding(*ctxPtr, 0);
-
 		if(EVP_CipherInit_ex(*ctxPtr, cipher2, NULL, key, iv, enc) == 0)
 		{
 			#ifdef FRONTEND
@@ -86,6 +84,8 @@ AesRun2(EVP_CIPHER_CTX** ctxPtr, int enc, const unsigned char* key, const unsign
 
 			return;
 		}
+
+		EVP_CIPHER_CTX_set_padding(*ctxPtr, 0);
 	}
 
 	if(EVP_CipherUpdate(*ctxPtr, out, out_len, in, in_len) == 0)
