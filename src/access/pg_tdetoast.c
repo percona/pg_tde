@@ -726,6 +726,7 @@ pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
 		int32		chcpystrt;
 		int32		chcpyend;
 		int32 		encrypt_offset;
+		char iv_prefix[16] = {0,};
 
 		/*
 		 * Have a chunk, extract the sequence number and the data
@@ -809,7 +810,9 @@ pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
 			}
 		}
 		/* Decrypt the data chunk by chunk here */
-		PG_TDE_DECRYPT_DATA((curchunk * TOAST_MAX_CHUNK_SIZE - sliceoffset) + encrypt_offset + valueid,
+
+		memcpy(iv_prefix, &valueid, sizeof(Oid));
+		PG_TDE_DECRYPT_DATA(iv_prefix, (curchunk * TOAST_MAX_CHUNK_SIZE - sliceoffset) + encrypt_offset,
 					chunkdata + chcpystrt,
 					(chcpyend - chcpystrt) + 1,
 					decrypted_data, keys);
@@ -844,6 +847,7 @@ pg_tde_toast_encrypt(Pointer dval, Oid valueid, RelKeysData *keys)
 	int32		data_size =0;
 	char*		data_p;
 	char*		encrypted_data;
+	char iv_prefix[16] = {0,};
 
 	/*
 	 * Encryption specific data_p and data_size as we have to avoid
@@ -867,7 +871,9 @@ pg_tde_toast_encrypt(Pointer dval, Oid valueid, RelKeysData *keys)
 	}
 	/* Now encrypt the data and replace it in ttc */
 	encrypted_data = (char *)palloc(data_size);
-	PG_TDE_ENCRYPT_DATA(valueid, data_p, data_size, encrypted_data, keys);
+
+	memcpy(iv_prefix, &valueid, sizeof(Oid));
+	PG_TDE_ENCRYPT_DATA(iv_prefix, 0, data_p, data_size, encrypted_data, keys);
 
 	memcpy(data_p, encrypted_data, data_size);
 	pfree(encrypted_data);
