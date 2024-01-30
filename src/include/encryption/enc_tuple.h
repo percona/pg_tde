@@ -57,9 +57,4 @@ PGTdeExecStorePinnedBufferHeapTuple(Relation rel, HeapTuple tuple, TupleTableSlo
 		pg_tde_crypt(_iv_prefix, _iv_prefix_len, _data, _data_len, _out, _keys, "ENCRYPT-PAGE-ITEM"); \
 	} while(0)
 
-#define PG_TDE_RE_ENCRYPT_TUPLE_DATA(_read_bn, _read_offset_in_page, _read_data, \
-				_write_bn, _write_offset_in_page, _write_data, _data_len, _keys) \
-	do { \
-	} while(0)
-
 #endif /*ENC_TUPLE_H*/

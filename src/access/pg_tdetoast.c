@@ -657,7 +657,8 @@ pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
 	int			validIndex;
 	SnapshotData SnapshotToast;
 	char		decrypted_data[TOAST_MAX_CHUNK_SIZE];
-    RelKeysData *keys = GetRelationKeys(toastrel->rd_locator);
+	RelKeysData 	*keys = GetRelationKeys(toastrel->rd_locator);
+	char		iv_prefix[16] = {0,};
 
 
 	/* Look for the valid index of toast relation */
@@ -709,6 +710,8 @@ pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
 	toastscan = systable_beginscan_ordered(toastrel, toastidxs[validIndex],
 										   &SnapshotToast, nscankeys, toastkey);
 
+	memcpy(iv_prefix, &valueid, sizeof(Oid));
+
 	/*
 	 * Read the chunks by index
 	 *
@@ -726,7 +729,6 @@ pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
 		int32		chcpystrt;
 		int32		chcpyend;
 		int32 		encrypt_offset;
-		char iv_prefix[16] = {0,};
 
 		/*
 		 * Have a chunk, extract the sequence number and the data
@@ -811,7 +813,6 @@ pg_tde_fetch_toast_slice(Relation toastrel, Oid valueid, int32 attrsize,
 		}
 		/* Decrypt the data chunk by chunk here */
 
-		memcpy(iv_prefix, &valueid, sizeof(Oid));
 		PG_TDE_DECRYPT_DATA(iv_prefix, (curchunk * TOAST_MAX_CHUNK_SIZE - sliceoffset) + encrypt_offset,
 					chunkdata + chcpystrt,
 					(chcpyend - chcpystrt) + 1,
@@ -847,7 +848,7 @@ pg_tde_toast_encrypt(Pointer dval, Oid valueid, RelKeysData *keys)
 	int32		data_size =0;
 	char*		data_p;
 	char*		encrypted_data;
-	char iv_prefix[16] = {0,};
+	char		iv_prefix[16] = {0,};
 
 	/*
 	 * Encryption specific data_p and data_size as we have to avoid

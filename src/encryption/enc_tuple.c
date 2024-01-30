@@ -19,6 +19,17 @@ static void iv_prefix_debug(const char* iv_prefix, char* out_hex)
 }
 #endif
 
+static void
+SetIVPrefix(ItemPointerData* ip, char* iv_prefix)
+{
+	iv_prefix[0] = ip->ip_blkid.bi_hi / 256;
+	iv_prefix[1] = ip->ip_blkid.bi_hi % 256;
+	iv_prefix[2] = ip->ip_blkid.bi_lo / 256;
+	iv_prefix[3] = ip->ip_blkid.bi_lo % 256;
+	iv_prefix[4] = ip->ip_posid / 256;
+	iv_prefix[5] = ip->ip_posid % 256;
+}
+
 /* 
  * ================================================================
  * ACTUAL ENCRYPTION/DECRYPTION FUNCTIONS
@@ -102,15 +113,11 @@ void
 pg_tde_crypt_tuple(HeapTuple tuple, HeapTuple out_tuple, RelKeysData* keys, const char* context)
 {
 	char iv_prefix[16] = {0};
-    uint32 data_len = tuple->t_len - tuple->t_data->t_hoff;
-    char *tup_data = (char*)tuple->t_data + tuple->t_data->t_hoff;
-    char *out_data = (char*)out_tuple->t_data + out_tuple->t_data->t_hoff;
-	iv_prefix[0] = tuple->t_self.ip_blkid.bi_hi / 256;
-	iv_prefix[1] = tuple->t_self.ip_blkid.bi_hi % 256;
-	iv_prefix[2] = tuple->t_self.ip_blkid.bi_lo / 256;
-	iv_prefix[3] = tuple->t_self.ip_blkid.bi_lo % 256;
-	iv_prefix[4] = tuple->t_self.ip_posid / 256;
-	iv_prefix[5] = tuple->t_self.ip_posid % 256;
+	uint32 data_len = tuple->t_len - tuple->t_data->t_hoff;
+	char *tup_data = (char*)tuple->t_data + tuple->t_data->t_hoff;
+	char *out_data = (char*)out_tuple->t_data + out_tuple->t_data->t_hoff;
+
+	SetIVPrefix(&tuple->t_self, iv_prefix);
 
 #ifdef ENCRYPTION_DEBUG
     ereport(LOG,
@@ -143,18 +150,13 @@ PGTdePageAddItemExtended(RelFileLocator rel,
 	char* toAddr = ((char*)phdr) + phdr->pd_upper + header_size;
 	char* data = item + header_size;
 	uint32	data_len = size - header_size;
-	// ctid stored in item is incorrect (not set) at this point
+	/* ctid stored in item is incorrect (not set) at this point */
 	ItemPointerData ip;
 	RelKeysData *keys = GetRelationKeys(rel);
 
 	ItemPointerSet(&ip, bn, off); 
 
-	iv_prefix[0] = ip.ip_blkid.bi_hi / 256;
-	iv_prefix[1] = ip.ip_blkid.bi_hi % 256;
-	iv_prefix[2] = ip.ip_blkid.bi_lo / 256;
-	iv_prefix[3] = ip.ip_blkid.bi_lo % 256;
-	iv_prefix[4] = ip.ip_posid / 256;
-	iv_prefix[5] = ip.ip_posid % 256;
+	SetIVPrefix(&ip, iv_prefix);
 
 	PG_TDE_ENCRYPT_PAGE_ITEM(iv_prefix, 0, data, data_len, toAddr, keys);
 	return off;
