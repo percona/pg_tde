@@ -22,6 +22,12 @@ static void iv_prefix_debug(const char* iv_prefix, char* out_hex)
 static void
 SetIVPrefix(ItemPointerData* ip, char* iv_prefix)
 {
+	/* We have up to 16 bytes for the entire IV
+	 * The higher bytes (starting with 15) are used for the incrementing counter
+	 * The lower bytes (in this case, 0..5) are used for the tuple identification
+	 * Tuple identification is based on CTID, which currently is 48 bytes in
+	 * postgres: 4 bytes for the block id and 2 bytes for the position id
+	 */
 	iv_prefix[0] = ip->ip_blkid.bi_hi / 256;
 	iv_prefix[1] = ip->ip_blkid.bi_hi % 256;
 	iv_prefix[2] = ip->ip_blkid.bi_lo / 256;
