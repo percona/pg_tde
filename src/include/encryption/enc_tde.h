@@ -18,7 +18,11 @@
 #include "keyring/keyring_api.h"
 
 extern void
-pg_tde_crypt(const char* iv_prefix, uint32 start_offset, const char* data, uint32 data_len, char* out, RelKeyData* key, const char* context);
+pg_tde_crypt_simple(const char* iv_prefix, uint32 start_offset, const char* data, uint32 data_len, char* out, RelKeyData* keys, const char* context);
+extern void
+pg_tde_crypt_complex(const char* iv_prefix, uint32 start_offset, const char* data, uint32 data_len, char* out, RelKeyData* keys, const char* context);
+extern void
+pg_tde_crypt(const char* iv_prefix, uint32 start_offset, const char* data, uint32 data_len, char* out, RelKeyData* keys, const char* context);
 extern void
 pg_tde_crypt_tuple(HeapTuple tuple, HeapTuple out_tuple, RelKeyData* key, const char* context);
 
