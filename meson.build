@@ -50,22 +50,6 @@ if host_system == 'darwin'
   ldflags += '-bundle'
 endif
 
-enc_test = executable('enc_test',
-  files('src/encryption/enc_aes.c', 'src/encryption/test.c'),
-  kwargs: mod_args,
-  include_directories: incdir,
-  c_args : '-DFRONTEND',
-  link_args: ldflags,
-)
-
-pg_tde_perf = executable('enc_perf_test',
-  files('src/encryption/enc_aes.c', 'src/encryption/test_perf.c'),
-  kwargs: contrib_mod_args,
-  include_directories: incdir,
-  c_args : '-DFRONTEND',
-  link_args: ldflags,
-)
-
 install_data(
   'pg_tde.control',
   'pg_tde--1.0.sql',
@@ -73,7 +57,7 @@ install_data(
 )
 
 tests += {
-  'name': 'postgres-tde-ext',
+  'name': 'pg_tde',
   'sd': meson.current_source_dir(),
   'bd': meson.current_build_dir(),
   'regress': {
@@ -87,7 +71,7 @@ tests += {
       'multi_insert',
       'trigger_on_view',
     ],
-    'regress_args': ['--temp-config', files('postgres-tde-ext.conf')],
+    'regress_args': ['--temp-config', files('pg_tde.conf')],
     'runningcheck': false,
   },
   'tap': {
