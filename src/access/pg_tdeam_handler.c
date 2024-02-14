@@ -27,7 +27,7 @@
 #include "access/pg_tde_rewrite.h"
 #include "access/pg_tde_tdemap.h"
 
-#include "encryption/enc_tuple.h"
+#include "encryption/enc_tde.h"
 
 #include "access/genam.h"
 #include "access/multixact.h"
