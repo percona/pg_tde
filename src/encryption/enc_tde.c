@@ -48,7 +48,7 @@ SetIVPrefix(ItemPointerData* ip, char* iv_prefix)
  * start_offset: is the absolute location of start of data in the file.
  * This function assumes that everything is in a single block, and has an assertion ensuring this
  */
-void
+static void
 pg_tde_crypt_simple(const char* iv_prefix, uint32 start_offset, const char* data, uint32 data_len, char* out, RelKeyData* key, const char* context)
 {
 	const uint64 aes_start_block = start_offset / AES_BLOCK_SIZE;
@@ -84,7 +84,7 @@ pg_tde_crypt_simple(const char* iv_prefix, uint32 start_offset, const char* data
  * start_offset: is the absolute location of start of data in the file.
  * This is a generic function indented for large data, that od not fit into a single block
  */
-void
+static void
 pg_tde_crypt_complex(const char* iv_prefix, uint32 start_offset, const char* data, uint32 data_len, char* out, RelKeyData* key, const char* context)
 {
 	const uint64 aes_start_block = start_offset / AES_BLOCK_SIZE;
