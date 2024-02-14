@@ -137,9 +137,7 @@ pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, Relation rel)
 	XLogInsert(RM_TDERMGR_ID, XLOG_TDE_RELATION_KEY);
 
 	/*
-	 * TODO: should DB crash after sending XLog, secondaries would create a fork
-	 * file but the relation won't be created either on primary or secondaries.
-	 * Hence, the *.tde file will remain as garbage on secondaries.
+	 * Add the encyrpted key to the key map data file structure.
 	 */
 	pg_tde_write_key_map_entry(newrlocator, enc_rel_key_data, master_key_info);
 }
