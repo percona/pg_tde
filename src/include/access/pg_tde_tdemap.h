@@ -62,7 +62,7 @@ extern void pg_tde_cleanup_path_vars(void);
 const char * tde_sprint_key(InternalKey *k);
 
 /* TDE XLOG resource manager */
-#define XLOG_TDE_CREATE_FORK   0x00
+#define XLOG_TDE_RELATION_KEY   0x00
 /* TODO: ID has to be registedred and changed: https://wiki.postgresql.org/wiki/CustomWALResourceManagers */
 #define RM_TDERMGR_ID          RM_EXPERIMENTAL_ID
 #define RM_TDERMGR_NAME        "test_pg_tde_custom_rmgr"
