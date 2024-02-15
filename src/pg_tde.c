@@ -25,6 +25,7 @@
 #include "keyring/keyring_api.h"
 #include "pg_tde_shmem.h"
 #include "catalog/tde_master_key.h"
+#include "keyring/keyring_file.h"
 
 
 PG_MODULE_MAGIC;
@@ -39,7 +40,6 @@ tde_shmem_request(void)
 	Size sz = TdeRequiredSharedMemorySize();
 	if (prev_shmem_request_hook)
 		prev_shmem_request_hook();
-	sz = add_size(sz, keyringCacheMemorySize());
 	RequestAddinShmemSpace(sz);
 	ereport(LOG, (errmsg("tde_shmem_request: requested %ld bytes", sz)));
 
@@ -52,7 +52,6 @@ tde_shmem_startup(void)
 	if (prev_shmem_startup_hook)
 		prev_shmem_startup_hook();
 
-	keyringInitCache();
 	TdeShmemInit();
 	AesInit();
 }
@@ -77,6 +76,6 @@ void
     RegisterXactCallback(pg_tde_xact_callback, NULL);
     RegisterSubXactCallback(pg_tde_subxact_callback, NULL);
 	SetupTdeDDLHooks();
-
+	InstallFileKeyring();
 	RegisterCustomRmgr(RM_TDERMGR_ID, &pg_tde_rmgr);
 }

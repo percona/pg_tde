@@ -118,7 +118,7 @@ GetAllKeyringProviders(void)
 }
 
 GenericKeyring*
-GetKeyProviderByName(char *provider_name)
+GetKeyProviderByName(const char *provider_name)
 {
 	HeapTuple 	tuple;
 	TupleDesc	tupDesc;
@@ -165,7 +165,7 @@ GetKeyProviderByID(int provider_id)
 
 	/* Set up a scan key to fetch only required record. */
 	ScanKeyInit(scanKey,
-				(AttrNumber) PG_TDE_KEY_PROVIDER_NAME_ATTRNUM,
+				(AttrNumber) PG_TDE_KEY_PROVIDER_ID_ATTRNUM,
 				BTEqualStrategyNumber, F_INT4EQ,
 				Int32GetDatum(provider_id));
 

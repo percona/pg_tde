@@ -12,6 +12,7 @@
 
 #include "postgres.h"
 #include "access/pg_tde_tdemap.h"
+#include "catalog/tde_master_key.h"
 #include "transam/pg_tde_xact_handler.h"
 #include "storage/fd.h"
 #include "utils/wait_event.h"
@@ -29,8 +30,6 @@
 
 #include "pg_tde_defines.h"
 
-/* TODO: should be a user defined */ 
-static const char *MasterKeyName = "master-key";
 
 static inline char* pg_tde_get_key_file_path(const RelFileLocator *newrlocator);
 static void put_keys_into_map(Oid rel_id, RelKeysData *keys);
@@ -62,7 +61,7 @@ pg_tde_create_key_fork(const RelFileLocator *newrlocator, Relation rel)
 	InternalKey		int_key = {0};
 	InternalKey		int_key_enc = {0};
 	uint8			mkey_len;
-	const keyInfo 	*master_key_info;
+	TDEMasterKey	*masterKey;
 	int				encsz;
 
 	// TODO: use proper iv stored in the file!
@@ -76,25 +75,21 @@ pg_tde_create_key_fork(const RelFileLocator *newrlocator, Relation rel)
                 		RelationGetRelationName(rel), ERR_error_string(ERR_get_error(), NULL))));
 	}
 
-	master_key_info = keyringGetLatestKey(MasterKeyName);
-	if(master_key_info == NULL)
-	{
-		master_key_info = keyringGenerateKey(MasterKeyName, INTERNAL_KEY_LEN);
-	}
-	if(master_key_info == NULL)
+	masterKey = GetMasterKey();
+	if(masterKey == NULL)
 	{
 		ereport(ERROR,
 				(errmsg("failed to retrieve master key")));
 	}
 
-	AesEncrypt(master_key_info->data.data, iv, (unsigned char*) &int_key, INTERNAL_KEY_LEN, (unsigned char*) &int_key_enc, &encsz);
+	AesEncrypt(masterKey->keyData, iv, (unsigned char*) &int_key, INTERNAL_KEY_LEN, (unsigned char*) &int_key_enc, &encsz);
 
-	mkey_len = (uint8) strlen(master_key_info->name.name);
+	mkey_len = (uint8) strlen(masterKey->keyName);
 	/* XLOG internal keys */
 	XLogBeginInsert();
 	XLogRegisterData((char *) newrlocator, sizeof(RelFileLocator));
 	XLogRegisterData((char *) &mkey_len, sizeof(uint8));
-	XLogRegisterData((char *) master_key_info->name.name, strlen(master_key_info->name.name)+1);
+	XLogRegisterData((char *) masterKey->keyName, strlen(masterKey->keyName)+1);
 	XLogRegisterData((char *) &int_key_enc, sizeof(InternalKey));
 	XLogInsert(RM_TDERMGR_ID, XLOG_TDE_CREATE_FORK);
 
@@ -103,7 +98,7 @@ pg_tde_create_key_fork(const RelFileLocator *newrlocator, Relation rel)
 	 * Hence, the *.tde file will remain as garbage on secondaries.
 	 */
 
-	pg_tde_add_rel_keys(newrlocator, &int_key, &int_key_enc, master_key_info->name.name);
+	pg_tde_add_rel_keys(newrlocator, &int_key, &int_key_enc, masterKey->keyName);
 }
 
 /*
@@ -333,21 +328,18 @@ pg_tde_get_key_file_path(const RelFileLocator *newrlocator)
 void 
 pg_tde_decrypt_internal_key(const InternalKey *in, InternalKey *out, const char *masterkeyname)
 {
-	const keyInfo 	*master_key_info;
+	TDEMasterKey    *masterKey;
 	unsigned char	dataDec[1024];
 	int				encsz;
-	// TODO: use proper iv stored in the file!
+	/* TODO: use proper iv stored in the file! */
 	unsigned char iv[INTERNAL_KEY_LEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-	keyName master_key_name;
-	strncpy(master_key_name.name, masterkeyname, MASTER_KEY_NAME_LEN);
-	master_key_info = keyringGetKey(master_key_name);
-	if(master_key_info == NULL)
-	{
+	masterKey = GetMasterKey();
+	if(masterKey == NULL)
 		ereport(ERROR,
 				(errmsg("failed to retrieve master key")));
-	}
-	AesDecrypt(master_key_info->data.data, iv, (unsigned char*) in, INTERNAL_KEY_LEN, dataDec, &encsz);
+
+	AesDecrypt(masterKey->keyData, iv, (unsigned char*) in, INTERNAL_KEY_LEN, dataDec, &encsz);
 	memcpy(out, dataDec, INTERNAL_KEY_LEN);
 }
 

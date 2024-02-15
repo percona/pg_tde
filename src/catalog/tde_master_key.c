@@ -141,7 +141,10 @@ master_key_info_attach_shmem(void)
     MemoryContext oldcontext;
 
     if (masterKeyLocalState.dsa)
+    {
+        ereport(NOTICE,(errmsg("DSA already attached")));
         return;
+    }
 
     /*
     * We want the dsa to remain valid throughout the lifecycle of this
@@ -151,6 +154,7 @@ master_key_info_attach_shmem(void)
 
     masterKeyLocalState.dsa = dsa_attach_in_place(masterKeyLocalState.sharedMasterKeyState->rawDsaArea,
                                             NULL);
+    ereport(NOTICE,(errmsg("DSA attached")));
 
     /*
     * pin the attached area to keep the area attached until end of session or
@@ -267,7 +271,9 @@ GetMasterKey(void)
 {
     TDEMasterKey* masterKey = NULL;
     TDEMasterKeyInfo* masterKeyInfo = NULL;
+    GenericKeyring* keyring = NULL;
     const keyInfo* keyInfo = NULL;
+    KeyringReturnCodes keyring_ret;
 
 
     masterKey = get_master_key_from_cache();
@@ -282,12 +288,23 @@ GetMasterKey(void)
                 errhint("Use set_master_key interface to set the master key")));
         return NULL;
     }
+
     /* Load the master key from keyring and store it in cache */
-    keyInfo = keyringGetLatestKey(masterKeyInfo->keyName);
+
+    keyring = GetKeyProviderByID(masterKeyInfo->keyringId);
+    if (keyring == NULL)
+    {
+        ereport(ERROR,
+            (errmsg("Key provider with ID:\"%d\" does not exists",masterKeyInfo->keyringId)));
+        return NULL;
+    }
+
+    keyInfo =  KeyringGetKey(keyring, masterKeyInfo->keyName, false, &keyring_ret);
     if(keyInfo == NULL)
     {
         ereport(ERROR,
-                (errmsg("failed to retrieve master key from keyring")));
+            (errmsg("failed to retrieve master key from keyring")));
+        return NULL;
     }
 
     masterKey = palloc(sizeof(TDEMasterKey));
@@ -354,15 +371,17 @@ set_master_key_with_keyring(const char* key_name, GenericKeyring* keyring)
     if (!masterKey)
     {
         const keyInfo* keyInfo = NULL;
+        KeyringReturnCodes keyring_ret;
         masterKey = palloc(sizeof(TDEMasterKey));
         masterKey->databaseId = MyDatabaseId;
         masterKey->keyVersion = 1;
         masterKey->keyringId = keyring->keyId;
         strncpy(masterKey->keyName, key_name, TDE_MASTER_KEY_LEN);
         /* We need to get the key from keyring */
-        keyInfo = keyringGetLatestKey(key_name);
+
+        keyInfo =  KeyringGetKey(keyring, key_name, false, &keyring_ret);
         if(keyInfo == NULL) /* TODO: check if the key was not present or there was a problem with key provider*/
-            keyInfo = keyringGenerateKey(key_name, MASTER_KEY_LEN);
+            keyInfo = keyringGenerateNewKeyAndStore(keyring, key_name, MASTER_KEY_LEN, false);
 
         if(keyInfo == NULL)
         {
@@ -408,21 +427,30 @@ static TDEMasterKey*
 get_master_key_from_cache(void)
 {
     Oid databaseId = MyDatabaseId;
-    TDEMasterKey *masterKey = NULL;
+    TDEMasterKey *cacheEntry = NULL;
 
-    masterKey = (TDEMasterKey *) dshash_find(get_master_key_Hash(),
+    cacheEntry = (TDEMasterKey *) dshash_find(get_master_key_Hash(),
                                                     &databaseId, false);
-    return masterKey;
+    if (cacheEntry)
+        dshash_release_lock(get_master_key_Hash(), cacheEntry);
+
+    return cacheEntry;
 }
 
 /* Gets the master key for current database from cache */
 static void
 push_master_key_to_cache(TDEMasterKey *masterKey)
 {
+    TDEMasterKey *cacheEntry = NULL;
     Oid databaseId = MyDatabaseId;
     bool found = false;
-    dshash_find_or_insert(get_master_key_Hash(),
+    cacheEntry = dshash_find_or_insert(get_master_key_Hash(),
 								   &databaseId, &found);
+    if(!found)
+    {
+        memcpy(cacheEntry, masterKey, sizeof(TDEMasterKey));
+    }
+    dshash_release_lock(get_master_key_Hash(), cacheEntry);
 }
 
 /* SQL interface to set master key */

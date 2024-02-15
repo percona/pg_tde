@@ -1,75 +1,99 @@
 
 #include "keyring/keyring_file.h"
 #include "keyring/keyring_config.h"
-
+#include "catalog/tde_keyring.h"
+#include "keyring/keyring_api.h"
+#include "storage/fd.h"
+#include "utils/wait_event.h"
 #include <stdio.h>
 
-char keyringFileDataFileName[512];
+static keyInfo* get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error, KeyringReturnCodes *returnCode);
+static KeyringReturnCodes set_key_by_name(GenericKeyring* keyring, keyInfo *key, bool throw_error);
 
-char* keyringFileEncryptionKey = NULL;
-unsigned keyringFileEncryptionKeyLen = 0;
+const TDEKeyringRoutine keyringFileRoutine = {
+	.keyring_get_key = get_key_by_name,
+	.keyring_store_key = set_key_by_name
+};
 
-extern keyringCache* cache;  // TODO: do not depend on cache internals
-
-int keyringFileParseConfiguration(json_object* configRoot)
+bool
+InstallFileKeyring(void)
 {
-	json_object* dataO;
-	const char* datafile;
-
-	if(!json_object_object_get_ex(configRoot, "datafile", &dataO))
-	{
-		elog(ERROR, "Missing 'datafile' attribute.");
-		return 0;
-	}
-
-	datafile = keyringParseStringParam(dataO);
-
-	if(datafile == NULL)
-	{
-		elog(ERROR, "Couldn't parse 'datafile' attribute.");
-		return 0;
-	}
-
-	strcpy(keyringFileDataFileName, datafile);
-
-	return 1;
+	return RegisterKeyProvider(&keyringFileRoutine, FILE_KEY_PROVIDER);
 }
 
-int keyringFilePreloadCache(void)
+
+static keyInfo*
+get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error, KeyringReturnCodes *returnCode)
 {
-	FILE* f = fopen(keyringFileDataFileName, "r");
-	if (f != NULL)
+
+	keyInfo* key = NULL;
+    File file = -1;
+	FileKeyring* file_keyring = (FileKeyring*)keyring;
+
+    file = PathNameOpenFile(file_keyring->file_name, PG_BINARY);
+    if (file < 0)
 	{
-		fread(cache, keyringCacheMemorySize(), 1, f);
-		fclose(f);
-		elog(INFO, "Keyring file '%s' found, existing keys are available, %u.", keyringFileDataFileName, cache->keyCount);
-	} else {
-		elog(WARNING, "Keyring file '%s' not found, not loading existing keys.", keyringFileDataFileName);
+		ereport(throw_error?ERROR:WARNING,
+			(errmsg("Failed to open keyring file %s", file_keyring->file_name)));
+        return NULL;
 	}
 
-	return 1;
+	key = palloc(sizeof(keyInfo));
+	while(true)
+	{
+    	off_t bytes_read = 0;
+		bytes_read = FileRead(file, key, sizeof(keyInfo), 0, WAIT_EVENT_DATA_FILE_READ);
+		if (bytes_read == 0 )
+		{
+			pfree(key);
+			return NULL;
+		}
+		if (bytes_read != sizeof(keyInfo))
+		{
+			pfree(key);
+			/* Corrupt file */
+			ereport(throw_error?ERROR:WARNING,
+				(errcode_for_file_access(),
+					errmsg("keyring file \"%s\" is corrupted: %m",
+						file_keyring->file_name)));
+			return NULL;
+		}
+		if (strncasecmp(key->name.name, key_name, sizeof(key->name.name)) == 0)
+		{
+		    FileClose(file);
+			return key;
+		}
+	}
+    FileClose(file);
+	pfree(key);
+    return NULL;
 }
 
-int keyringFileStoreKey(const keyInfo* ki)
+static KeyringReturnCodes
+set_key_by_name(GenericKeyring* keyring, keyInfo *key, bool throw_error)
 {
-	FILE *f;
+    off_t bytes_written = 0;
+	File file;
+	FileKeyring* file_keyring = (FileKeyring*)keyring;
 
-	if (strlen(keyringFileDataFileName) == 0) {
-		elog(ERROR, "Keyring datafile is not set");
-		return false;
-	}
-
-	// First very basic prototype: we just dump the cache to disk
-	f = fopen(keyringFileDataFileName, "w");
-	if(f == NULL)
-	{
-		elog(ERROR, "Couldn't write keyring data into '%s'", keyringFileDataFileName);
-		return false;
-	}
-
-	fwrite(cache, keyringCacheMemorySize(), 1, f);
-
-	fclose(f);
-
-	return true;
+    file = PathNameOpenFile(file_keyring->file_name, O_CREAT | O_EXCL | O_RDWR | PG_BINARY);
+    if (file < 0)
+    {
+		ereport(throw_error?ERROR:WARNING,
+			(errcode_for_file_access(),
+			errmsg("Failed to open keyring file %s :%m", file_keyring->file_name)));
+        return KEYRING_CODE_RESOURCE_NOT_ACCESSABLE;
+    }
+    bytes_written = FileWrite(file, key, sizeof(keyInfo), 0, WAIT_EVENT_DATA_FILE_WRITE);
+    if (bytes_written != sizeof(keyInfo))
+    {
+        FileClose(file);
+        ereport(throw_error?ERROR:WARNING,
+                 (errcode_for_file_access(),
+                  errmsg("keyring file \"%s\" can't be written: %m",
+                     file_keyring->file_name)));
+        return KEYRING_CODE_RESOURCE_NOT_ACCESSABLE;
+    }
+    FileClose(file);
+	return KEYRING_CODE_SUCCESS;
 }
