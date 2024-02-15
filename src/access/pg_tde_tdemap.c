@@ -132,7 +132,7 @@ pg_tde_add_rel_keys(const RelFileLocator *rlocator, InternalKey *key, InternalKe
 	 * the cache as well */
 	data = (RelKeysData *) MemoryContextAlloc(TopMemoryContext, SizeOfRelKeysData(1));
 
-	strncpy(data->master_key_name, masterkeyname, MASTER_KEY_NAME_LEN);
+	strncpy(data->master_key_name, masterkeyname, TDE_KEY_NAME_LEN);
 	data->internal_key[0] = *key;
 	data->internal_keys_len = 1;
 
@@ -392,7 +392,7 @@ pg_tde_xlog_create_fork(XLogReaderState *record)
 	InternalKey		int_key = {0};
 	InternalKey		int_key_enc = {0};
 	uint8			mkey_len;
-	char			mkey_name[MASTER_KEY_NAME_LEN];
+	char			mkey_name[TDE_KEY_NAME_LEN];
 
 	if (XLogRecGetDataLen(record) < sizeof(InternalKey)+sizeof(RelFileLocator))
 	{

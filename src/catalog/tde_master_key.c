@@ -11,7 +11,6 @@
  */
 #include "postgres.h"
 #include "catalog/tde_master_key.h"
-#include "keyring/keyring_api.h"
 #include "pg_tde_shmem.h"
 #include "storage/lwlock.h"
 #include "storage/fd.h"
@@ -63,6 +62,7 @@ static Size initialize_shared_state(void* start_address);
 static void initialize_objects_in_dsa_area(dsa_area *dsa, void* raw_dsa_area);
 static Size cache_area_size(void);
 static Size required_shared_mem_size(void);
+static int  required_locks_count(void);
 static void shared_memory_shutdown(int code, Datum arg);
 
 static TDEMasterKeyInfo* save_master_key_info(TDEMasterKey* master_key, GenericKeyring* keyring);
@@ -76,13 +76,22 @@ static const TDEShmemSetupRoutine master_key_info_shmem_routine = {
     .init_shared_state = initialize_shared_state,
     .init_dsa_area_objects = initialize_objects_in_dsa_area,
     .required_shared_mem_size = required_shared_mem_size,
-    .shmem_kill = shared_memory_shutdown
+    .shmem_kill = shared_memory_shutdown,
+    .required_locks_count = required_locks_count
 };
 
-void InitializeMasterKeyInfo(void)
+void
+InitializeMasterKeyInfo(void)
 {
     ereport(LOG,(errmsg("Initializing TDE master key info")));
     RegisterShmemRequest(&master_key_info_shmem_routine);
+}
+
+static int
+required_locks_count(void)
+{
+    /* We just need one lock as for now */
+    return 1;
 }
 
 static Size
@@ -108,7 +117,7 @@ static Size
 initialize_shared_state(void* start_address)
 {
     TdeMasterKeySharedState *sharedState = (TdeMasterKeySharedState *)start_address;
-    ereport(NOTICE,(errmsg("initializing shared state for master key")));
+    ereport(LOG,(errmsg("initializing shared state for master key")));
     masterKeyLocalState.dsa = NULL;
     masterKeyLocalState.sharedHash = NULL;
 
@@ -123,7 +132,7 @@ initialize_objects_in_dsa_area(dsa_area *dsa, void* raw_dsa_area)
     dshash_table *dsh;
     TdeMasterKeySharedState *sharedState = masterKeyLocalState.sharedMasterKeyState;
 
-    ereport(NOTICE,(errmsg("initializing dsa area objects for master key")));
+    ereport(LOG,(errmsg("initializing dsa area objects for master key")));
 
     Assert(sharedState != NULL);
 
@@ -135,16 +144,16 @@ initialize_objects_in_dsa_area(dsa_area *dsa, void* raw_dsa_area)
     dshash_detach(dsh);
 }
 
+/*
+ * Attaches to the DSA to local backend
+ */
 static void
 master_key_info_attach_shmem(void)
 {
     MemoryContext oldcontext;
 
     if (masterKeyLocalState.dsa)
-    {
-        ereport(NOTICE,(errmsg("DSA already attached")));
         return;
-    }
 
     /*
     * We want the dsa to remain valid throughout the lifecycle of this
@@ -154,8 +163,6 @@ master_key_info_attach_shmem(void)
 
     masterKeyLocalState.dsa = dsa_attach_in_place(masterKeyLocalState.sharedMasterKeyState->rawDsaArea,
                                             NULL);
-    ereport(NOTICE,(errmsg("DSA attached")));
-
     /*
     * pin the attached area to keep the area attached until end of session or
     * explicit detach.
@@ -203,7 +210,7 @@ save_master_key_info(TDEMasterKey* master_key, GenericKeyring* keyring)
     masterKeyInfo->databaseId = MyDatabaseId;
     masterKeyInfo->keyVersion = 1;
     gettimeofday(&masterKeyInfo->creationTime, NULL);
-    strncpy(masterKeyInfo->keyName, master_key->keyName, TDE_MASTER_KEY_LEN);
+    strncpy(masterKeyInfo->keyName, master_key->keyName, TDE_KEY_NAME_LEN);
     masterKeyInfo->keyringId = keyring->keyId;
 
     master_key_file = PathNameOpenFile(info_file_path, O_CREAT | O_EXCL | O_RDWR | PG_BINARY);
@@ -228,6 +235,10 @@ save_master_key_info(TDEMasterKey* master_key, GenericKeyring* keyring)
     return masterKeyInfo;
 }
 
+/*
+ * Reads the master key info from the file
+ * the file gets created by the set_master_key interface
+ */
 static TDEMasterKeyInfo*
 get_master_key_info(void)
 {
@@ -265,7 +276,13 @@ get_master_key_info(void)
     return masterKeyInfo;
 }
 
-
+/*
+ * Public interface to get the master key for the current database
+ * If the master key is not present in the cache, it is loaded from
+ * the keyring and stored in the cache.
+ * When the master key is not set for the database. The function returns
+ * throws an error.
+ */
 TDEMasterKey*
 GetMasterKey(void)
 {
@@ -311,7 +328,7 @@ GetMasterKey(void)
     masterKey->databaseId = MyDatabaseId;
     masterKey->keyVersion = 1;
     masterKey->keyringId = masterKeyInfo->keyringId;
-    strncpy(masterKey->keyName, masterKeyInfo->keyName, TDE_MASTER_KEY_LEN);
+    strncpy(masterKey->keyName, masterKeyInfo->keyName, TDE_KEY_NAME_LEN);
     masterKey->keyLength = keyInfo->data.len;
     memcpy(masterKey->keyData, keyInfo->data.data, keyInfo->data.len);
     push_master_key_to_cache(masterKey);
@@ -376,12 +393,12 @@ set_master_key_with_keyring(const char* key_name, GenericKeyring* keyring)
         masterKey->databaseId = MyDatabaseId;
         masterKey->keyVersion = 1;
         masterKey->keyringId = keyring->keyId;
-        strncpy(masterKey->keyName, key_name, TDE_MASTER_KEY_LEN);
+        strncpy(masterKey->keyName, key_name, TDE_KEY_NAME_LEN);
         /* We need to get the key from keyring */
 
         keyInfo =  KeyringGetKey(keyring, key_name, false, &keyring_ret);
         if(keyInfo == NULL) /* TODO: check if the key was not present or there was a problem with key provider*/
-            keyInfo = keyringGenerateNewKeyAndStore(keyring, key_name, MASTER_KEY_LEN, false);
+            keyInfo = keyringGenerateNewKeyAndStore(keyring, key_name, INTERNAL_KEY_LEN, false);
 
         if(keyInfo == NULL)
         {
@@ -413,7 +430,10 @@ SetMasterKey(const char* key_name, const char* provider_name)
     return set_master_key_with_keyring(key_name, keyring);
 }
 
-/* Master key cache realted stuff */
+/*
+ * ------------------------------
+ * Master key cache realted stuff
+ */
 
 static inline dshash_table*
 get_master_key_Hash(void)
@@ -422,7 +442,9 @@ get_master_key_Hash(void)
     return masterKeyLocalState.sharedHash;
 }
 
-/* Gets the master key for current database from cache */
+/*
+ * Gets the master key for current database from cache
+ */
 static TDEMasterKey*
 get_master_key_from_cache(void)
 {
@@ -437,7 +459,9 @@ get_master_key_from_cache(void)
     return cacheEntry;
 }
 
-/* Gets the master key for current database from cache */
+/*
+ * push the master key for current database to the shared memory cache
+ */
 static void
 push_master_key_to_cache(TDEMasterKey *masterKey)
 {
@@ -453,7 +477,9 @@ push_master_key_to_cache(TDEMasterKey *masterKey)
     dshash_release_lock(get_master_key_Hash(), cacheEntry);
 }
 
-/* SQL interface to set master key */
+/*
+ * SQL interface to set master key
+ */
 PG_FUNCTION_INFO_V1(pg_tde_set_master_key);
 Datum pg_tde_set_master_key(PG_FUNCTION_ARGS);
 
@@ -463,7 +489,8 @@ pg_tde_set_master_key(PG_FUNCTION_ARGS)
     char    *master_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
 	char    *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
 
-    ereport(NOTICE,(errmsg("Setting master key [%s : %s] for the database",master_key_name, provider_name)));
+    ereport(LOG,
+            (errmsg("Setting master key [%s : %s] for the database",master_key_name, provider_name)));
 	SetMasterKey(master_key_name, provider_name);
 	PG_RETURN_NULL();
 }

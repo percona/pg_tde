@@ -89,21 +89,6 @@ KeyringStoreKey(GenericKeyring* keyring, keyInfo *key, bool throw_error)
 	return kp->routine->keyring_store_key(keyring, key, throw_error);
 }
 
-
-keyName keyringConstructKeyName(const char* internalName, unsigned version)
-{
-	keyName name;
-	if(keyringKeyPrefix != NULL && strlen(keyringKeyPrefix) > 0)
-	{
-		snprintf(name.name, sizeof(name.name), "%s-%s-%u", keyringKeyPrefix, internalName, version);
-	} else 
-	{
-		snprintf(name.name, sizeof(name.name), "%s-%u", internalName, version);
-	}
-	return name;
-}
-
-
 keyInfo*
 keyringGenerateNewKey(const char* key_name, unsigned key_len)
 {
@@ -114,7 +99,7 @@ keyringGenerateNewKey(const char* key_name, unsigned key_len)
 	if (!RAND_bytes(key->data.data, key_len)) 
 	{
 		pfree(key);
-		return NULL; // openssl error
+		return NULL; /*openssl error*/
 	}
 	strncpy(key->name.name, key_name, sizeof(key->name.name));
 	return key;

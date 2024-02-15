@@ -18,12 +18,13 @@ typedef struct TDEShmemSetupRoutine
     Size (*init_shared_state)(void* raw_dsa_area);
     void (*shmem_kill)(int code, Datum arg);
     Size (*required_shared_mem_size)(void);
+    int (*required_locks_count)(void);
     void (*init_dsa_area_objects)(dsa_area *dsa, void* raw_dsa_area);
 }TDEShmemSetupRoutine;
 
 extern void RegisterShmemRequest(const TDEShmemSetupRoutine* routine);
 extern void TdeShmemInit(void);
 extern Size TdeRequiredSharedMemorySize(void);
-
+extern int TdeRequiredLocksCount(void);
 
 #endif /*PG_TDE_SHMEM_H*/

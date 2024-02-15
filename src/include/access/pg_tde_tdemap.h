@@ -11,10 +11,10 @@
 #include "utils/rel.h"
 #include "storage/relfilelocator.h"
 #include "access/xlog_internal.h"
+#include "keyring/keyring_api.h"
 
 #define TDE_FORK_EXT "tde"
 
-#define INTERNAL_KEY_LEN 16
 typedef struct InternalKey
 {
     uint8   key[INTERNAL_KEY_LEN];
@@ -26,10 +26,9 @@ typedef struct InternalKey
 	void*   ctx; // TODO: shouldn't be here / written to the disk
 } InternalKey;
 
-#define MASTER_KEY_NAME_LEN 256
 typedef struct RelKeysData
 {
-    char        master_key_name[MASTER_KEY_NAME_LEN];
+    char        master_key_name[TDE_KEY_NAME_LEN];
     Size        internal_keys_len;
     InternalKey internal_key[FLEXIBLE_ARRAY_MEMBER];
 } RelKeysData;

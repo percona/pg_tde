@@ -42,7 +42,7 @@ bool shmemInited = false;
 void RegisterShmemRequest(const TDEShmemSetupRoutine* routine)
 {
 	Assert(shmemInited == false);
-	registeredShmemRequests = lappend(registeredShmemRequests, routine);
+	registeredShmemRequests = lappend(registeredShmemRequests, (void*)routine);
 }
 
 Size
@@ -58,6 +58,20 @@ TdeRequiredSharedMemorySize(void)
 	}
 	sz = add_size(sz, sizeof(TdeSharedState));
 	return MAXALIGN(sz);
+}
+
+int
+TdeRequiredLocksCount(void)
+{
+	int count = 0;
+	ListCell *lc;
+	foreach(lc, registeredShmemRequests)
+	{
+		TDEShmemSetupRoutine* routine = (TDEShmemSetupRoutine *) lfirst(lc);
+		if (routine->required_locks_count)
+			count += routine->required_locks_count();
+	}
+	return count;
 }
 
 void

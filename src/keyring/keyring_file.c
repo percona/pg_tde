@@ -1,3 +1,16 @@
+/*-------------------------------------------------------------------------
+ *
+ * keyring_file.c
+ *      Implements the file provider keyring
+ *      routines.
+ *
+ * IDENTIFICATION
+ *    contrib/pg_tde/src/keyring/keyring_file.c
+ *
+ *-------------------------------------------------------------------------
+ */
+
+#include "postgres.h"
 
 #include "keyring/keyring_file.h"
 #include "keyring/keyring_config.h"
@@ -41,7 +54,7 @@ get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error,
 	key = palloc(sizeof(keyInfo));
 	while(true)
 	{
-    	off_t bytes_read = 0;
+        off_t bytes_read = 0;
 		bytes_read = FileRead(file, key, sizeof(keyInfo), 0, WAIT_EVENT_DATA_FILE_READ);
 		if (bytes_read == 0 )
 		{

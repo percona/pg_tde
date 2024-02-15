@@ -11,15 +11,18 @@
 
 #include "catalog/tde_keyring.h"
 
+#define TDE_KEY_NAME_LEN	256
+#define MAX_KEY_DATA_SIZE   32 /* maximum 256 bit encryption */
+#define INTERNAL_KEY_LEN 	16
 
 typedef struct keyName
 {
-	char name[256]; // enough for now
+	char name[TDE_KEY_NAME_LEN];
 } keyName;
 
 typedef struct keyData
 {
-	unsigned char data[32]; // maximum 256 bit encryption
+	unsigned char data[MAX_KEY_DATA_SIZE]; // maximum 256 bit encryption
 	unsigned len;
 } keyData;
 
@@ -61,21 +64,6 @@ typedef struct keyringCache
 } keyringCache;
 
 
-// Keys are named in the following format: <internalName>-<version>-<serverID>
-
-// Returned keyInfo struts are all referenced to the internal key cache
-
-// Functions that work with internal names and versions
-keyName keyringConstructKeyName(const char* internalName, unsigned version); // returns palloc
-
-// Generates next available version with the given internalName
-// We assume that there are no gaps in the version sequence!
-const keyInfo* keyringGenerateKey(const char* internalName, unsigned keyLen);
-
-// Functions that work on full key names
-const keyInfo* keyringGetKey(keyName name);
-const keyInfo* keyringStoreKey(keyName name, keyData data);
-
 const char * tde_sprint_masterkey(const keyData *k);
 
-#endif // KEYRING_API_H
+#endif /*KEYRING_API_H*/
