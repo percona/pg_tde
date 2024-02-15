@@ -180,7 +180,7 @@ const keyInfo* keyringGenerateKey(const char* internalName, unsigned keyLen)
  * doGenerateKey should be false and doRaiseError should be set to indicate
  * that master key is expected but could not be accessed.
  */
-const keyInfo* getMasterKey(const char* internalName, int doGenerateKey, int doRaiseError)
+const keyInfo* getMasterKey(const char* internalName, bool doGenerateKey, bool doRaiseError)
 {
 	const keyInfo* key = NULL;
 

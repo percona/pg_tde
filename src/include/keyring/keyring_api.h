@@ -1,6 +1,8 @@
 #ifndef KEYRING_API_H
 #define KEYRING_API_H
 
+#include "postgres.h"
+
 typedef struct keyName
 {
 	char name[256]; // enough for now
@@ -49,6 +51,6 @@ void keyringInitCache(void);
 const keyInfo* keyringCacheStoreKey(keyName name, keyData data);
 const char * tde_sprint_masterkey(const keyData *k);
 
-const keyInfo* getMasterKey(const char* internalName, int doGenerateKey, int doRaiseError);
+const keyInfo* getMasterKey(const char* internalName, bool doGenerateKey, bool doRaiseError);
 
 #endif // KEYRING_API_H

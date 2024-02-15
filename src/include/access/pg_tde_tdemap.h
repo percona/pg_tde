@@ -12,8 +12,6 @@
 #include "storage/relfilelocator.h"
 #include "access/xlog_internal.h"
 
-#define TDE_FORK_EXT "tde"
-
 #define INTERNAL_KEY_LEN 16
 typedef struct InternalKey
 {
