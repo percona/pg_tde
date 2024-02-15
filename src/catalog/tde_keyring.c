@@ -206,7 +206,7 @@ static FileKeyring*
 load_file_keyring_provider_options(Datum keyring_options)
 {
 	#define FILE_KEYRING_PATH_KEY 	"path"
-	#define FILE_KEYRING_TYPE_KEY 	"file-type"
+	#define FILE_KEYRING_TYPE_KEY 	"type"
 
 	Datum file_type;
 	Datum file_path;
