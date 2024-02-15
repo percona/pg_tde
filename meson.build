@@ -26,6 +26,8 @@ pg_tde_sources = files(
         'src/keyring/keyring_vault.c',
         'src/keyring/keyring_api.c',
 
+        'src/catalog/tde_keyring.c',
+
         'src/pg_tde.c',
 )
 
