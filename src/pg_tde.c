@@ -1,10 +1,10 @@
 /*-------------------------------------------------------------------------
  *
- * pg_tde.c       
+ * pg_tde.c
  *      Main file: setup GUCs, shared memory, hooks and other general-purpose
  *      routines.
  *
- * IDENTIFICATION        
+ * IDENTIFICATION
  *    contrib/pg_tde/src/pg_tde.c
  *
  *-------------------------------------------------------------------------
@@ -15,6 +15,7 @@
 #include "transam/pg_tde_xact_handler.h"
 #include "miscadmin.h"
 #include "storage/ipc.h"
+#include "storage/lwlock.h"
 #include "storage/shmem.h"
 #include "access/pg_tde_ddl.h"
 #include "encryption/enc_aes.h"
@@ -22,36 +23,40 @@
 
 #include "keyring/keyring_config.h"
 #include "keyring/keyring_api.h"
+#include "common/pg_tde_shmem.h"
+#include "catalog/tde_master_key.h"
 
 PG_MODULE_MAGIC;
-void        _PG_init(void);
+void _PG_init(void);
 
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 static shmem_request_hook_type prev_shmem_request_hook = NULL;
 
 static void
-pgsm_shmem_request(void)
+tde_shmem_request(void)
 {
+	Size sz = TdeRequiredSharedMemorySize();
 	if (prev_shmem_request_hook)
 		prev_shmem_request_hook();
+	sz = add_size(sz, keyringCacheMemorySize());
+	RequestAddinShmemSpace(sz);
+	ereport(LOG, (errmsg("tde_shmem_request: requested %ld bytes", sz)));
 
-	RequestAddinShmemSpace(keyringCacheMemorySize());
+	RequestNamedLWLockTranche("pg_tde_tranche", 1); /* TODO: add this to register interface */
 }
 
 static void
-pgsm_shmem_startup(void)
+tde_shmem_startup(void)
 {
 	if (prev_shmem_startup_hook)
 		prev_shmem_startup_hook();
 
 	keyringInitCache();
-
+	TdeShmemInit();
 	AesInit();
 }
 
-
-void
- _PG_init(void)
+void _PG_init(void)
 {
 	if (!process_shared_preload_libraries_in_progress)
 	{
@@ -59,14 +64,15 @@ void
 	}
 
 	keyringRegisterVariables();
+	InitializeMasterKeyInfo();
 
 	prev_shmem_request_hook = shmem_request_hook;
-	shmem_request_hook = pgsm_shmem_request;
+	shmem_request_hook = tde_shmem_request;
 	prev_shmem_startup_hook = shmem_startup_hook;
-	shmem_startup_hook = pgsm_shmem_startup;
+	shmem_startup_hook = tde_shmem_startup;
 
-    RegisterXactCallback(pg_tde_xact_callback, NULL);
-    RegisterSubXactCallback(pg_tde_subxact_callback, NULL);
+	RegisterXactCallback(pg_tde_xact_callback, NULL);
+	RegisterSubXactCallback(pg_tde_subxact_callback, NULL);
 	SetupTdeDDLHooks();
 
 	RegisterCustomRmgr(RM_TDERMGR_ID, &pg_tde_rmgr);

@@ -53,7 +53,7 @@ typedef struct ValutV2Keyring
 } ValutV2Keyring;
 
 extern List *GetAllKeyringProviders(void);
-extern GenericKeyring *GetKeyProviderByName(char *provider_name);
+extern GenericKeyring *GetKeyProviderByName(const char *provider_name);
 extern GenericKeyring *GetKeyProviderByID(int provider_id);
 
 #endif /*TDE_KEYRING_H*/

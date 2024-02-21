@@ -73,6 +73,12 @@ RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
+CREATE FUNCTION pg_tde_set_master_key(master_key_name VARCHAR(255), provider_name VARCHAR(255))
+RETURNS VOID
+AS 'MODULE_PATHNAME'
+LANGUAGE C;
+
+
 -- Access method
 CREATE ACCESS METHOD pg_tde TYPE TABLE HANDLER pg_tdeam_handler;
 COMMENT ON ACCESS METHOD pg_tde IS 'pg_tde table access method';

@@ -133,7 +133,7 @@ GetAllKeyringProviders(void)
 }
 
 GenericKeyring *
-GetKeyProviderByName(char *provider_name)
+GetKeyProviderByName(const char *provider_name)
 {
 	HeapTuple tuple;
 	TupleDesc tupDesc;
