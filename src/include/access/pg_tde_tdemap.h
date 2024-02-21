@@ -11,6 +11,7 @@
 #include "utils/rel.h"
 #include "storage/relfilelocator.h"
 #include "access/xlog_internal.h"
+#include "catalog/tde_master_key.h"
 
 #define INTERNAL_KEY_LEN 16
 typedef struct InternalKey
@@ -19,7 +20,6 @@ typedef struct InternalKey
 	void*   ctx; // TODO: shouldn't be here / written to the disk
 } InternalKey;
 
-#define MASTER_KEY_NAME_LEN 256
 typedef struct RelKeyData
 {
     char        master_key_name[MASTER_KEY_NAME_LEN];

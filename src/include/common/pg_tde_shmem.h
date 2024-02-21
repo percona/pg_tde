@@ -7,6 +7,7 @@
  */
 #ifndef PG_TDE_SHMEM_H
 #define PG_TDE_SHMEM_H
+
 #include "postgres.h"
 #include "storage/shmem.h"
 #include "lib/dshash.h"

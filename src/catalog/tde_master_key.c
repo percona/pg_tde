@@ -194,7 +194,7 @@ save_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring)
     masterKeyInfo->databaseId = MyDatabaseId;
     masterKeyInfo->keyVersion = 1;
     gettimeofday(&masterKeyInfo->creationTime, NULL);
-    strncpy(masterKeyInfo->keyName, master_key->keyName, TDE_MASTER_KEY_LEN);
+    strncpy(masterKeyInfo->keyName, master_key->keyName, MASTER_KEY_NAME_LEN);
     masterKeyInfo->keyringId = keyring->keyId;
 
     master_key_file = PathNameOpenFile(info_file_path, O_CREAT | O_EXCL | O_RDWR | PG_BINARY);
@@ -256,16 +256,26 @@ get_master_key_info(void)
     return masterKeyInfo;
 }
 
+/*
+ * Public interface to get the master key for the current database
+ * If the master key is not present in the cache, it is loaded from
+ * the keyring and stored in the cache.
+ * When the master key is not set for the database. The function returns
+ * throws an error.
+ */
 TDEMasterKey *
 GetMasterKey(void)
 {
     TDEMasterKey *masterKey = NULL;
     TDEMasterKeyInfo *masterKeyInfo = NULL;
+    GenericKeyring *keyring = NULL;
     const keyInfo *keyInfo = NULL;
+    KeyringReturnCodes keyring_ret;
 
     masterKey = get_master_key_from_cache();
     if (masterKey)
         return masterKey;
+
     /* Master key not present in cache. Load from the keyring */
     masterKeyInfo = get_master_key_info();
     if (masterKeyInfo == NULL)
@@ -275,19 +285,29 @@ GetMasterKey(void)
                  errhint("Use set_master_key interface to set the master key")));
         return NULL;
     }
+
     /* Load the master key from keyring and store it in cache */
-    keyInfo = keyringGetLatestKey(masterKeyInfo->keyName);
+    keyring = GetKeyProviderByID(masterKeyInfo->keyringId);
+    if (keyring == NULL)
+    {
+        ereport(ERROR,
+                (errmsg("Key provider with ID:\"%d\" does not exists", masterKeyInfo->keyringId)));
+        return NULL;
+    }
+
+    keyInfo = KeyringGetKey(keyring, masterKeyInfo->keyName, false, &keyring_ret);
     if (keyInfo == NULL)
     {
         ereport(ERROR,
                 (errmsg("failed to retrieve master key from keyring")));
+        return NULL;
     }
 
     masterKey = palloc(sizeof(TDEMasterKey));
     masterKey->databaseId = MyDatabaseId;
     masterKey->keyVersion = 1;
     masterKey->keyringId = masterKeyInfo->keyringId;
-    strncpy(masterKey->keyName, masterKeyInfo->keyName, TDE_MASTER_KEY_LEN);
+    strncpy(masterKey->keyName, masterKeyInfo->keyName, TDE_KEY_NAME_LEN);
     masterKey->keyLength = keyInfo->data.len;
     memcpy(masterKey->keyData, keyInfo->data.data, keyInfo->data.len);
     push_master_key_to_cache(masterKey);
@@ -336,7 +356,7 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
                  errhint("Use rotate_key interface to change the master key")));
         return NULL;
     }
-    /* Acquire the lock */
+    /* Acquire the exclusive lock to disallow concurrent set master key calls */
     LWLockAcquire(shared_state->Lock, LW_EXCLUSIVE);
     /*
      * Make sure just before we got the lock, some other backend
@@ -346,15 +366,17 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
     if (!masterKey)
     {
         const keyInfo *keyInfo = NULL;
+        KeyringReturnCodes keyring_ret;
         masterKey = palloc(sizeof(TDEMasterKey));
         masterKey->databaseId = MyDatabaseId;
         masterKey->keyVersion = 1;
         masterKey->keyringId = keyring->keyId;
-        strncpy(masterKey->keyName, key_name, TDE_MASTER_KEY_LEN);
+        strncpy(masterKey->keyName, key_name, TDE_KEY_NAME_LEN);
         /* We need to get the key from keyring */
-        keyInfo = keyringGetLatestKey(key_name);
+
+        keyInfo = KeyringGetKey(keyring, key_name, false, &keyring_ret);
         if (keyInfo == NULL) /* TODO: check if the key was not present or there was a problem with key provider*/
-            keyInfo = keyringGenerateKey(key_name, MASTER_KEY_LEN);
+            keyInfo = keyringGenerateNewKeyAndStore(keyring, key_name, INTERNAL_KEY_LEN, false);
 
         if (keyInfo == NULL)
         {
@@ -367,6 +389,19 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
         masterKeyInfo = save_master_key_info(masterKey, keyring);
         push_master_key_to_cache(masterKey);
     }
+    else
+    {
+        /*
+         * Seems lik just before we got the lock the key was installed by some other caller
+         * Throw an error and mover no
+         */
+        LWLockRelease(shared_state->Lock);
+        ereport(ERROR,
+            (errcode(ERRCODE_DUPLICATE_OBJECT),
+                 errmsg("Master key already exists for the database"),
+                 errhint("Use rotate_key interface to change the master key")));
+    }
+
     LWLockRelease(shared_state->Lock);
 
     return masterKey;

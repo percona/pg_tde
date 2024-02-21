@@ -15,8 +15,7 @@
 #include "catalog/tde_keyring.h"
 #include "nodes/pg_list.h"
 
-
-#define TDE_MASTER_KEY_LEN	255
+#define MASTER_KEY_NAME_LEN 256
 #define MAX_KEY_DATA_SIZE   32 /* maximum 256 bit encryption */
 #define MASTER_KEY_LEN 		16
 
@@ -25,7 +24,7 @@ typedef struct TDEMasterKey
 	Oid databaseId;
 	uint32 keyVersion;
     Oid keyringId;
-	char keyName[TDE_MASTER_KEY_LEN];
+	char keyName[MASTER_KEY_NAME_LEN];
 	unsigned char keyData[MAX_KEY_DATA_SIZE];
 	uint32 keyLength;
 } TDEMasterKey;
@@ -39,7 +38,7 @@ typedef struct TDEMasterKeyInfo
     Oid userId;
     struct timeval creationTime;
 	int keyVersion;
-	char keyName[TDE_MASTER_KEY_LEN];
+	char keyName[MASTER_KEY_NAME_LEN];
 } TDEMasterKeyInfo;
 
 extern void InitializeMasterKeyInfo(void);
