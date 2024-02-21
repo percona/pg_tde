@@ -15,6 +15,7 @@ CREATE TABLE percona_tde.pg_tde_key_provider(provider_id SERIAL,
 -- If you want to add new provider types, you need to make appropriate changes
 -- in include/catalog/tde_keyring.h and src/catalog/tde_keyring.c files.
 
+SELECT pg_catalog.pg_extension_config_dump('percona_tde.pg_tde_key_provider', '');
 -- Key Provider Management
 
 CREATE OR REPLACE FUNCTION pg_tde_add_key_provider(provider_type VARCHAR(10), provider_name VARCHAR(128), options JSON)

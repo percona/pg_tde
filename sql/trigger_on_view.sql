@@ -1,5 +1,8 @@
 CREATE extension pg_tde;
 
+SELECT pg_tde_add_key_provider_file('file-valut','/tmp/pg_tde_test_keyring.per');
+--SELECT pg_tde_set_master_key('test-db-master-key','file-valut');
+
 --
 -- 2 -- Test triggers on a join view
 --
