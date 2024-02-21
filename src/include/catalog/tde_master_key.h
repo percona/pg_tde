@@ -13,11 +13,10 @@
 
 #include "postgres.h"
 #include "catalog/tde_keyring.h"
+#include "keyring/keyring_api.h"
 #include "nodes/pg_list.h"
 
-#define MASTER_KEY_NAME_LEN 256
-#define MAX_KEY_DATA_SIZE   32 /* maximum 256 bit encryption */
-#define MASTER_KEY_LEN 		16
+#define MASTER_KEY_NAME_LEN TDE_KEY_NAME_LEN
 
 typedef struct TDEMasterKey
 {

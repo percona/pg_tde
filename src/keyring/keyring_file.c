@@ -1,3 +1,16 @@
+/*-------------------------------------------------------------------------
+ *
+ * keyring_file.c
+ *      Implements the file provider keyring
+ *      routines.
+ *
+ * IDENTIFICATION
+ *    contrib/pg_tde/src/keyring/keyring_file.c
+ *
+ *-------------------------------------------------------------------------
+ */
+
+#include "postgres.h"
 
 #include "keyring/keyring_file.h"
 #include "keyring/keyring_config.h"

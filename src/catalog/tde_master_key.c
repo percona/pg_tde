@@ -11,7 +11,6 @@
  */
 #include "postgres.h"
 #include "catalog/tde_master_key.h"
-#include "keyring/keyring_api.h"
 #include "common/pg_tde_shmem.h"
 #include "storage/lwlock.h"
 #include "storage/fd.h"
@@ -61,12 +60,13 @@ static Size initialize_shared_state(void *start_address);
 static void initialize_objects_in_dsa_area(dsa_area *dsa, void *raw_dsa_area);
 static Size cache_area_size(void);
 static Size required_shared_mem_size(void);
+static int  required_locks_count(void);
 static void shared_memory_shutdown(int code, Datum arg);
 
 static TDEMasterKeyInfo *save_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring);
 static TDEMasterKeyInfo *get_master_key_info(void);
 static inline dshash_table *get_master_key_Hash(void);
-static TDEMasterKey *get_master_key_from_cache(void);
+static TDEMasterKey *get_master_key_from_cache(bool acquire_lock);
 static void push_master_key_to_cache(TDEMasterKey *masterKey);
 static TDEMasterKey *set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring);
 
@@ -74,12 +74,21 @@ static const TDEShmemSetupRoutine master_key_info_shmem_routine = {
     .init_shared_state = initialize_shared_state,
     .init_dsa_area_objects = initialize_objects_in_dsa_area,
     .required_shared_mem_size = required_shared_mem_size,
-    .shmem_kill = shared_memory_shutdown};
+    .required_locks_count = required_locks_count,
+    .shmem_kill = shared_memory_shutdown
+    };
 
 void InitializeMasterKeyInfo(void)
 {
     ereport(LOG, (errmsg("Initializing TDE master key info")));
     RegisterShmemRequest(&master_key_info_shmem_routine);
+}
+
+static int
+required_locks_count(void)
+{
+    /* We just need one lock as for now */
+    return 1;
 }
 
 static Size
@@ -131,6 +140,9 @@ void initialize_objects_in_dsa_area(dsa_area *dsa, void *raw_dsa_area)
     dshash_detach(dsh);
 }
 
+/*
+ * Attaches to the DSA to local backend
+ */
 static void
 master_key_info_attach_shmem(void)
 {
@@ -219,6 +231,10 @@ save_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring)
     return masterKeyInfo;
 }
 
+/*
+ * Reads the master key info from the file
+ * the file gets created by the set_master_key interface
+ */
 static TDEMasterKeyInfo *
 get_master_key_info(void)
 {
@@ -272,7 +288,7 @@ GetMasterKey(void)
     const keyInfo *keyInfo = NULL;
     KeyringReturnCodes keyring_ret;
 
-    masterKey = get_master_key_from_cache();
+    masterKey = get_master_key_from_cache(true);
     if (masterKey)
         return masterKey;
 
@@ -337,7 +353,7 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
      * Try to get master key from cache. If the cache entry exists
      * throw an error
      * */
-    masterKey = get_master_key_from_cache();
+    masterKey = get_master_key_from_cache(true);
     if (masterKey)
     {
         ereport(ERROR,
@@ -361,8 +377,10 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
     /*
      * Make sure just before we got the lock, some other backend
      * has pushed the master key for this database
+     * Since we already have the exclusive lock, so do not ask for
+     * the lock again
      */
-    masterKey = get_master_key_from_cache();
+    masterKey = get_master_key_from_cache(false);
     if (!masterKey)
     {
         const keyInfo *keyInfo = NULL;
@@ -421,7 +439,10 @@ SetMasterKey(const char *key_name, const char *provider_name)
     return set_master_key_with_keyring(key_name, keyring);
 }
 
-/* Master key cache realted stuff */
+/*
+ * ------------------------------
+ * Master key cache realted stuff
+ */
 
 static inline dshash_table *
 get_master_key_Hash(void)
@@ -430,28 +451,32 @@ get_master_key_Hash(void)
     return masterKeyLocalState.sharedHash;
 }
 
-/* Gets the master key for current database from cache */
+/*
+ * Gets the master key for current database from cache
+ */
 static TDEMasterKey *
-get_master_key_from_cache(void)
+get_master_key_from_cache(bool acquire_lock)
 {
     Oid databaseId = MyDatabaseId;
     TDEMasterKey *cacheEntry = NULL;
     TdeMasterKeySharedState *shared_state = masterKeyLocalState.sharedMasterKeyState;
 
-    /*
-     * Acquire a shared lock to make sure key roatation is not in progress
-     */
-    LWLockAcquire(shared_state->Lock, LW_SHARED);
+    if (acquire_lock)
+        LWLockAcquire(shared_state->Lock, LW_SHARED);
 
     cacheEntry = (TDEMasterKey *)dshash_find(get_master_key_Hash(),
                                              &databaseId, false);
     if (cacheEntry)
         dshash_release_lock(get_master_key_Hash(), cacheEntry);
-    LWLockRelease(shared_state->Lock);
+
+    if (acquire_lock)
+        LWLockRelease(shared_state->Lock);
     return cacheEntry;
 }
 
-/* Gets the master key for current database from cache */
+/*
+ * push the master key for current database to the shared memory cache
+ */
 static void
 push_master_key_to_cache(TDEMasterKey *masterKey)
 {
@@ -465,7 +490,9 @@ push_master_key_to_cache(TDEMasterKey *masterKey)
     dshash_release_lock(get_master_key_Hash(), cacheEntry);
 }
 
-/* SQL interface to set master key */
+/*
+ * SQL interface to set master key
+ */
 PG_FUNCTION_INFO_V1(pg_tde_set_master_key);
 Datum pg_tde_set_master_key(PG_FUNCTION_ARGS);
 

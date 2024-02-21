@@ -37,12 +37,13 @@ static void
 tde_shmem_request(void)
 {
 	Size sz = TdeRequiredSharedMemorySize();
+	int required_locks = TdeRequiredLocksCount();
 	if (prev_shmem_request_hook)
 		prev_shmem_request_hook();
 	RequestAddinShmemSpace(sz);
 	ereport(LOG, (errmsg("tde_shmem_request: requested %ld bytes", sz)));
 
-	RequestNamedLWLockTranche("pg_tde_tranche", 1); /* TODO: add this to register interface */
+	RequestNamedLWLockTranche("pg_tde_tranche", required_locks);
 }
 
 static void

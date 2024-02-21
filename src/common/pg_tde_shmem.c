@@ -57,6 +57,19 @@ Size TdeRequiredSharedMemorySize(void)
 	return MAXALIGN(sz);
 }
 
+int TdeRequiredLocksCount(void)
+{
+	int count = 0;
+	ListCell *lc;
+	foreach (lc, registeredShmemRequests)
+	{
+		TDEShmemSetupRoutine *routine = (TDEShmemSetupRoutine *)lfirst(lc);
+		if (routine->required_locks_count)
+			count += routine->required_locks_count();
+	}
+	return count;
+}
+
 void TdeShmemInit(void)
 {
 	bool found;

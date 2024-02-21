@@ -63,21 +63,14 @@ typedef struct keyringCache
 	unsigned keyCount;
 } keyringCache;
 
-// Keys are named in the following format: <internalName>-<version>-<serverID>
-
-// Returned keyInfo struts are all referenced to the internal key cache
-
-// Functions that work with internal names and versions
 keyName keyringConstructKeyName(const char *internalName, unsigned version); // returns palloc
 
-// Generates next available version with the given internalName
-// We assume that there are no gaps in the version sequence!
 const keyInfo *keyringGenerateKey(const char *internalName, unsigned keyLen);
 
-// Functions that work on full key names
+/* Functions that work on full key names*/
 const keyInfo *keyringGetKey(keyName name);
 const keyInfo *keyringStoreKey(keyName name, keyData data);
 
 const char *tde_sprint_masterkey(const keyData *k);
 
-#endif // KEYRING_API_H
+#endif /* KEYRING_API_H */

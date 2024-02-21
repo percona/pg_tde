@@ -13,7 +13,6 @@
 #include "access/xlog_internal.h"
 #include "catalog/tde_master_key.h"
 
-#define INTERNAL_KEY_LEN 16
 typedef struct InternalKey
 {
     uint8   key[INTERNAL_KEY_LEN];

@@ -226,7 +226,7 @@ load_file_keyring_provider_options(Datum keyring_options)
 	file_type = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(FILE_KEYRING_TYPE_KEY));
 	*/
 	file_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(FILE_KEYRING_PATH_KEY));
-	/* TODO check NULL */
+	/* TODO check NULL  and verify type */
 	file_keyring->keyring.type = FILE_KEY_PROVIDER;
 	strncpy(file_keyring->file_name, TextDatumGetCString(file_path), sizeof(file_keyring->file_name));
 	return file_keyring;
