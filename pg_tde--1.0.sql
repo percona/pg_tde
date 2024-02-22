@@ -37,20 +37,20 @@ $$
 LANGUAGE SQL;
 
 CREATE OR REPLACE FUNCTION pg_tde_add_key_provider_vault_v2(provider_name VARCHAR(128),
-                                                        valut_token TEXT,
-                                                        valut_url TEXT,
-                                                        valut_mount_path TEXT,
-                                                        valut_ca_path TEXT)
+                                                        vault_token TEXT,
+                                                        vault_url TEXT,
+                                                        vault_mount_path TEXT,
+                                                        vault_ca_path TEXT)
 RETURNS INT
 AS $$
 -- JSON keys in the options must be matched to the keys in
--- load_valutV2_keyring_provider_options function.
+-- load_vaultV2_keyring_provider_options function.
     SELECT pg_tde_add_key_provider('vault-v2', provider_name,
                             json_object('type' VALUE 'vault-v2',
-                            'url' VALUE valut_url,
-                            'token' VALUE valut_token,
-                            'mountPath' VALUE valut_mount_path,
-                            'caPath' VALUE valut_ca_path));
+                            'url' VALUE vault_url,
+                            'token' VALUE vault_token,
+                            'mountPath' VALUE vault_mount_path,
+                            'caPath' VALUE vault_ca_path));
 $$
 LANGUAGE SQL;
 

@@ -10,8 +10,11 @@
 
 #include "postgres.h"
 #include "storage/shmem.h"
+#include "storage/lwlock.h"
 #include "lib/dshash.h"
 #include "utils/dsa.h"
+
+#define TDE_TRANCHE_NAME "pg_tde_tranche"
 
 typedef struct TDEShmemSetupRoutine
 {
@@ -48,5 +51,6 @@ extern void RegisterShmemRequest(const TDEShmemSetupRoutine *routine);
 extern void TdeShmemInit(void);
 extern Size TdeRequiredSharedMemorySize(void);
 extern int TdeRequiredLocksCount(void);
+extern LWLock * GetNewLWLock(void);
 
 #endif /*PG_TDE_SHMEM_H*/

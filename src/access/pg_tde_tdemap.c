@@ -201,18 +201,6 @@ tde_sprint_key(InternalKey *k)
 	return buf;
 }
 
-const char *
-tde_sprint_masterkey(const keyData *k)
-{
-	static char buf[256];
-	int 	i;
-
-	for (i = 0; i < k->len; i++)
-		sprintf(buf+i, "%02X", k->data[i]);
-
-	return buf;
-}
-
 /*
  * Creates a key for a relation identified by rlocator. Returns the newly
  * created key.

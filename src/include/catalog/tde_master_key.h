@@ -22,7 +22,7 @@ typedef struct TDEMasterKey
 {
 	Oid databaseId;
 	uint32 keyVersion;
-    Oid keyringId;
+	Oid keyringId;
 	char keyName[MASTER_KEY_NAME_LEN];
 	unsigned char keyData[MAX_KEY_DATA_SIZE];
 	uint32 keyLength;
@@ -32,10 +32,10 @@ typedef struct TDEMasterKey
 typedef struct TDEMasterKeyInfo
 {
 	Oid keyId;
-    Oid keyringId;
+	Oid keyringId;
 	Oid databaseId;
-    Oid userId;
-    struct timeval creationTime;
+	Oid userId;
+	struct timeval creationTime;
 	int keyVersion;
 	char keyName[MASTER_KEY_NAME_LEN];
 } TDEMasterKeyInfo;
@@ -43,4 +43,5 @@ typedef struct TDEMasterKeyInfo
 extern void InitializeMasterKeyInfo(void);
 extern TDEMasterKey* GetMasterKey(void);
 TDEMasterKey* SetMasterKey(const char* key_name, const char* provider_name);
+
 #endif /*TDE_MASTER_KEY_H*/

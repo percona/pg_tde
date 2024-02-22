@@ -145,3 +145,15 @@ tde_shmem_shutdown(int code, Datum arg)
 			routine->shmem_kill(code, arg);
 	}
 }
+
+/*
+ * Returns a lock from registered named tranch.
+ * You must already have indicated number of required locks
+ * through required_locks_count callback before requesting
+ * the lock from this function.
+ */
+LWLock*
+GetNewLWLock(void)
+{
+	return &(GetNamedLWLockTranche(TDE_TRANCHE_NAME))->lock;
+}

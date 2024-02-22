@@ -30,8 +30,8 @@ my ($cmdret, $stdout, $stderr) = $node->psql('postgres', 'CREATE EXTENSION pg_td
 ok($cmdret == 0, "CREATE PGTDE EXTENSION");
 PGTDE::append_to_file($stdout);
 
-$rt_value = $node->psql('postgres', "SELECT pg_tde_add_key_provider_file('file-valut','/tmp/pg_tde_test_keyring.per');", extra_params => ['-a']);
-$rt_value = $node->psql('postgres', "SELECT pg_tde_set_master_key('test-db-master-key','file-valut');", extra_params => ['-a']);
+$rt_value = $node->psql('postgres', "SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');", extra_params => ['-a']);
+$rt_value = $node->psql('postgres', "SELECT pg_tde_set_master_key('test-db-master-key','file-vault');", extra_params => ['-a']);
 
 $rt_value = $node->psql('postgres', 'CREATE TABLE test_enc(id SERIAL,k INTEGER,PRIMARY KEY (id)) USING pg_tde;', extra_params => ['-a']);
 ok($rt_value == 3, "Failing query");

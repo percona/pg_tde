@@ -118,7 +118,7 @@ initialize_shared_state(void *start_address)
     masterKeyLocalState.dsa = NULL;
     masterKeyLocalState.sharedHash = NULL;
 
-    sharedState->Lock = &(GetNamedLWLockTranche("pg_tde_tranche"))->lock;
+    sharedState->Lock = GetNewLWLock();
     masterKeyLocalState.sharedMasterKeyState = sharedState;
     return sizeof(TdeMasterKeySharedState);
 }

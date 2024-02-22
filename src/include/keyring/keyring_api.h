@@ -22,7 +22,7 @@ typedef struct keyName
 
 typedef struct keyData
 {
-	unsigned char data[MAX_KEY_DATA_SIZE]; /* maximum 256 bit encryption */
+	unsigned char data[MAX_KEY_DATA_SIZE];
 	unsigned len;
 } keyData;
 
@@ -38,6 +38,7 @@ typedef enum KeyringReturnCodes
 	KEYRING_CODE_INVALID_PROVIDER,
 	KEYRING_CODE_RESOURCE_NOT_AVAILABLE,
 	KEYRING_CODE_RESOURCE_NOT_ACCESSABLE,
+	KEYRING_CODE_INVALID_OPERATION,
 	KEYRING_CODE_DATA_CORRUPTED
 } KeyringReturnCodes;
 
@@ -51,26 +52,8 @@ extern bool RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType t
 
 extern KeyringReturnCodes KeyringStoreKey(GenericKeyring *keyring, keyInfo *key, bool throw_error);
 extern keyInfo *KeyringGetKey(GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes *returnCode);
-
 extern keyInfo *keyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len, bool throw_error);
 extern keyInfo *keyringGenerateNewKey(const char *key_name, unsigned key_len);
-
-// TODO: this type should be hidden in the C file
-#define MAX_CACHE_ENTRIES 1024
-typedef struct keyringCache
-{
-	keyInfo keys[MAX_CACHE_ENTRIES];
-	unsigned keyCount;
-} keyringCache;
-
-keyName keyringConstructKeyName(const char *internalName, unsigned version); // returns palloc
-
 const keyInfo *keyringGenerateKey(const char *internalName, unsigned keyLen);
-
-/* Functions that work on full key names*/
-const keyInfo *keyringGetKey(keyName name);
-const keyInfo *keyringStoreKey(keyName name, keyData data);
-
-const char *tde_sprint_masterkey(const keyData *k);
 
 #endif /* KEYRING_API_H */

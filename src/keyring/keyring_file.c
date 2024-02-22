@@ -88,6 +88,18 @@ set_key_by_name(GenericKeyring* keyring, keyInfo *key, bool throw_error)
     off_t bytes_written = 0;
 	File file;
 	FileKeyring* file_keyring = (FileKeyring*)keyring;
+	keyInfo *existing_key;
+
+	Assert(key != NULL);
+	/* See if the key with same name already exists */
+	existing_key = get_key_by_name(keyring, key->name.name, false, NULL);
+	if (existing_key)
+	{
+		pfree(existing_key);
+		ereport(throw_error?ERROR:WARNING,
+			(errmsg("Key with name %s already exists in keyring", key->name.name)));
+		return KEYRING_CODE_INVALID_OPERATION;
+	}
 
     file = PathNameOpenFile(file_keyring->file_name, O_CREAT | O_EXCL | O_RDWR | PG_BINARY);
     if (file < 0)

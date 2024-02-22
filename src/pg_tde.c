@@ -20,7 +20,6 @@
 #include "access/pg_tde_ddl.h"
 #include "encryption/enc_aes.h"
 #include "access/pg_tde_tdemap.h"
-
 #include "keyring/keyring_config.h"
 #include "keyring/keyring_api.h"
 #include "common/pg_tde_shmem.h"
@@ -41,9 +40,8 @@ tde_shmem_request(void)
 	if (prev_shmem_request_hook)
 		prev_shmem_request_hook();
 	RequestAddinShmemSpace(sz);
+	RequestNamedLWLockTranche(TDE_TRANCHE_NAME, required_locks);
 	ereport(LOG, (errmsg("tde_shmem_request: requested %ld bytes", sz)));
-
-	RequestNamedLWLockTranche("pg_tde_tranche", required_locks);
 }
 
 static void

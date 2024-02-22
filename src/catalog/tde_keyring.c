@@ -32,10 +32,10 @@
  * These token must be exactly same as defined in
  * pg_tde_add_key_provider_vault_v2 SQL interface
  */
-#define VALUTV2_KEYRING_TOKEN_KEY "token"
-#define VALUTV2_KEYRING_URL_KEY "url"
-#define VALUTV2_KEYRING_MOUNT_PATH_KEY "mountPath"
-#define VALUTV2_KEYRING_CA_PATH_KEY "caPath"
+#define VAULTV2_KEYRING_TOKEN_KEY "token"
+#define VAULTV2_KEYRING_URL_KEY "url"
+#define VAULTV2_KEYRING_MOUNT_PATH_KEY "mountPath"
+#define VAULTV2_KEYRING_CA_PATH_KEY "caPath"
 
 /*
  * These token must be exactly same as defined in
@@ -47,7 +47,7 @@
 static FileKeyring *load_file_keyring_provider_options(Datum keyring_options);
 static ProviderType get_keyring_provider_from_typename(char *provider_type);
 static GenericKeyring *load_keyring_provider_options(ProviderType provider_type, Datum keyring_options);
-static ValutV2Keyring *load_valutV2_keyring_provider_options(Datum keyring_options);
+static VaultV2Keyring *load_vaultV2_keyring_provider_options(Datum keyring_options);
 static void debug_print_kerying(GenericKeyring *keyring);
 static GenericKeyring *load_keyring_provider_from_tuple(HeapTuple tuple, TupleDesc tupDesc);
 
@@ -59,7 +59,7 @@ get_keyring_provider_from_typename(char *provider_type)
 
 	if (strcmp(FILE_KEYRING_TYPE, provider_type) == 0)
 		return FILE_KEY_PROVIDER;
-	if (strcmp(VALUTV2_KEYRING_TYPE, provider_type) == 0)
+	if (strcmp(VAULTV2_KEYRING_TYPE, provider_type) == 0)
 		return VAULT_V2_KEY_PROVIDER;
 	return UNKNOWN_KEY_PROVIDER;
 }
@@ -72,7 +72,6 @@ load_keyring_provider_from_tuple(HeapTuple tuple, TupleDesc tupDesc)
 	bool isnull;
 	char *keyring_name;
 	char *keyring_type;
-	/*char *keyring_options = NULL;*/
 	int provider_id;
 	ProviderType provider_type = UNKNOWN_KEY_PROVIDER;
 	GenericKeyring *keyring = NULL;
@@ -87,7 +86,6 @@ load_keyring_provider_from_tuple(HeapTuple tuple, TupleDesc tupDesc)
 	keyring_name = TextDatumGetCString(datum);
 
 	option_datum = heap_getattr(tuple, PG_TDE_KEY_PROVIDER_OPTIONS_ATTRNUM, tupDesc, &isnull);
-	/*keyring_options = TextDatumGetCString(option_datum);*/
 
 	provider_type = get_keyring_provider_from_typename(keyring_type);
 
@@ -207,7 +205,7 @@ load_keyring_provider_options(ProviderType provider_type, Datum keyring_options)
 		return (GenericKeyring *)load_file_keyring_provider_options(keyring_options);
 		break;
 	case VAULT_V2_KEY_PROVIDER:
-		return (GenericKeyring *)load_valutV2_keyring_provider_options(keyring_options);
+		return (GenericKeyring *)load_vaultV2_keyring_provider_options(keyring_options);
 		break;
 	default:
 		break;
@@ -221,10 +219,6 @@ load_file_keyring_provider_options(Datum keyring_options)
 
 	Datum file_path;
 	FileKeyring *file_keyring = palloc0(sizeof(FileKeyring));
-	/*
-	Datum file_type;
-	file_type = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(FILE_KEYRING_TYPE_KEY));
-	*/
 	file_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(FILE_KEYRING_PATH_KEY));
 	/* TODO check NULL  and verify type */
 	file_keyring->keyring.type = FILE_KEY_PROVIDER;
@@ -232,22 +226,22 @@ load_file_keyring_provider_options(Datum keyring_options)
 	return file_keyring;
 }
 
-static ValutV2Keyring *
-load_valutV2_keyring_provider_options(Datum keyring_options)
+static VaultV2Keyring *
+load_vaultV2_keyring_provider_options(Datum keyring_options)
 {
-	ValutV2Keyring *valutV2_keyring = palloc0(sizeof(ValutV2Keyring));
-	Datum token = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VALUTV2_KEYRING_TOKEN_KEY));
-	Datum url = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VALUTV2_KEYRING_URL_KEY));
-	Datum mount_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VALUTV2_KEYRING_MOUNT_PATH_KEY));
-	Datum ca_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VALUTV2_KEYRING_CA_PATH_KEY));
+	VaultV2Keyring *vaultV2_keyring = palloc0(sizeof(VaultV2Keyring));
+	Datum token = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VAULTV2_KEYRING_TOKEN_KEY));
+	Datum url = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VAULTV2_KEYRING_URL_KEY));
+	Datum mount_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VAULTV2_KEYRING_MOUNT_PATH_KEY));
+	Datum ca_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VAULTV2_KEYRING_CA_PATH_KEY));
 
 	/* TODO check NULL */
-	valutV2_keyring->keyring.type = VAULT_V2_KEY_PROVIDER;
-	strncpy(valutV2_keyring->vault_token, TextDatumGetCString(token), sizeof(valutV2_keyring->vault_token));
-	strncpy(valutV2_keyring->vault_url, TextDatumGetCString(url), sizeof(valutV2_keyring->vault_url));
-	strncpy(valutV2_keyring->vault_mount_path, TextDatumGetCString(mount_path), sizeof(valutV2_keyring->vault_mount_path));
-	strncpy(valutV2_keyring->vault_ca_path, TextDatumGetCString(ca_path), sizeof(valutV2_keyring->vault_ca_path));
-	return valutV2_keyring;
+	vaultV2_keyring->keyring.type = VAULT_V2_KEY_PROVIDER;
+	strncpy(vaultV2_keyring->vault_token, TextDatumGetCString(token), sizeof(vaultV2_keyring->vault_token));
+	strncpy(vaultV2_keyring->vault_url, TextDatumGetCString(url), sizeof(vaultV2_keyring->vault_url));
+	strncpy(vaultV2_keyring->vault_mount_path, TextDatumGetCString(mount_path), sizeof(vaultV2_keyring->vault_mount_path));
+	strncpy(vaultV2_keyring->vault_ca_path, TextDatumGetCString(ca_path), sizeof(vaultV2_keyring->vault_ca_path));
+	return vaultV2_keyring;
 }
 
 static void
@@ -262,10 +256,10 @@ debug_print_kerying(GenericKeyring *keyring)
 		elog(DEBUG2, "File Keyring Path: %s", ((FileKeyring *)keyring)->file_name);
 		break;
 	case VAULT_V2_KEY_PROVIDER:
-		elog(DEBUG2, "Vault Keyring Token: %s", ((ValutV2Keyring *)keyring)->vault_token);
-		elog(DEBUG2, "Vault Keyring URL: %s", ((ValutV2Keyring *)keyring)->vault_url);
-		elog(DEBUG2, "Vault Keyring Mount Path: %s", ((ValutV2Keyring *)keyring)->vault_mount_path);
-		elog(DEBUG2, "Vault Keyring CA Path: %s", ((ValutV2Keyring *)keyring)->vault_ca_path);
+		elog(DEBUG2, "Vault Keyring Token: %s", ((VaultV2Keyring *)keyring)->vault_token);
+		elog(DEBUG2, "Vault Keyring URL: %s", ((VaultV2Keyring *)keyring)->vault_url);
+		elog(DEBUG2, "Vault Keyring Mount Path: %s", ((VaultV2Keyring *)keyring)->vault_mount_path);
+		elog(DEBUG2, "Vault Keyring CA Path: %s", ((VaultV2Keyring *)keyring)->vault_ca_path);
 		break;
 	case UNKNOWN_KEY_PROVIDER:
 		elog(DEBUG2, "Unknown Keyring ");
