@@ -410,7 +410,7 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
     else
     {
         /*
-         * Seems lik just before we got the lock the key was installed by some other caller
+         * Seems like just before we got the lock, the key was installed by some other caller
          * Throw an error and mover no
          */
         LWLockRelease(shared_state->Lock);
