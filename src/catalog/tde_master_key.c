@@ -362,7 +362,7 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
                  errhint("Use rotate_key interface to change the master key")));
         return NULL;
     }
-    /* See of valid master key info exists */
+    /*  Check if valid master key info exists in the file. There is no need for a lock here as the key might be in the file and not in the cache, but it must be in the file if it's in the cache and we check the cache under the lock later. */
     masterKeyInfo = get_master_key_info();
     if (masterKeyInfo)
     {
