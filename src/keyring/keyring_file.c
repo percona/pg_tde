@@ -43,11 +43,11 @@ get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error,
     File file = -1;
 	FileKeyring* file_keyring = (FileKeyring*)keyring;
 
-    file = PathNameOpenFile(file_keyring->file_name, PG_BINARY);
-    if (file < 0)
+	file = PathNameOpenFile(file_keyring->file_name, O_CREAT | O_RDWR | PG_BINARY);
+	if (file < 0)
 	{
-		ereport(throw_error?ERROR:WARNING,
-			(errmsg("Failed to open keyring file %s", file_keyring->file_name)));
+		ereport(throw_error?ERROR:NOTICE,
+			(errmsg("Failed to open keyring file :%s %m", file_keyring->file_name)));
         return NULL;
 	}
 
@@ -101,7 +101,7 @@ set_key_by_name(GenericKeyring* keyring, keyInfo *key, bool throw_error)
 		return KEYRING_CODE_INVALID_OPERATION;
 	}
 
-    file = PathNameOpenFile(file_keyring->file_name, O_CREAT | O_EXCL | O_RDWR | PG_BINARY);
+    file = PathNameOpenFile(file_keyring->file_name, O_CREAT | O_RDWR | PG_BINARY);
     if (file < 0)
     {
 		ereport(throw_error?ERROR:WARNING,

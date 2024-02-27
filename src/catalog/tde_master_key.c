@@ -21,6 +21,7 @@
 #include "miscadmin.h"
 #include "funcapi.h"
 #include "utils/builtins.h"
+#include "pg_tde.h"
 #include <sys/time.h>
 
 #define PG_TDE_MASTER_KEY_FILENAME "tde_master_key.info"
@@ -62,6 +63,7 @@ static Size cache_area_size(void);
 static Size required_shared_mem_size(void);
 static int  required_locks_count(void);
 static void shared_memory_shutdown(int code, Datum arg);
+static void master_key_startup_cleanup(int tde_tbl_count, void *arg);
 
 static TDEMasterKeyInfo *save_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring);
 static TDEMasterKeyInfo *get_master_key_info(void);
@@ -82,6 +84,7 @@ void InitializeMasterKeyInfo(void)
 {
     ereport(LOG, (errmsg("Initializing TDE master key info")));
     RegisterShmemRequest(&master_key_info_shmem_routine);
+    on_ext_install(master_key_startup_cleanup, NULL);
 }
 
 static int
@@ -495,6 +498,63 @@ push_master_key_to_cache(TDEMasterKey *masterKey)
     if (!found)
         memcpy(cacheEntry, masterKey, sizeof(TDEMasterKey));
     dshash_release_lock(get_master_key_Hash(), cacheEntry);
+}
+
+/*
+ * Cleanup the master key cache entry for the current database.
+ * This function is a hack to handle the situation if the
+ * extension was dropped from the database and had created the
+ * master key info file and cache entry in its previous encarnation.
+ * We need to remove the cache entry and the master key info file
+ * at the time of extension creation to start fresh again.
+ * Idelly we should have a mechanism to remove these when the extension
+ * but unfortunately we do not have any such mechanism in PG.
+*/
+
+static void
+master_key_startup_cleanup(int tde_tbl_count, void* arg)
+{
+    Oid databaseId = MyDatabaseId;
+    File master_key_file = -1;
+    TDEMasterKey *cache_entry;
+    char *info_file_path;
+
+    if (tde_tbl_count > 0)
+    {
+        ereport(WARNING,
+                (errmsg("Failed to perform initialization. database already has %d TDE tables", tde_tbl_count)));
+        return;
+    }
+
+    info_file_path = get_master_key_info_path();
+
+    /* Start with deleting the cache entry for the database */
+    cache_entry = (TDEMasterKey *)dshash_find(get_master_key_Hash(),
+                                              &databaseId, true);
+    if (cache_entry)
+    {
+        dshash_delete_entry(get_master_key_Hash(), cache_entry);
+    }
+    /*
+     * Although should never happen. Still verify if any table in the
+     * database is using tde
+     */
+    master_key_file = PathNameOpenFile(info_file_path, O_RDWR | PG_BINARY);
+    if (master_key_file < 0)
+    {
+        ereport(DEBUG1,
+                (errmsg("failed to open file \"%s\": %m",
+                        info_file_path)));
+    }
+    else
+    {
+        if (FileTruncate(master_key_file, 0, WAIT_EVENT_DATA_FILE_TRUNCATE) < 0)
+            ereport(WARNING,
+                    (errcode_for_file_access(),
+                     errmsg("could not truncate file \"%s\": %m",
+                            info_file_path)));
+        FileClose(master_key_file);
+    }
 }
 
 /*

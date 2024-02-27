@@ -79,7 +79,15 @@ RETURNS VOID
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
+CREATE FUNCTION pg_tde_extension_initialize()
+RETURNS VOID
+AS 'MODULE_PATHNAME'
+LANGUAGE C;
+
 
 -- Access method
 CREATE ACCESS METHOD pg_tde TYPE TABLE HANDLER pg_tdeam_handler;
 COMMENT ON ACCESS METHOD pg_tde IS 'pg_tde table access method';
+
+-- Per database extension initialization
+SELECT pg_tde_extension_initialize();
