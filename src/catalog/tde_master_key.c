@@ -475,7 +475,14 @@ get_master_key_from_cache(bool acquire_lock)
 }
 
 /*
- * push the master key for current database to the shared memory cache
+ * Push the master key for current database to the shared memory cache.
+ * TODO: Add eviction policy
+ * For now we just keep pushing the master keys to the cache and do not have
+ * any eviction policy. We have one master key for a database, so at max,
+ * we could have as many entries in the cache as the number of databases.
+ * Which in practice would not be a huge number, but still we need to have
+ * some eviction policy in place. Moreover, we need to have some mechanism to
+ * remove the cache entry when the database is dropped.
  */
 static void
 push_master_key_to_cache(TDEMasterKey *masterKey)

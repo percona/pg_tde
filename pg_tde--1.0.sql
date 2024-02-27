@@ -10,7 +10,7 @@ CREATE SCHEMA percona_tde;
 -- and we do not want to encrypt this table using pg_tde.
 CREATE TABLE percona_tde.pg_tde_key_provider(provider_id SERIAL,
         keyring_type VARCHAR(10) CHECK (keyring_type IN ('file', 'vault-v2')),
-        provider_name VARCHAR(256) UNIQUE NOT NULL, options JSON, PRIMARY KEY(provider_id)) using heap;
+        provider_name VARCHAR(255) UNIQUE NOT NULL, options JSON, PRIMARY KEY(provider_id)) using heap;
 
 -- If you want to add new provider types, you need to make appropriate changes
 -- in include/catalog/tde_keyring.h and src/catalog/tde_keyring.c files.
