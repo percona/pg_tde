@@ -27,6 +27,7 @@
 #include "common/pg_tde_utils.h"
 #include "catalog/tde_master_key.h"
 #include "keyring/keyring_file.h"
+#include "keyring/keyring_vault.h"
 
 #define MAX_ON_INSTALLS 5
 
@@ -91,6 +92,7 @@ _PG_init(void)
 	RegisterSubXactCallback(pg_tde_subxact_callback, NULL);
 	SetupTdeDDLHooks();
 	InstallFileKeyring();
+	InstallVaultV2Keyring();
 	RegisterCustomRmgr(RM_TDERMGR_ID, &pg_tde_rmgr);
 }
 

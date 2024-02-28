@@ -35,8 +35,8 @@ typedef enum ProviderType
 typedef struct GenericKeyring
 {
 	ProviderType type; /* Must be the first field */
-	Oid keyId;
-	char keyName[MAX_PROVIDER_NAME_LEN];
+	Oid key_id;
+	char provider_name[MAX_PROVIDER_NAME_LEN];
 } GenericKeyring;
 
 typedef struct FileKeyring

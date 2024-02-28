@@ -32,7 +32,7 @@ AS $$
 -- load_file_keyring_provider_options function.
 
     SELECT pg_tde_add_key_provider('file', provider_name,
-                json_object('type' VALUE 'file', 'path' VALUE file_path));
+                json_object('type' VALUE 'file', 'path' VALUE COALESCE(file_path,''));
 $$
 LANGUAGE SQL;
 
@@ -47,10 +47,10 @@ AS $$
 -- load_vaultV2_keyring_provider_options function.
     SELECT pg_tde_add_key_provider('vault-v2', provider_name,
                             json_object('type' VALUE 'vault-v2',
-                            'url' VALUE vault_url,
-                            'token' VALUE vault_token,
-                            'mountPath' VALUE vault_mount_path,
-                            'caPath' VALUE vault_ca_path));
+                            'url' VALUE COALESCE(vault_url,''),
+                            'token' VALUE COALESCE(vault_token,''),
+                            'mountPath' VALUE COALESCE(vault_mount_path,''),
+                            'caPath' VALUE COALESCE(vault_ca_path,'')));
 $$
 LANGUAGE SQL;
 

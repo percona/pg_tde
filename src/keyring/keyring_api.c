@@ -20,10 +20,10 @@ typedef struct KeyProviders
 } KeyProviders;
 
 List *registeredKeyProviders = NIL;
-static KeyProviders *findKeyProvider(ProviderType type);
+static KeyProviders *find_key_provider(ProviderType type);
 
 static KeyProviders *
-findKeyProvider(ProviderType type)
+find_key_provider(ProviderType type)
 {
 	ListCell *lc;
 	foreach (lc, registeredKeyProviders)
@@ -45,7 +45,7 @@ bool RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType type)
 	Assert(routine->keyring_get_key != NULL);
 	Assert(routine->keyring_store_key != NULL);
 
-	kp = findKeyProvider(type);
+	kp = find_key_provider(type);
 	if (kp)
 	{
 		ereport(ERROR,
@@ -64,7 +64,7 @@ bool RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType type)
 keyInfo *
 KeyringGetKey(GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes *returnCode)
 {
-	KeyProviders *kp = findKeyProvider(keyring->type);
+	KeyProviders *kp = find_key_provider(keyring->type);
 	if (kp == NULL)
 	{
 		ereport(throw_error ? ERROR : WARNING,
@@ -78,7 +78,7 @@ KeyringGetKey(GenericKeyring *keyring, const char *key_name, bool throw_error, K
 KeyringReturnCodes
 KeyringStoreKey(GenericKeyring *keyring, keyInfo *key, bool throw_error)
 {
-	KeyProviders *kp = findKeyProvider(keyring->type);
+	KeyProviders *kp = find_key_provider(keyring->type);
 	if (kp == NULL)
 	{
 		ereport(throw_error ? ERROR : WARNING,
@@ -89,7 +89,7 @@ KeyringStoreKey(GenericKeyring *keyring, keyInfo *key, bool throw_error)
 }
 
 keyInfo *
-keyringGenerateNewKey(const char *key_name, unsigned key_len)
+KeyringGenerateNewKey(const char *key_name, unsigned key_len)
 {
 	keyInfo *key;
 	Assert(key_len <= 32);
@@ -105,9 +105,9 @@ keyringGenerateNewKey(const char *key_name, unsigned key_len)
 }
 
 keyInfo *
-keyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len, bool throw_error)
+KeyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len, bool throw_error)
 {
-	keyInfo *key = keyringGenerateNewKey(key_name, key_len);
+	keyInfo *key = KeyringGenerateNewKey(key_name, key_len);
 	if (key == NULL)
 	{
 		ereport(throw_error ? ERROR : WARNING,

@@ -205,12 +205,12 @@ save_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring)
     Assert(keyring != NULL);
 
     masterKeyInfo = palloc(sizeof(TDEMasterKeyInfo));
-    masterKeyInfo->keyId = 0;
+    masterKeyInfo->keyId = keyring->key_id;
     masterKeyInfo->databaseId = MyDatabaseId;
     masterKeyInfo->keyVersion = 1;
     gettimeofday(&masterKeyInfo->creationTime, NULL);
     strncpy(masterKeyInfo->keyName, master_key->keyName, MASTER_KEY_NAME_LEN);
-    masterKeyInfo->keyringId = keyring->keyId;
+    masterKeyInfo->keyringId = keyring->key_id;
 
     master_key_file = PathNameOpenFile(info_file_path, O_CREAT | O_EXCL | O_RDWR | PG_BINARY);
     if (master_key_file < 0)
@@ -323,12 +323,14 @@ GetMasterKey(void)
     }
 
     masterKey = palloc(sizeof(TDEMasterKey));
-    masterKey->databaseId = MyDatabaseId;
-    masterKey->keyVersion = 1;
+    masterKey->databaseId = masterKeyInfo->databaseId;
+    masterKey->keyVersion = masterKeyInfo->keyVersion;
     masterKey->keyringId = masterKeyInfo->keyringId;
     strncpy(masterKey->keyName, masterKeyInfo->keyName, TDE_KEY_NAME_LEN);
     masterKey->keyLength = keyInfo->data.len;
     memcpy(masterKey->keyData, keyInfo->data.data, keyInfo->data.len);
+
+    Assert(MyDatabaseId == masterKey->databaseId);
     push_master_key_to_cache(masterKey);
 
     return masterKey;
@@ -391,13 +393,13 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
         masterKey = palloc(sizeof(TDEMasterKey));
         masterKey->databaseId = MyDatabaseId;
         masterKey->keyVersion = 1;
-        masterKey->keyringId = keyring->keyId;
+        masterKey->keyringId = keyring->key_id;
         strncpy(masterKey->keyName, key_name, TDE_KEY_NAME_LEN);
         /* We need to get the key from keyring */
 
         keyInfo = KeyringGetKey(keyring, key_name, false, &keyring_ret);
         if (keyInfo == NULL) /* TODO: check if the key was not present or there was a problem with key provider*/
-            keyInfo = keyringGenerateNewKeyAndStore(keyring, key_name, INTERNAL_KEY_LEN, false);
+            keyInfo = KeyringGenerateNewKeyAndStore(keyring, key_name, INTERNAL_KEY_LEN, false);
 
         if (keyInfo == NULL)
         {

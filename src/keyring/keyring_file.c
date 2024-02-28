@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-static keyInfo* get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error, KeyringReturnCodes *returnCode);
+static keyInfo* get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error, KeyringReturnCodes *return_code);
 static KeyringReturnCodes set_key_by_name(GenericKeyring* keyring, keyInfo *key, bool throw_error);
 
 const TDEKeyringRoutine keyringFileRoutine = {
@@ -37,18 +37,19 @@ InstallFileKeyring(void)
 
 
 static keyInfo*
-get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error, KeyringReturnCodes *returnCode)
+get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error, KeyringReturnCodes *return_code)
 {
 	keyInfo* key = NULL;
-    File file = -1;
+	File file = -1;
 	FileKeyring* file_keyring = (FileKeyring*)keyring;
 
 	file = PathNameOpenFile(file_keyring->file_name, O_CREAT | O_RDWR | PG_BINARY);
 	if (file < 0)
 	{
-		ereport(throw_error?ERROR:NOTICE,
-			(errmsg("Failed to open keyring file :%s %m", file_keyring->file_name)));
-        return NULL;
+		*return_code = KEYRING_CODE_RESOURCE_NOT_ACCESSABLE;
+			ereport(throw_error ? ERROR : NOTICE,
+					(errmsg("Failed to open keyring file :%s %m", file_keyring->file_name)));
+		return NULL;
 	}
 
 	key = palloc(sizeof(keyInfo));
@@ -65,6 +66,7 @@ get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error,
 		{
 			pfree(key);
 			/* Corrupt file */
+			*return_code = KEYRING_CODE_DATA_CORRUPTED;
 			ereport(throw_error?ERROR:WARNING,
 				(errcode_for_file_access(),
 					errmsg("keyring file \"%s\" is corrupted: %m",
@@ -77,7 +79,8 @@ get_key_by_name(GenericKeyring* keyring, const char* key_name, bool throw_error,
 			return key;
 		}
 	}
-    FileClose(file);
+	*return_code = KEYRING_CODE_SUCCESS;
+	FileClose(file);
 	pfree(key);
     return NULL;
 }
@@ -89,15 +92,16 @@ set_key_by_name(GenericKeyring* keyring, keyInfo *key, bool throw_error)
 	File file;
 	FileKeyring* file_keyring = (FileKeyring*)keyring;
 	keyInfo *existing_key;
+	KeyringReturnCodes return_code = KEYRING_CODE_SUCCESS;
 
 	Assert(key != NULL);
 	/* See if the key with same name already exists */
-	existing_key = get_key_by_name(keyring, key->name.name, false, NULL);
+	existing_key = get_key_by_name(keyring, key->name.name, false, &return_code);
 	if (existing_key)
 	{
 		pfree(existing_key);
-		ereport(throw_error?ERROR:WARNING,
-			(errmsg("Key with name %s already exists in keyring", key->name.name)));
+		ereport(throw_error ? ERROR : WARNING,
+				(errmsg("Key with name %s already exists in keyring", key->name.name)));
 		return KEYRING_CODE_INVALID_OPERATION;
 	}
 

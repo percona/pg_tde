@@ -92,8 +92,8 @@ load_keyring_provider_from_tuple(HeapTuple tuple, TupleDesc tupDesc)
 	keyring = load_keyring_provider_options(provider_type, option_datum);
 	if (keyring)
 	{
-		strncpy(keyring->keyName, keyring_name, sizeof(keyring->keyName));
-		keyring->keyId = provider_id;
+		strncpy(keyring->provider_name, keyring_name, sizeof(keyring->provider_name));
+		keyring->key_id = provider_id;
 		keyring->type = provider_type;
 		debug_print_kerying(keyring);
 	}
@@ -216,11 +216,9 @@ load_keyring_provider_options(ProviderType provider_type, Datum keyring_options)
 static FileKeyring *
 load_file_keyring_provider_options(Datum keyring_options)
 {
-
 	Datum file_path;
 	FileKeyring *file_keyring = palloc0(sizeof(FileKeyring));
 	file_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(FILE_KEYRING_PATH_KEY));
-	/* TODO check NULL  and verify type */
 	file_keyring->keyring.type = FILE_KEY_PROVIDER;
 	strncpy(file_keyring->file_name, TextDatumGetCString(file_path), sizeof(file_keyring->file_name));
 	return file_keyring;
@@ -235,7 +233,6 @@ load_vaultV2_keyring_provider_options(Datum keyring_options)
 	Datum mount_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VAULTV2_KEYRING_MOUNT_PATH_KEY));
 	Datum ca_path = DirectFunctionCall2(json_object_field_text, keyring_options, CStringGetTextDatum(VAULTV2_KEYRING_CA_PATH_KEY));
 
-	/* TODO check NULL */
 	vaultV2_keyring->keyring.type = VAULT_V2_KEY_PROVIDER;
 	strncpy(vaultV2_keyring->vault_token, TextDatumGetCString(token), sizeof(vaultV2_keyring->vault_token));
 	strncpy(vaultV2_keyring->vault_url, TextDatumGetCString(url), sizeof(vaultV2_keyring->vault_url));
@@ -248,8 +245,8 @@ static void
 debug_print_kerying(GenericKeyring *keyring)
 {
 	elog(DEBUG2, "Keyring type: %d", keyring->type);
-	elog(DEBUG2, "Keyring name: %s", keyring->keyName);
-	elog(DEBUG2, "Keyring id: %d", keyring->keyId);
+	elog(DEBUG2, "Keyring name: %s", keyring->provider_name);
+	elog(DEBUG2, "Keyring id: %d", keyring->key_id);
 	switch (keyring->type)
 	{
 	case FILE_KEY_PROVIDER:

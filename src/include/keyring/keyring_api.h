@@ -39,6 +39,8 @@ typedef enum KeyringReturnCodes
 	KEYRING_CODE_RESOURCE_NOT_AVAILABLE,
 	KEYRING_CODE_RESOURCE_NOT_ACCESSABLE,
 	KEYRING_CODE_INVALID_OPERATION,
+	KEYRING_CODE_INVALID_RESPONSE,
+	KEYRING_CODE_INVALID_KEY_SIZE,
 	KEYRING_CODE_DATA_CORRUPTED
 } KeyringReturnCodes;
 
@@ -52,8 +54,7 @@ extern bool RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType t
 
 extern KeyringReturnCodes KeyringStoreKey(GenericKeyring *keyring, keyInfo *key, bool throw_error);
 extern keyInfo *KeyringGetKey(GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes *returnCode);
-extern keyInfo *keyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len, bool throw_error);
-extern keyInfo *keyringGenerateNewKey(const char *key_name, unsigned key_len);
-const keyInfo *keyringGenerateKey(const char *internalName, unsigned keyLen);
+extern keyInfo *KeyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len, bool throw_error);
+extern keyInfo *KeyringGenerateNewKey(const char *key_name, unsigned key_len);
 
 #endif /* KEYRING_API_H */
