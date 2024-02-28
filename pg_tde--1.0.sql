@@ -32,7 +32,7 @@ AS $$
 -- load_file_keyring_provider_options function.
 
     SELECT pg_tde_add_key_provider('file', provider_name,
-                json_object('type' VALUE 'file', 'path' VALUE COALESCE(file_path,''));
+                json_object('type' VALUE 'file', 'path' VALUE COALESCE(file_path,'')));
 $$
 LANGUAGE SQL;
 
