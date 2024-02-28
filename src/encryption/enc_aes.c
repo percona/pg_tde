@@ -177,10 +177,12 @@ void Aes128EncryptedZeroBlocks(void* ctxPtr, const unsigned char* key, const cha
 
 	for(int j=blockNumber1;j<blockNumber2;++j)
 	{
-		/* We have 16 bytes, and a 4 byte counter. The counter is the last 4 bytes.
-		   Technically this isn't correct: the byte order of the counter depends 
-		   on the endianness of the cpu running it.
-		   As this is a generic limitation of postgres, it's fine. */
+		/*
+  		 * We have 16 bytes, and a 4 byte counter. The counter is the last 4 bytes.
+		 * Technically, this isn't correct: the byte order of the counter depends 
+		 * on the endianness of the CPU running it.
+		 * As this is a generic limitation of Postgres, it's fine.
+		 */
 		memcpy(out + (16*(j-blockNumber1)), iv_prefix, 12);
 		memcpy(out + (16*(j-blockNumber1)) + 12, (char*)&j, 4);
 	}
