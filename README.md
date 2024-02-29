@@ -111,9 +111,9 @@ sudo dpkg -i pgtde-pgdg16.deb
 
 ## Run in Docker
 
-You can find docker images built from the current main branch on [Docker Hub](https://hub.docker.com/r/perconalab/pg_tde). Images build on top of [postgres:16](https://hub.docker.com/_/postgres) official image. To run it:
+You can find docker images built from the current main branch on [Docker Hub](https://hub.docker.com/r/perconalab/postgres-tde-ext). Images build on top of [postgres:16](https://hub.docker.com/_/postgres) official image. To run it:
 ```
-docker run --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d perconalab/pg_tde
+docker run --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d perconalab/postgres-tde-ext
 ```
 It builds and adds `pg_tde` extension to Postgres 16. Relevant `postgresql.conf` and `tde_conf.json` are created in `/etc/postgresql/` inside the container. This dir is exposed as volume.
 
