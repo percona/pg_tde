@@ -70,22 +70,27 @@ typedef struct TDEMapEntry
 	int32 key_index;
 } TDEMapEntry;
 
+typedef struct XLogRelKey
+{
+	RelFileLocator rlocator;
+	RelKeyData	relKey;
+} XLogRelKey;
+
 /* Global variables */
 static char db_path[MAXPGPATH] = {0};
 static char db_map_path[MAXPGPATH] = {0};
 static char db_keydata_path[MAXPGPATH] = {0};
 
 static void put_key_into_map(Oid rel_id, RelKeyData *key);
-static void pg_tde_xlog_create_relation(XLogReaderState *record);
 
-static RelKeyData* tde_create_rel_key(const RelFileLocator *rlocator, InternalKey *key, const TDEMasterKey *master_key, bool is_key_decrypted);
+static RelKeyData* tde_create_rel_key(const RelFileLocator *rlocator, InternalKey *key, const TDEMasterKey *master_key);
 static RelKeyData *tde_encrypt_rel_key(const TDEMasterKey *master_key, RelKeyData *rel_key_data, const RelFileLocator *rlocator);
 static RelKeyData *tde_decrypt_rel_key(const TDEMasterKey *master_key, RelKeyData *enc_rel_key_data, const RelFileLocator *rlocator);
 static bool pg_tde_perform_rotate_key(const char *new_master_key_name);
 
 static void pg_tde_set_db_file_paths(const RelFileLocator *rlocator, char *str_append);
 static File pg_tde_open_file(char *tde_filename, const char *master_key_name, int fileFlags, bool *is_new_file, off_t *offset);
-static void pg_tde_write_key_map_entry(const RelFileLocator *rlocator, RelKeyData *enc_rel_key_data, const TDEMasterKey *master_key);
+static void pg_tde_write_key_map_entry(const RelFileLocator *rlocator, RelKeyData *enc_rel_key_data);
 
 static int32 pg_tde_write_map_entry(const RelFileLocator *rlocator, char *db_map_path, const char *master_key_name);
 static int32 pg_tde_write_one_map_entry(File map_file, const RelFileLocator *rlocator, int flags, int32 key_index, TDEMapEntry *map_entry, off_t *offset);
@@ -109,6 +114,7 @@ pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, Relation rel)
 	RelKeyData *rel_key_data;
 	RelKeyData *enc_rel_key_data;
 	const TDEMasterKey *master_key;
+	XLogRelKey xlrec;
 
 	master_key = GetMasterKey();
 	if (master_key == NULL)
@@ -128,19 +134,23 @@ pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, Relation rel)
 	}
 
 	/* Encrypt the key */
-	rel_key_data = tde_create_rel_key(newrlocator, &int_key, master_key, true);
+	rel_key_data = tde_create_rel_key(newrlocator, &int_key, master_key);
 	enc_rel_key_data = tde_encrypt_rel_key(master_key, rel_key_data, newrlocator);
 
-	/* XLOG internal key */
+	/* 
+	 * XLOG internal key 
+	 */
+	xlrec.rlocator = *newrlocator;
+	xlrec.relKey = *enc_rel_key_data;
+
 	XLogBeginInsert();
-	XLogRegisterData((char *) newrlocator, sizeof(RelFileLocator));
-	XLogRegisterData((char *) &enc_rel_key_data->internal_key, sizeof(InternalKey));
+	XLogRegisterData((char *) &xlrec, sizeof(xlrec));
 	XLogInsert(RM_TDERMGR_ID, XLOG_TDE_RELATION_KEY);
 
 	/*
 	 * Add the encyrpted key to the key map data file structure.
 	 */
-	pg_tde_write_key_map_entry(newrlocator, enc_rel_key_data, master_key);
+	pg_tde_write_key_map_entry(newrlocator, enc_rel_key_data);
 }
 
 /* Head of the key cache (linked list) */
@@ -206,22 +216,18 @@ tde_sprint_key(InternalKey *k)
  * created key.
  */
 RelKeyData *
-tde_create_rel_key(const RelFileLocator *rlocator, InternalKey *key, const TDEMasterKey *master_key, bool is_key_decrypted)
+tde_create_rel_key(const RelFileLocator *rlocator, InternalKey *key, const TDEMasterKey *master_key)
 {
 	RelKeyData 	*rel_key_data;
-	MemoryContext context = (is_key_decrypted ? TopMemoryContext : CurrentMemoryContext);
 
-	Assert(context);
-
-	rel_key_data = (RelKeyData *) MemoryContextAlloc(context, sizeof(RelKeyData));
+	rel_key_data = (RelKeyData *) MemoryContextAlloc(TopMemoryContext, sizeof(RelKeyData));
 
 	strncpy(rel_key_data->master_key_name, master_key->keyName, MASTER_KEY_NAME_LEN);
 	memcpy(&rel_key_data->internal_key, key, sizeof(InternalKey));
 	rel_key_data->internal_key.ctx = NULL;
 
 	/* Add to the decrypted key to cache */
-	if (is_key_decrypted)
-		put_key_into_map(rlocator->relNumber, rel_key_data);
+	put_key_into_map(rlocator->relNumber, rel_key_data);
 
 	return rel_key_data;
 }
@@ -680,7 +686,7 @@ pg_tde_read_one_keydata(File keydata_file, off_t header_size, int32 key_index, c
  * The map file must be updated while holding an exclusive lock.
  */
 void
-pg_tde_write_key_map_entry(const RelFileLocator *rlocator, RelKeyData *enc_rel_key_data, const TDEMasterKey *master_key)
+pg_tde_write_key_map_entry(const RelFileLocator *rlocator, RelKeyData *enc_rel_key_data)
 {
 	int32 key_index = 0;
 
@@ -688,10 +694,10 @@ pg_tde_write_key_map_entry(const RelFileLocator *rlocator, RelKeyData *enc_rel_k
 	pg_tde_set_db_file_paths(rlocator, NULL);
 
 	/* Create the map entry and then add the encrypted key to the data file */
-	key_index = pg_tde_write_map_entry(rlocator, db_map_path, master_key->keyName);
+	key_index = pg_tde_write_map_entry(rlocator, db_map_path, enc_rel_key_data->master_key_name);
 
 	/* Add the encrypted key to the data file. */
-	pg_tde_write_keydata(db_keydata_path, master_key->keyName, key_index, enc_rel_key_data);
+	pg_tde_write_keydata(db_keydata_path, enc_rel_key_data->master_key_name, key_index, enc_rel_key_data);
 }
 
 /*
@@ -844,27 +850,28 @@ pg_tde_rmgr_redo(XLogReaderState *record)
 {
 	uint8	info = XLogRecGetInfo(record) & ~XLR_INFO_MASK;
 
-	switch (info)
+	if (info == XLOG_TDE_RELATION_KEY)
 	{
-		case XLOG_TDE_RELATION_KEY:
-			pg_tde_xlog_create_relation(record);
-			break;
-		default:
-			elog(PANIC, "pg_tde_redo: unknown op code %u", info);
+		XLogRelKey *xlrec = (XLogRelKey *) XLogRecGetData(record);
+
+		pg_tde_write_key_map_entry(&xlrec->rlocator, &xlrec->relKey);
+	}
+	else
+	{
+		elog(PANIC, "pg_tde_redo: unknown op code %u", info);
 	}
 }
 
 void
 pg_tde_rmgr_desc(StringInfo buf, XLogReaderState *record)
 {
-	uint8			info = XLogRecGetInfo(record) & ~XLR_INFO_MASK;
-	char			*rec = XLogRecGetData(record);
-	RelFileLocator	rlocator;
+	uint8 info = XLogRecGetInfo(record) & ~XLR_INFO_MASK;
 
 	if (info == XLOG_TDE_RELATION_KEY)
 	{
-		memcpy(&rlocator, rec, sizeof(RelFileLocator));
-		appendStringInfo(buf, "create tde fork for relation %u/%u", rlocator.dbOid, rlocator.relNumber);
+		XLogRelKey *xlrec = (XLogRelKey *) XLogRecGetData(record);
+
+		appendStringInfo(buf, "create tde fork for relation %u/%u", xlrec->rlocator.dbOid, xlrec->rlocator.relNumber);
 	}
 }
 
@@ -875,42 +882,4 @@ pg_tde_rmgr_identify(uint8 info)
 		return "XLOG_TDE_RELATION_KEY";
 
 	return NULL;
-}
-
-static void
-pg_tde_xlog_create_relation(XLogReaderState *record)
-{
-	char			*rec = XLogRecGetData(record);
-	RelFileLocator	rlocator;
-	InternalKey 	int_key;
-	const TDEMasterKey *master_key;
-	RelKeyData *enc_rel_key_data;
-
-	memset(&int_key, 0, sizeof(InternalKey));
-
-	if (XLogRecGetDataLen(record) < sizeof(InternalKey)+sizeof(RelFileLocator))
-	{
-		ereport(FATAL,
-				(errcode(ERRCODE_DATA_CORRUPTED),
-				errmsg("corrupted XLOG_TDE_RELATION_KEY data")));
-	}
-
-	/* Format [RelFileLocator][InternalKey] */
-	memcpy(&rlocator, rec, sizeof(RelFileLocator));
-	memcpy(&int_key, rec+sizeof(RelFileLocator), sizeof(InternalKey));
-
-#if TDE_FORK_DEBUG
-	ereport(DEBUG2,
-		(errmsg("xlog internal_key: %s", tde_sprint_key(&int_key))));
-#endif
-
-	master_key = GetMasterKey();
-
-	/* Get the the keydata structure for the encrypted key */
-	enc_rel_key_data = tde_create_rel_key(&rlocator, &int_key, master_key, true);
-
-	/* Add the key to key cache */
-	tde_create_rel_key(&rlocator, &enc_rel_key_data->internal_key, master_key, false);
-
-	pg_tde_write_key_map_entry(&rlocator, enc_rel_key_data, master_key);
 }
