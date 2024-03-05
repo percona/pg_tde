@@ -57,7 +57,7 @@ FUNCTION pg_tde_add_key_provider_file(
 ```
 **Example**: Add a `File` key provider and name it `file`.
 ```sql
-SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pgkeyring');
+SELECT pg_tde_add_key_provider_file('file','/tmp/pgkeyring');
 ```
 6. Set the master key for the database using the `pg_tde_set_master_key` function.
 ```sql
