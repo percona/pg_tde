@@ -31,12 +31,11 @@ where:
 
 ## pg_tde_set_master_key
 
-Sets the master key for the database using the specified provider.
+Sets the master key for the database using the specified key provider.
 
-Th master key name is also used for constructing the name in the provider, for example on the remote
-Vault server.
+The master key name is also used for constructing the name in the provider, for example on the remote Vault server.
 
-This function can only be used for creating a master key, later changes require using the 
+You can use this function only to a master key. For changes in the master key, use the [`pg_tde_rotate_key`](#pg_tde_rotate_key) function.
 
 ```sql
 SELECT pg_tde_set_master_key('name-of-the-master-key', 'provider-name');
@@ -44,7 +43,7 @@ SELECT pg_tde_set_master_key('name-of-the-master-key', 'provider-name');
 
 ## pg_tde_rotate_key
 
-Creates a new version of the specified master key, and updates the database so it uses it.
+Creates a new version of the specified master key, and updates the database so that it uses the new master key version.
 
 Not yet implemented.
 
@@ -54,7 +53,7 @@ SELECT pg_tde_rotate_key('name-of-the-master-key');
 
 ## pg_tde_is_encrypted
 
-Tells if a table is using the pg_tde access method or not.
+Tells if a table is using the `pg_tde` access method or not.
 
 ```sql
 SELECT pg_tde_is_encrypted('table_name');

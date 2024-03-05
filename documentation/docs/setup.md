@@ -38,34 +38,36 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
         psql -d template1 -c 'CREATE EXTENSION pg_tde;'
         ```
 
-4. Setup a key provider for the database
+4. Set up a key provider for the database where you have enabled the extension
 
-    * With keyring file:    
-
-       ```sql
-       SELECT pg_tde_add_key_provider_file('provider-name','/path/to/the/keyring/data.file');
-       ```
-
-       This setup is intended for development, and stores the keys unencrypted in the specified data file.
-
-    * With keyring vault
-
-       ```sql
-       SELECT pg_tde_add_key_provider_vault_v2('provider-name',:'secret_token','url','mount','ca_path');
-       ```
-       
-       where:
-
-       * `url` is the URL of the Vault server
-       * `mount` is the mount point where the keyring should store the keys
-       * `secret_token` is an access token with read and write access to the above mount point
-       * [optional] `ca_path` is the path of the CA file used for SSL verification
-
-5. Add a master key
+    === "With HaschiCorp Vault"
 
         ```sql
-       SELECT pg_tde_set_master_key('name-of-the-master-key', 'provider-name');
-       ```
+        SELECT pg_tde_add_key_provider_vault_v2('provider-name',:'secret_token','url','mount','ca_path');
+        ``` 
+
+        where: 
+
+        * `url` is the URL of the Vault server
+        * `mount` is the mount point where the keyring should store the keys
+        * `secret_token` is an access token with read and write access to the above mount point
+        * [optional] `ca_path` is the path of the CA file used for SSL verification
+
+
+    === "With keyring file"
+
+        This setup is intended for development and stores the keys unencrypted in the specified data file.    
+
+        ```sql
+        SELECT pg_tde_add_key_provider_file('provider-name','/path/to/the/keyring/data.file');
+        ```
+       
+       
+5. Add a master key
+
+    ```sql
+    SELECT pg_tde_set_master_key('name-of-the-master-key', 'provider-name');
+    ```
 
 6. You are all set to create encrypted tables. For that, specify `USING pg_tde` in the `CREATE TABLE` statement.
 **For example**:
@@ -76,4 +78,3 @@ CREATE TABLE albums (
     title TEXT NOT NULL,
     released DATE NOT NULL
 ) USING pg_tde;
-```

@@ -19,7 +19,7 @@ To check if the data is encrypted, do the following:
 2. Run the following function:
 
     ```sql
-    select pgtde_is_encrypted('table_name');
+    select pg_tde_is_encrypted('table_name');
     ```
 
     The function returns `t` if the table is encrypted and `f` - if not.
