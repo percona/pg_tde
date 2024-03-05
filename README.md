@@ -68,7 +68,7 @@ FUNCTION pg_tde_set_master_key (
 ```
 **Example**: Set the master key named `my-master-key` using the `file` as a key provider.
 ```sql
-SELECT pg_tde_set_master_key('my-master-key','file-vault');
+SELECT pg_tde_set_master_key('my-master-key','file');
 ```
 You are all set to create encrypted tables using `pg_tde`.
 
