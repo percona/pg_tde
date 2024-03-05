@@ -71,7 +71,6 @@ SELECT pg_tde_set_master_key('my-master-key','file-vault');
 ```
 You are all set to create encrypted tables using `pg_tde`.
 
-**Note: This setup is intended for development and stores the keys unencrypted in the specified data file.**
 
 ## Build from source
 
