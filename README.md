@@ -55,7 +55,7 @@ FUNCTION pg_tde_add_key_provider_file(
                         file_path TEXT);
 
 ```
-**Example**: Add a `File` key provider and name it `file-vault`.
+**Example**: Add a `File` key provider and name it `file`.
 ```sql
 SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pgkeyring');
 ```
