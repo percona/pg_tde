@@ -65,7 +65,7 @@ FUNCTION pg_tde_set_master_key (
                 master_key_name VARCHAR(255), 
                 provider_name VARCHAR(255));
 ```
-**Example**: Set the master key named `my-master-key` using the `file-vault` as a key provider.
+**Example**: Set the master key named `my-master-key` using the `file` as a key provider.
 ```sql
 SELECT pg_tde_set_master_key('my-master-key','file-vault');
 ```
