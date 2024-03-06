@@ -1,3 +1,14 @@
+/*-------------------------------------------------------------------------
+ *
+ * keyring_vault.c
+ *      HashiCorp Vault 2 based keyring provider
+ *
+ * IDENTIFICATION
+ *    contrib/pg_tde/src/keyring/keyring_vault.c
+ *
+ *-------------------------------------------------------------------------
+ */
+
 #include "postgres.h"
 
 #include "keyring/keyring_vault.h"

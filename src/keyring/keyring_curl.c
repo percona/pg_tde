@@ -1,3 +1,13 @@
+/*-------------------------------------------------------------------------
+ *
+ * keyring_curl.c
+ *      Contains common curl related methods.
+ *
+ * IDENTIFICATION
+ *    contrib/pg_tde/src/keyring/keyring_curl.c
+ *
+ *-------------------------------------------------------------------------
+ */
 
 #include "keyring/keyring_curl.h"
 #include "keyring/keyring_config.h"
