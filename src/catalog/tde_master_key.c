@@ -273,11 +273,6 @@ get_master_key_info(void)
 
     masterKeyInfo = palloc(sizeof(TDEMasterKeyInfo));
     bytes_read = FileRead(master_key_file, masterKeyInfo, sizeof(TDEMasterKeyInfo), 0, WAIT_EVENT_DATA_FILE_READ);
-    if (bytes_read == 0)
-    {
-        pfree(masterKeyInfo);
-        return NULL;
-    }
     if (bytes_read != sizeof(TDEMasterKeyInfo))
     {
         pfree(masterKeyInfo);
@@ -597,12 +592,8 @@ master_key_startup_cleanup(int tde_tbl_count, void* arg)
     }
     else
     {
-        if (FileTruncate(master_key_file, 0, WAIT_EVENT_DATA_FILE_TRUNCATE) < 0)
-            ereport(WARNING,
-                    (errcode_for_file_access(),
-                     errmsg("could not truncate file \"%s\": %m",
-                            info_file_path)));
         FileClose(master_key_file);
+        durable_unlink(info_file_path, WARNING);
     }
 }
 
