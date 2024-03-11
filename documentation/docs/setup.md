@@ -1,4 +1,4 @@
-# Setup
+# Set up `pg_tde`
 
 Load the `pg_tde` at the start time. The extension requires additional shared memory; therefore,  add the `pg_tde` value for the `shared_preload_libraries` parameter and restart the `postgresql` instance.
 
@@ -78,3 +78,7 @@ CREATE TABLE albums (
     title TEXT NOT NULL,
     released DATE NOT NULL
 ) USING pg_tde;
+
+## Next steps
+
+[Test TDE](test.md){.md-button}
