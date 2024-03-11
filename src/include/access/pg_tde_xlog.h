@@ -1,7 +1,7 @@
 /*-------------------------------------------------------------------------
  *
  * pg_tde_xlog.h
- *	  TDE XLog resource namager
+ *	  TDE XLog resource manager
  *
  *-------------------------------------------------------------------------
  */
@@ -12,17 +12,17 @@
 #include "access/xlog_internal.h"
 
 /* TDE XLOG resource manager */
-#define XLOG_TDE_ADD_RELATION_KEY   0x00
-#define XLOG_TDE_ADD_MASTER_KEY     0x10
+#define XLOG_TDE_ADD_RELATION_KEY	0x00
+#define XLOG_TDE_ADD_MASTER_KEY		0x10
+#define XLOG_TDE_CLEAN_MASTER_KEY	0x20
 /* TODO: ID has to be registedred and changed: https://wiki.postgresql.org/wiki/CustomWALResourceManagers */
-#define RM_TDERMGR_ID          RM_EXPERIMENTAL_ID
-#define RM_TDERMGR_NAME        "test_pg_tde_custom_rmgr"
+#define RM_TDERMGR_ID	RM_EXPERIMENTAL_ID
+#define RM_TDERMGR_NAME	"test_pg_tde_custom_rmgr"
 
 extern void pg_tde_rmgr_redo(XLogReaderState *record);
 extern void pg_tde_rmgr_desc(StringInfo buf, XLogReaderState *record);
 extern const char *pg_tde_rmgr_identify(uint8 info);
 
-/* Move this to pg_tde.c file */
 static const RmgrData pg_tde_rmgr = {
 	.rm_name = RM_TDERMGR_NAME,
 	.rm_redo = pg_tde_rmgr_redo,

@@ -58,7 +58,7 @@ static dshash_parameters master_key_dsh_params = {
 
 TdeMasterKeylocalState masterKeyLocalState;
 
-static char *get_master_key_info_path(TDEMasterKeyInfo *masterKeyInfo);
+static char *get_master_key_info_path(Oid databaseId, Oid tablespaceId);
 static void master_key_info_attach_shmem(void);
 static Size initialize_shared_state(void *start_address);
 static void initialize_objects_in_dsa_area(dsa_area *dsa, void *raw_dsa_area);
@@ -185,15 +185,12 @@ shared_memory_shutdown(int code, Datum arg)
 }
 
 static inline char *
-get_master_key_info_path(TDEMasterKeyInfo *masterKeyInfo)
+get_master_key_info_path(Oid databaseId, Oid tablespaceId)
 {
     if (*master_key_info_path == 0)
     {
-        Oid db = masterKeyInfo != NULL ? masterKeyInfo->databaseId : MyDatabaseId;
-        Oid spc = masterKeyInfo != NULL ? masterKeyInfo->tablespaceId : MyDatabaseTableSpace;
-
         snprintf(master_key_info_path, MAXPGPATH, "%s/%s",
-                 GetDatabasePath(db, spc),
+                 GetDatabasePath(databaseId, tablespaceId),
                  PG_TDE_MASTER_KEY_FILENAME);
     }
     return master_key_info_path;
@@ -208,7 +205,6 @@ create_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring)
     Assert(master_key != NULL);
     Assert(keyring != NULL);
 
-// TODO: where to palloc?
     masterKeyInfo = palloc(sizeof(TDEMasterKeyInfo));
     masterKeyInfo->databaseId = MyDatabaseId;
     masterKeyInfo->tablespaceId = MyDatabaseTableSpace;
@@ -225,7 +221,7 @@ save_master_key_info(TDEMasterKeyInfo *masterKeyInfo)
 {
     File master_key_file = -1;
     off_t bytes_written = 0;
-    char *info_file_path = get_master_key_info_path(masterKeyInfo);
+    char *info_file_path = get_master_key_info_path(masterKeyInfo->databaseId, masterKeyInfo->tablespaceId);
 
     master_key_file = PathNameOpenFile(info_file_path, O_CREAT | O_EXCL | O_RDWR | PG_BINARY);
     if (master_key_file < 0)
@@ -247,8 +243,6 @@ save_master_key_info(TDEMasterKeyInfo *masterKeyInfo)
                         info_file_path)));
     }
     FileClose(master_key_file);
-
-
 }
 
 /*
@@ -261,7 +255,7 @@ get_master_key_info(void)
     TDEMasterKeyInfo *masterKeyInfo = NULL;
     File master_key_file = -1;
     off_t bytes_read = 0;
-    char *info_file_path = get_master_key_info_path(NULL);
+    char *info_file_path = get_master_key_info_path(MyDatabaseId, MyDatabaseTableSpace);
 
     /*
      * If file does not exists or does not contain the valid
@@ -558,10 +552,7 @@ push_master_key_to_cache(TDEMasterKey *masterKey)
 static void
 master_key_startup_cleanup(int tde_tbl_count, void* arg)
 {
-    Oid databaseId = MyDatabaseId;
-    File master_key_file = -1;
-    TDEMasterKey *cache_entry;
-    char *info_file_path;
+    XLogMasterKeyCleanup xlrec;
 
     if (tde_tbl_count > 0)
     {
@@ -570,7 +561,24 @@ master_key_startup_cleanup(int tde_tbl_count, void* arg)
         return;
     }
 
-    info_file_path = get_master_key_info_path(NULL);
+    cleanup_master_key_info(MyDatabaseId, MyDatabaseTableSpace);
+
+    /* XLog the key cleanup */
+    xlrec.databaseId = MyDatabaseId;
+    xlrec.tablespaceId = MyDatabaseTableSpace;
+    XLogBeginInsert();
+    XLogRegisterData((char *) &xlrec, sizeof(TDEMasterKeyInfo));
+    XLogInsert(RM_TDERMGR_ID, XLOG_TDE_CLEAN_MASTER_KEY);
+}
+
+void
+cleanup_master_key_info(Oid databaseId, Oid tablespaceId)
+{
+    File master_key_file = -1;
+    TDEMasterKey *cache_entry;
+    char *info_file_path;
+
+    info_file_path = get_master_key_info_path(databaseId, tablespaceId);
 
     /* Start with deleting the cache entry for the database */
     cache_entry = (TDEMasterKey *)dshash_find(get_master_key_Hash(),

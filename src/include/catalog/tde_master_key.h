@@ -43,10 +43,17 @@ typedef struct TDEMasterKeyInfo
 	TDEMasterKeyId keyId;
 } TDEMasterKeyInfo;
 
+typedef struct XLogMasterKeyCleanup
+{
+	Oid databaseId;
+	Oid tablespaceId;
+} XLogMasterKeyCleanup;
+
 extern void InitializeMasterKeyInfo(void);
 extern TDEMasterKey* GetMasterKey(void);
 extern TDEMasterKey* SetMasterKey(const char* key_name, const char* provider_name);
 extern Oid GetMasterKeyProviderId(void);
 extern void save_master_key_info(TDEMasterKeyInfo *masterKeyInfo);
+extern void cleanup_master_key_info(Oid databaseId, Oid tablespaceId);
 
 #endif /*PG_TDE_MASTER_KEY_H*/
