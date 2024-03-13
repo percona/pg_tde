@@ -9,9 +9,10 @@
 #define PG_TDE_MAP_H
 
 #include "utils/rel.h"
-#include "storage/relfilelocator.h"
 #include "access/xlog_internal.h"
 #include "catalog/tde_master_key.h"
+#include "storage/fd.h"
+#include "storage/relfilelocator.h"
 
 typedef struct InternalKey
 {
@@ -45,6 +46,9 @@ extern void pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, Relat
 extern RelKeyData *pg_tde_get_key_from_fork(const RelFileLocator *rlocator);
 extern RelKeyData *GetRelationKey(RelFileLocator rel);
 extern void pg_tde_cleanup_path_vars(void);
+extern void pg_tde_delete_tde_files(void);
+extern bool pg_tde_save_master_key(TDEMasterKeyInfo *master_key_info);
+extern TDEMasterKeyInfo *pg_tde_get_master_key(void);
 
 const char * tde_sprint_key(InternalKey *k);
 

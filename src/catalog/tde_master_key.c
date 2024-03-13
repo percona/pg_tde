@@ -24,9 +24,7 @@
 #include "pg_tde.h"
 #include <sys/time.h>
 
-#define PG_TDE_MASTER_KEY_FILENAME "tde_master_key.info"
-
-static char master_key_info_path[MAXPGPATH] = {0};
+#include "access/pg_tde_tdemap.h"
 
 typedef struct TdeMasterKeySharedState
 {
@@ -55,7 +53,6 @@ static dshash_parameters master_key_dsh_params = {
 
 TdeMasterKeylocalState masterKeyLocalState;
 
-static char *get_master_key_info_path(void);
 static void master_key_info_attach_shmem(void);
 static Size initialize_shared_state(void *start_address);
 static void initialize_objects_in_dsa_area(dsa_area *dsa, void *raw_dsa_area);
@@ -65,8 +62,7 @@ static int  required_locks_count(void);
 static void shared_memory_shutdown(int code, Datum arg);
 static void master_key_startup_cleanup(int tde_tbl_count, void *arg);
 
-static TDEMasterKeyInfo *save_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring);
-static TDEMasterKeyInfo *get_master_key_info(void);
+static bool save_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring);
 static inline dshash_table *get_master_key_Hash(void);
 static TDEMasterKey *get_master_key_from_cache(bool acquire_lock);
 static void push_master_key_to_cache(TDEMasterKey *masterKey);
@@ -181,98 +177,19 @@ shared_memory_shutdown(int code, Datum arg)
     masterKeyLocalState.sharedMasterKeyState = NULL;
 }
 
-static inline char *
-get_master_key_info_path(void)
-{
-    if (*master_key_info_path == 0)
-    {
-        snprintf(master_key_info_path, MAXPGPATH, "%s/%s",
-                 GetDatabasePath(MyDatabaseId, MyDatabaseTableSpace),
-                 PG_TDE_MASTER_KEY_FILENAME);
-    }
-    return master_key_info_path;
-}
-
-static TDEMasterKeyInfo *
+static bool
 save_master_key_info(TDEMasterKey *master_key, GenericKeyring *keyring)
 {
-    TDEMasterKeyInfo *masterKeyInfo = NULL;
-    File master_key_file = -1;
-    off_t bytes_written = 0;
-    char *info_file_path = get_master_key_info_path();
-
     Assert(master_key != NULL);
     Assert(keyring != NULL);
 
-    masterKeyInfo = palloc(sizeof(TDEMasterKeyInfo));
-    masterKeyInfo->keyId = keyring->key_id;
-    masterKeyInfo->databaseId = MyDatabaseId;
-    masterKeyInfo->keyVersion = 1;
-    gettimeofday(&masterKeyInfo->creationTime, NULL);
-    strncpy(masterKeyInfo->keyName, master_key->keyName, MASTER_KEY_NAME_LEN);
-    masterKeyInfo->keyringId = keyring->key_id;
+    master_key->keyInfo.keyId = keyring->key_id;
+    master_key->keyInfo.databaseId = MyDatabaseId;
+    master_key->keyInfo.keyVersion = 1;
+    gettimeofday(&master_key->keyInfo.creationTime, NULL);
+    master_key->keyInfo.keyringId = keyring->key_id;
 
-    master_key_file = PathNameOpenFile(info_file_path, O_CREAT | O_EXCL | O_RDWR | PG_BINARY);
-    if (master_key_file < 0)
-    {
-        pfree(masterKeyInfo);
-        return NULL;
-    }
-    bytes_written = FileWrite(master_key_file, masterKeyInfo, sizeof(TDEMasterKeyInfo), 0, WAIT_EVENT_DATA_FILE_WRITE);
-    if (bytes_written != sizeof(TDEMasterKeyInfo))
-    {
-        pfree(masterKeyInfo);
-        FileClose(master_key_file);
-        /* TODO: delete the invalid file */
-        ereport(FATAL,
-                (errcode_for_file_access(),
-                 errmsg("TDE master key info file \"%s\" can't be written: %m",
-                        info_file_path)));
-        return NULL;
-    }
-    FileClose(master_key_file);
-    return masterKeyInfo;
-}
-
-/*
- * Reads the master key info from the file
- * the file gets created by the set_master_key interface
- */
-static TDEMasterKeyInfo *
-get_master_key_info(void)
-{
-    TDEMasterKeyInfo *masterKeyInfo = NULL;
-    File master_key_file = -1;
-    off_t bytes_read = 0;
-    char *info_file_path = get_master_key_info_path();
-
-    /*
-     * If file does not exists or does not contain the valid
-     * data that means master key does not exists
-     */
-    master_key_file = PathNameOpenFile(info_file_path, PG_BINARY);
-    if (master_key_file < 0)
-        return NULL;
-
-    masterKeyInfo = palloc(sizeof(TDEMasterKeyInfo));
-    bytes_read = FileRead(master_key_file, masterKeyInfo, sizeof(TDEMasterKeyInfo), 0, WAIT_EVENT_DATA_FILE_READ);
-    if (bytes_read == 0)
-    {
-        pfree(masterKeyInfo);
-        return NULL;
-    }
-    if (bytes_read != sizeof(TDEMasterKeyInfo))
-    {
-        pfree(masterKeyInfo);
-        /* Corrupt file */
-        ereport(FATAL,
-                (errcode_for_file_access(),
-                 errmsg("TDE master key info file \"%s\" is corrupted: %m",
-                        info_file_path)));
-        return NULL;
-    }
-    FileClose(master_key_file);
-    return masterKeyInfo;
+    return pg_tde_save_master_key(&master_key->keyInfo);
 }
 
 /*
@@ -296,7 +213,7 @@ GetMasterKey(void)
         return masterKey;
 
     /* Master key not present in cache. Load from the keyring */
-    masterKeyInfo = get_master_key_info();
+    masterKeyInfo = pg_tde_get_master_key();
     if (masterKeyInfo == NULL)
     {
         ereport(ERROR,
@@ -323,15 +240,15 @@ GetMasterKey(void)
     }
 
     masterKey = palloc(sizeof(TDEMasterKey));
-    masterKey->databaseId = masterKeyInfo->databaseId;
-    masterKey->keyVersion = masterKeyInfo->keyVersion;
-    masterKey->keyringId = masterKeyInfo->keyringId;
-    strncpy(masterKey->keyName, masterKeyInfo->keyName, TDE_KEY_NAME_LEN);
-    masterKey->keyLength = keyInfo->data.len;
-    memcpy(masterKey->keyData, keyInfo->data.data, keyInfo->data.len);
 
-    Assert(MyDatabaseId == masterKey->databaseId);
+    memcpy(&masterKey->keyInfo, masterKeyInfo, sizeof(masterKey->keyInfo));
+    memcpy(masterKey->keyData, keyInfo->data.data, keyInfo->data.len);
+    masterKey->keyLength = keyInfo->data.len;
+
+    Assert(MyDatabaseId == masterKey->keyInfo.databaseId);
     push_master_key_to_cache(masterKey);
+
+    pfree(masterKeyInfo);
 
     return masterKey;
 }
@@ -368,7 +285,7 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
         return NULL;
     }
     /*  Check if valid master key info exists in the file. There is no need for a lock here as the key might be in the file and not in the cache, but it must be in the file if it's in the cache and we check the cache under the lock later. */
-    masterKeyInfo = get_master_key_info();
+    masterKeyInfo = pg_tde_get_master_key();
     if (masterKeyInfo)
     {
         ereport(ERROR,
@@ -390,11 +307,12 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
     {
         const keyInfo *keyInfo = NULL;
         KeyringReturnCodes keyring_ret;
+
         masterKey = palloc(sizeof(TDEMasterKey));
-        masterKey->databaseId = MyDatabaseId;
-        masterKey->keyVersion = 1;
-        masterKey->keyringId = keyring->key_id;
-        strncpy(masterKey->keyName, key_name, TDE_KEY_NAME_LEN);
+        masterKey->keyInfo.databaseId = MyDatabaseId;
+        masterKey->keyInfo.keyVersion = 1;
+        masterKey->keyInfo.keyringId = keyring->key_id;
+        strncpy(masterKey->keyInfo.keyName, key_name, TDE_KEY_NAME_LEN);
         /* We need to get the key from keyring */
 
         keyInfo = KeyringGetKey(keyring, key_name, false, &keyring_ret);
@@ -407,9 +325,11 @@ set_master_key_with_keyring(const char *key_name, GenericKeyring *keyring)
             ereport(ERROR,
                     (errmsg("failed to retrieve master key")));
         }
+
         masterKey->keyLength = keyInfo->data.len;
         memcpy(masterKey->keyData, keyInfo->data.data, keyInfo->data.len);
-        masterKeyInfo = save_master_key_info(masterKey, keyring);
+
+        save_master_key_info(masterKey, keyring);
         push_master_key_to_cache(masterKey);
     }
     else
@@ -457,15 +377,16 @@ GetMasterKeyProviderId(void)
 
     masterKey = get_master_key_from_cache(true);
     if (masterKey)
-        return masterKey->keyringId;
+        return masterKey->keyInfo.keyringId;
 
     /* Master key not present in cache. Try Loading it from the info file */
-    masterKeyInfo = get_master_key_info();
+    masterKeyInfo = pg_tde_get_master_key();
     if (masterKeyInfo)
     {
         keyringId = masterKeyInfo->keyringId;
         pfree(masterKeyInfo);
     }
+
     return keyringId;
 }
 
@@ -542,9 +463,7 @@ static void
 master_key_startup_cleanup(int tde_tbl_count, void* arg)
 {
     Oid databaseId = MyDatabaseId;
-    File master_key_file = -1;
     TDEMasterKey *cache_entry;
-    char *info_file_path;
 
     if (tde_tbl_count > 0)
     {
@@ -553,8 +472,6 @@ master_key_startup_cleanup(int tde_tbl_count, void* arg)
         return;
     }
 
-    info_file_path = get_master_key_info_path();
-
     /* Start with deleting the cache entry for the database */
     cache_entry = (TDEMasterKey *)dshash_find(get_master_key_Hash(),
                                               &databaseId, true);
@@ -562,26 +479,14 @@ master_key_startup_cleanup(int tde_tbl_count, void* arg)
     {
         dshash_delete_entry(get_master_key_Hash(), cache_entry);
     }
+
     /*
-     * Although should never happen. Still verify if any table in the
+     * TODO: Although should never happen. Still verify if any table in the
      * database is using tde
      */
-    master_key_file = PathNameOpenFile(info_file_path, O_RDWR | PG_BINARY);
-    if (master_key_file < 0)
-    {
-        ereport(DEBUG1,
-                (errmsg("failed to open file \"%s\": %m",
-                        info_file_path)));
-    }
-    else
-    {
-        if (FileTruncate(master_key_file, 0, WAIT_EVENT_DATA_FILE_TRUNCATE) < 0)
-            ereport(WARNING,
-                    (errcode_for_file_access(),
-                     errmsg("could not truncate file \"%s\": %m",
-                            info_file_path)));
-        FileClose(master_key_file);
-    }
+
+    /* Remove the tde files */
+    pg_tde_delete_tde_files();
 }
 
 /*
