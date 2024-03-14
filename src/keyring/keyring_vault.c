@@ -211,10 +211,22 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, bool throw_error,
 		goto cleanup;
 	}
 
-	dataJson = DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(str.ptr), CStringGetTextDatum("data"));
-	data2Json = DirectFunctionCall2(json_object_field_text, dataJson, CStringGetTextDatum("data"));
-	keyJson = DirectFunctionCall2(json_object_field_text, data2Json, CStringGetTextDatum("key"));
-	responseKey = TextDatumGetCString(keyJson);
+	PG_TRY();
+	{
+		dataJson = DirectFunctionCall2(json_object_field_text, CStringGetTextDatum(str.ptr), CStringGetTextDatum("data"));
+		data2Json = DirectFunctionCall2(json_object_field_text, dataJson, CStringGetTextDatum("data"));
+		keyJson = DirectFunctionCall2(json_object_field_text, data2Json, CStringGetTextDatum("key"));
+		responseKey = TextDatumGetCString(keyJson);
+	}
+	PG_CATCH();
+	{
+		*return_code = KEYRING_CODE_INVALID_RESPONSE;
+		ereport(throw_error ? ERROR : WARNING,
+				(errmsg("HTTP(S) request to keyring provider \"%s\" returned incorrect JSON response",
+						vault_keyring->keyring.provider_name)));
+		goto cleanup;
+	}
+	PG_END_TRY();
 
 #if KEYRING_DEBUG
 	elog(DEBUG1, "Retrieved base64 key: %s", response_key);
