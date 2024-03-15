@@ -104,8 +104,7 @@ static RelKeyData* pg_tde_read_keydata(char *db_keydata_path, int32 key_index, T
 static RelKeyData* pg_tde_read_one_keydata(File keydata_file, int32 key_index, TDEMasterKey *master_key);
 
 /*
- * Creates a relation fork file relfilenode.tde that contains the
- * encryption key for the relation.
+ * Generate an encrypted key for the relation and store it in the keymap file.
  */
 void
 pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, Relation rel)
