@@ -97,7 +97,7 @@ static int32 pg_tde_write_one_map_entry(File map_file, const RelFileLocator *rlo
 static int32 pg_tde_process_map_entry(const RelFileLocator *rlocator, char *db_map_path, off_t *offset, bool should_delete);
 static bool pg_tde_read_one_map_entry(File map_file, const RelFileLocator *rlocator, int flags, TDEMapEntry *map_entry, off_t *offset);
 
-static void pg_tde_write_keydata(char *db_keydata_path, TDEMasterKey *master_key, int32 key_index, RelKeyData *enc_rel_key_data);
+static void pg_tde_write_keydata(char *db_keydata_path, TDEMasterKeyInfo *master_key_info, int32 key_index, RelKeyData *enc_rel_key_data);
 static void pg_tde_write_one_keydata(File keydata_file, int32 key_index, RelKeyData *enc_rel_key_data);
 static RelKeyData* pg_tde_get_key_from_file(const RelFileLocator *rlocator);
 static RelKeyData* pg_tde_read_keydata(char *db_keydata_path, int32 key_index, TDEMasterKey *master_key);
@@ -149,7 +149,7 @@ pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, Relation rel)
 	/*
 	 * Add the encyrpted key to the key map data file structure.
 	 */
-	pg_tde_write_key_map_entry(newrlocator, enc_rel_key_data, master_key);
+	pg_tde_write_key_map_entry(newrlocator, enc_rel_key_data, &master_key->keyInfo);
 }
 
 /* Head of the key cache (linked list) */
@@ -370,7 +370,6 @@ pg_tde_get_master_key(Oid dbOid)
 
 		master_key_info = (TDEMasterKeyInfo *) palloc(sz);
 		memcpy(master_key_info, &fheader.master_key_info, sz);
-
 	}
 
 	return master_key_info;
@@ -720,14 +719,14 @@ pg_tde_read_one_map_entry(File map_file, const RelFileLocator *rlocator, int fla
  * job finds an empty index.
  */
 void
-pg_tde_write_keydata(char *db_keydata_path, TDEMasterKey *master_key, int32 key_index, RelKeyData *enc_rel_key_data)
+pg_tde_write_keydata(char *db_keydata_path, TDEMasterKeyInfo *master_key_info, int32 key_index, RelKeyData *enc_rel_key_data)
 {
 	File keydata_file = -1;
 	bool is_new_file;
 	off_t curr_pos = 0;
 
 	/* Open and validate file for basic correctness. */
-	keydata_file = pg_tde_open_file(db_keydata_path, &master_key->keyInfo, false, O_RDWR | O_CREAT, &is_new_file, &curr_pos);
+	keydata_file = pg_tde_open_file(db_keydata_path, master_key_info, false, O_RDWR | O_CREAT, &is_new_file, &curr_pos);
 
 	/* Write a single key data */
 	pg_tde_write_one_keydata(keydata_file, key_index, enc_rel_key_data);
@@ -829,7 +828,7 @@ pg_tde_read_one_keydata(File keydata_file, int32 key_index, TDEMasterKey *master
  * The map file must be updated while holding an exclusive lock.
  */
 void
-pg_tde_write_key_map_entry(const RelFileLocator *rlocator, RelKeyData *enc_rel_key_data, TDEMasterKey *master_key)
+pg_tde_write_key_map_entry(const RelFileLocator *rlocator, RelKeyData *enc_rel_key_data, TDEMasterKeyInfo *master_key_info)
 {
 	int32 key_index = 0;
 
@@ -839,10 +838,10 @@ pg_tde_write_key_map_entry(const RelFileLocator *rlocator, RelKeyData *enc_rel_k
 	pg_tde_set_db_file_paths(rlocator->dbOid);
 
 	/* Create the map entry and then add the encrypted key to the data file */
-	key_index = pg_tde_write_map_entry(rlocator, db_map_path, &master_key->keyInfo);
+	key_index = pg_tde_write_map_entry(rlocator, db_map_path, master_key_info);
 
 	/* Add the encrypted key to the data file. */
-	pg_tde_write_keydata(db_keydata_path, master_key, key_index, enc_rel_key_data);
+	pg_tde_write_keydata(db_keydata_path, master_key_info, key_index, enc_rel_key_data);
 }
 
 /*
