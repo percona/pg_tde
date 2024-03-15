@@ -298,9 +298,9 @@ pg_tde_delete_tde_files(Oid dbOid)
 	/* Set the file paths */
 	pg_tde_set_db_file_paths(dbOid);
 
-	/* Remove these files */
-	durable_unlink(db_map_path, INFO);
-	durable_unlink(db_keydata_path, INFO);
+	/* Remove these files without emitting any error */
+	PathNameDeleteTemporaryFile(db_map_path, false);
+	PathNameDeleteTemporaryFile(db_keydata_path, false);
 }
 
 /*
