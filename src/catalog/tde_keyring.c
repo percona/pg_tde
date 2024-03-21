@@ -14,17 +14,16 @@
 #include "catalog/tde_master_key.h"
 #include "access/skey.h"
 #include "access/relscan.h"
-#include "utils/builtins.h"
 #include "access/relation.h"
 #include "catalog/namespace.h"
 #include "utils/lsyscache.h"
 #include "access/heapam.h"
 #include "utils/snapmgr.h"
 #include "utils/fmgroids.h"
+#include "common/pg_tde_utils.h"
 #include "executor/spi.h"
-#include "fmgr.h"
-#include "keyring/keyring_curl.h"
 #include "unistd.h"
+#include "utils/builtins.h"
 
 PG_FUNCTION_INFO_V1(keyring_delete_dependency_check_trigger);
 
@@ -226,130 +225,6 @@ load_keyring_provider_options(ProviderType provider_type, Datum keyring_options)
 	return NULL;
 }
 
-static const char *
-extract_json_cstr(Datum json, const char* field_name)
-{
-	Datum field = DirectFunctionCall2(json_object_field_text, json, CStringGetTextDatum(field_name));
-	const char* cstr = TextDatumGetCString(field);
-
-	return cstr;
-}
-
-static const char *
-extract_json_option_value(Datum top_json, const char* field_name)
-{
-	Datum field;
-	Datum field_type;
-	const char* field_type_cstr;
-
-	field = DirectFunctionCall2(json_object_field, top_json, CStringGetTextDatum(field_name));
-
-	field_type = DirectFunctionCall1(json_typeof, field);
-	field_type_cstr = TextDatumGetCString(field_type);
-
-	if(field_type_cstr == NULL)
-	{
-		return NULL;
-	}
-
-	if(strcmp(field_type_cstr, "string") == 0)
-	{
-		return extract_json_cstr(top_json, field_name);
-	}
-
-	if(strcmp(field_type_cstr, "object") != 0)
-	{
-		elog(ERROR, "Unsupported type for object %s: %s", field_name, field_type_cstr);
-		return NULL;
-	}
-
-	// Now it is definitely an object
-
-	{
-		const char* type_cstr = extract_json_cstr(field, "type");
-
-		if(type_cstr == NULL)
-		{
-			elog(ERROR, "Missing type property for remote object %s", field_name);
-			return NULL;
-		}
-
-		if(strncmp("remote", type_cstr, 7) == 0)
-		{
-			const char* url_cstr = extract_json_cstr(field, "url");
-
-			long httpCode;
-			CurlString outStr;
-
-			if(url_cstr == NULL)
-			{
-				elog(ERROR, "Missing url property for remote object %s", field_name);
-				return NULL;
-			}
-
-			outStr.ptr = palloc0(1);
-			outStr.len = 0;
-			if(!curlSetupSession(url_cstr, NULL, &outStr)) 
-			{
-				elog(ERROR, "CURL error for remote object %s", field_name);
-				return NULL;
-			}
-			if(curl_easy_perform(keyringCurl) != CURLE_OK)
-			{
-				elog(ERROR, "HTTP request error for remote object %s", field_name);
-				return NULL;
-			}
-			if(curl_easy_getinfo(keyringCurl, CURLINFO_RESPONSE_CODE, &httpCode) != CURLE_OK)
-			{
-				elog(ERROR, "HTTP error for remote object %s, HTTP code %li", field_name, httpCode);
-				return NULL;
-			}
-#if KEYRING_DEBUG
-	elog(DEBUG2, "HTTP response for config [%s] '%s'", field_name, outStr->ptr != NULL ? outStr->ptr : "");
-#endif
-			return outStr.ptr;
-		}
-
-		if(strncmp("file", type_cstr, 5) == 0)
-		{
-			const char* path_cstr = extract_json_cstr(field, "path");
-			FILE* f;
-			char* out;
-
-			if(path_cstr == NULL)
-			{
-				elog(ERROR, "Missing path property for file object %s", field_name);
-				return NULL;
-			}
-
-			if(access(path_cstr, R_OK) != 0)
-			{
-				elog(ERROR, "The file referenced by %s doesn't exists, or is not readable to postgres: %s", field_name, path_cstr);
-				return NULL;
-			}
-
-			f = fopen(path_cstr, "r");
-
-			if(!f)
-			{
-				elog(ERROR, "The file referenced by %s doesn't exists, or is not readable to postgres: %s", field_name, path_cstr);
-				return NULL;
-			}
-
-			out = palloc(1024);
-			fgets(out, 1024, f);
-			out[strcspn(out, "\r\n")] = 0;
-
-			fclose(f);
-
-			return out;
-		}
-
-		elog(ERROR, "Unknown type for object %s: %s", field_name, type_cstr);
-		return NULL;
-	}
-}
-
 static FileKeyring *
 load_file_keyring_provider_options(Datum keyring_options)
 {
@@ -358,7 +233,7 @@ load_file_keyring_provider_options(Datum keyring_options)
 	
 	if(file_path == NULL)
 	{
-		// TODO: report error
+		/* TODO: report error */
 		return NULL;
 	}
 
@@ -378,7 +253,7 @@ load_vaultV2_keyring_provider_options(Datum keyring_options)
 
 	if(token == NULL || url == NULL || mount_path == NULL)
 	{
-		// TODO: report error
+		/* TODO: report error */
 		return NULL;
 	}
 
