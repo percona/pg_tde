@@ -1,6 +1,6 @@
 # pg_tde release notes
 
- ## Technical preview (2024-03-28)
+ ## Alpha 1 (2024-03-28)
 
 `pg_tde` extension brings in [Transparent Data Encryption (TDE)](tde.md) to PostgreSQL and enables you to keep sensitive data safe and secure.
 
@@ -37,7 +37,7 @@ The technical preview of the extension introduces the following key features:
 
 ## MVP (2023-12-12)
 
-The Mininum Vial Product (MVP) version introduces the following functionality:
+The Minimum Viable Product (MVP) version introduces the following functionality:
 
 * Encryption of heap tables, including TOAST
 * Encryption keys are stored either in Hashicorp Vault server or in local keyring file (for development) 
