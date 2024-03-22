@@ -25,6 +25,7 @@
 #include "fmgr.h"
 #include "keyring/keyring_curl.h"
 #include "utils/builtins.h"
+#include "unistd.h"
 
 Oid
 get_tde_table_am_oid(void)
