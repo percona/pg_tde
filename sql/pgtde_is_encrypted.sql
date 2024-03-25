@@ -21,6 +21,9 @@ SELECT amname FROM pg_class INNER JOIN pg_am ON pg_am.oid = pg_class.relam WHERE
 SELECT pgtde_is_encrypted('test_enc');
 SELECT pgtde_is_encrypted('test_norm');
 
+SELECT  key_provider_id, key_provider_name, master_key_name
+		from tde_master_key_info();
+
 DROP TABLE test_enc;
 DROP TABLE test_norm;
 
