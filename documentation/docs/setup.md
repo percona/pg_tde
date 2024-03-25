@@ -68,6 +68,42 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
     ```sql
     SELECT pg_tde_set_master_key('name-of-the-master-key', 'provider-name');
     ```
+## Optional: use external parameters
+
+When configuring `pg_tde` with the steps described above, the provider configuration specified in
+step 4 is stored in the database catalog, in an unencrypted table. This is not secure to store
+sensitive parameters, such as vault secrets.
+
+To allow storing secrets, or any other parameters in a more secure, external location, `pg_tde`
+allows users to specify an external reference instead of hardcoded parameters.
+
+Currently `pg_tde` supports two external storage methods:
+
+* `file`, which just stores the data in a simple file specified by a `path`. The file should be
+readable to the postgres process.
+* `remote`, which uses a HTTP request to retrieve the parameter from the specified `url`.
+
+As an example, to use the file provider with a file location specified by the `remote` method,
+use the following command:
+
+```sql
+SELECT pg_tde_add_key_provider_file(
+    'file-provider', 
+    json_object( 'type' VALUE 'remote', 'url' VALUE 'http://localhost:8888/hello' )
+    );"
+```
+
+Or to use the `file` method, use the following command:
+
+```sql
+SELECT pg_tde_add_key_provider_file(
+    'file-provider', 
+    json_object( 'type' VALUE 'remote', 'path' VALUE '/tmp/datafile-location' )
+    );"
+```
+
+Any parameter specified to the `add_key_provider` functions can be a json_object instead of the string,
+similar to the above examples.
 
 6. You are all set to create encrypted tables. For that, specify `USING pg_tde` in the `CREATE TABLE` statement.
 **For example**:
