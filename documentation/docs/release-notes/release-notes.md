@@ -19,11 +19,11 @@ The technical preview of the extension introduces the following key features:
     * You can define separate keyring configuration for each database
     * You can change keyring configuration dynamically, without having to restart the server
     * The keyring configuration is now stored in a catalog separately for each database, instead of a configuration file
-    * Avoid storing secrets in the unencrypted catalog by configuring keyring parameters to be read from external sources (file, http(s) request).
+    * Avoid storing secrets in the unencrypted catalog by configuring keyring parameters to be read from external sources (file, http(s) request)
 
 ## Improvements 
 
-* Renamed the repository and Docker image from `postgres-tde-ext` to `pg_tde`. The extension name remains unchanged.
+* Renamed the repository and Docker image from `postgres-tde-ext` to `pg_tde`. The extension name remains unchanged
 * Changed the Initialization Vector (IV) calculation of both the data and internal keys
 
 ## Bugs fixed
