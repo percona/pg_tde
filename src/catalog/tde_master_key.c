@@ -32,7 +32,7 @@
 
 #define DEFAULT_MASTER_KEY_VERSION      1
 
-        typedef struct TdeMasterKeySharedState
+typedef struct TdeMasterKeySharedState
 {
     LWLock *Lock;
     int hashTrancheId;
@@ -688,13 +688,16 @@ Datum tde_master_key_info(PG_FUNCTION_ARGS)
     TimestampTz ts;
     GenericKeyring *keyring;
 
-        /* Build a tuple descriptor for our result type */
-        if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
-            ereport(ERROR,
-                    (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                     errmsg("function returning record called in context that cannot accept type record")));
+    /* Build a tuple descriptor for our result type */
+    if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+        ereport(ERROR,
+                (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+                    errmsg("function returning record called in context that cannot accept type record")));
 
     master_key = GetMasterKey();
+    if (master_key == NULL)
+        PG_RETURN_NULL();
+
     keyring = GetKeyProviderByID(master_key->keyInfo.keyringId);
 
     /* Initialize the values and null flags */
