@@ -10,7 +10,7 @@
 
 
 extern const char *pg_tde_package_string(void);
-extern const char * pg_tde_package_name(void);
+extern const char *pg_tde_package_name(void);
 extern const char *pg_tde_package_version(void);
 
 #endif /*PG_TDE_DEFS_H*/
