@@ -422,7 +422,8 @@ BEGIN
     ELSIF TG_OP = 'DELETE' THEN
         v_action := ' deleted employee(s) on ';
     END IF;
-    v_text := 'User ' || USER || v_action || CURRENT_DATE;
+--    v_text := 'User ' || USER || v_action || CURRENT_DATE; Changing this as we need consistent output for regression
+    v_text := 'User ' || v_action ;
     RAISE INFO ' %', v_text;
     RETURN NULL;
 END;
@@ -518,29 +519,29 @@ SELECT * FROM jobhist;
 DELETE FROM emp WHERE empno = 7934;
 INFO:  Deleting employee 7934
 INFO:  ..Old salary: 1300.00
-INFO:   User usama deleted employee(s) on 2024-04-02
+INFO:   User  deleted employee(s) on 
 DELETE FROM emp WHERE empno = 7698;
 INFO:  Deleting employee 7698
 INFO:  ..Old salary: 2850.00
-INFO:   User usama deleted employee(s) on 2024-04-02
+INFO:   User  deleted employee(s) on 
 DELETE FROM emp WHERE empno = 7782;
 INFO:  Deleting employee 7782
 INFO:  ..Old salary: 2450.00
-INFO:   User usama deleted employee(s) on 2024-04-02
+INFO:   User  deleted employee(s) on 
 DELETE FROM emp WHERE empno = 7788;
 INFO:  Deleting employee 7788
 INFO:  ..Old salary: 3000.00
-INFO:   User usama deleted employee(s) on 2024-04-02
+INFO:   User  deleted employee(s) on 
 DELETE FROM emp WHERE empno = 7838;
-INFO:   User usama deleted employee(s) on 2024-04-02
+INFO:   User  deleted employee(s) on 
 DELETE FROM emp WHERE empno = 7900;
 INFO:  Deleting employee 7900
 INFO:  ..Old salary: 950.00
-INFO:   User usama deleted employee(s) on 2024-04-02
+INFO:   User  deleted employee(s) on 
 DELETE FROM emp WHERE empno = 7654;
 INFO:  Deleting employee 7654
 INFO:  ..Old salary: 1250.00
-INFO:   User usama deleted employee(s) on 2024-04-02
+INFO:   User  deleted employee(s) on 
 DELETE FROM dept WHERE deptno = 40;
 SELECT * FROM emp;
  empno | ename  |    job    | mgr  |  hiredate  |   sal   |  comm  | deptno 

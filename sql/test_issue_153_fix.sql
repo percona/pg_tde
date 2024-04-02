@@ -413,7 +413,8 @@ BEGIN
     ELSIF TG_OP = 'DELETE' THEN
         v_action := ' deleted employee(s) on ';
     END IF;
-    v_text := 'User ' || USER || v_action || CURRENT_DATE;
+--    v_text := 'User ' || USER || v_action || CURRENT_DATE; Changing this as we need consistent output for regression
+    v_text := 'User ' || v_action ;
     RAISE INFO ' %', v_text;
     RETURN NULL;
 END;
