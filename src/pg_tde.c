@@ -60,6 +60,9 @@ tde_shmem_request(void)
 {
 	Size sz = TdeRequiredSharedMemorySize();
 	int required_locks = TdeRequiredLocksCount();
+
+	sz = add_size(sz, XLOG_TDE_ENC_BUFF_ALIGNED_SIZE);
+
 	if (prev_shmem_request_hook)
 		prev_shmem_request_hook();
 	RequestAddinShmemSpace(sz);
@@ -75,6 +78,8 @@ tde_shmem_startup(void)
 
 	TdeShmemInit();
 	AesInit();
+	TDEXLogShmemInit();
+	TDEInitXLogSmgr();
 }
 
 void
