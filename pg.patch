@@ -1,0 +1,113 @@
+diff --git a/contrib/meson.build b/contrib/meson.build
+index bd4a57c43c..faf90133ec 100644
+--- a/contrib/meson.build
++++ b/contrib/meson.build
+@@ -52,6 +52,7 @@ subdir('pg_trgm')
+ subdir('pg_visibility')
+ subdir('pg_walinspect')
+ subdir('postgres_fdw')
++subdir('postgres-tde-ext')
+ subdir('seg')
+ subdir('sepgsql')
+ subdir('spi')
+diff --git a/src/backend/access/transam/xlog.c b/src/backend/access/transam/xlog.c
+index 8b0710abe6..e2c89a6e1f 100644
+--- a/src/backend/access/transam/xlog.c
++++ b/src/backend/access/transam/xlog.c
+@@ -62,6 +62,7 @@
+ #include "access/xlogprefetcher.h"
+ #include "access/xlogreader.h"
+ #include "access/xlogrecovery.h"
++#include "access/xlog_smgr.h"
+ #include "access/xlogutils.h"
+ #include "backup/basebackup.h"
+ #include "catalog/catversion.h"
+@@ -2194,7 +2195,7 @@ XLogWrite(XLogwrtRqst WriteRqst, TimeLineID tli, bool flexible)
+ 					INSTR_TIME_SET_ZERO(start);
+ 
+ 				pgstat_report_wait_start(WAIT_EVENT_WAL_WRITE);
+-				written = pg_pwrite(openLogFile, from, nleft, startoffset);
++				written = xlog_smgr->seg_write(openLogFile, from, nleft, startoffset);
+ 				pgstat_report_wait_end();
+ 
+ 				/*
+diff --git a/src/backend/access/transam/xlogreader.c b/src/backend/access/transam/xlogreader.c
+index c9f9f6e98f..b7a8ab0b79 100644
+--- a/src/backend/access/transam/xlogreader.c
++++ b/src/backend/access/transam/xlogreader.c
+@@ -29,6 +29,7 @@
+ #include "access/xlog_internal.h"
+ #include "access/xlogreader.h"
+ #include "access/xlogrecord.h"
++#include "access/xlog_smgr.h"
+ #include "catalog/pg_control.h"
+ #include "common/pg_lzcompress.h"
+ #include "replication/origin.h"
+@@ -65,6 +66,21 @@ static void WALOpenSegmentInit(WALOpenSegment *seg, WALSegmentContext *segcxt,
+  */
+ #define DEFAULT_DECODE_BUFFER_SIZE (64 * 1024)
+ 
++/* 
++ * XLog storage manager
++ *
++ * TODO: should be in xlog.c or new xlog_smgr.c ?
++ * Now it's here because pg_rewind and other tools compile only
++ * w/ xlogreader.c  
++ */
++XLogSmgr *xlog_smgr = &xlog_smgr_standard;
++
++void 
++SetXLogSmgr(XLogSmgr *xlsmgr)
++{
++	xlog_smgr = xlsmgr;
++}
++
+ /*
+  * Construct a string in state->errormsg_buf explaining what's wrong with
+  * the current record being read.
+@@ -1543,7 +1559,7 @@ WALRead(XLogReaderState *state,
+ 
+ 		/* Reset errno first; eases reporting non-errno-affecting errors */
+ 		errno = 0;
+-		readbytes = pg_pread(state->seg.ws_file, p, segbytes, (off_t) startoff);
++		readbytes = xlog_smgr->seg_read(state->seg.ws_file, p, segbytes, (off_t) startoff);
+ 
+ #ifndef FRONTEND
+ 		pgstat_report_wait_end();
+diff --git a/src/backend/access/transam/xlogrecovery.c b/src/backend/access/transam/xlogrecovery.c
+index becc2bda62..3d5010554f 100644
+--- a/src/backend/access/transam/xlogrecovery.c
++++ b/src/backend/access/transam/xlogrecovery.c
+@@ -39,6 +39,7 @@
+ #include "access/xlogprefetcher.h"
+ #include "access/xlogreader.h"
+ #include "access/xlogrecovery.h"
++#include "access/xlog_smgr.h"
+ #include "access/xlogutils.h"
+ #include "backup/basebackup.h"
+ #include "catalog/pg_control.h"
+@@ -3313,7 +3314,7 @@ retry:
+ 	readOff = targetPageOff;
+ 
+ 	pgstat_report_wait_start(WAIT_EVENT_WAL_READ);
+-	r = pg_pread(readFile, readBuf, XLOG_BLCKSZ, (off_t) readOff);
++	r = xlog_smgr->seg_read(readFile, readBuf, XLOG_BLCKSZ, (off_t) readOff);
+ 	if (r != XLOG_BLCKSZ)
+ 	{
+ 		char		fname[MAXFNAMELEN];
+diff --git a/src/include/access/xlog_internal.h b/src/include/access/xlog_internal.h
+index b0fd338a00..e42b131b36 100644
+--- a/src/include/access/xlog_internal.h
++++ b/src/include/access/xlog_internal.h
+@@ -78,8 +78,10 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
+ #define XLP_BKP_REMOVABLE			0x0004
+ /* Replaces a missing contrecord; see CreateOverwriteContrecordRecord */
+ #define XLP_FIRST_IS_OVERWRITE_CONTRECORD 0x0008
++/* The page is encrypted */
++#define XLP_ENCRYPTED 0x0010
+ /* All defined flag bits in xlp_info (used for validity checking of header) */
+-#define XLP_ALL_FLAGS				0x000F
++#define XLP_ALL_FLAGS				0x001F
+ 
+ #define XLogPageHeaderSize(hdr)		\
+ 	(((hdr)->xlp_info & XLP_LONG_HEADER) ? SizeOfXLogLongPHD : SizeOfXLogShortPHD)

@@ -98,6 +98,7 @@ _PG_init(void)
 	InstallFileKeyring();
 	InstallVaultV2Keyring();
 	RegisterCustomRmgr(RM_TDERMGR_ID, &pg_tde_rmgr);
+	TDEInitXLogSmgr();
 }
 
 Datum pg_tde_extension_initialize(PG_FUNCTION_ARGS)
