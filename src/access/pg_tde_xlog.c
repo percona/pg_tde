@@ -27,7 +27,7 @@
 /* Buffer for the XLog encryption */
 static char *TDEXLogEncryptBuf;
 
-static void SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, uint32 offset, char* iv_prefix);
+static void SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char* iv_prefix);
 static int XLOGChooseNumBuffers(void);
 /*
  * TDE fork XLog
@@ -189,8 +189,8 @@ pg_tde_xlog_seg_write(int fd, const void *buf, size_t count, off_t offset)
 		crypt_page->xlp_info |= XLP_ENCRYPTED;
 
 		data_size = (uint32) XLOG_BLCKSZ - (uint32) XLogPageHeaderSize(crypt_page);
-		SetXLogPageIVPrefix(crypt_page->xlp_tli, crypt_page->xlp_pageaddr, offset + page_off, iv_prefix);
-		PG_TDE_ENCRYPT_DATA(iv_prefix, 0, (char *) page + XLogPageHeaderSize(page), data_size, (char *) crypt_page + (Size) XLogPageHeaderSize(crypt_page), &key);
+		SetXLogPageIVPrefix(crypt_page->xlp_tli, crypt_page->xlp_pageaddr, iv_prefix);
+		PG_TDE_ENCRYPT_DATA(iv_prefix, (uint32) offset + page_off, (char *) page + XLogPageHeaderSize(page), data_size, (char *) crypt_page + (Size) XLogPageHeaderSize(crypt_page), &key);
 	}
 
 	return pg_pwrite(fd, TDEXLogEncryptBuf, count, offset);
@@ -223,8 +223,8 @@ pg_tde_xlog_seg_read(int fd, void *buf, size_t count, off_t offset)
 				decrypt_buf = (char *) palloc(XLOG_BLCKSZ - SizeOfXLogShortPHD);
 			}
 			data_size = (uint32) XLOG_BLCKSZ - (uint32) XLogPageHeaderSize(page);
-			SetXLogPageIVPrefix(page->xlp_tli, page->xlp_pageaddr, offset + page_off, iv_prefix);
-			PG_TDE_DECRYPT_DATA(iv_prefix, 0, (char *) page + XLogPageHeaderSize(page), data_size, decrypt_buf, &key);
+			SetXLogPageIVPrefix(page->xlp_tli, page->xlp_pageaddr, iv_prefix);
+			PG_TDE_DECRYPT_DATA(iv_prefix, (uint32) offset + page_off, (char *) page + XLogPageHeaderSize(page), data_size, decrypt_buf, &key);
 
 			memcpy((char *) page + XLogPageHeaderSize(page), decrypt_buf, data_size);
 		}
@@ -237,11 +237,11 @@ pg_tde_xlog_seg_read(int fd, void *buf, size_t count, off_t offset)
 	return readsz;
 }
 
-/* IV: TLI(uint32) + XLogRecPtr(uint64) + Off(uint32)*/
+/* IV: TLI(uint32) + XLogRecPtr(uint64)*/
 static void
-SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, uint32 offset, char* iv_prefix)
+SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char* iv_prefix)
 {
-	elog(DEBUG1, "==> XlogIV %u, %lu, %u", tli, lsn, offset);
+	elog(DEBUG1, "==> XlogIV %u, %lu", tli, lsn);
 
 	iv_prefix[0] = (tli >> 24);
 	iv_prefix[1] = ((tli >> 16) & 0xFF);
@@ -256,9 +256,4 @@ SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, uint32 offset, char* iv_pref
 	iv_prefix[9] = ((lsn >> 16) & 0xFF);
 	iv_prefix[10] = ((lsn >> 8) & 0xFF);
 	iv_prefix[11] = (lsn & 0xFF);
-
-	iv_prefix[12] = (offset >> 24);
-	iv_prefix[13] = ((offset >> 16) & 0xFF);
-	iv_prefix[14] = ((offset >> 8) & 0xFF);
-	iv_prefix[15] = (offset & 0xFF);
 }
