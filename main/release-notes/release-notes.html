@@ -6,30 +6,32 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="pg_tde is the extension that brings in Transparent Data Encryption (TDE) to PostgreSQL and enables users to keep sensitive data safe and secure. It enables users to configure encryption differently for each database, encrypting specific tables in some databases with different encryption keys, while keeping others non encrypted.">
+        <meta name="description" content="## Alpha 1 (2024-03-28)">
       
       
         <meta name="author" content="Percona LLC">
       
       
       
+        <link rel="prev" href="../external-parameters.html">
       
-        <link rel="next" href="tde.html">
+      
+        <link rel="next" href="../uninstall.html">
       
       
-      <link rel="icon" href="_images/percona-favicon.ico">
+      <link rel="icon" href="../_images/percona-favicon.ico">
       <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.17">
     
     
       
-        <title>pg_tde documentation</title>
+        <title>pg_tde tech preview - pg_tde documentation</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.bcfcd587.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.bcfcd587.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -52,13 +54,13 @@
     
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.min.css">
     
-      <link rel="stylesheet" href="css/percona.css">
+      <link rel="stylesheet" href="../css/percona.css">
     
-      <link rel="stylesheet" href="css/design.css">
+      <link rel="stylesheet" href="../css/design.css">
     
-      <link rel="stylesheet" href="css/osano.css">
+      <link rel="stylesheet" href="../css/osano.css">
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
   
@@ -78,12 +80,14 @@
                  
                  
                  
+                 
+                 
                  <meta property="og:type" content="website" />
-                 <meta property="og:title" content="pg_tde documentation" />
+                 <meta property="og:title" content="pg_tde documentation - pg_tde tech preview" />
                  <meta property="og:image" content="https://docs.percona.com/pg-stat-monitor/_images/pg_stat_monitor.png">
                  <meta property="og:url" content="https://docs.percona.com/pg-stat-monitor/">
               
-   <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"/><style>
+   <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"/><style>
     html.glightbox-open { overflow: initial; height: 100%; }
     .gslide-title { margin-top: 0px; user-select: text; }
     .gslide-desc { color: #666; user-select: text; }
@@ -92,7 +96,7 @@
     .gdesc-inner { font-size: 0.75rem; }
     body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color);}
     body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color);}
-    body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color);}</style> <script src="assets/javascripts/glightbox.min.js"></script></head>
+    body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color);}</style> <script src="../assets/javascripts/glightbox.min.js"></script></head>
   
   
     
@@ -111,7 +115,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pg_tde-documentation-aplha1" class="md-skip">
+        <a href="#pg_tde-release-notes" class="md-skip">
           Skip to content
         </a>
       
@@ -131,9 +135,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="index.html" title="pg_tde documentation" class="md-header__button md-logo" aria-label="pg_tde documentation" data-md-component="logo">
+    <a href="../index.html" title="pg_tde documentation" class="md-header__button md-logo" aria-label="pg_tde documentation" data-md-component="logo">
       
-  <img src="_images/percona-logo.svg" alt="logo">
+  <img src="../_images/percona-logo.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -150,7 +154,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              pg_tde tech preview
             
           </span>
         </div>
@@ -268,9 +272,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="index.html" title="pg_tde documentation" class="md-nav__button md-logo" aria-label="pg_tde documentation" data-md-component="logo">
+    <a href="../index.html" title="pg_tde documentation" class="md-nav__button md-logo" aria-label="pg_tde documentation" data-md-component="logo">
       
-  <img src="_images/percona-logo.svg" alt="logo">
+  <img src="../_images/percona-logo.svg" alt="logo">
 
     </a>
     pg_tde documentation
@@ -294,30 +298,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Home
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="index.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -326,80 +310,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#whats-encrypted" class="md-nav__link">
-    <span class="md-ellipsis">
-      What&rsquo;s encrypted
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#known-limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Known limitations
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-postgresql-versions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Supported PostgreSQL versions
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#future-releases" class="md-nav__link">
-    <span class="md-ellipsis">
-      Future releases
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#useful-links" class="md-nav__link">
-    <span class="md-ellipsis">
-      Useful links
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#get-expert-help" class="md-nav__link">
-    <span class="md-ellipsis">
-      Get expert help
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -411,7 +321,7 @@
   
   
     <li class="md-nav__item">
-      <a href="tde.html" class="md-nav__link">
+      <a href="../tde.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -466,7 +376,7 @@
   
   
     <li class="md-nav__item">
-      <a href="install.html" class="md-nav__link">
+      <a href="../install.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -487,7 +397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="apt.html" class="md-nav__link">
+      <a href="../apt.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -508,7 +418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="yum.html" class="md-nav__link">
+      <a href="../yum.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -529,7 +439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="setup.html" class="md-nav__link">
+      <a href="../setup.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -550,7 +460,7 @@
   
   
     <li class="md-nav__item">
-      <a href="test.html" class="md-nav__link">
+      <a href="../test.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -578,7 +488,7 @@
   
   
     <li class="md-nav__item">
-      <a href="functions.html" class="md-nav__link">
+      <a href="../functions.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -633,7 +543,7 @@
   
   
     <li class="md-nav__item">
-      <a href="external-parameters.html" class="md-nav__link">
+      <a href="../external-parameters.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -658,17 +568,19 @@
       
   
   
+    
   
   
+  
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -682,7 +594,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             Release notes
@@ -693,10 +605,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="release-notes/release-notes.html" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    pg_tde tech preview
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="release-notes.html" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -705,6 +637,71 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#release-highlights" class="md-nav__link">
+    <span class="md-ellipsis">
+      Release Highlights
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#improvements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Improvements
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bugs-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bugs fixed
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mvp-2023-12-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      MVP (2023-12-12)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-expert-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      Get expert help
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -724,7 +721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="uninstall.html" class="md-nav__link">
+      <a href="../uninstall.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -744,7 +741,7 @@
   
   
     <li class="md-nav__item">
-      <a href="contribute.html" class="md-nav__link">
+      <a href="../contribute.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -784,45 +781,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#whats-encrypted" class="md-nav__link">
+  <a href="#release-highlights" class="md-nav__link">
     <span class="md-ellipsis">
-      What&rsquo;s encrypted
+      Release Highlights
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#known-limitations" class="md-nav__link">
+  <a href="#improvements" class="md-nav__link">
     <span class="md-ellipsis">
-      Known limitations
+      Improvements
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-postgresql-versions" class="md-nav__link">
+  <a href="#bugs-fixed" class="md-nav__link">
     <span class="md-ellipsis">
-      Supported PostgreSQL versions
+      Bugs fixed
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#future-releases" class="md-nav__link">
+  <a href="#mvp-2023-12-12" class="md-nav__link">
     <span class="md-ellipsis">
-      Future releases
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#useful-links" class="md-nav__link">
-    <span class="md-ellipsis">
-      Useful links
+      MVP (2023-12-12)
     </span>
   </a>
   
@@ -852,7 +840,7 @@
                   
 
   
-    <a href="https://github.com/Percona-Lab/pg_tde/edit/main/documentation/docs/index.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/Percona-Lab/pg_tde/edit/main/documentation/docs/release-notes/release-notes.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -861,45 +849,57 @@
     
       
     
-    <a href="https://github.com/Percona-Lab/pg_tde/raw/main/documentation/docs/index.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/Percona-Lab/pg_tde/raw/main/documentation/docs/release-notes/release-notes.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.15 8.15 0 0 1-1.23-2Z"/></svg>
     </a>
   
 
 
-<h1 id="pg_tde-documentation-aplha1"><code>pg_tde</code> documentation [Aplha1]<a class="headerlink" href="#pg_tde-documentation-aplha1" title="Permanent link">&para;</a></h1>
-<p><code>pg_tde</code> is the extension that brings in <a href="tde.html">Transparent Data Encryption (TDE)</a> to PostgreSQL and enables users to keep sensitive data safe and secure. It enables users to configure encryption differently for each database, encrypting specific tables in some databases with different encryption keys, while keeping others non encrypted. </p>
-<div class="admonition important">
-<p class="admonition-title">Important</p>
-<p>This is the Alpha1 version of the extension and is not meant for production use yet.</p>
-</div>
-<h2 id="whats-encrypted">What&rsquo;s encrypted<a class="headerlink" href="#whats-encrypted" title="Permanent link">&para;</a></h2>
-<p><code>pg_tde</code> encrypts the following:</p>
+<h1 id="pg_tde-release-notes">pg_tde release notes<a class="headerlink" href="#pg_tde-release-notes" title="Permanent link">&para;</a></h1>
+<p>## Alpha 1 (2024-03-28)</p>
+<p><code>pg_tde</code> extension brings in <a href="tde.md">Transparent Data Encryption (TDE)</a> to PostgreSQL and enables you to keep sensitive data safe and secure.</p>
+<p><a class="md-button" href="../install.html">Get started</a></p>
+<h2 id="release-highlights">Release Highlights<a class="headerlink" href="#release-highlights" title="Permanent link">&para;</a></h2>
+<p>The technical preview of the extension introduces the following key features:</p>
 <ul>
-<li>User data in tables, including TOAST tables, that are created using the extension. Metadata of those tables is not encrypted. </li>
-<li>Write-Ahead Log (WAL) data for tables created using the extension </li>
-<li>Temporary tables created during the database operation for data tables created using the extension</li>
+<li>
+<p>You can now rotate master keys used for data encryption. This reduces the risk of long-term exposure to potential attacks and helps you comply with security standards such as GDPR, HIPAA, and PCI DSS.</p>
+</li>
+<li>
+<p>You can now configure encryption differently for each database. For example, encrypt specific tables in some databases with different encryption keys while keeping others non-encrypted.</p>
+</li>
+<li>
+<p>Keyring configuration has undergone several improvements, namely:</p>
+<ul>
+<li>You can define separate keyring configuration for each database</li>
+<li>You can change keyring configuration dynamically, without having to restart the server</li>
+<li>The keyring configuration is now stored in a catalog separately for each database, instead of a configuration file</li>
+<li>Avoid storing secrets in the unencrypted catalog by configuring keyring parameters to be read from external sources (file, http(s) request)</li>
 </ul>
-<h2 id="known-limitations">Known limitations<a class="headerlink" href="#known-limitations" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Logical replication is not available as it doesn&rsquo;t work with encrypted tables.</li>
-<li>Keys in the local keyfile are stored unencrypted.</li>
-<li>Indexes and <code>NULL</code> bitmaps of tuples are currently not encrypted. </li>
+</li>
 </ul>
-<p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2 1 21Z"/></svg></span> Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead for most situations. However, in some specific applications such as those using JSONB operations, performance degradation might be higher.</p>
-<p><a class="md-button" href="install.html">Get started</a></p>
-<h2 id="supported-postgresql-versions">Supported PostgreSQL versions<a class="headerlink" href="#supported-postgresql-versions" title="Permanent link">&para;</a></h2>
-<p><code>pg_tde</code> is currently based on PostgreSQL 16.0 and supported for Percona Distribution for PostgreSQL 16.x and upstream PostgreSQL 16.x. </p>
-<h2 id="future-releases">Future releases<a class="headerlink" href="#future-releases" title="Permanent link">&para;</a></h2>
-<p>The following is planned for future releases of <code>pg_tde</code>:</p>
+<h2 id="improvements">Improvements<a class="headerlink" href="#improvements" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Encryption of indexes and <code>NULL</code> bitmaps of tuples</li>
-<li>Logical replication support</li>
+<li>Renamed the repository and Docker image from <code>postgres-tde-ext</code> to <code>pg_tde</code>. The extension name remains unchanged</li>
+<li>Changed the Initialization Vector (IV) calculation of both the data and internal keys</li>
 </ul>
-<h2 id="useful-links">Useful links<a class="headerlink" href="#useful-links" title="Permanent link">&para;</a></h2>
+<h2 id="bugs-fixed">Bugs fixed<a class="headerlink" href="#bugs-fixed" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="tde.html">What is Transparent Data Encryption</a></li>
+<li>Fixed toast related crashes</li>
+<li>Fixed a crash with the DELETE statement </li>
+<li>Fixed performance-related issues</li>
+<li>Fixed a bug where <code>pg_tde</code> sent many 404 requests to the Vault server</li>
+<li>Fixed сompatibility issues with old OpenSSL versions</li>
+<li>Fixed сompatibility with old Curl versions </li>
+</ul>
+<h2 id="mvp-2023-12-12">MVP (2023-12-12)<a class="headerlink" href="#mvp-2023-12-12" title="Permanent link">&para;</a></h2>
+<p>The Minimum Viable Product (MVP) version introduces the following functionality:</p>
+<ul>
+<li>Encryption of heap tables, including TOAST</li>
+<li>Encryption keys are stored either in Hashicorp Vault server or in local keyring file (for development) </li>
+<li>The key storage is configurable via separate JSON configuration files</li>
+<li>Replication support</li>
 </ul>
 <div data-banner="data-banner">
 <h2 class="title" id="get-expert-help">Get expert help<a class="headerlink" href="#get-expert-help" title="Permanent link">&para;</a></h2>
@@ -933,7 +933,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">April 3, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">April 1, 2024</span>
   </span>
 
     
@@ -943,7 +943,7 @@
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 12, 2023</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">April 1, 2024</span>
   </span>
 
     
@@ -1041,18 +1041,18 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": ".", "features": ["search.share", "search.highlight", "content.code.copy", "content.action.view", "content.action.edit", "content.tabs.link", "navigation.top", "navigation.tracking"], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": ["search.share", "search.highlight", "content.code.copy", "content.action.view", "content.action.edit", "content.tabs.link", "navigation.top", "navigation.tracking"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
 <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 
-      <script src="assets/javascripts/bundle.1e8ae164.min.js"></script>
+      <script src="../assets/javascripts/bundle.1e8ae164.min.js"></script>
       
-        <script src="js/version-select.js"></script>
+        <script src="../js/version-select.js"></script>
       
-        <script src="js/promptremover.js"></script>
+        <script src="../js/promptremover.js"></script>
       
-        <script src="js/consent.js"></script>
+        <script src="../js/consent.js"></script>
       
     
 

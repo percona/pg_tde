@@ -16,11 +16,11 @@
         <link rel="prev" href="setup.html">
       
       
-        <link rel="next" href="replication.html">
+        <link rel="next" href="functions.html">
       
       
       <link rel="icon" href="_images/percona-favicon.ico">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.2">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.17">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.50c56a3b.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.bcfcd587.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
@@ -58,25 +58,45 @@
     
       <link rel="stylesheet" href="css/design.css">
     
+      <link rel="stylesheet" href="css/osano.css">
+    
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function n(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],n("js",new Date),n("config","G-J4J70BNH0G"),document.addEventListener("DOMContentLoaded",function(){document.forms.search&&document.forms.search.query.addEventListener("blur",function(){this.value&&n("event","search",{search_term:this.value})}),document$.subscribe(function(){var a=document.forms.feedback;if(void 0!==a)for(var e of a.querySelectorAll("[type=submit]"))e.addEventListener("click",function(e){e.preventDefault();var t=document.location.pathname,e=this.getAttribute("data-md-value");n("event","feedback",{page:t,data:e}),a.firstElementChild.disabled=!0;e=a.querySelector(".md-feedback__note [data-md-value='"+e+"']");e&&(e.hidden=!1)}),a.hidden=!1}),location$.subscribe(function(e){n("config","G-J4J70BNH0G",{page_path:e.pathname})})});var e=document.createElement("script");e.async=!0,e.src="https://www.googletagmanager.com/gtag/js?id=G-J4J70BNH0G",document.getElementById("__analytics").insertAdjacentElement("afterEnd",e)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
 
     
     
     
+                 
+                 
+                 
+                 
+                 
+                 <meta property="og:type" content="website" />
+                 <meta property="og:title" content="pg_tde documentation - Test TDE" />
+                 <meta property="og:image" content="https://docs.percona.com/pg-stat-monitor/_images/pg_stat_monitor.png">
+                 <meta property="og:url" content="https://docs.percona.com/pg-stat-monitor/">
+              
    <link href="assets/stylesheets/glightbox.min.css" rel="stylesheet"/><style>
-        html.glightbox-open { overflow: initial; height: 100%; }
-        .gslide-title { margin-top: 0px; user-select: text; }
-        .gslide-desc { color: #666; user-select: text; }
-        .gslide-image img { background: white; }
-        
-            .gscrollbar-fixer { padding-right: 15px; }
-            .gdesc-inner { font-size: 0.75rem; }
-            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color);}
-            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color);}
-            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color);}
-            </style> <script src="assets/javascripts/glightbox.min.js"></script></head>
+    html.glightbox-open { overflow: initial; height: 100%; }
+    .gslide-title { margin-top: 0px; user-select: text; }
+    .gslide-desc { color: #666; user-select: text; }
+    .gslide-image img { background: white; }
+    .gscrollbar-fixer { padding-right: 15px; }
+    .gdesc-inner { font-size: 0.75rem; }
+    body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color);}
+    body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color);}
+    body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color);}</style> <script src="assets/javascripts/glightbox.min.js"></script></head>
   
   
     
@@ -216,13 +236,13 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/Percona-Lab/postgres-tde-ext" title="Go to repository" class="md-source" data-md-component="source">
+        <a href="https://github.com/Percona-Lab/pg_tde" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
   </div>
   <div class="md-source__repository">
-    Percona-Lab/postgres-tde-ext
+    Percona-Lab/pg_tde
   </div>
 </a>
       </div>
@@ -261,13 +281,13 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/Percona-Lab/postgres-tde-ext" title="Go to repository" class="md-source" data-md-component="source">
+      <a href="https://github.com/Percona-Lab/pg_tde" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
   </div>
   <div class="md-source__repository">
-    Percona-Lab/postgres-tde-ext
+    Percona-Lab/pg_tde
   </div>
 </a>
     </div>
@@ -326,10 +346,8 @@
     
     
     
-    
     <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
-        
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
@@ -381,6 +399,48 @@
   
   
     <li class="md-nav__item">
+      <a href="apt.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Via apt
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="yum.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Via yum
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="setup.html" class="md-nav__link">
         
   
@@ -411,6 +471,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Test TDE
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="test.html" class="md-nav__link md-nav__link--active">
         
   
@@ -421,6 +492,117 @@
 
       </a>
       
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#get-expert-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      Get expert help
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="functions.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    How to
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            How to
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="external-parameters.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Use reference to external parameters
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -443,30 +625,28 @@
     
     
     
-    
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   <span class="md-ellipsis">
-    How to
+    Release notes
   </span>
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
-            How to
+            Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -477,11 +657,11 @@
   
   
     <li class="md-nav__item">
-      <a href="replication.html" class="md-nav__link">
+      <a href="release-notes/release-notes.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Configure streaming replication
+    pg_tde tech preview
   </span>
   
 
@@ -558,6 +738,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#get-expert-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      Get expert help
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -571,7 +768,7 @@
                   
 
   
-    <a href="https://github.com/Percona-Lab/postgres-tde-ext/edit/main/documentation/docs/test.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/Percona-Lab/pg_tde/edit/main/documentation/docs/test.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -580,7 +777,7 @@
     
       
     
-    <a href="https://github.com/Percona-Lab/postgres-tde-ext/raw/main/documentation/docs/test.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/Percona-Lab/pg_tde/raw/main/documentation/docs/test.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.15 8.15 0 0 1-1.23-2Z"/></svg>
     </a>
@@ -590,14 +787,43 @@
 <h1 id="test-transparent-data-encryption">Test Transparent Data Encryption<a class="headerlink" href="#test-transparent-data-encryption" title="Permanent link">&para;</a></h1>
 <p>To check if the data is encrypted, do the following:</p>
 <ol>
-<li>Create a table in the database for which you have <a href="setup.html">enabled <code>pg_tde</code></a></li>
+<li>
+<p>Create a table in the database for which you have <a href="setup.html">enabled <code>pg_tde</code></a>. Enabling <code>pg_tde</code> extension creates the table access method <code>pg_tde</code>. To enable data encryption, create the table using this access method as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="o">&lt;</span><span class="k">table_name</span><span class="o">&gt;</span><span class="w"> </span><span class="p">(</span><span class="o">&lt;</span><span class="n">field</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&lt;</span><span class="n">datatype</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">pg_tde</span><span class="p">;</span>
+</code></pre></div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>You can enable data encryption by default by setting the <code>default_table_access_method</code> to <code>pg_tde</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SET</span><span class="w"> </span><span class="n">default_table_access_method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pg_tde</span><span class="p">;</span>
+</code></pre></div>
+</div>
+</li>
 <li>
 <p>Run the following function:</p>
-<div class="highlight"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="n">pgtde_is_encrypted</span><span class="p">(</span><span class="s1">&#39;table_name&#39;</span><span class="p">);</span>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pg_tde_is_encrypted</span><span class="p">(</span><span class="s1">&#39;table_name&#39;</span><span class="p">);</span>
 </code></pre></div>
 <p>The function returns <code>t</code> if the table is encrypted and <code>f</code> - if not.</p>
 </li>
+<li>
+<p>Rotate the master key when needed:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pg_tde_rotate_key</span><span class="p">();</span><span class="w"> </span><span class="c1">-- uses automatic key versionin</span>
+<span class="c1">-- or</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">pg_tde_rotate_key</span><span class="p">(</span><span class="s1">&#39;new-master-key&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">);</span><span class="w"> </span><span class="c1">-- specify new key name</span>
+<span class="c1">-- or</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">pg_tde_rotate_key</span><span class="p">(</span><span class="s1">&#39;new-master-key&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;new-provider&#39;</span><span class="p">);</span><span class="w"> </span><span class="c1">-- change provider</span>
+</code></pre></div>
+</li>
 </ol>
+<div data-banner="data-banner">
+<h2 class="title" id="get-expert-help">Get expert help<a class="headerlink" href="#get-expert-help" title="Permanent link">&para;</a></h2>
+<p>If you need assistance, visit the community forum for comprehensive and free database knowledge, or contact our Percona Database Experts for professional support and services.</p>
+<div class="actions">
+<p><a href="https://forums.percona.com/c/postgresql/25?utm_campaign=Doc%20pages"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 4v7H5.17L4 12.17V4h11m1-2H3a1 1 0 0 0-1 1v14l4-4h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1m5 4h-2v9H6v2a1 1 0 0 0 1 1h11l4 4V7a1 1 0 0 0-1-1Z"/></svg></span> Community Forum</a> <a href="https://www.percona.com/about/contact"><span class="twemoji"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M19.3996 14.148C21.9082 12.5083 22.7289 9.16368 21.2109 6.53493C20.4502 5.21636 19.2207 4.27206 17.7497 3.87776C16.3868 3.51187 14.9634 3.6615 13.7106 4.29444L12 1.33337L8.44934 7.48295L0.242432 21.6959H23.7576L19.3996 14.148ZM17.3474 5.38416C18.4167 5.66894 19.3064 6.35548 19.8606 7.31143C20.9499 9.19582 20.384 11.5859 18.6176 12.7931L14.4917 5.64797C15.3806 5.22055 16.3831 5.12734 17.3474 5.38416ZM12 4.45432L21.0533 20.135H15.7562L9.35029 9.04341L11.9995 4.45478L12 4.45432ZM2.94667 20.135L8.44888 10.6071L13.9511 20.135H2.94667Z"/>
+</svg></span> Get a Percona Expert</a></p>
+<p><a class="glightbox" href="https://static.scarf.sh/a.png?x-pxid=b95a2b04-c5c7-47f9-bb4e-b7fc13c3ab0d" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=b95a2b04-c5c7-47f9-bb4e-b7fc13c3ab0d" /></a></p>
+</div>
+</div>
 
 
 
@@ -620,7 +846,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 12, 2023</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">April 1, 2024</span>
   </span>
 
     
@@ -639,7 +865,49 @@
   </aside>
 
 
+  
 
+
+
+  <form class="md-feedback" name="feedback" hidden>
+    <fieldset>
+      <legend class="md-feedback__title">
+        Was this page helpful?
+      </legend>
+      <div class="md-feedback__inner">
+        <div class="md-feedback__list">
+          
+            <button class="md-feedback__icon md-icon" type="submit" title="This page was helpful" data-md-value="1">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8m2 0a10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2a10 10 0 0 1 10 10M10 9.5c0 .8-.7 1.5-1.5 1.5S7 10.3 7 9.5 7.7 8 8.5 8s1.5.7 1.5 1.5m7 0c0 .8-.7 1.5-1.5 1.5S14 10.3 14 9.5 14.7 8 15.5 8s1.5.7 1.5 1.5m-5 7.73c-1.75 0-3.29-.73-4.19-1.81L9.23 14c.45.72 1.52 1.23 2.77 1.23s2.32-.51 2.77-1.23l1.42 1.42c-.9 1.08-2.44 1.81-4.19 1.81Z"/></svg>
+            </button>
+          
+            <button class="md-feedback__icon md-icon" type="submit" title="This page could be improved" data-md-value="0">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8m2 0a10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2a10 10 0 0 1 10 10m-6.5-4c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5M10 9.5c0 .8-.7 1.5-1.5 1.5S7 10.3 7 9.5 7.7 8 8.5 8s1.5.7 1.5 1.5m2 4.5c1.75 0 3.29.72 4.19 1.81l-1.42 1.42C14.32 16.5 13.25 16 12 16s-2.32.5-2.77 1.23l-1.42-1.42C8.71 14.72 10.25 14 12 14Z"/></svg>
+            </button>
+          
+        </div>
+        <div class="md-feedback__note">
+          
+            <div data-md-value="1" hidden>
+              
+              
+                
+              
+              Thanks for your feedback!
+            </div>
+          
+            <div data-md-value="0" hidden>
+              
+              
+                
+              
+              Thank you for your feedback! Help us improve by using our  <a href="https://docs.google.com/forms/d/1bkWACehjqlwA0AKf-qTJcXvYbOSYgze8iTPXjntqmNo/edit" target="_blank" rel="noopener"> feedback form</a>.
+            </div>
+          
+        </div>
+      </div>
+    </fieldset>
+  </form>
 
 
                 
@@ -665,12 +933,9 @@
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-copyright">
-  
     <div class="md-copyright__highlight">
-      <a href="https://www.percona.com/about">Percona LLC</a> and/or its affiliates © 2023 — <a href="#__consent">Cookie Consent</a>
-
+ <a href='https://percona.com' target='_blank'>Percona LLC and/or its affiliates, </a> &copy; 2024 — <a href="#" onclick="Osano.cm.showDrawer('osano-cm-dom-info-dialog-open')">Cookie Preferences</a>
     </div>
-  
   
     Made with
     <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
@@ -689,15 +954,20 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": ".", "features": ["search.share", "search.highlight", "content.code.copy", "content.action.view", "content.action.edit", "content.tabs.link", "navigation.top", "navigation.tracking"], "search": "assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": ".", "features": ["search.share", "search.highlight", "content.code.copy", "content.action.view", "content.action.edit", "content.tabs.link", "navigation.top", "navigation.tracking"], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="assets/javascripts/bundle.d7c377c4.min.js"></script>
+<script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
+
+      <script src="assets/javascripts/bundle.1e8ae164.min.js"></script>
       
         <script src="js/version-select.js"></script>
       
         <script src="js/promptremover.js"></script>
       
+        <script src="js/consent.js"></script>
+      
     
+
   <script>document$.subscribe(() => {const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});})</script></body>
 </html>
