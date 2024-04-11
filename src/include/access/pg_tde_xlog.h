@@ -10,6 +10,7 @@
 #define PG_TDE_XLOG_H
 
 #include "postgres.h"
+#include "access/xlog.h"
 #include "access/xlog_internal.h"
 #include "access/xlog_smgr.h"
 
@@ -33,6 +34,14 @@ static const RmgrData pg_tde_rmgr = {
 	.rm_desc = pg_tde_rmgr_desc,
 	.rm_identify = pg_tde_rmgr_identify
 };
+
+/* XLog encryption staff */
+
+extern Size TDEXLogEncryptBuffSize();
+
+#define XLOG_TDE_ENC_BUFF_ALIGNED_SIZE	add_size(TDEXLogEncryptBuffSize(), PG_IO_ALIGN_SIZE)
+
+extern void TDEXLogShmemInit(void);
 
 extern ssize_t pg_tde_xlog_seg_read(int fd, void *buf, size_t count, off_t offset);
 extern ssize_t pg_tde_xlog_seg_write(int fd, const void *buf, size_t count, off_t offset);

@@ -12,10 +12,12 @@
 
 #include "postgres.h"
 
+#include "pg_tde_defines.h"
 #include "access/xlog.h"
 #include "access/xlog_internal.h"
 #include "access/xloginsert.h"
 #include "storage/bufmgr.h"
+#include "storage/shmem.h"
 #include "utils/memutils.h"
 
 #include "access/pg_tde_tdemap.h"
@@ -24,8 +26,7 @@
 #include "encryption/enc_tde.h"
 
 
-/* Buffer for the XLog encryption */
-static char *TDEXLogEncryptBuf;
+static char *TDEXLogEncryptBuf = NULL;
 
 static void SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char* iv_prefix);
 static int XLOGChooseNumBuffers(void);
@@ -123,6 +124,7 @@ pg_tde_rmgr_identify(uint8 info)
  *    if segment is encrypted.
  *    We could also encrypt Records while adding them to the XLog Buf but it'll be the slowest (?).
  */
+
 static int
 XLOGChooseNumBuffers(void)
 {
@@ -136,30 +138,49 @@ XLOGChooseNumBuffers(void)
 	return xbuffers;
 }
 
+/* 
+ * Defines the size of the XLog encryption buffer
+ */
+Size
+TDEXLogEncryptBuffSize()
+{
+	int		xbuffers;
+
+	xbuffers = (XLOGbuffers == -1) ? XLOGChooseNumBuffers() : XLOGbuffers;
+	return (Size) XLOG_BLCKSZ * xbuffers;
+}
+
+/* 
+ * Alloc memory for encrypition buffer.
+ * 
+ * It should fit XLog buffers (XLOG_BLCKSZ * wal_buffers). We can't
+ * (re)alloc this buf in pg_tde_xlog_seg_write() based on the write size as
+ * it's called in the CRIT section, hence no allocations are allowed.
+ * 
+ * Access to this buffer happens during XLogWrite() call which should
+ * be called with WALWriteLock held, hence no need in extra locks.
+ */
+void
+TDEXLogShmemInit(void)
+{
+	bool	foundBuf;
+
+	TDEXLogEncryptBuf = (char *)
+		TYPEALIGN(PG_IO_ALIGN_SIZE,
+				  ShmemInitStruct("TDE XLog Encrypt Buffer",
+								  XLOG_TDE_ENC_BUFF_ALIGNED_SIZE,
+								  &foundBuf));
+}
+
 void
 TDEInitXLogSmgr(void)
 {
-	int xbuffers;
-
-	/* 
-	 * Alloc memory for encrypition buffer. I should fit XLog buffers (XLOG_BLCKSZ * wal_buffers).
-	 * We can't (re)alloc this buf in pg_tde_xlog_seg_write() based on the write sezie as
-	 * it's called in the CRIT section, hence no allocations are allowed.
-	 * 
-	 * TODO:
-	 * 		- alloc in the shmem to save memory
-	 * 		- ? alloc smaller (config option) and write in chunks (slower)?
-	 */
-	xbuffers = (XLOGbuffers == -1) ? XLOGChooseNumBuffers() : XLOGbuffers;
-	TDEXLogEncryptBuf = (char *) MemoryContextAlloc(TopMemoryContext, (Size) XLOG_BLCKSZ * xbuffers);
-	memset(TDEXLogEncryptBuf, 0, (Size) XLOG_BLCKSZ * 512);
-
 	SetXLogSmgr(&tde_xlog_smgr);
 }
 
 /* 
  * TODO: proper key management
- *		 where to store the ref to the master and internal key?
+ *		 where to store refs to the master and internal keys?
  */
 static InternalKey XLogInternalKey = {.key = {0xD,}};
 
@@ -175,8 +196,9 @@ pg_tde_xlog_seg_write(int fd, const void *buf, size_t count, off_t offset)
 
 	Assert((count % (Size) XLOG_BLCKSZ) == 0);
 
-	elog(DEBUG1, "==> pg_tde_xlog_seg_WRITE, pages: %d", count / (Size) XLOG_BLCKSZ);
-
+#ifdef TDE_XLOG_DEBUG
+	elog(DEBUG1, "Write to a WAL segment, pages amount: %d", count / (Size) XLOG_BLCKSZ);
+#endif
 	/* Encrypt pages */
 	for (page_off = 0; page_off < count; page_off += (Size) XLOG_BLCKSZ)
 	{
@@ -207,7 +229,9 @@ pg_tde_xlog_seg_read(int fd, void *buf, size_t count, off_t offset)
 	RelKeyData		key = {.internal_key = XLogInternalKey};
 	char	*decrypt_buf = NULL;
 
-	elog(DEBUG1, "==> pg_tde_xlog_seg_READ, pages: %d", count / (Size) XLOG_BLCKSZ);
+#ifdef TDE_XLOG_DEBUG
+	elog(DEBUG1, "Read from a WAL segment, pages amount: %d", count / (Size) XLOG_BLCKSZ);
+#endif
 
 	readsz = pg_pread(fd, buf, count, offset);
 
@@ -241,8 +265,6 @@ pg_tde_xlog_seg_read(int fd, void *buf, size_t count, off_t offset)
 static void
 SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char* iv_prefix)
 {
-	elog(DEBUG1, "==> XlogIV %u, %lu", tli, lsn);
-
 	iv_prefix[0] = (tli >> 24);
 	iv_prefix[1] = ((tli >> 16) & 0xFF);
 	iv_prefix[2] = ((tli >> 8) & 0xFF);
