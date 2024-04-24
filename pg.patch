@@ -1,17 +1,5 @@
-diff --git a/contrib/meson.build b/contrib/meson.build
-index bd4a57c43c..faf90133ec 100644
---- a/contrib/meson.build
-+++ b/contrib/meson.build
-@@ -52,6 +52,7 @@ subdir('pg_trgm')
- subdir('pg_visibility')
- subdir('pg_walinspect')
- subdir('postgres_fdw')
-+subdir('postgres-tde-ext')
- subdir('seg')
- subdir('sepgsql')
- subdir('spi')
 diff --git a/src/backend/access/transam/xlog.c b/src/backend/access/transam/xlog.c
-index 8b0710abe6..e2c89a6e1f 100644
+index 8b0710abe6..a0cac5e0f5 100644
 --- a/src/backend/access/transam/xlog.c
 +++ b/src/backend/access/transam/xlog.c
 @@ -62,6 +62,7 @@
@@ -22,9 +10,11 @@ index 8b0710abe6..e2c89a6e1f 100644
  #include "access/xlogutils.h"
  #include "backup/basebackup.h"
  #include "catalog/catversion.h"
-@@ -2194,7 +2195,7 @@ XLogWrite(XLogwrtRqst WriteRqst, TimeLineID tli, bool flexible)
+@@ -2193,8 +2194,9 @@ XLogWrite(XLogwrtRqst WriteRqst, TimeLineID tli, bool flexible)
+ 				else
  					INSTR_TIME_SET_ZERO(start);
  
++
  				pgstat_report_wait_start(WAIT_EVENT_WAL_WRITE);
 -				written = pg_pwrite(openLogFile, from, nleft, startoffset);
 +				written = xlog_smgr->seg_write(openLogFile, from, nleft, startoffset);
@@ -95,6 +85,27 @@ index becc2bda62..3d5010554f 100644
  	if (r != XLOG_BLCKSZ)
  	{
  		char		fname[MAXFNAMELEN];
+diff --git a/src/backend/replication/walreceiver.c b/src/backend/replication/walreceiver.c
+index feff709435..f78eef1266 100644
+--- a/src/backend/replication/walreceiver.c
++++ b/src/backend/replication/walreceiver.c
+@@ -57,6 +57,7 @@
+ #include "access/xlog_internal.h"
+ #include "access/xlogarchive.h"
+ #include "access/xlogrecovery.h"
++#include "access/xlog_smgr.h"
+ #include "catalog/pg_authid.h"
+ #include "catalog/pg_type.h"
+ #include "common/ip.h"
+@@ -936,7 +937,7 @@ XLogWalRcvWrite(char *buf, Size nbytes, XLogRecPtr recptr, TimeLineID tli)
+ 		/* OK to write the logs */
+ 		errno = 0;
+ 
+-		byteswritten = pg_pwrite(recvFile, buf, segbytes, (off_t) startoff);
++		byteswritten = xlog_smgr->seg_write(recvFile, buf, segbytes, (off_t) startoff);
+ 		if (byteswritten <= 0)
+ 		{
+ 			char		xlogfname[MAXFNAMELEN];
 diff --git a/src/include/access/xlog_internal.h b/src/include/access/xlog_internal.h
 index b0fd338a00..e42b131b36 100644
 --- a/src/include/access/xlog_internal.h
@@ -111,3 +122,34 @@ index b0fd338a00..e42b131b36 100644
  
  #define XLogPageHeaderSize(hdr)		\
  	(((hdr)->xlp_info & XLP_LONG_HEADER) ? SizeOfXLogLongPHD : SizeOfXLogShortPHD)
+diff --git a/src/include/access/xlog_smgr.h b/src/include/access/xlog_smgr.h
+new file mode 100644
+index 0000000000..e79e290ddc
+--- /dev/null
++++ b/src/include/access/xlog_smgr.h
+@@ -0,0 +1,24 @@
++#ifndef XLOG_SMGR_H
++#define XLOG_SMGR_H
++
++#include "postgres.h"
++
++#include <unistd.h>
++
++/* XLog storage manager interface */
++typedef struct XLogSmgr {
++	ssize_t (*seg_read) (int fd, void *buf, size_t count, off_t offset);
++
++ 	ssize_t (*seg_write) (int fd, const void *buf, size_t count, off_t offset);
++} XLogSmgr;
++
++/* Default (standard) XLog storage manager */
++static const XLogSmgr xlog_smgr_standard = {
++	.seg_read = pg_pread,
++	.seg_write = pg_pwrite,
++};
++
++extern XLogSmgr *xlog_smgr;
++extern void SetXLogSmgr(XLogSmgr *xlsmgr);
++
++#endif							/* XLOG_SMGR_H */
+\ No newline at end of file
