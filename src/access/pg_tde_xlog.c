@@ -28,6 +28,9 @@
 
 static char *TDEXLogEncryptBuf = NULL;
 
+static XLogPageHeaderData EncryptCurrentPageHrd;
+static XLogPageHeaderData DecryptCurrentPageHrd;
+
 static void SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char* iv_prefix);
 static int XLOGChooseNumBuffers(void);
 /*
@@ -151,7 +154,7 @@ TDEXLogEncryptBuffSize()
 }
 
 /* 
- * Alloc memory for encrypition buffer.
+ * Alloc memory for the encryption buffer.
  * 
  * It should fit XLog buffers (XLOG_BLCKSZ * wal_buffers). We can't
  * (re)alloc this buf in pg_tde_xlog_seg_write() based on the write size as
@@ -184,78 +187,142 @@ TDEInitXLogSmgr(void)
  */
 static InternalKey XLogInternalKey = {.key = {0xD,}};
 
+/* 
+ * Encrypt XLog page(s) from the buf and write to the segment file.
+ */
 ssize_t
 pg_tde_xlog_seg_write(int fd, const void *buf, size_t count, off_t offset)
 {
-	Size	page_off = 0;
 	char	iv_prefix[16] = {0,};
 	uint32	data_size = 0;
-	XLogPageHeader	page;
-	XLogPageHeader	crypt_page;
+	XLogPageHeader	curr_page_hdr = &EncryptCurrentPageHrd;
+	XLogPageHeader	enc_buf_page;
 	RelKeyData		key = {.internal_key = XLogInternalKey};
+	off_t	enc_off;
+	size_t	page_size = XLOG_BLCKSZ - offset % XLOG_BLCKSZ;
+	uint32 iv_ctr = 0;
 
-	Assert((count % (Size) XLOG_BLCKSZ) == 0);
 
 #ifdef TDE_XLOG_DEBUG
-	elog(DEBUG1, "Write to a WAL segment, pages amount: %d", count / (Size) XLOG_BLCKSZ);
+	elog(DEBUG1, "write to a WAL segment, pages amount: %d, size: %lu offset: %ld", count / (Size) XLOG_BLCKSZ, count, offset);
 #endif
-	/* Encrypt pages */
-	for (page_off = 0; page_off < count; page_off += (Size) XLOG_BLCKSZ)
+
+	/*
+	 * Go through the buf page-by-page and encrypt them. 
+	 * We may start or finish writing from/in the middle of the page
+	 * (walsender or `full_page_writes = off`). So preserve a page header 
+	 * for the IV init data.
+	 * 
+	 * TODO: check if walsender restarts form the beggining of the page
+	 * in case of the crash.
+	 */
+	for (enc_off = 0; enc_off < count;)
 	{
-		page = (XLogPageHeader) ((char *) buf + page_off);
+		if (page_size == XLOG_BLCKSZ)
+		{
+			memcpy((char *) curr_page_hdr, (char *) buf + enc_off, SizeOfXLogShortPHD);
 
-		Assert(page->xlp_magic == XLOG_PAGE_MAGIC);
+			/* 
+			 * Need to use a separate buf for the encryption so the page remains non-crypted
+			 * in the XLog buf (XLogInsert has to have access to records' lsn).
+			 */
+			enc_buf_page = (XLogPageHeader) (((char *) TDEXLogEncryptBuf) + enc_off);
+			memcpy((char *) enc_buf_page, (char *) buf + enc_off, (Size) XLogPageHeaderSize(curr_page_hdr));
+			enc_buf_page->xlp_info |= XLP_ENCRYPTED;
 
-		crypt_page = (XLogPageHeader) (((char *) TDEXLogEncryptBuf) + page_off);
-		memcpy(crypt_page, page, (Size) XLogPageHeaderSize(page));
-		crypt_page->xlp_info |= XLP_ENCRYPTED;
+			enc_off += XLogPageHeaderSize(curr_page_hdr);
+			/* it's a beginning of the page */
+			iv_ctr = 0;
+		}
+		else 
+		{
+			/* we're in the middle of the page */
+			iv_ctr = (offset % XLOG_BLCKSZ) - XLogPageHeaderSize(curr_page_hdr);
+		}
 
-		data_size = (uint32) XLOG_BLCKSZ - (uint32) XLogPageHeaderSize(crypt_page);
-		SetXLogPageIVPrefix(crypt_page->xlp_tli, crypt_page->xlp_pageaddr, iv_prefix);
-		PG_TDE_ENCRYPT_DATA(iv_prefix, (uint32) offset + page_off, (char *) page + XLogPageHeaderSize(page), data_size, (char *) crypt_page + (Size) XLogPageHeaderSize(crypt_page), &key);
+		data_size = Min((enc_off / XLOG_BLCKSZ +1) * XLOG_BLCKSZ, count) - enc_off;
+
+		/* the page is zeroed (no data), no sense to enctypt */
+		if (curr_page_hdr->xlp_magic == 0)
+		{
+			memcpy((char *) enc_buf_page, (char *) buf + enc_off, (Size) data_size);
+		}
+		else
+		{
+			SetXLogPageIVPrefix(curr_page_hdr->xlp_tli, curr_page_hdr->xlp_pageaddr, iv_prefix);
+			PG_TDE_ENCRYPT_DATA(iv_prefix, iv_ctr, (char *) buf + enc_off, data_size, 
+						(char *) TDEXLogEncryptBuf + enc_off, &key);
+		}
+
+		page_size = XLOG_BLCKSZ;
+		enc_off += data_size;
 	}
 
 	return pg_pwrite(fd, TDEXLogEncryptBuf, count, offset);
 }
 
+/* 
+ * Read the XLog pages from the segment file and dectypt if need.
+ */
 ssize_t
 pg_tde_xlog_seg_read(int fd, void *buf, size_t count, off_t offset)
 {
 	ssize_t readsz;
-	Size	page_off;
 	char	iv_prefix[16] = {0,};
 	uint32	data_size = 0;
-	XLogPageHeader	page;
+	XLogPageHeader	curr_page_hdr = &DecryptCurrentPageHrd;
 	RelKeyData		key = {.internal_key = XLogInternalKey};
-	char	*decrypt_buf = NULL;
+	size_t	page_size = XLOG_BLCKSZ - offset % XLOG_BLCKSZ;
+	off_t	dec_off;
+	uint32	iv_ctr = 0;
 
 #ifdef TDE_XLOG_DEBUG
-	elog(DEBUG1, "Read from a WAL segment, pages amount: %d", count / (Size) XLOG_BLCKSZ);
+	elog(DEBUG1, "read from a WAL segment, pages amount: %d / sz: %lu, off: %lu", count / (Size) XLOG_BLCKSZ, count, offset);
 #endif
 
 	readsz = pg_pread(fd, buf, count, offset);
 
-	for (page_off = 0; page_off < count; page_off += (Size) XLOG_BLCKSZ)
+	/* 
+	 * Read the buf page by page and decypt ecnrypted pages.
+	 * We may start or fihish reading from/in the middle of the page (walreceiver)
+	 * in such a case we should preserve the last read page header for
+	 * the IV data and the encryption state.
+	 * 
+	 * TODO: check if walsender/receiver restarts form the beggining of the page
+	 * in case of the crash.
+	 */
+	for (dec_off = 0; dec_off < count;)
 	{
-		page = (XLogPageHeader) ((char *) buf + page_off);
-
-		Assert(page->xlp_magic == XLOG_PAGE_MAGIC);
-
-		if (page->xlp_info & XLP_ENCRYPTED)
+		if (page_size == XLOG_BLCKSZ)
 		{
-			if (decrypt_buf == NULL) {
-				decrypt_buf = (char *) palloc(XLOG_BLCKSZ - SizeOfXLogShortPHD);
-			}
-			data_size = (uint32) XLOG_BLCKSZ - (uint32) XLogPageHeaderSize(page);
-			SetXLogPageIVPrefix(page->xlp_tli, page->xlp_pageaddr, iv_prefix);
-			PG_TDE_DECRYPT_DATA(iv_prefix, (uint32) offset + page_off, (char *) page + XLogPageHeaderSize(page), data_size, decrypt_buf, &key);
+			memcpy((char *) curr_page_hdr, (char *) buf + dec_off, SizeOfXLogShortPHD);
 
-			memcpy((char *) page + XLogPageHeaderSize(page), decrypt_buf, data_size);
+			/* set the flag to "not encrypted" for the walreceiver */
+			((XLogPageHeader) ((char *) buf + dec_off))->xlp_info &= ~XLP_ENCRYPTED;
+
+			Assert(curr_page_hdr->xlp_magic == XLOG_PAGE_MAGIC || curr_page_hdr->xlp_magic == 0);
+			dec_off += XLogPageHeaderSize(curr_page_hdr);
+			/* it's a beginning of the page */
+			iv_ctr = 0;
 		}
-	}
-	
-	if (decrypt_buf != NULL) {
-		pfree(decrypt_buf);
+		else 
+		{
+			/* we're in the middle of the page */
+			iv_ctr = (offset % XLOG_BLCKSZ) - XLogPageHeaderSize(curr_page_hdr);
+		}
+
+		data_size = Min((dec_off / XLOG_BLCKSZ +1) * XLOG_BLCKSZ, count) - dec_off;
+
+		if (curr_page_hdr->xlp_info & XLP_ENCRYPTED)
+		{
+			SetXLogPageIVPrefix(curr_page_hdr->xlp_tli, curr_page_hdr->xlp_pageaddr, iv_prefix);
+			PG_TDE_DECRYPT_DATA(
+				iv_prefix, iv_ctr, 
+				(char *) buf + dec_off, data_size, (char *) buf + dec_off, &key);
+		}
+		
+		page_size = XLOG_BLCKSZ;
+		dec_off += data_size;
 	}
 
 	return readsz;
