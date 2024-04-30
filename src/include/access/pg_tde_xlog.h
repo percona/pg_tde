@@ -37,6 +37,9 @@ static const RmgrData pg_tde_rmgr = {
 
 /* XLog encryption staff */
 
+/* GUC */
+extern bool EncryptXLog;
+
 extern Size TDEXLogEncryptBuffSize();
 
 #define XLOG_TDE_ENC_BUFF_ALIGNED_SIZE	add_size(TDEXLogEncryptBuffSize(), PG_IO_ALIGN_SIZE)
@@ -52,5 +55,7 @@ static const XLogSmgr tde_xlog_smgr = {
 };
 
 extern void TDEInitXLogSmgr(void);
+
+extern void xlogInitGUC(void);
 
 #endif							/* PG_TDE_XLOG_H */

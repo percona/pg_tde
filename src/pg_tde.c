@@ -92,6 +92,7 @@ _PG_init(void)
 
 	keyringRegisterVariables();
 	InitializeMasterKeyInfo();
+	xlogInitGUC();
 
 	prev_shmem_request_hook = shmem_request_hook;
 	shmem_request_hook = tde_shmem_request;

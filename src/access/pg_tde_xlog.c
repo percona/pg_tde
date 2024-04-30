@@ -18,6 +18,7 @@
 #include "access/xloginsert.h"
 #include "storage/bufmgr.h"
 #include "storage/shmem.h"
+#include "utils/guc.h"
 #include "utils/memutils.h"
 
 #include "access/pg_tde_tdemap.h"
@@ -27,10 +28,12 @@
 
 
 static char *TDEXLogEncryptBuf = NULL;
+bool EncryptXLog = false;
 
 static XLogPageHeaderData EncryptCurrentPageHrd;
 static XLogPageHeaderData DecryptCurrentPageHrd;
 
+static ssize_t TDEXLogWriteEncryptedPages(int fd, const void *buf, size_t count, off_t offset);
 static void SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char* iv_prefix);
 static int XLOGChooseNumBuffers(void);
 /*
@@ -128,6 +131,22 @@ pg_tde_rmgr_identify(uint8 info)
  *    We could also encrypt Records while adding them to the XLog Buf but it'll be the slowest (?).
  */
 
+void
+xlogInitGUC(void)
+{
+	DefineCustomBoolVariable("pg_tde.wal_encrypt",	/* name */
+							 "Enable/Disable encryption of WAL.",	/* short_desc */
+							 NULL,	/* long_desc */
+							 &EncryptXLog, /* value address */
+							 false,	/* boot value */
+							 PGC_POSTMASTER,	/* context */
+							 0, /* flags */
+							 NULL,	/* check_hook */
+							 NULL,	/* assign_hook */
+							 NULL	/* show_hook */
+		);
+}
+
 static int
 XLOGChooseNumBuffers(void)
 {
@@ -166,13 +185,18 @@ TDEXLogEncryptBuffSize()
 void
 TDEXLogShmemInit(void)
 {
-	bool	foundBuf;
+	if (EncryptXLog)
+	{
+		bool	foundBuf;
 
-	TDEXLogEncryptBuf = (char *)
-		TYPEALIGN(PG_IO_ALIGN_SIZE,
-				  ShmemInitStruct("TDE XLog Encrypt Buffer",
-								  XLOG_TDE_ENC_BUFF_ALIGNED_SIZE,
-								  &foundBuf));
+		TDEXLogEncryptBuf = (char *)
+			TYPEALIGN(PG_IO_ALIGN_SIZE,
+					ShmemInitStruct("TDE XLog Encryption Buffer",
+									XLOG_TDE_ENC_BUFF_ALIGNED_SIZE,
+									&foundBuf));
+
+		elog(DEBUG1, "pg_tde: initialized encryption buffer %lu bytes", XLOG_TDE_ENC_BUFF_ALIGNED_SIZE);
+	}
 }
 
 void
@@ -187,11 +211,20 @@ TDEInitXLogSmgr(void)
  */
 static InternalKey XLogInternalKey = {.key = {0xD,}};
 
+ssize_t
+pg_tde_xlog_seg_write(int fd, const void *buf, size_t count, off_t offset)
+{
+	if (EncryptXLog)
+		return TDEXLogWriteEncryptedPages(fd, buf, count, offset);
+	else
+		return pg_pwrite(fd, buf, count, offset);
+}
+
 /* 
  * Encrypt XLog page(s) from the buf and write to the segment file.
  */
-ssize_t
-pg_tde_xlog_seg_write(int fd, const void *buf, size_t count, off_t offset)
+static ssize_t
+TDEXLogWriteEncryptedPages(int fd, const void *buf, size_t count, off_t offset)
 {
 	char	iv_prefix[16] = {0,};
 	size_t	data_size = 0;
@@ -204,7 +237,7 @@ pg_tde_xlog_seg_write(int fd, const void *buf, size_t count, off_t offset)
 
 
 #ifdef TDE_XLOG_DEBUG
-	elog(DEBUG1, "write to a WAL segment, pages amount: %d, size: %lu offset: %ld", count / (Size) XLOG_BLCKSZ, count, offset);
+	elog(DEBUG1, "write encrypted WAL, pages amount: %d, size: %lu offset: %ld", count / (Size) XLOG_BLCKSZ, count, offset);
 #endif
 
 	/*
