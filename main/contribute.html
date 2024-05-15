@@ -914,6 +914,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#build-pdf-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build PDF file
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1083,6 +1092,15 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-pdf-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build PDF file
+    </span>
+  </a>
   
 </li>
         
@@ -1282,6 +1300,21 @@ mkdocs<span class="w"> </span>build
 mkdocs<span class="w"> </span>serve
 </code></pre></div>
 <p>View the site at <a href="http://0.0.0.0:8000">http://0.0.0.0:8000</a></p>
+<h4 id="build-pdf-file">Build PDF file<a class="headerlink" href="#build-pdf-file" title="Permanent link">&para;</a></h4>
+<p>To build a PDF version of the documentation, do the following:</p>
+<ol>
+<li>
+<p>Disable displaying the last modification of the page:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">ENABLED_GIT_REVISION_DATE</span><span class="o">=</span><span class="nb">false</span>
+</code></pre></div>
+</li>
+<li>
+<p>Build the PDF file:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">ENABLE_PDF_EXPORT</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>mkdocs<span class="w"> </span>build<span class="w"> </span>-f<span class="w"> </span>mkdocs-pdf.yml
+</code></pre></div>
+<p>The PDF document is in the <code>site/pdf</code> folder.</p>
+</li>
+</ol>
 <div data-banner="data-banner">
 <h2 class="title" id="get-expert-help">Get expert help<a class="headerlink" href="#get-expert-help" title="Permanent link">&para;</a></h2>
 <p>If you need assistance, visit the community forum for comprehensive and free database knowledge, or contact our Percona Database Experts for professional support and services.</p>
@@ -1314,7 +1347,7 @@ mkdocs<span class="w"> </span>serve
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">February 2, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">May 14, 2024</span>
   </span>
 
     
