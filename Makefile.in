@@ -22,6 +22,7 @@ TAP_TESTS = 1
 
 OBJS = src/encryption/enc_tde.o \
 src/encryption/enc_aes.o \
+src/access/pg_tde_slot.o \
 src/access/pg_tde_io.o \
 src/access/pg_tdeam_visibility.o \
 src/access/pg_tde_tdemap.o \
