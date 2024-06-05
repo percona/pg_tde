@@ -35,8 +35,7 @@
  */
 
 const TupleTableSlotOps TTSOpsTDEBufferHeapTuple;
-static pg_attribute_always_inline void slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp,
-															  int natts);
+static pg_attribute_always_inline void slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp, int natts);
 static inline void tts_buffer_heap_store_tuple(TupleTableSlot *slot,
 											   HeapTuple tuple,
 											   Buffer buffer,
@@ -59,9 +58,9 @@ tts_buffer_heap_clear(TupleTableSlot *slot)
 {
 	TDEBufferHeapTupleTableSlot *bslot = (TDEBufferHeapTupleTableSlot *) slot;
 
-    if (bslot->decrypted_tuple)
+	if (bslot->decrypted_tuple)
 		heap_freetuple(bslot->decrypted_tuple);
-    bslot->decrypted_tuple = NULL;
+	bslot->decrypted_tuple = NULL;
 
 	/*
 	 * Free the memory for heap tuple if allowed. A tuple coming from buffer
@@ -111,11 +110,11 @@ tts_buffer_heap_getsysattr(TupleTableSlot *slot, int attnum, bool *isnull)
 	 */
 	if (!bslot->base.tuple)
 		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("cannot retrieve a system column in this context")));
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("cannot retrieve a system column in this context")));
 
 	return heap_getsysattr(bslot->base.tuple, attnum,
-						   slot->tts_tupleDescriptor, isnull);
+						slot->tts_tupleDescriptor, isnull);
 }
 
 static void
@@ -479,15 +478,15 @@ PGTdeExecStoreBufferHeapTuple(Relation rel,
 	if (unlikely(!TTS_IS_TDE_BUFFERTUPLE(slot)))
 		elog(ERROR, "trying to store an on-disk heap tuple into wrong type of slot");
 
-    if (rel->rd_rel->relkind != RELKIND_TOASTVALUE)
-    {
-        TDEBufferHeapTupleTableSlot *bslot = (TDEBufferHeapTupleTableSlot *) slot;
-        RelKeyData *key = GetRelationKey(rel->rd_locator);
+	if (rel->rd_rel->relkind != RELKIND_TOASTVALUE)
+	{
+		TDEBufferHeapTupleTableSlot *bslot = (TDEBufferHeapTupleTableSlot *) slot;
+		RelKeyData *key = GetRelationKey(rel->rd_locator);
 		bslot->decrypted_tuple = heap_copytuple(tuple);
-        PG_TDE_DECRYPT_TUPLE_EX(tuple, bslot->decrypted_tuple, key, "ExecStoreBuffer");
+		PG_TDE_DECRYPT_TUPLE_EX(tuple, bslot->decrypted_tuple, key, "ExecStoreBuffer");
 		/* TODO: revisit this */
 		tuple->t_data = bslot->decrypted_tuple->t_data;
-    }
+	}
 
 	tts_buffer_heap_store_tuple(slot, tuple, buffer, false);
 
@@ -518,16 +517,16 @@ PGTdeExecStorePinnedBufferHeapTuple(Relation rel,
 	if (unlikely(!TTS_IS_TDE_BUFFERTUPLE(slot)))
 		elog(ERROR, "trying to store an on-disk heap tuple into wrong type of slot");
 
-    if (rel->rd_rel->relkind != RELKIND_TOASTVALUE)
-    {
-        TDEBufferHeapTupleTableSlot *bslot = (TDEBufferHeapTupleTableSlot *) slot;
-        RelKeyData *key = GetRelationKey(rel->rd_locator);
+	if (rel->rd_rel->relkind != RELKIND_TOASTVALUE)
+	{
+		TDEBufferHeapTupleTableSlot *bslot = (TDEBufferHeapTupleTableSlot *) slot;
+		RelKeyData *key = GetRelationKey(rel->rd_locator);
 
 		bslot->decrypted_tuple = heap_copytuple(tuple);
 		PG_TDE_DECRYPT_TUPLE_EX(tuple, bslot->decrypted_tuple, key, "ExecStorePinnedBuffer");
 		/* TODO: revisit this */
 		tuple->t_data = bslot->decrypted_tuple->t_data;
-    }
+	}
 	tts_buffer_heap_store_tuple(slot, tuple, buffer, true);
 
 	slot->tts_tableOid = tuple->t_tableOid;
