@@ -37,12 +37,14 @@ extern PGDLLIMPORT const TupleTableSlotOps TTSOpsTDEBufferHeapTuple;
 #define TTS_IS_TDE_BUFFERTUPLE(slot) ((slot)->tts_ops == &TTSOpsTDEBufferHeapTuple)
 
 extern TupleTableSlot *PGTdeExecStorePinnedBufferHeapTuple(Relation rel,
-                             HeapTuple tuple,
-                             TupleTableSlot *slot,
-                             Buffer buffer);
+						HeapTuple tuple,
+						TupleTableSlot *slot,
+						Buffer buffer);
 extern TupleTableSlot *PGTdeExecStoreBufferHeapTuple(Relation rel,
                          HeapTuple tuple,
 						 TupleTableSlot *slot,
 						 Buffer buffer);
+
+extern void TdeSlotForgetDecryptedTuple(TupleTableSlot *slot);
 
 #endif /* PG_TDE_SLOT_H */

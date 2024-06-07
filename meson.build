@@ -90,6 +90,7 @@ tests += {
       'multi_insert',
       'keyprovider_dependency',
       'trigger_on_view',
+      'change_access_method',
       'insert_update_delete',
       'vault_v2_test',
     ],
