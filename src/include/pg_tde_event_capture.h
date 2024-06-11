@@ -29,3 +29,5 @@ typedef struct TdeCreateEvent
 }			TdeCreateEvent;
 
 extern TdeCreateEvent * GetCurrentTdeCreateEvent(void);
+
+#endif
