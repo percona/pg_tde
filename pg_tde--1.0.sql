@@ -142,10 +142,10 @@ RETURNS event_trigger
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
-CREATE EVENT TRIGGER trigger_create_index
+CREATE EVENT TRIGGER pg_tde_trigger_create_index
 ON ddl_command_start
 EXECUTE FUNCTION pg_tde_ddl_command_start_capture();
 
-CREATE EVENT TRIGGER trigger_create_index_2
+CREATE EVENT TRIGGER pg_tde_trigger_create_index_2
 ON ddl_command_end
 EXECUTE FUNCTION pg_tde_ddl_command_end_capture();

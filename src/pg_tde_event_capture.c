@@ -31,10 +31,10 @@ static void reset_current_tde_create_event(void);
 PG_FUNCTION_INFO_V1(pg_tde_ddl_command_start_capture);
 PG_FUNCTION_INFO_V1(pg_tde_ddl_command_end_capture);
 
-TdeCreateEvent*
+TdeCreateEvent *
 GetCurrentTdeCreateEvent(void)
 {
-    return &tdeCurrentCreateEvent;
+	return &tdeCurrentCreateEvent;
 }
 
 /*
@@ -53,63 +53,64 @@ Datum
 pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 {
 	EventTriggerData *trigdata;
-	Node *parsetree;
+	Node	   *parsetree;
 
 	/* Ensure this function is being called as an event trigger */
-	if (!CALLED_AS_EVENT_TRIGGER(fcinfo)) /* internal error */
+	if (!CALLED_AS_EVENT_TRIGGER(fcinfo))	/* internal error */
 		ereport(ERROR,
-            (errmsg("Function can only be fired by event trigger manager")));
+				(errmsg("Function can only be fired by event trigger manager")));
 
-	trigdata = (EventTriggerData *)fcinfo->context;
+	trigdata = (EventTriggerData *) fcinfo->context;
 	parsetree = trigdata->parsetree;
 
 	elog(DEBUG2, "EVENT TRIGGER (%s) %s", trigdata->event, nodeToString(parsetree));
-    reset_current_tde_create_event();
+	reset_current_tde_create_event();
 
 	if (IsA(parsetree, IndexStmt))
 	{
-		IndexStmt *stmt = (IndexStmt *)parsetree;
-        Oid relationId= RangeVarGetRelid(stmt->relation, NoLock, true);
+		IndexStmt  *stmt = (IndexStmt *) parsetree;
+		Oid			relationId = RangeVarGetRelid(stmt->relation, NoLock, true);
 
-        tdeCurrentCreateEvent.eventType = TDE_INDEX_CREATE_EVENT;
-        tdeCurrentCreateEvent.baseTableOid = relationId;
-        tdeCurrentCreateEvent.relation = stmt->relation;
+		tdeCurrentCreateEvent.eventType = TDE_INDEX_CREATE_EVENT;
+		tdeCurrentCreateEvent.baseTableOid = relationId;
+		tdeCurrentCreateEvent.relation = stmt->relation;
 
-        if (relationId != InvalidOid)
-        {
-            LOCKMODE	lockmode = AccessShareLock; /* TODO. Verify lock mode? */
-            Relation rel = table_open(relationId, lockmode);
-            if (rel->rd_rel->relam == get_tde_table_am_oid())
-            {
-                /* We are creating the index on encrypted table */
-                ereport(NOTICE,
-                    (errmsg("Creating index on **ENCRYPTED** relation:%s with Oid:%d",stmt->relation->relname,relationId)));
-                /* set the global state */
-                tdeCurrentCreateEvent.encryptMode = true;
-            }
-            else
-                ereport(DEBUG1,
-                    (errmsg("Creating index on relation:%s with Oid:%d",stmt->relation->relname,relationId)));
-            table_close(rel, lockmode);
-        }
-        else
-            ereport(DEBUG1,(errmsg("Failed to get relation Oid for relation:%s",stmt->relation->relname)));
+		if (relationId != InvalidOid)
+		{
+			LOCKMODE	lockmode = AccessShareLock; /* TODO. Verify lock mode? */
+			Relation	rel = table_open(relationId, lockmode);
+
+			if (rel->rd_rel->relam == get_tde_table_am_oid())
+			{
+				/* We are creating the index on encrypted table */
+				ereport(NOTICE,
+						(errmsg("Creating index on **ENCRYPTED** relation:%s with Oid:%d", stmt->relation->relname, relationId)));
+				/* set the global state */
+				tdeCurrentCreateEvent.encryptMode = true;
+			}
+			else
+				ereport(DEBUG1,
+						(errmsg("Creating index on relation:%s with Oid:%d", stmt->relation->relname, relationId)));
+			table_close(rel, lockmode);
+		}
+		else
+			ereport(DEBUG1, (errmsg("Failed to get relation Oid for relation:%s", stmt->relation->relname)));
 
 	}
 	else if (IsA(parsetree, CreateStmt))
 	{
-		CreateStmt *stmt = (CreateStmt *)parsetree;
+		CreateStmt *stmt = (CreateStmt *) parsetree;
 
-        tdeCurrentCreateEvent.eventType = TDE_TABLE_CREATE_EVENT;
-        tdeCurrentCreateEvent.relation = stmt->relation;
+		tdeCurrentCreateEvent.eventType = TDE_TABLE_CREATE_EVENT;
+		tdeCurrentCreateEvent.relation = stmt->relation;
 
 		elog(DEBUG1, "CREATING TABLE %s Using Access Method %s", stmt->relation->relname, stmt->accessMethod);
-		if (stmt->accessMethod && !strcmp(stmt->accessMethod,"pg_tde"))
+		if (stmt->accessMethod && !strcmp(stmt->accessMethod, "pg_tde"))
 		{
-            tdeCurrentCreateEvent.encryptMode = true;
+			tdeCurrentCreateEvent.encryptMode = true;
 		}
 	}
-    PG_RETURN_NULL();
+	PG_RETURN_NULL();
 }
 
 /*
@@ -120,27 +121,27 @@ Datum
 pg_tde_ddl_command_end_capture(PG_FUNCTION_ARGS)
 {
 	/* Ensure this function is being called as an event trigger */
-	if (!CALLED_AS_EVENT_TRIGGER(fcinfo)) /* internal error */
+	if (!CALLED_AS_EVENT_TRIGGER(fcinfo))	/* internal error */
 		ereport(ERROR,
-            (errmsg("Function can only be fired by event trigger manager")));
+				(errmsg("Function can only be fired by event trigger manager")));
 
-    elog(DEBUG1,"Type:%s EncryptMode:%s, Oid:%d, Relation:%s ",
-                (tdeCurrentCreateEvent.eventType == TDE_INDEX_CREATE_EVENT) ?"CREATE INDEX":
-                    (tdeCurrentCreateEvent.eventType == TDE_TABLE_CREATE_EVENT) ?"CREATE TABLE":"UNKNOWN",
-                tdeCurrentCreateEvent.encryptMode ?"true":"false",
-                tdeCurrentCreateEvent.baseTableOid,
-                tdeCurrentCreateEvent.relation?tdeCurrentCreateEvent.relation->relname:"UNKNOWN");
+	elog(DEBUG1, "Type:%s EncryptMode:%s, Oid:%d, Relation:%s ",
+		 (tdeCurrentCreateEvent.eventType == TDE_INDEX_CREATE_EVENT) ? "CREATE INDEX" :
+		 (tdeCurrentCreateEvent.eventType == TDE_TABLE_CREATE_EVENT) ? "CREATE TABLE" : "UNKNOWN",
+		 tdeCurrentCreateEvent.encryptMode ? "true" : "false",
+		 tdeCurrentCreateEvent.baseTableOid,
+		 tdeCurrentCreateEvent.relation ? tdeCurrentCreateEvent.relation->relname : "UNKNOWN");
 
-    /* All we need to do is to clear the event state */
-    reset_current_tde_create_event();
-    PG_RETURN_NULL();
+	/* All we need to do is to clear the event state */
+	reset_current_tde_create_event();
+	PG_RETURN_NULL();
 }
 
 static void
 reset_current_tde_create_event(void)
 {
-    tdeCurrentCreateEvent.encryptMode = false;
-    tdeCurrentCreateEvent.eventType = TDE_UNKNOWN_CREATE_EVENT;
-    tdeCurrentCreateEvent.baseTableOid = InvalidOid;
-    tdeCurrentCreateEvent.relation = NULL;
+	tdeCurrentCreateEvent.encryptMode = false;
+	tdeCurrentCreateEvent.eventType = TDE_UNKNOWN_CREATE_EVENT;
+	tdeCurrentCreateEvent.baseTableOid = InvalidOid;
+	tdeCurrentCreateEvent.relation = NULL;
 }
