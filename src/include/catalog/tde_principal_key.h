@@ -1,14 +1,14 @@
 /*-------------------------------------------------------------------------
  *
- * tde_master_key.h
- *	  TDE master key handling
+ * tde_principal_key.h
+ *	  TDE principal key handling
  *
- * src/include/catalog/tde_master_key.h
+ * src/include/catalog/tde_principal_key.h
  *
  *-------------------------------------------------------------------------
  */
-#ifndef PG_TDE_MASTER_KEY_H
-#define PG_TDE_MASTER_KEY_H
+#ifndef PG_TDE_PRINCIPAL_KEY_H
+#define PG_TDE_PRINCIPAL_KEY_H
 
 
 #include "postgres.h"
@@ -17,15 +17,15 @@
 #include "nodes/pg_list.h"
 #include "storage/lwlock.h"
 
-#define DEFAULT_MASTER_KEY_VERSION      1
-#define MASTER_KEY_NAME_LEN TDE_KEY_NAME_LEN
-#define MAX_MASTER_KEY_VERSION_NUM 100000
+#define DEFAULT_PRINCIPAL_KEY_VERSION      1
+#define PRINCIPAL_KEY_NAME_LEN TDE_KEY_NAME_LEN
+#define MAX_PRINCIPAL_KEY_VERSION_NUM 100000
 
 typedef struct TDEMasterKeyId
 {
 	uint32	version;
-	char	name[MASTER_KEY_NAME_LEN];
-	char	versioned_name[MASTER_KEY_NAME_LEN + 4];
+	char	name[PRINCIPAL_KEY_NAME_LEN];
+	char	versioned_name[PRINCIPAL_KEY_NAME_LEN + 4];
 } TDEMasterKeyId;
 
 typedef struct TDEMasterKeyInfo
@@ -62,18 +62,18 @@ typedef struct XLogMasterKeyCleanup
 } XLogMasterKeyCleanup;
 
 extern void InitializeMasterKeyInfo(void);
-extern void cleanup_master_key_info(Oid databaseId, Oid tablespaceId);
+extern void cleanup_principal_key_info(Oid databaseId, Oid tablespaceId);
 extern LWLock *tde_lwlock_mk_files(void);
 extern LWLock *tde_lwlock_mk_cache(void);
 
-extern bool save_master_key_info(TDEMasterKeyInfo *masterKeyInfo);
+extern bool save_principal_key_info(TDEMasterKeyInfo *masterKeyInfo);
 
 extern Oid GetMasterKeyProviderId(void);
 extern TDEMasterKey* GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring);
 extern bool SetMasterKey(const char *key_name, const char *provider_name, bool ensure_new_key);
 extern bool RotateMasterKey(const char *new_key_name, const char *new_provider_name, bool ensure_new_key);
 extern bool xl_tde_perform_rotate_key(XLogMasterKeyRotate *xlrec);
-extern TDEMasterKey *set_master_key_with_keyring(const char *key_name, 
+extern TDEMasterKey *set_principal_key_with_keyring(const char *key_name, 
 												GenericKeyring *keyring,
 												Oid dbOid, Oid spcOid,
 												bool ensure_new_key);
@@ -81,4 +81,4 @@ extern keyInfo *load_latest_versioned_key_name(TDEMasterKeyInfo *mastere_key_inf
 												GenericKeyring *keyring,
 												bool ensure_new_key);
  
-#endif /*PG_TDE_MASTER_KEY_H*/
+#endif /*PG_TDE_PRINCIPAL_KEY_H*/

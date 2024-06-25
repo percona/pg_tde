@@ -20,15 +20,15 @@
 #include "access/pg_tde_tdemap.h"
 #include "catalog/tde_global_catalog.h"
 #include "catalog/tde_keyring.h"
-#include "catalog/tde_master_key.h"
+#include "catalog/tde_principal_key.h"
 
 #include <openssl/rand.h>
 #include <openssl/err.h>
 #include <sys/time.h>
 
-#define MASTER_KEY_DEFAULT_NAME	"tde-global-catalog-key"
+#define PRINCIPAL_KEY_DEFAULT_NAME	"tde-global-catalog-key"
 
-/* TODO: not sure if we need an option of multiple master keys for the global catalog */
+/* TODO: not sure if we need an option of multiple principal keys for the global catalog */
 typedef enum
 {
 	TDE_GCAT_XLOG_KEY,
@@ -40,7 +40,7 @@ typedef enum
 typedef struct EncryptionStateData
 {
 	GenericKeyring *keyring;
-	TDEMasterKey master_keys[TDE_GCAT_KEYS_COUNT];
+	TDEMasterKey principal_keys[TDE_GCAT_KEYS_COUNT];
 }			EncryptionStateData;
 
 static EncryptionStateData * EncryptionState = NULL;
@@ -51,7 +51,7 @@ static char *KRingProviderFilePath = NULL;
 
 static void init_gl_catalog_keys(void);
 static void init_keyring(void);
-static TDEMasterKey * create_master_key(const char *key_name,
+static TDEMasterKey * create_principal_key(const char *key_name,
 										GenericKeyring * keyring, Oid dbOid, Oid spcOid,
 										bool ensure_new_key);
 
@@ -107,7 +107,7 @@ TDEGlCatShmemInit(void)
 	allocptr = ((char *) EncryptionState) + MAXALIGN(sizeof(EncryptionStateData));
 	EncryptionState->keyring = (GenericKeyring *) allocptr;
 	memset(EncryptionState->keyring, 0, sizeof(KeyringProviders));
-	memset(EncryptionState->master_keys, 0, sizeof(TDEMasterKey) * TDE_GCAT_KEYS_COUNT);
+	memset(EncryptionState->principal_keys, 0, sizeof(TDEMasterKey) * TDE_GCAT_KEYS_COUNT);
 }
 
 void
@@ -135,7 +135,7 @@ TDEGetGlCatKeyFromCache(void)
 {
 	TDEMasterKey *mkey;
 
-	mkey = &EncryptionState->master_keys[TDE_GCAT_XLOG_KEY];
+	mkey = &EncryptionState->principal_keys[TDE_GCAT_XLOG_KEY];
 	if (mkey->keyLength == 0)
 		return NULL;
 
@@ -145,7 +145,7 @@ TDEGetGlCatKeyFromCache(void)
 void
 TDEPutGlCatKeyInCache(TDEMasterKey * mkey)
 {
-	memcpy(EncryptionState->master_keys + TDE_GCAT_XLOG_KEY, mkey, sizeof(TDEMasterKey));
+	memcpy(EncryptionState->principal_keys + TDE_GCAT_XLOG_KEY, mkey, sizeof(TDEMasterKey));
 }
 
 RelKeyData *
@@ -185,7 +185,7 @@ init_gl_catalog_keys(void)
 	RelFileLocator *rlocator;
 	TDEMasterKey *mkey;
 
-	mkey = create_master_key(MASTER_KEY_DEFAULT_NAME,
+	mkey = create_principal_key(PRINCIPAL_KEY_DEFAULT_NAME,
 							 EncryptionState->keyring,
 							 GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, false);
 
@@ -215,7 +215,7 @@ init_gl_catalog_keys(void)
 }
 
 static TDEMasterKey *
-create_master_key(const char *key_name, GenericKeyring * keyring,
+create_principal_key(const char *key_name, GenericKeyring * keyring,
 				  Oid dbOid, Oid spcOid, bool ensure_new_key)
 {
 	TDEMasterKey *masterKey;
@@ -224,7 +224,7 @@ create_master_key(const char *key_name, GenericKeyring * keyring,
 	masterKey = palloc(sizeof(TDEMasterKey));
 	masterKey->keyInfo.databaseId = dbOid;
 	masterKey->keyInfo.tablespaceId = spcOid;
-	masterKey->keyInfo.keyId.version = DEFAULT_MASTER_KEY_VERSION;
+	masterKey->keyInfo.keyId.version = DEFAULT_PRINCIPAL_KEY_VERSION;
 	masterKey->keyInfo.keyringId = keyring->key_id;
 	strncpy(masterKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
 	gettimeofday(&masterKey->keyInfo.creationTime, NULL);
@@ -237,7 +237,7 @@ create_master_key(const char *key_name, GenericKeyring * keyring,
 	if (keyInfo == NULL)
 	{
 		ereport(ERROR,
-				(errmsg("failed to retrieve master key")));
+				(errmsg("failed to retrieve principal key")));
 	}
 
 	masterKey->keyLength = keyInfo->data.len;

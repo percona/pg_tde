@@ -13,7 +13,7 @@
 
 #include "postgres.h"
 
-#include "catalog/tde_master_key.h"
+#include "catalog/tde_principal_key.h"
 
 /* 
  * Needed for glogbal data (WAL etc) keys identification in caches and storage.
