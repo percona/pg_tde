@@ -77,7 +77,7 @@ extern TDEPrincipalKey *set_principal_key_with_keyring(const char *key_name,
 												GenericKeyring *keyring,
 												Oid dbOid, Oid spcOid,
 												bool ensure_new_key);
-extern keyInfo *load_latest_versioned_key_name(TDEPrincipalKeyInfo *mastere_key_info, 
+extern keyInfo *load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info, 
 												GenericKeyring *keyring,
 												bool ensure_new_key);
  

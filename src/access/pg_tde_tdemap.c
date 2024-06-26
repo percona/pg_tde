@@ -1020,7 +1020,7 @@ pg_tde_get_key_from_file(const RelFileLocator *rlocator, GenericKeyring *keyring
 
 	LWLockAcquire(lock_files, LW_SHARED);
 
-	/* Get/generate a master, create the key for relation and get the encrypted key with bytes to write */
+	/* Get/generate a principal key, create the key for relation and get the encrypted key with bytes to write */
 	principal_key = GetPrincipalKey(rlocator->dbOid, rlocator->spcOid, keyring);
 	if (principal_key == NULL)
 	{

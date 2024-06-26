@@ -507,24 +507,24 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 * till we get a key name that is not present in the keyring
 */
 keyInfo *
-load_latest_versioned_key_name(TDEPrincipalKeyInfo *mastere_key_info, GenericKeyring *keyring, bool ensure_new_key)
+load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info, GenericKeyring *keyring, bool ensure_new_key)
 {
     KeyringReturnCodes kr_ret;
     keyInfo *keyInfo = NULL;
-    int base_version = mastere_key_info->keyId.version;
-    Assert(mastere_key_info != NULL);
+    int base_version = principal_key_info->keyId.version;
+    Assert(principal_key_info != NULL);
     Assert(keyring != NULL);
-    Assert(strlen(mastere_key_info->keyId.name) > 0);
+    Assert(strlen(principal_key_info->keyId.name) > 0);
     /* Start with the passed in version number
      * We expect the name and the version number are already properly initialized
      * and contain the correct values
      */
-    snprintf(mastere_key_info->keyId.versioned_name, TDE_KEY_NAME_LEN,
-             "%s_%d", mastere_key_info->keyId.name, mastere_key_info->keyId.version);
+    snprintf(principal_key_info->keyId.versioned_name, TDE_KEY_NAME_LEN,
+             "%s_%d", principal_key_info->keyId.name, principal_key_info->keyId.version);
 
     while (true)
     {
-        keyInfo = KeyringGetKey(keyring, mastere_key_info->keyId.versioned_name, false, &kr_ret);
+        keyInfo = KeyringGetKey(keyring, principal_key_info->keyId.versioned_name, false, &kr_ret);
         /* vault-v2 returns 404 (KEYRING_CODE_RESOURCE_NOT_AVAILABLE) when key is not found */
         if (kr_ret != KEYRING_CODE_SUCCESS && kr_ret != KEYRING_CODE_RESOURCE_NOT_AVAILABLE)
         {
@@ -540,25 +540,25 @@ load_latest_versioned_key_name(TDEPrincipalKeyInfo *mastere_key_info, GenericKey
                  * If ensure_key is false and we are not at the base version,
                  * We should return the last existent version.
                  */
-                if (base_version < mastere_key_info->keyId.version)
+                if (base_version < principal_key_info->keyId.version)
                 {
                     /* Not optimal but keep the things simple */
-                    mastere_key_info->keyId.version -= 1;
-                    snprintf(mastere_key_info->keyId.versioned_name, TDE_KEY_NAME_LEN,
-                             "%s_%d", mastere_key_info->keyId.name, mastere_key_info->keyId.version);
-                    keyInfo = KeyringGetKey(keyring, mastere_key_info->keyId.versioned_name, false, &kr_ret);
+                    principal_key_info->keyId.version -= 1;
+                    snprintf(principal_key_info->keyId.versioned_name, TDE_KEY_NAME_LEN,
+                             "%s_%d", principal_key_info->keyId.name, principal_key_info->keyId.version);
+                    keyInfo = KeyringGetKey(keyring, principal_key_info->keyId.versioned_name, false, &kr_ret);
                 }
             }
             return keyInfo;
         }
 
-        mastere_key_info->keyId.version++;
-        snprintf(mastere_key_info->keyId.versioned_name, TDE_KEY_NAME_LEN, "%s_%d", mastere_key_info->keyId.name, mastere_key_info->keyId.version);
+        principal_key_info->keyId.version++;
+        snprintf(principal_key_info->keyId.versioned_name, TDE_KEY_NAME_LEN, "%s_%d", principal_key_info->keyId.name, principal_key_info->keyId.version);
 
         /*
          * Not really required. Just to break the infinite loop in case the key provider is not behaving sane.
          */
-        if (mastere_key_info->keyId.version > MAX_PRINCIPAL_KEY_VERSION_NUM)
+        if (principal_key_info->keyId.version > MAX_PRINCIPAL_KEY_VERSION_NUM)
         {
             ereport(ERROR,
                     (errmsg("failed to retrieve principal key. %d versions already exist", MAX_PRINCIPAL_KEY_VERSION_NUM)));
