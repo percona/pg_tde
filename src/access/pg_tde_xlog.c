@@ -57,19 +57,19 @@ pg_tde_rmgr_redo(XLogReaderState *record)
 	}
 	else if (info == XLOG_TDE_ADD_PRINCIPAL_KEY)
 	{
-		TDEMasterKeyInfo *mkey = (TDEMasterKeyInfo *) XLogRecGetData(record);
+		TDEPrincipalKeyInfo *mkey = (TDEPrincipalKeyInfo *) XLogRecGetData(record);
 
 		save_principal_key_info(mkey);
 	}
 	else if (info == XLOG_TDE_CLEAN_PRINCIPAL_KEY)
 	{
-		XLogMasterKeyCleanup *xlrec = (XLogMasterKeyCleanup *) XLogRecGetData(record);
+		XLogPrincipalKeyCleanup *xlrec = (XLogPrincipalKeyCleanup *) XLogRecGetData(record);
 
 		cleanup_principal_key_info(xlrec->databaseId, xlrec->tablespaceId);
 	}
 	else if (info == XLOG_TDE_ROTATE_KEY)
 	{
-		XLogMasterKeyRotate *xlrec = (XLogMasterKeyRotate *) XLogRecGetData(record);
+		XLogPrincipalKeyRotate *xlrec = (XLogPrincipalKeyRotate *) XLogRecGetData(record);
 
 		xl_tde_perform_rotate_key(xlrec);
 	}
@@ -92,19 +92,19 @@ pg_tde_rmgr_desc(StringInfo buf, XLogReaderState *record)
 	}
 	if (info == XLOG_TDE_ADD_PRINCIPAL_KEY)
 	{
-		TDEMasterKeyInfo *xlrec = (TDEMasterKeyInfo *) XLogRecGetData(record);
+		TDEPrincipalKeyInfo *xlrec = (TDEPrincipalKeyInfo *) XLogRecGetData(record);
 
 		appendStringInfo(buf, "add tde principal key for db %u/%u", xlrec->databaseId, xlrec->tablespaceId);
 	}
 	if (info == XLOG_TDE_CLEAN_PRINCIPAL_KEY)
 	{
-		XLogMasterKeyCleanup *xlrec = (XLogMasterKeyCleanup *) XLogRecGetData(record);
+		XLogPrincipalKeyCleanup *xlrec = (XLogPrincipalKeyCleanup *) XLogRecGetData(record);
 
 		appendStringInfo(buf, "cleanup tde principal key info for db %u/%u", xlrec->databaseId, xlrec->tablespaceId);
 	}
 	if (info == XLOG_TDE_ROTATE_KEY)
 	{
-		XLogMasterKeyRotate *xlrec = (XLogMasterKeyRotate *) XLogRecGetData(record);
+		XLogPrincipalKeyRotate *xlrec = (XLogPrincipalKeyRotate *) XLogRecGetData(record);
 
 		appendStringInfo(buf, "rotate principal key for %u", xlrec->databaseId);
 	}

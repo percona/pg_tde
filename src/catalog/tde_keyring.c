@@ -310,7 +310,7 @@ keyring_delete_dependency_check_trigger(PG_FUNCTION_ARGS)
 				(errcode(ERRCODE_E_R_I_E_TRIGGER_PROTOCOL_VIOLATED),
 				 errmsg("keyring dependency check trigger: trigger should be fired before delete")));
 	}
-	principal_key_keyring_id = GetMasterKeyProviderId();
+	principal_key_keyring_id = GetPrincipalKeyProviderId();
 	if (principal_key_keyring_id == InvalidOid)
 	{
 		/* No principal key set. We are good to delete anything */

@@ -232,7 +232,7 @@ PGTdePageAddItemExtended(RelFileLocator rel,
  * short lifespan until it is written to disk.
  */
 void
-AesEncryptKey(const TDEMasterKey *principal_key, const RelFileLocator *rlocator, RelKeyData *rel_key_data, RelKeyData **p_enc_rel_key_data, size_t *enc_key_bytes)
+AesEncryptKey(const TDEPrincipalKey *principal_key, const RelFileLocator *rlocator, RelKeyData *rel_key_data, RelKeyData **p_enc_rel_key_data, size_t *enc_key_bytes)
 {
 	unsigned char iv[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
@@ -255,7 +255,7 @@ AesEncryptKey(const TDEMasterKey *principal_key, const RelFileLocator *rlocator,
  * to note that memory is allocated in the TopMemoryContext so we expect this to be added
  * to our key cache.
  */
-void AesDecryptKey(const TDEMasterKey *principal_key, const RelFileLocator *rlocator, RelKeyData **p_rel_key_data, RelKeyData *enc_rel_key_data, size_t *key_bytes)
+void AesDecryptKey(const TDEPrincipalKey *principal_key, const RelFileLocator *rlocator, RelKeyData **p_rel_key_data, RelKeyData *enc_rel_key_data, size_t *key_bytes)
 {
 	unsigned char iv[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 

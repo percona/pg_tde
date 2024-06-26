@@ -33,32 +33,32 @@
 #include "catalog/tde_global_catalog.h"
 #endif
 
-typedef struct TdeMasterKeySharedState
+typedef struct TdePrincipalKeySharedState
 {
     LWLock *Locks;
     int hashTrancheId;
     dshash_table_handle hashHandle;
     void *rawDsaArea; /* DSA area pointer */
 
-} TdeMasterKeySharedState;
+} TdePrincipalKeySharedState;
 
-typedef struct TdeMasterKeylocalState
+typedef struct TdePrincipalKeylocalState
 {
-    TdeMasterKeySharedState *sharedMasterKeyState;
+    TdePrincipalKeySharedState *sharedPrincipalKeyState;
     dsa_area *dsa; /* local dsa area for backend attached to the
                     * dsa area created by postmaster at startup.
                     */
     dshash_table *sharedHash;
-} TdeMasterKeylocalState;
+} TdePrincipalKeylocalState;
 
 /* parameter for the principal key info shared hash */
 static dshash_parameters principal_key_dsh_params = {
     sizeof(Oid),
-    sizeof(TDEMasterKey),
+    sizeof(TDEPrincipalKey),
     dshash_memcmp, /* TODO use int compare instead */
     dshash_memhash};
 
-TdeMasterKeylocalState masterKeyLocalState;
+TdePrincipalKeylocalState principalKeyLocalState;
 
 static void principal_key_info_attach_shmem(void);
 static Size initialize_shared_state(void *start_address);
@@ -70,8 +70,8 @@ static void shared_memory_shutdown(int code, Datum arg);
 static void principal_key_startup_cleanup(int tde_tbl_count, void *arg);
 static void clear_principal_key_cache(Oid databaseId) ;
 static inline dshash_table *get_principal_key_Hash(void);
-static TDEMasterKey *get_principal_key_from_cache(Oid dbOid);
-static void push_principal_key_to_cache(TDEMasterKey *masterKey);
+static TDEPrincipalKey *get_principal_key_from_cache(Oid dbOid);
+static void push_principal_key_to_cache(TDEPrincipalKey *principalKey);
 
 static const TDEShmemSetupRoutine principal_key_info_shmem_routine = {
     .init_shared_state = initialize_shared_state,
@@ -81,7 +81,7 @@ static const TDEShmemSetupRoutine principal_key_info_shmem_routine = {
     .shmem_kill = shared_memory_shutdown
     };
 
-void InitializeMasterKeyInfo(void)
+void InitializePrincipalKeyInfo(void)
 {
     ereport(LOG, (errmsg("Initializing TDE principal key info")));
     RegisterShmemRequest(&principal_key_info_shmem_routine);
@@ -91,17 +91,17 @@ void InitializeMasterKeyInfo(void)
 LWLock *
 tde_lwlock_mk_files(void)
 {
-    Assert(masterKeyLocalState.sharedMasterKeyState);
+    Assert(principalKeyLocalState.sharedPrincipalKeyState);
 
-    return &masterKeyLocalState.sharedMasterKeyState->Locks[TDE_LWLOCK_MK_FILES];
+    return &principalKeyLocalState.sharedPrincipalKeyState->Locks[TDE_LWLOCK_MK_FILES];
 }
 
 LWLock *
 tde_lwlock_mk_cache(void)
 {
-    Assert(masterKeyLocalState.sharedMasterKeyState);
+    Assert(principalKeyLocalState.sharedPrincipalKeyState);
 
-    return &masterKeyLocalState.sharedMasterKeyState->Locks[TDE_LWLOCK_MK_CACHE];
+    return &principalKeyLocalState.sharedPrincipalKeyState->Locks[TDE_LWLOCK_MK_CACHE];
 }
 
 static int
@@ -120,7 +120,7 @@ static Size
 required_shared_mem_size(void)
 {
     Size sz = cache_area_size();
-    sz = add_size(sz, sizeof(TdeMasterKeySharedState));
+    sz = add_size(sz, sizeof(TdePrincipalKeySharedState));
     return MAXALIGN(sz);
 }
 
@@ -132,20 +132,20 @@ required_shared_mem_size(void)
 static Size
 initialize_shared_state(void *start_address)
 {
-    TdeMasterKeySharedState *sharedState = (TdeMasterKeySharedState *)start_address;
+    TdePrincipalKeySharedState *sharedState = (TdePrincipalKeySharedState *)start_address;
     ereport(LOG, (errmsg("initializing shared state for principal key")));
-    masterKeyLocalState.dsa = NULL;
-    masterKeyLocalState.sharedHash = NULL;
+    principalKeyLocalState.dsa = NULL;
+    principalKeyLocalState.sharedHash = NULL;
 
     sharedState->Locks = GetNewLWLock();
-    masterKeyLocalState.sharedMasterKeyState = sharedState;
-    return sizeof(TdeMasterKeySharedState);
+    principalKeyLocalState.sharedPrincipalKeyState = sharedState;
+    return sizeof(TdePrincipalKeySharedState);
 }
 
 void initialize_objects_in_dsa_area(dsa_area *dsa, void *raw_dsa_area)
 {
     dshash_table *dsh;
-    TdeMasterKeySharedState *sharedState = masterKeyLocalState.sharedMasterKeyState;
+    TdePrincipalKeySharedState *sharedState = principalKeyLocalState.sharedPrincipalKeyState;
 
     ereport(LOG, (errmsg("initializing dsa area objects for principal key")));
 
@@ -167,7 +167,7 @@ principal_key_info_attach_shmem(void)
 {
     MemoryContext oldcontext;
 
-    if (masterKeyLocalState.dsa)
+    if (principalKeyLocalState.dsa)
         return;
 
     /*
@@ -176,29 +176,29 @@ principal_key_info_attach_shmem(void)
      */
     oldcontext = MemoryContextSwitchTo(TopMemoryContext);
 
-    masterKeyLocalState.dsa = dsa_attach_in_place(masterKeyLocalState.sharedMasterKeyState->rawDsaArea,
+    principalKeyLocalState.dsa = dsa_attach_in_place(principalKeyLocalState.sharedPrincipalKeyState->rawDsaArea,
                                                   NULL);
 
     /*
      * pin the attached area to keep the area attached until end of session or
      * explicit detach.
      */
-    dsa_pin_mapping(masterKeyLocalState.dsa);
+    dsa_pin_mapping(principalKeyLocalState.dsa);
 
-    principal_key_dsh_params.tranche_id = masterKeyLocalState.sharedMasterKeyState->hashTrancheId;
-    masterKeyLocalState.sharedHash = dshash_attach(masterKeyLocalState.dsa, &principal_key_dsh_params,
-                                                   masterKeyLocalState.sharedMasterKeyState->hashHandle, 0);
+    principal_key_dsh_params.tranche_id = principalKeyLocalState.sharedPrincipalKeyState->hashTrancheId;
+    principalKeyLocalState.sharedHash = dshash_attach(principalKeyLocalState.dsa, &principal_key_dsh_params,
+                                                   principalKeyLocalState.sharedPrincipalKeyState->hashHandle, 0);
     MemoryContextSwitchTo(oldcontext);
 }
 
 static void
 shared_memory_shutdown(int code, Datum arg)
 {
-    masterKeyLocalState.sharedMasterKeyState = NULL;
+    principalKeyLocalState.sharedPrincipalKeyState = NULL;
 }
 
 bool
-save_principal_key_info(TDEMasterKeyInfo *principal_key_info)
+save_principal_key_info(TDEPrincipalKeyInfo *principal_key_info)
 {
     Assert(principal_key_info != NULL);
 
@@ -212,18 +212,18 @@ save_principal_key_info(TDEMasterKeyInfo *principal_key_info)
  * When the principal key is not set for the database. The function returns
  * throws an error.
  */
-TDEMasterKey *
-GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
+TDEPrincipalKey *
+GetPrincipalKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
 {
-    TDEMasterKey *masterKey = NULL;
-    TDEMasterKeyInfo *masterKeyInfo = NULL;
+    TDEPrincipalKey *principalKey = NULL;
+    TDEPrincipalKeyInfo *principalKeyInfo = NULL;
     const keyInfo *keyInfo = NULL;
     KeyringReturnCodes keyring_ret;
     LWLock *lock_files = tde_lwlock_mk_files();
     LWLock *lock_cache = tde_lwlock_mk_cache();
 
 	// TODO: This recursion counter is a dirty hack until the metadata is in the catalog
-	// As otherwise we would call GetMasterKey recursively and deadlock
+	// As otherwise we would call GetPrincipalKey recursively and deadlock
 	static int recursion = 0;
 
 	if(recursion > 0)
@@ -237,16 +237,16 @@ GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
 #ifdef PERCONA_FORK
     /* Global catalog has its own cache */
     if (spcOid == GLOBALTABLESPACE_OID)
-        masterKey = TDEGetGlCatKeyFromCache();
+        principalKey = TDEGetGlCatKeyFromCache();
     else
 #endif
-        masterKey = get_principal_key_from_cache(dbOid);
+        principalKey = get_principal_key_from_cache(dbOid);
     LWLockRelease(lock_cache);
 
-    if (masterKey)
+    if (principalKey)
 	{
 		recursion--;
-        return masterKey;
+        return principalKey;
 	}
 
     /*
@@ -259,22 +259,22 @@ GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
 #ifdef PERCONA_FORK
     /* Global catalog has its own cache */
     if (spcOid == GLOBALTABLESPACE_OID)
-        masterKey = TDEGetGlCatKeyFromCache();
+        principalKey = TDEGetGlCatKeyFromCache();
     else
 #endif
-        masterKey = get_principal_key_from_cache(dbOid);
+        principalKey = get_principal_key_from_cache(dbOid);
 
-    if (masterKey)
+    if (principalKey)
     {
         LWLockRelease(lock_cache);
         LWLockRelease(lock_files);
 		recursion--;
-        return masterKey;
+        return principalKey;
     }
 
     /* Principal key not present in cache. Load from the keyring */
-    masterKeyInfo = pg_tde_get_principal_key(dbOid, spcOid);
-    if (masterKeyInfo == NULL)
+    principalKeyInfo = pg_tde_get_principal_key(dbOid, spcOid);
+    if (principalKeyInfo == NULL)
     {
         LWLockRelease(lock_cache);
         LWLockRelease(lock_files);
@@ -285,7 +285,7 @@ GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
 
     if (keyring == NULL)
     {
-        keyring = GetKeyProviderByID(masterKeyInfo->keyringId);
+        keyring = GetKeyProviderByID(principalKeyInfo->keyringId);
         if (keyring == NULL)
         {
             LWLockRelease(lock_cache);
@@ -296,7 +296,7 @@ GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
         }
     }
 
-    keyInfo = KeyringGetKey(keyring, masterKeyInfo->keyId.versioned_name, false, &keyring_ret);
+    keyInfo = KeyringGetKey(keyring, principalKeyInfo->keyId.versioned_name, false, &keyring_ret);
     if (keyInfo == NULL)
     {
         LWLockRelease(lock_cache);
@@ -306,33 +306,33 @@ GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
         return NULL;
     }
 
-    masterKey = palloc(sizeof(TDEMasterKey));
+    principalKey = palloc(sizeof(TDEPrincipalKey));
 
-    memcpy(&masterKey->keyInfo, masterKeyInfo, sizeof(masterKey->keyInfo));
-    memcpy(masterKey->keyData, keyInfo->data.data, keyInfo->data.len);
-    masterKey->keyLength = keyInfo->data.len;
+    memcpy(&principalKey->keyInfo, principalKeyInfo, sizeof(principalKey->keyInfo));
+    memcpy(principalKey->keyData, keyInfo->data.data, keyInfo->data.len);
+    principalKey->keyLength = keyInfo->data.len;
 
-    Assert(dbOid == masterKey->keyInfo.databaseId);
+    Assert(dbOid == principalKey->keyInfo.databaseId);
 #ifdef PERCONA_FORK
     if (spcOid == GLOBALTABLESPACE_OID)
-        TDEPutGlCatKeyInCache(masterKey);
+        TDEPutGlCatKeyInCache(principalKey);
     else
 #endif
-        push_principal_key_to_cache(masterKey);
+        push_principal_key_to_cache(principalKey);
 
     /* Release the exclusive locks here */
     LWLockRelease(lock_cache);
     LWLockRelease(lock_files);
 
-    if (masterKeyInfo)
-        pfree(masterKeyInfo);
+    if (principalKeyInfo)
+        pfree(principalKeyInfo);
 
     recursion--;
-    return masterKey;
+    return principalKey;
 }
 
 /*
- * SetMasterkey:
+ * SetPrincipalkey:
  * We need to ensure that only one principal key is set for a database.
  * To do that we take a little help from cache. Before setting the
  * principal key we take an exclusive lock on the cache entry for the
@@ -341,11 +341,11 @@ GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
  * to make sure if some other caller has not added a principal key for
  * same database while we were waiting for the lock.
  */
-TDEMasterKey *
+TDEPrincipalKey *
 set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
                             Oid dbOid, Oid spcOid, bool ensure_new_key)
 {
-    TDEMasterKey *masterKey = NULL;
+    TDEPrincipalKey *principalKey = NULL;
     LWLock *lock_files = tde_lwlock_mk_files();
     LWLock *lock_cache = tde_lwlock_mk_cache();
     bool is_dup_key = false;
@@ -356,8 +356,8 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
     LWLockAcquire(lock_files, LW_EXCLUSIVE);
     LWLockAcquire(lock_cache, LW_EXCLUSIVE);
 
-    masterKey = get_principal_key_from_cache(dbOid);
-    is_dup_key = (masterKey != NULL);
+    principalKey = get_principal_key_from_cache(dbOid);
+    is_dup_key = (principalKey != NULL);
 
     /*  TODO: Add the key in the cache? */
     if (is_dup_key == false)
@@ -367,18 +367,18 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
     {
         const keyInfo *keyInfo = NULL;
 
-        masterKey = palloc(sizeof(TDEMasterKey));
-        masterKey->keyInfo.databaseId = dbOid;
-        masterKey->keyInfo.tablespaceId = spcOid;
-        masterKey->keyInfo.keyId.version = DEFAULT_PRINCIPAL_KEY_VERSION;
-        masterKey->keyInfo.keyringId = keyring->key_id;
-        strncpy(masterKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
-        gettimeofday(&masterKey->keyInfo.creationTime, NULL);
+        principalKey = palloc(sizeof(TDEPrincipalKey));
+        principalKey->keyInfo.databaseId = dbOid;
+        principalKey->keyInfo.tablespaceId = spcOid;
+        principalKey->keyInfo.keyId.version = DEFAULT_PRINCIPAL_KEY_VERSION;
+        principalKey->keyInfo.keyringId = keyring->key_id;
+        strncpy(principalKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
+        gettimeofday(&principalKey->keyInfo.creationTime, NULL);
 
-        keyInfo = load_latest_versioned_key_name(&masterKey->keyInfo, keyring, ensure_new_key);
+        keyInfo = load_latest_versioned_key_name(&principalKey->keyInfo, keyring, ensure_new_key);
 
         if (keyInfo == NULL)
-            keyInfo = KeyringGenerateNewKeyAndStore(keyring, masterKey->keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, false);
+            keyInfo = KeyringGenerateNewKeyAndStore(keyring, principalKey->keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, false);
 
         if (keyInfo == NULL)
         {
@@ -389,17 +389,17 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
                     (errmsg("failed to retrieve principal key")));
         }
 
-        masterKey->keyLength = keyInfo->data.len;
-        memcpy(masterKey->keyData, keyInfo->data.data, keyInfo->data.len);
+        principalKey->keyLength = keyInfo->data.len;
+        memcpy(principalKey->keyData, keyInfo->data.data, keyInfo->data.len);
 
-        save_principal_key_info(&masterKey->keyInfo);
+        save_principal_key_info(&principalKey->keyInfo);
 
         /* XLog the new key*/
         XLogBeginInsert();
-	    XLogRegisterData((char *) &masterKey->keyInfo, sizeof(TDEMasterKeyInfo));
+	    XLogRegisterData((char *) &principalKey->keyInfo, sizeof(TDEPrincipalKeyInfo));
 	    XLogInsert(RM_TDERMGR_ID, XLOG_TDE_ADD_PRINCIPAL_KEY);
 
-        push_principal_key_to_cache(masterKey);
+        push_principal_key_to_cache(principalKey);
     }
 
     LWLockRelease(lock_cache);
@@ -418,13 +418,13 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
                  errhint("Use rotate_key interface to change the principal key")));
     }
 
-    return masterKey;
+    return principalKey;
 }
 
 bool
-SetMasterKey(const char *key_name, const char *provider_name, bool ensure_new_key)
+SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new_key)
 {
-    TDEMasterKey *principal_key = set_principal_key_with_keyring(key_name, 
+    TDEPrincipalKey *principal_key = set_principal_key_with_keyring(key_name, 
                                         GetKeyProviderByName(provider_name), 
                                         MyDatabaseId, MyDatabaseTableSpace, 
                                         ensure_new_key);
@@ -433,10 +433,10 @@ SetMasterKey(const char *key_name, const char *provider_name, bool ensure_new_ke
 }
 
 bool
-RotateMasterKey(const char *new_key_name, const char *new_provider_name, bool ensure_new_key)
+RotatePrincipalKey(const char *new_key_name, const char *new_provider_name, bool ensure_new_key)
 {
-    TDEMasterKey *principal_key = GetMasterKey(MyDatabaseId, MyDatabaseTableSpace, NULL);
-    TDEMasterKey new_principal_key;
+    TDEPrincipalKey *principal_key = GetPrincipalKey(MyDatabaseId, MyDatabaseTableSpace, NULL);
+    TDEPrincipalKey new_principal_key;
     const keyInfo *keyInfo = NULL;
     GenericKeyring *keyring;
     bool    is_rotated;
@@ -445,7 +445,7 @@ RotateMasterKey(const char *new_key_name, const char *new_provider_name, bool en
      * Let's set everything the same as the older principal key and
      * update only the required attributes.
      * */
-    memcpy(&new_principal_key, principal_key, sizeof(TDEMasterKey));
+    memcpy(&new_principal_key, principal_key, sizeof(TDEPrincipalKey));
 
     if (new_key_name == NULL)
     {
@@ -491,7 +491,7 @@ RotateMasterKey(const char *new_key_name, const char *new_provider_name, bool en
  * Rotate keys on a standby.
  */
 bool
-xl_tde_perform_rotate_key(XLogMasterKeyRotate *xlrec)
+xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 {
     bool ret;
 
@@ -507,7 +507,7 @@ xl_tde_perform_rotate_key(XLogMasterKeyRotate *xlrec)
 * till we get a key name that is not present in the keyring
 */
 keyInfo *
-load_latest_versioned_key_name(TDEMasterKeyInfo *mastere_key_info, GenericKeyring *keyring, bool ensure_new_key)
+load_latest_versioned_key_name(TDEPrincipalKeyInfo *mastere_key_info, GenericKeyring *keyring, bool ensure_new_key)
 {
     KeyringReturnCodes kr_ret;
     keyInfo *keyInfo = NULL;
@@ -571,10 +571,10 @@ load_latest_versioned_key_name(TDEMasterKeyInfo *mastere_key_info, GenericKeyrin
  * Return InvalidOid if the principal key is not set for the database
  */
 Oid
-GetMasterKeyProviderId(void)
+GetPrincipalKeyProviderId(void)
 {
-    TDEMasterKey *masterKey = NULL;
-    TDEMasterKeyInfo *masterKeyInfo = NULL;
+    TDEPrincipalKey *principalKey = NULL;
+    TDEPrincipalKeyInfo *principalKeyInfo = NULL;
     Oid keyringId = InvalidOid;
     Oid dbOid = MyDatabaseId;
     LWLock *lock_files = tde_lwlock_mk_files();
@@ -583,18 +583,18 @@ GetMasterKeyProviderId(void)
     LWLockAcquire(lock_files, LW_SHARED);
     LWLockAcquire(lock_cache, LW_SHARED);
 
-    masterKey = get_principal_key_from_cache(dbOid);
-    if (masterKey)
+    principalKey = get_principal_key_from_cache(dbOid);
+    if (principalKey)
     {
-        keyringId = masterKey->keyInfo.keyringId;
+        keyringId = principalKey->keyInfo.keyringId;
     }
     {
         /* Principal key not present in cache. Try Loading it from the info file */
-        masterKeyInfo = pg_tde_get_principal_key(dbOid, MyDatabaseTableSpace);
-        if (masterKeyInfo)
+        principalKeyInfo = pg_tde_get_principal_key(dbOid, MyDatabaseTableSpace);
+        if (principalKeyInfo)
         {
-            keyringId = masterKeyInfo->keyringId;
-            pfree(masterKeyInfo);
+            keyringId = principalKeyInfo->keyringId;
+            pfree(principalKeyInfo);
         }
     }
 
@@ -613,18 +613,18 @@ static inline dshash_table *
 get_principal_key_Hash(void)
 {
     principal_key_info_attach_shmem();
-    return masterKeyLocalState.sharedHash;
+    return principalKeyLocalState.sharedHash;
 }
 
 /*
  * Gets the principal key for current database from cache
  */
-static TDEMasterKey *
+static TDEPrincipalKey *
 get_principal_key_from_cache(Oid dbOid)
 {
-    TDEMasterKey *cacheEntry = NULL;
+    TDEPrincipalKey *cacheEntry = NULL;
 
-    cacheEntry = (TDEMasterKey *)dshash_find(get_principal_key_Hash(),
+    cacheEntry = (TDEPrincipalKey *)dshash_find(get_principal_key_Hash(),
                                              &dbOid, false);
     if (cacheEntry)
         dshash_release_lock(get_principal_key_Hash(), cacheEntry);
@@ -643,15 +643,15 @@ get_principal_key_from_cache(Oid dbOid)
  * remove the cache entry when the database is dropped.
  */
 static void
-push_principal_key_to_cache(TDEMasterKey *masterKey)
+push_principal_key_to_cache(TDEPrincipalKey *principalKey)
 {
-    TDEMasterKey *cacheEntry = NULL;
-    Oid databaseId = masterKey->keyInfo.databaseId;
+    TDEPrincipalKey *cacheEntry = NULL;
+    Oid databaseId = principalKey->keyInfo.databaseId;
     bool found = false;
     cacheEntry = dshash_find_or_insert(get_principal_key_Hash(),
                                        &databaseId, &found);
     if (!found)
-        memcpy(cacheEntry, masterKey, sizeof(TDEMasterKey));
+        memcpy(cacheEntry, principalKey, sizeof(TDEPrincipalKey));
     dshash_release_lock(get_principal_key_Hash(), cacheEntry);
 }
 
@@ -668,7 +668,7 @@ push_principal_key_to_cache(TDEMasterKey *masterKey)
 static void
 principal_key_startup_cleanup(int tde_tbl_count, void* arg)
 {
-    XLogMasterKeyCleanup xlrec;
+    XLogPrincipalKeyCleanup xlrec;
 
     if (tde_tbl_count > 0)
     {
@@ -683,7 +683,7 @@ principal_key_startup_cleanup(int tde_tbl_count, void* arg)
     xlrec.databaseId = MyDatabaseId;
     xlrec.tablespaceId = MyDatabaseTableSpace;
     XLogBeginInsert();
-    XLogRegisterData((char *) &xlrec, sizeof(TDEMasterKeyInfo));
+    XLogRegisterData((char *) &xlrec, sizeof(TDEPrincipalKeyInfo));
     XLogInsert(RM_TDERMGR_ID, XLOG_TDE_CLEAN_PRINCIPAL_KEY);
 }
 
@@ -703,10 +703,10 @@ cleanup_principal_key_info(Oid databaseId, Oid tablespaceId)
 static void
 clear_principal_key_cache(Oid databaseId)
 {
-    TDEMasterKey *cache_entry;
+    TDEPrincipalKey *cache_entry;
 
     /* Start with deleting the cache entry for the database */
-    cache_entry = (TDEMasterKey *)dshash_find(get_principal_key_Hash(),
+    cache_entry = (TDEPrincipalKey *)dshash_find(get_principal_key_Hash(),
                                               &databaseId, true);
     if (cache_entry)
     {
@@ -728,7 +728,7 @@ Datum pg_tde_set_principal_key(PG_FUNCTION_ARGS)
 	bool ret;
 
     ereport(LOG, (errmsg("Setting principal key [%s : %s] for the database", principal_key_name, provider_name)));
-    ret = SetMasterKey(principal_key_name, provider_name, ensure_new_key);
+    ret = SetPrincipalKey(principal_key_name, provider_name, ensure_new_key);
     PG_RETURN_BOOL(ret);
 }
 
@@ -752,7 +752,7 @@ pg_tde_rotate_key(PG_FUNCTION_ARGS)
 
 
     ereport(LOG, (errmsg("Rotating principal key to [%s : %s] for the database", new_principal_key_name, new_provider_name)));
-    ret = RotateMasterKey(new_principal_key_name, new_provider_name, ensure_new_key);
+    ret = RotatePrincipalKey(new_principal_key_name, new_provider_name, ensure_new_key);
     PG_RETURN_BOOL(ret);
 }
 
@@ -764,7 +764,7 @@ Datum pg_tde_principal_key_info(PG_FUNCTION_ARGS)
     bool isnull[6];
     HeapTuple tuple;
     Datum result;
-    TDEMasterKey *principal_key;
+    TDEPrincipalKey *principal_key;
     TimestampTz ts;
     GenericKeyring *keyring;
 
@@ -774,7 +774,7 @@ Datum pg_tde_principal_key_info(PG_FUNCTION_ARGS)
                 (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
                     errmsg("function returning record called in context that cannot accept type record")));
 
-    principal_key = GetMasterKey(MyDatabaseId, MyDatabaseTableSpace, NULL);
+    principal_key = GetPrincipalKey(MyDatabaseId, MyDatabaseTableSpace, NULL);
     if (principal_key == NULL)
 	{
 		ereport(ERROR,

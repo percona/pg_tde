@@ -34,8 +34,8 @@ extern Size TDEGlCatEncStateSize(void);
 extern void TDEGlCatShmemInit(void);
 extern void TDEGlCatKeyInit(void);
 
-extern TDEMasterKey *TDEGetGlCatKeyFromCache(void);
-extern void TDEPutGlCatKeyInCache(TDEMasterKey *mkey);
+extern TDEPrincipalKey *TDEGetGlCatKeyFromCache(void);
+extern void TDEPutGlCatKeyInCache(TDEPrincipalKey *mkey);
 extern RelKeyData *GetGlCatInternalKey(Oid obj_id);
 
 #endif /*TDE_GLOBAL_CATALOG_H*/

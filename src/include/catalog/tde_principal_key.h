@@ -21,63 +21,63 @@
 #define PRINCIPAL_KEY_NAME_LEN TDE_KEY_NAME_LEN
 #define MAX_PRINCIPAL_KEY_VERSION_NUM 100000
 
-typedef struct TDEMasterKeyId
+typedef struct TDEPrincipalKeyId
 {
 	uint32	version;
 	char	name[PRINCIPAL_KEY_NAME_LEN];
 	char	versioned_name[PRINCIPAL_KEY_NAME_LEN + 4];
-} TDEMasterKeyId;
+} TDEPrincipalKeyId;
 
-typedef struct TDEMasterKeyInfo
+typedef struct TDEPrincipalKeyInfo
 {
 	Oid databaseId;
 	Oid tablespaceId;
 	Oid userId;
 	Oid keyringId;
 	struct timeval creationTime;
-	TDEMasterKeyId keyId;
-} TDEMasterKeyInfo;
+	TDEPrincipalKeyId keyId;
+} TDEPrincipalKeyInfo;
 
-typedef struct TDEMasterKey
+typedef struct TDEPrincipalKey
 {
-	TDEMasterKeyInfo keyInfo;
+	TDEPrincipalKeyInfo keyInfo;
 	unsigned char keyData[MAX_KEY_DATA_SIZE];
 	uint32 keyLength;
-} TDEMasterKey;
+} TDEPrincipalKey;
 
-typedef struct XLogMasterKeyRotate
+typedef struct XLogPrincipalKeyRotate
 {
 	Oid databaseId;
 	off_t map_size;
 	off_t keydata_size;
 	char  buff[FLEXIBLE_ARRAY_MEMBER];
-} XLogMasterKeyRotate;
+} XLogPrincipalKeyRotate;
 
-#define SizeoOfXLogMasterKeyRotate	offsetof(XLogMasterKeyRotate, buff)
+#define SizeoOfXLogPrincipalKeyRotate	offsetof(XLogPrincipalKeyRotate, buff)
 
-typedef struct XLogMasterKeyCleanup
+typedef struct XLogPrincipalKeyCleanup
 {
 	Oid databaseId;
 	Oid tablespaceId;
-} XLogMasterKeyCleanup;
+} XLogPrincipalKeyCleanup;
 
-extern void InitializeMasterKeyInfo(void);
+extern void InitializePrincipalKeyInfo(void);
 extern void cleanup_principal_key_info(Oid databaseId, Oid tablespaceId);
 extern LWLock *tde_lwlock_mk_files(void);
 extern LWLock *tde_lwlock_mk_cache(void);
 
-extern bool save_principal_key_info(TDEMasterKeyInfo *masterKeyInfo);
+extern bool save_principal_key_info(TDEPrincipalKeyInfo *principalKeyInfo);
 
-extern Oid GetMasterKeyProviderId(void);
-extern TDEMasterKey* GetMasterKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring);
-extern bool SetMasterKey(const char *key_name, const char *provider_name, bool ensure_new_key);
-extern bool RotateMasterKey(const char *new_key_name, const char *new_provider_name, bool ensure_new_key);
-extern bool xl_tde_perform_rotate_key(XLogMasterKeyRotate *xlrec);
-extern TDEMasterKey *set_principal_key_with_keyring(const char *key_name, 
+extern Oid GetPrincipalKeyProviderId(void);
+extern TDEPrincipalKey* GetPrincipalKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring);
+extern bool SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new_key);
+extern bool RotatePrincipalKey(const char *new_key_name, const char *new_provider_name, bool ensure_new_key);
+extern bool xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec);
+extern TDEPrincipalKey *set_principal_key_with_keyring(const char *key_name, 
 												GenericKeyring *keyring,
 												Oid dbOid, Oid spcOid,
 												bool ensure_new_key);
-extern keyInfo *load_latest_versioned_key_name(TDEMasterKeyInfo *mastere_key_info, 
+extern keyInfo *load_latest_versioned_key_name(TDEPrincipalKeyInfo *mastere_key_info, 
 												GenericKeyring *keyring,
 												bool ensure_new_key);
  
