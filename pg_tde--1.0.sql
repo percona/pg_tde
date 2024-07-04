@@ -82,13 +82,13 @@ RETURNS VOID
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 -- Table access method
-CREATE FUNCTION pg_tdeam_handler(internal)
+CREATE FUNCTION pg_tdeam_basic_handler(internal)
 RETURNS table_am_handler
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
 -- Table access method
-CREATE FUNCTION pg_tde2am_handler(internal)
+CREATE FUNCTION pg_tdeam_handler(internal)
 RETURNS table_am_handler
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
@@ -132,11 +132,11 @@ LANGUAGE C;
 CREATE FUNCTION pg_tde_version() RETURNS TEXT AS 'MODULE_PATHNAME' LANGUAGE C;
 
 -- Access method
+CREATE ACCESS METHOD pg_tde_basic TYPE TABLE HANDLER pg_tdeam_basic_handler;
+COMMENT ON ACCESS METHOD pg_tde_basic IS 'pg_tde table access method';
+
 CREATE ACCESS METHOD pg_tde TYPE TABLE HANDLER pg_tdeam_handler;
 COMMENT ON ACCESS METHOD pg_tde IS 'pg_tde table access method';
-
-CREATE ACCESS METHOD pg_tde2 TYPE TABLE HANDLER pg_tde2am_handler;
-COMMENT ON ACCESS METHOD pg_tde2 IS 'pg_tde2 table access method';
 
 -- Per database extension initialization
 SELECT pg_tde_extension_initialize();

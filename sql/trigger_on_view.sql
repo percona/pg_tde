@@ -16,7 +16,7 @@ DROP TABLE IF exists city_table cascade;
      country_id        serial primary key,
      country_name    text unique not null,
      continent        text not null
- ) using pg_tde;
+ ) using pg_tde_basic;
  
  INSERT INTO country_table (country_name, continent)
      VALUES ('Japan', 'Asia'),
@@ -29,7 +29,7 @@ DROP TABLE IF exists city_table cascade;
      city_name    text not null,
      population    bigint, 
      country_id    int references country_table
- ) using pg_tde;
+ ) using pg_tde_basic;
  
  CREATE VIEW city_view AS
      SELECT city_id, city_name, population, country_name, continent
