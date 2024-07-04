@@ -30,7 +30,7 @@ SELECT * FROM country_table;
 SELECT pgtde_is_encrypted('country_table');
 
 -- Change it back to encrypted
-ALTER TABLE country_table SET access method  pg_tde;
+ALTER TABLE country_table SET access method  pg_tde_basic;
 
 INSERT INTO country_table (country_name, continent)
      VALUES ('China', 'Asia'),

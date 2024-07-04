@@ -6,7 +6,7 @@ SELECT pg_tde_set_principal_key('test-db-principal-key','file-vault');
 --
 -- 2 -- Test triggers on a join view
 --
-SET default_table_access_method TO 'pg_tde';
+SET default_table_access_method TO 'pg_tde_basic';
 
 DROP VIEW IF EXISTS city_view CASCADE;
 DROP TABLE IF exists country_table CASCADE;

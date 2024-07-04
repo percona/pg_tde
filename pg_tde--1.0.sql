@@ -87,12 +87,6 @@ RETURNS table_am_handler
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
--- Table access method
-CREATE FUNCTION pg_tdeam_handler(internal)
-RETURNS table_am_handler
-AS 'MODULE_PATHNAME'
-LANGUAGE C;
-
 CREATE FUNCTION pgtde_is_encrypted(table_name VARCHAR)
 RETURNS boolean
 AS $$
@@ -100,7 +94,7 @@ SELECT EXISTS (
     SELECT 1
     FROM   pg_catalog.pg_class
     WHERE  relname = table_name
-    AND    relam = (SELECT oid FROM pg_catalog.pg_am WHERE amname = 'pg_tde')
+    AND    relam = (SELECT oid FROM pg_catalog.pg_am WHERE amname = 'pg_tde_basic')
     )$$
 LANGUAGE SQL;
 
@@ -135,26 +129,39 @@ CREATE FUNCTION pg_tde_version() RETURNS TEXT AS 'MODULE_PATHNAME' LANGUAGE C;
 CREATE ACCESS METHOD pg_tde_basic TYPE TABLE HANDLER pg_tdeam_basic_handler;
 COMMENT ON ACCESS METHOD pg_tde_basic IS 'pg_tde table access method';
 
-CREATE ACCESS METHOD pg_tde TYPE TABLE HANDLER pg_tdeam_handler;
-COMMENT ON ACCESS METHOD pg_tde IS 'pg_tde table access method';
+DO $$
+	BEGIN
+		-- Table access method
+		CREATE FUNCTION pg_tdeam_handler(internal)
+		RETURNS table_am_handler
+		AS 'MODULE_PATHNAME'
+		LANGUAGE C;
+
+		CREATE ACCESS METHOD pg_tde TYPE TABLE HANDLER pg_tdeam_handler;
+		COMMENT ON ACCESS METHOD pg_tde IS 'pg_tde table access method';
+
+		CREATE OR REPLACE FUNCTION pg_tde_ddl_command_start_capture()
+		RETURNS event_trigger
+		AS 'MODULE_PATHNAME'
+		LANGUAGE C;
+
+		CREATE OR REPLACE FUNCTION pg_tde_ddl_command_end_capture()
+		RETURNS event_trigger
+		AS 'MODULE_PATHNAME'
+		LANGUAGE C;
+
+		CREATE EVENT TRIGGER pg_tde_trigger_create_index
+		ON ddl_command_start
+		EXECUTE FUNCTION pg_tde_ddl_command_start_capture();
+
+		CREATE EVENT TRIGGER pg_tde_trigger_create_index_2
+		ON ddl_command_end
+		EXECUTE FUNCTION pg_tde_ddl_command_end_capture();
+	EXCEPTION WHEN OTHERS THEN
+		NULL;
+	END;
+$$;
 
 -- Per database extension initialization
 SELECT pg_tde_extension_initialize();
 
-CREATE OR REPLACE FUNCTION pg_tde_ddl_command_start_capture()
-RETURNS event_trigger
-AS 'MODULE_PATHNAME'
-LANGUAGE C;
-
-CREATE OR REPLACE FUNCTION pg_tde_ddl_command_end_capture()
-RETURNS event_trigger
-AS 'MODULE_PATHNAME'
-LANGUAGE C;
-
-CREATE EVENT TRIGGER pg_tde_trigger_create_index
-ON ddl_command_start
-EXECUTE FUNCTION pg_tde_ddl_command_start_capture();
-
-CREATE EVENT TRIGGER pg_tde_trigger_create_index_2
-ON ddl_command_end
-EXECUTE FUNCTION pg_tde_ddl_command_end_capture();
