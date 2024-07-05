@@ -414,7 +414,6 @@ scan_key_provider_file(ProviderScanType scanType, void* scanKey)
 				errmsg("could not open tde file \"%s\": %m", kp_info_path)));
 		return NIL;
 	}
-	/* we also need to verify the name conflixt and generate the next provider ID */
 	while (fetch_next_key_provider(fd, &curr_pos, &provider))
 	{
 		bool match = false;
