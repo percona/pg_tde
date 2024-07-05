@@ -343,7 +343,7 @@ save_key_provider(KeyringProvideRecord *provider)
 				errmsg("could not open tde file \"%s\": %m", keyrings_path)));
 	}
 
-	/* we also need to verify the name conflixt and generate the next provider ID */
+	/* we also need to verify the name conflict and generate the next provider ID */
 	while (fetch_next_key_provider(fd, &curr_pos, &existing_provider))
 	{
 		if (strcmp(existing_provider.provider_name, provider->provider_name) == 0)
