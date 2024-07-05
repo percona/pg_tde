@@ -94,7 +94,6 @@ static Size
 initialize_shared_state(void *start_address)
 {
 	sharedPrincipalKeyState = (TdeKeyProviderInfoSharedState *)start_address;
-	ereport(LOG, (errmsg("initializing shared state for primary key info")));
 	sharedPrincipalKeyState->Locks = GetLWLocks();
 	return sizeof(TdeKeyProviderInfoSharedState);
 }
@@ -108,7 +107,7 @@ tde_provider_info_lock(void)
 
 void InitializeKeyProviderInfo(void)
 {
-	ereport(LOG, (errmsg("Initializing TDE principal key info")));
+	ereport(LOG, (errmsg("initializing TDE key provider info")));
 	RegisterShmemRequest(&key_provider_info_shmem_routine);
 	on_ext_install(key_provider_startup_cleanup, NULL);
 }
@@ -119,7 +118,7 @@ key_provider_startup_cleanup(int tde_tbl_count, void *arg)
 	if (tde_tbl_count > 0)
 	{
 		ereport(WARNING,
-				(errmsg("Failed to perform initialization. database already has %d TDE tables", tde_tbl_count)));
+				(errmsg("failed to perform initialization. database already has %d TDE tables", tde_tbl_count)));
 		return;
 	}
 	cleanup_key_provider_info(MyDatabaseId, MyDatabaseTableSpace);
@@ -184,9 +183,9 @@ GetKeyProviderByName(const char *provider_name)
 	else
 	{
 		ereport(ERROR,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("Key provider \"%s\" does not exists", provider_name),
-				errhint("Use create_key_provider interface to create the key provider")));
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("Key provider \"%s\" does not exists", provider_name),
+				 errhint("Use pg_tde_add_key_provider interface to create the key provider")));
 	}
 	return keyring;
 }
@@ -231,7 +230,7 @@ load_file_keyring_provider_options(Datum keyring_options)
 	{
 		ereport(DEBUG2,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("File path is missing in the keyring options")));
+				 errmsg("file path is missing in the keyring options")));
 		return NULL;
 	}
 
@@ -309,8 +308,8 @@ fetch_next_key_provider(int fd, off_t* curr_pos, KeyringProvideRecord *provider)
 		/* Corrupt file */
 		ereport(ERROR,
 				(errcode_for_file_access(),
-					errmsg("keyring info file is corrupted: %m"),
-					errdetail("invalid provider record size %lld expected %lu", bytes_read, sizeof(KeyringProvideRecord) )));
+					errmsg("key provider info file is corrupted: %m"),
+					errdetail("invalid key provider record size %lld expected %lu", bytes_read, sizeof(KeyringProvideRecord) )));
 	}
 	return true;
 }
@@ -325,22 +324,22 @@ save_key_provider(KeyringProvideRecord *provider)
 	off_t curr_pos = 0;
 	int fd;
 	int max_provider_id = 0;
-	char keyrings_path[MAXPGPATH] = {0};
+	char kp_info_path[MAXPGPATH] = {0};
 	KeyringProvideRecord existing_provider;
 
 	Assert(provider != NULL);
 
-	get_keyring_infofile_path(keyrings_path, MyDatabaseId, MyDatabaseTableSpace);
+	get_keyring_infofile_path(kp_info_path, MyDatabaseId, MyDatabaseTableSpace);
 
 	LWLockAcquire(tde_provider_info_lock(), LW_EXCLUSIVE);
 
-	fd = BasicOpenFile(keyrings_path, O_CREAT | O_RDWR | PG_BINARY);
+	fd = BasicOpenFile(kp_info_path, O_CREAT | O_RDWR | PG_BINARY);
 	if (fd < 0)
 	{
 		LWLockRelease(tde_provider_info_lock());
 		ereport(ERROR,
 			(errcode_for_file_access(),
-				errmsg("could not open tde file \"%s\": %m", keyrings_path)));
+				errmsg("could not open tde file \"%s\": %m", kp_info_path)));
 	}
 
 	/* we also need to verify the name conflict and generate the next provider ID */
@@ -352,7 +351,7 @@ save_key_provider(KeyringProvideRecord *provider)
 			LWLockRelease(tde_provider_info_lock());
 			ereport(ERROR,
 				(errcode(ERRCODE_DUPLICATE_OBJECT),
-					errmsg("Key provider \"%s\" already exists", provider->provider_name)));
+					errmsg("key provider \"%s\" already exists", provider->provider_name)));
 		}
 		if (max_provider_id < existing_provider.provider_id)
 			max_provider_id = existing_provider.provider_id;
@@ -371,7 +370,7 @@ save_key_provider(KeyringProvideRecord *provider)
 		ereport(ERROR,
 			(errcode_for_file_access(),
 				errmsg("key provider info file \"%s\" can't be written: %m",
-						keyrings_path)));
+						kp_info_path)));
 	}
 	if (pg_fsync(fd) != 0)
 	{
@@ -380,7 +379,7 @@ save_key_provider(KeyringProvideRecord *provider)
 		ereport(ERROR,
 			(errcode_for_file_access(),
 				errmsg("could not fsync file \"%s\": %m",
-						keyrings_path)));
+						kp_info_path)));
 	}
 	close(fd);
 	LWLockRelease(tde_provider_info_lock());
@@ -395,31 +394,32 @@ scan_key_provider_file(ProviderScanType scanType, void* scanKey)
 {
 	off_t curr_pos = 0;
 	int fd;
-	char keyrings_path[MAXPGPATH] = {0};
+	char kp_info_path[MAXPGPATH] = {0};
 	KeyringProvideRecord provider;
 	List *providers_list = NIL;
 
 	if (scanType != PROVIDER_SCAN_ALL)
 		Assert(scanKey != NULL);
 
-	get_keyring_infofile_path(keyrings_path, MyDatabaseId, MyDatabaseTableSpace);
+	get_keyring_infofile_path(kp_info_path, MyDatabaseId, MyDatabaseTableSpace);
 
 	LWLockAcquire(tde_provider_info_lock(), LW_SHARED);
 
-	fd = BasicOpenFile(keyrings_path, PG_BINARY);
+	fd = BasicOpenFile(kp_info_path, PG_BINARY);
 	if (fd < 0)
 	{
 		LWLockRelease(tde_provider_info_lock());
 		ereport(DEBUG2,
 			(errcode_for_file_access(),
-				errmsg("could not open tde file \"%s\": %m", keyrings_path)));
+				errmsg("could not open tde file \"%s\": %m", kp_info_path)));
 		return NIL;
 	}
 	/* we also need to verify the name conflixt and generate the next provider ID */
 	while (fetch_next_key_provider(fd, &curr_pos, &provider))
 	{
 		bool match = false;
-		ereport(DEBUG2, (errmsg("Read key provider ID=%d %s", provider.provider_id, provider.provider_name)));
+		ereport(DEBUG2,
+			(errmsg("read key provider ID=%d %s", provider.provider_id, provider.provider_name)));
 
 		if (scanType == PROVIDER_SCAN_BY_NAME)
 		{
@@ -457,18 +457,19 @@ void
 cleanup_key_provider_info(Oid databaseId, Oid tablespaceId)
 {
 	/* Remove the key provider info fileß */
-	char keyrings_path[MAXPGPATH] = {0};
+	char kp_info_path[MAXPGPATH] = {0};
 
-	get_keyring_infofile_path(keyrings_path, MyDatabaseId, MyDatabaseTableSpace);
-	PathNameDeleteTemporaryFile(keyrings_path, false);
+	get_keyring_infofile_path(kp_info_path, MyDatabaseId, MyDatabaseTableSpace);
+	PathNameDeleteTemporaryFile(kp_info_path, false);
 }
 
 static char*
 get_keyring_infofile_path(char* resPath, Oid dbOid, Oid spcOid)
 {
 	char *db_path = pg_tde_get_tde_file_dir(dbOid, spcOid);
-
+	Assert(db_path != NULL);
 	join_path_components(resPath, db_path, PG_TDE_KEYRING_FILENAME);
+	pfree(db_path);
 	return resPath;
 }
 
