@@ -221,8 +221,8 @@ extract_json_option_value(Datum top_json, const char* field_name)
 char *
 pg_tde_get_tde_file_dir(Oid dbOid, Oid spcOid)
 {
-	/* If this is a global space, than the call might be in a critial section
-	 * (during XLog write) so we can't do GetDatabasePath as it calls palloc()
+	/* `dbOid` is set to a value for the XLog keys caching but GetDatabasePath() 
+	 * expects it (`dbOid`) to be `0` if this is a global space.
 	 */
 	if (spcOid == GLOBALTABLESPACE_OID)
 		return pstrdup("global");
