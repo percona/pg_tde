@@ -65,7 +65,7 @@ extern bool save_principal_key_info(TDEPrincipalKeyInfo *principalKeyInfo);
 extern Oid GetPrincipalKeyProviderId(void);
 extern TDEPrincipalKey* GetPrincipalKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring);
 extern bool SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new_key);
-extern bool RotatePrincipalKey(const char *new_key_name, const char *new_provider_name, bool ensure_new_key);
+extern bool RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const char *new_provider_name, bool ensure_new_key);
 extern bool xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec);
 extern TDEPrincipalKey *set_principal_key_with_keyring(const char *key_name, 
 												GenericKeyring *keyring,

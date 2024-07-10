@@ -1,9 +1,9 @@
 CREATE EXTENSION pg_tde;
 
-SELECT  * FROM pg_tde_principal_key_info();
+SELECT  * FROM pg_tde_database_key_info();
 
 SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');
-SELECT pg_tde_set_principal_key('test-db-principal-key','file-vault');
+SELECT pg_tde_set_database_key('test-db-principal-key','file-vault');
 
 CREATE TABLE test_enc(
 	  id SERIAL,
@@ -24,7 +24,7 @@ SELECT pg_tde_is_encrypted('test_enc');
 SELECT pg_tde_is_encrypted('test_norm');
 
 SELECT  key_provider_id, key_provider_name, principal_key_name
-		FROM pg_tde_principal_key_info();
+		FROM pg_tde_database_key_info();
 
 DROP TABLE test_enc;
 DROP TABLE test_norm;

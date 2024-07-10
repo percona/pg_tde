@@ -425,19 +425,20 @@ SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new
 }
 
 bool
-RotatePrincipalKey(const char *new_key_name, const char *new_provider_name, bool ensure_new_key)
+RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const char *new_provider_name, bool ensure_new_key)
 {
-    TDEPrincipalKey *principal_key = GetPrincipalKey(MyDatabaseId, MyDatabaseTableSpace, NULL);
     TDEPrincipalKey new_principal_key;
     const keyInfo *keyInfo = NULL;
     GenericKeyring *keyring;
     bool    is_rotated;
 
+    Assert(current_key != NULL);
+
     /*
      * Let's set everything the same as the older principal key and
      * update only the required attributes.
      * */
-    memcpy(&new_principal_key, principal_key, sizeof(TDEPrincipalKey));
+    memcpy(&new_principal_key, current_key, sizeof(TDEPrincipalKey));
 
     if (new_key_name == NULL)
     {
@@ -470,9 +471,10 @@ RotatePrincipalKey(const char *new_key_name, const char *new_provider_name, bool
 
     new_principal_key.keyLength = keyInfo->data.len;
     memcpy(new_principal_key.keyData, keyInfo->data.data, keyInfo->data.len);
-    is_rotated = pg_tde_perform_rotate_key(principal_key, &new_principal_key);
+    is_rotated = pg_tde_perform_rotate_key(current_key, &new_principal_key);
+    /* TODO: !!! */
     if (is_rotated) {
-        clear_principal_key_cache(principal_key->keyInfo.databaseId);
+        clear_principal_key_cache(current_key->keyInfo.databaseId);
         push_principal_key_to_cache(&new_principal_key);
     }
 
@@ -520,7 +522,7 @@ load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info, GenericK
         /* vault-v2 returns 404 (KEYRING_CODE_RESOURCE_NOT_AVAILABLE) when key is not found */
         if (kr_ret != KEYRING_CODE_SUCCESS && kr_ret != KEYRING_CODE_RESOURCE_NOT_AVAILABLE)
         {
-            ereport(ERROR,
+            ereport(PANIC,
                 (errmsg("failed to retrieve principal key from keyring provider :\"%s\"", keyring->provider_name),
                     errdetail("Error code: %d", kr_ret)));
         }
@@ -700,10 +702,10 @@ clear_principal_key_cache(Oid databaseId)
 /*
  * SQL interface to set principal key
  */
-PG_FUNCTION_INFO_V1(pg_tde_set_principal_key);
-Datum pg_tde_set_principal_key(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_tde_set_database_key);
+Datum pg_tde_set_database_key(PG_FUNCTION_ARGS);
 
-Datum pg_tde_set_principal_key(PG_FUNCTION_ARGS)
+Datum pg_tde_set_database_key(PG_FUNCTION_ARGS)
 {
     char *principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
     char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
@@ -718,14 +720,15 @@ Datum pg_tde_set_principal_key(PG_FUNCTION_ARGS)
 /*
  * SQL interface for key rotation
  */
-PG_FUNCTION_INFO_V1(pg_tde_rotate_key);
+PG_FUNCTION_INFO_V1(pg_tde_rotate_database_key);
 Datum
-pg_tde_rotate_key(PG_FUNCTION_ARGS)
+pg_tde_rotate_database_key(PG_FUNCTION_ARGS)
 {
     char *new_principal_key_name = NULL;
     char *new_provider_name =  NULL;
     bool ensure_new_key;
     bool ret;
+    TDEPrincipalKey *current_key;
 
     if (!PG_ARGISNULL(0))
         new_principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
@@ -735,12 +738,13 @@ pg_tde_rotate_key(PG_FUNCTION_ARGS)
 
 
     ereport(LOG, (errmsg("Rotating principal key to [%s : %s] for the database", new_principal_key_name, new_provider_name)));
-    ret = RotatePrincipalKey(new_principal_key_name, new_provider_name, ensure_new_key);
+    current_key = GetPrincipalKey(MyDatabaseId, MyDatabaseTableSpace, NULL);
+    ret = RotatePrincipalKey(current_key, new_principal_key_name, new_provider_name, ensure_new_key);
     PG_RETURN_BOOL(ret);
 }
 
-PG_FUNCTION_INFO_V1(pg_tde_principal_key_info);
-Datum pg_tde_principal_key_info(PG_FUNCTION_ARGS)
+PG_FUNCTION_INFO_V1(pg_tde_database_key_info);
+Datum pg_tde_database_key_info(PG_FUNCTION_ARGS)
 {
     TupleDesc tupdesc;
     Datum values[6];
