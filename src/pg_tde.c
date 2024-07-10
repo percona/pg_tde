@@ -173,13 +173,15 @@ static void
 run_extension_install_callbacks(XLogExtensionInstall* xlrec , bool redo)
 {
 	int i;
+	int tde_table_count =0;
 	/*
 	 * Get the number of tde tables in this database
 	 * should always be zero. But still, it prevents
 	 * the cleanup if someone explicitly calls this
 	 * function.
 	 */
-	int tde_table_count = get_tde_tables_count();
+	if (!redo)
+		tde_table_count = get_tde_tables_count();
 	for (i = 0; i < on_ext_install_index; i++)
 		on_ext_install_list[i]
 			.function(tde_table_count, xlrec, redo, on_ext_install_list[i].arg);
