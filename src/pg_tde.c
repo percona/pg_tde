@@ -146,18 +146,18 @@ extension_install_redo(XLogExtensionInstall *xlrec)
 }
 
 /* ----------------------------------------------------------------
-	*		on_ext_install
-	*
-	*		Register ordinary callback to perform initializations
-	*		run at the time of pg_tde extension installs.
-	* ----------------------------------------------------------------
-	*/
+ *		on_ext_install
+ *
+ *		Register ordinary callback to perform initializations
+ *		run at the time of pg_tde extension installs.
+ * ----------------------------------------------------------------
+ */
 void on_ext_install(pg_tde_on_ext_install_callback function, void *arg)
 {
 	if (on_ext_install_index >= MAX_ON_INSTALLS)
 		ereport(FATAL,
-				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
-				 errmsg_internal("out of on extension install slots")));
+			(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+				errmsg_internal("out of on extension install slots")));
 
 	on_ext_install_list[on_ext_install_index].function = function;
 	on_ext_install_list[on_ext_install_index].arg = arg;
