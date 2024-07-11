@@ -64,6 +64,7 @@ extern bool pg_tde_write_map_keydata_files(off_t map_size, char *m_file_data, of
 extern RelKeyData* tde_create_rel_key(Oid rel_id, InternalKey *key, TDEPrincipalKeyInfo *principal_key_info);
 extern RelKeyData *tde_encrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *rel_key_data, const RelFileLocator *rlocator);
 extern RelKeyData *tde_decrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *enc_rel_key_data, const RelFileLocator *rlocator);
+extern RelKeyData *pg_tde_get_key_from_file(const RelFileLocator *rlocator, GenericKeyring *keyring);
 
 extern void pg_tde_set_db_file_paths(const RelFileLocator *rlocator, char *map_path, char *keydata_path);
 

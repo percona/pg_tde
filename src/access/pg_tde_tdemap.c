@@ -92,7 +92,6 @@ static bool pg_tde_read_one_map_entry(int fd, const RelFileLocator *rlocator, in
 
 static void pg_tde_write_keydata(char *db_keydata_path, TDEPrincipalKeyInfo *principal_key_info, int32 key_index, RelKeyData *enc_rel_key_data);
 static void pg_tde_write_one_keydata(int keydata_fd, int32 key_index, RelKeyData *enc_rel_key_data);
-static RelKeyData* pg_tde_get_key_from_file(const RelFileLocator *rlocator, GenericKeyring *keyring);
 static RelKeyData* pg_tde_read_keydata(char *db_keydata_path, int32 key_index, TDEPrincipalKey *principal_key);
 static RelKeyData* pg_tde_read_one_keydata(int keydata_fd, int32 key_index, TDEPrincipalKey *principal_key);
 
@@ -996,7 +995,7 @@ pg_tde_free_key_map_entry(const RelFileLocator *rlocator, off_t offset)
  * Reads the key of the required relation. It identifies its map entry and then simply
  * reads the key data from the keydata file.
  */
-static RelKeyData *
+RelKeyData *
 pg_tde_get_key_from_file(const RelFileLocator *rlocator, GenericKeyring *keyring)
 {
 	int32		key_index = 0;

@@ -16,6 +16,7 @@
 
 #include "storage/shmem.h"
 #include "utils/guc.h"
+#include "utils/memutils.h"
 
 #include "access/pg_tde_tdemap.h"
 #include "catalog/tde_global_catalog.h"
@@ -28,19 +29,19 @@
 
 #define PRINCIPAL_KEY_DEFAULT_NAME	"tde-global-catalog-key"
 
-/* TODO: not sure if we need an option of multiple principal keys for the global catalog */
 typedef enum
 {
-	TDE_GCAT_XLOG_KEY,
+	TDE_INTERNAL_XLOG_KEY,
 
 	/* must be last */
-	TDE_GCAT_KEYS_COUNT
-}			GlobalCatalogKeyTypes;
+	TDE_INTERNAL_KEYS_COUNT
+}			InternalKeyType;
 
 typedef struct EncryptionStateData
 {
 	GenericKeyring *keyring;
-	TDEPrincipalKey principal_keys[TDE_GCAT_KEYS_COUNT];
+	RelKeyData *internal_keys;
+	TDEPrincipalKey principal_key;
 }			EncryptionStateData;
 
 static EncryptionStateData * EncryptionState = NULL;
@@ -52,8 +53,9 @@ static char *KRingProviderFilePath = NULL;
 static void init_gl_catalog_keys(void);
 static void init_keyring(void);
 static TDEPrincipalKey * create_principal_key(const char *key_name,
-										GenericKeyring * keyring, Oid dbOid, Oid spcOid,
-										bool ensure_new_key);
+											  GenericKeyring * keyring, Oid dbOid, Oid spcOid,
+											  bool ensure_new_key);
+static void cache_internal_key(RelKeyData * ikey, InternalKeyType type);
 
 void
 TDEGlCatInitGUC(void)
@@ -107,7 +109,7 @@ TDEGlCatShmemInit(void)
 	allocptr = ((char *) EncryptionState) + MAXALIGN(sizeof(EncryptionStateData));
 	EncryptionState->keyring = (GenericKeyring *) allocptr;
 	memset(EncryptionState->keyring, 0, sizeof(KeyringProviders));
-	memset(EncryptionState->principal_keys, 0, sizeof(TDEPrincipalKey) * TDE_GCAT_KEYS_COUNT);
+	memset(&EncryptionState->principal_key, 0, sizeof(TDEPrincipalKey));
 }
 
 void
@@ -125,8 +127,10 @@ TDEGlCatKeyInit(void)
 	}
 	else
 	{
-		/* put an internal key into the cache */
-		GetGlCatInternalKey(XLOG_TDE_OID);
+		RelKeyData *ikey;
+
+		ikey = pg_tde_get_key_from_file(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID), EncryptionState->keyring);
+		cache_internal_key(ikey, TDE_INTERNAL_XLOG_KEY);
 	}
 }
 
@@ -135,7 +139,7 @@ TDEGetGlCatKeyFromCache(void)
 {
 	TDEPrincipalKey *mkey;
 
-	mkey = &EncryptionState->principal_keys[TDE_GCAT_XLOG_KEY];
+	mkey = &EncryptionState->principal_key;
 	if (mkey->keyLength == 0)
 		return NULL;
 
@@ -145,20 +149,51 @@ TDEGetGlCatKeyFromCache(void)
 void
 TDEPutGlCatKeyInCache(TDEPrincipalKey * mkey)
 {
-	memcpy(EncryptionState->principal_keys + TDE_GCAT_XLOG_KEY, mkey, sizeof(TDEPrincipalKey));
+	memcpy(&EncryptionState->principal_key, mkey, sizeof(TDEPrincipalKey));
 }
+
+/* Internal Key should be in the TopMemmoryContext because of SSL contexts. This
+ * context is being initialized by OpenSSL with the pointer to the encryption
+ * context which is valid only for the current backend. So new backends have to
+ * inherit a cached key with NULL SSL connext and any changes to it have to remain
+ * local ot the backend.
+ * (see https://github.com/Percona-Lab/pg_tde/pull/214#discussion_r1648998317)
+ */
+static void
+cache_internal_key(RelKeyData * ikey, InternalKeyType type)
+{
+	if (EncryptionState->internal_keys == NULL)
+	{
+		EncryptionState->internal_keys =
+			(RelKeyData *) MemoryContextAlloc(TopMemoryContext,
+											  sizeof(RelKeyData) * TDE_INTERNAL_KEYS_COUNT);
+	}
+	memcpy(EncryptionState->internal_keys + type, ikey, sizeof(RelKeyData));
+}
+
 
 RelKeyData *
 GetGlCatInternalKey(Oid obj_id)
 {
-	return GetRelationKeyWithKeyring(GLOBAL_SPACE_RLOCATOR(obj_id), EncryptionState->keyring);
+	InternalKeyType ktype;
+
+	Assert(EncryptionState->internal_keys != NULL);
+	switch (obj_id)
+	{
+		case XLOG_TDE_OID:
+			ktype = TDE_INTERNAL_XLOG_KEY;
+			break;
+		default:
+			elog(ERROR, "unknown internal key for Oid %u", obj_id);
+	}
+	return EncryptionState->internal_keys + ktype;
 }
 
-/* 
+/*
  * TODO: should be aligned with the rest of the keyring_provider code after its
  * 		 refactoring
  *
- * TODO: add Vault 
+ * TODO: add Vault
  */
 static void
 init_keyring(void)
@@ -186,8 +221,8 @@ init_gl_catalog_keys(void)
 	TDEPrincipalKey *mkey;
 
 	mkey = create_principal_key(PRINCIPAL_KEY_DEFAULT_NAME,
-							 EncryptionState->keyring,
-							 GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, false);
+								EncryptionState->keyring,
+								GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, false);
 
 	memset(&int_key, 0, sizeof(InternalKey));
 
@@ -205,18 +240,15 @@ init_gl_catalog_keys(void)
 	enc_rel_key_data = tde_encrypt_rel_key(mkey, rel_key_data, rlocator);
 	pg_tde_write_key_map_entry(rlocator, enc_rel_key_data, &mkey->keyInfo);
 
-	/* 
-	 * TODO: move global catalog internal keys into own cache. This cache should
-	 * be in the TopMemmoryContext because of SSL contexts
-	 * (see https://github.com/Percona-Lab/pg_tde/pull/214#discussion_r1648998317)
-	*/
-	pg_tde_put_key_into_map(rlocator->relNumber, rel_key_data);
+	cache_internal_key(rel_key_data, TDE_INTERNAL_XLOG_KEY);
+	pfree(rel_key_data);
 	TDEPutGlCatKeyInCache(mkey);
+	pfree(mkey);
 }
 
 static TDEPrincipalKey *
 create_principal_key(const char *key_name, GenericKeyring * keyring,
-				  Oid dbOid, Oid spcOid, bool ensure_new_key)
+					 Oid dbOid, Oid spcOid, bool ensure_new_key)
 {
 	TDEPrincipalKey *principalKey;
 	keyInfo    *keyInfo = NULL;
@@ -245,4 +277,4 @@ create_principal_key(const char *key_name, GenericKeyring * keyring,
 
 	return principalKey;
 }
-#endif /* PERCONA_FORK */
+#endif							/* PERCONA_FORK */
