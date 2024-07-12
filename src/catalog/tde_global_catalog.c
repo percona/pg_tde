@@ -14,6 +14,8 @@
 
 #ifdef PERCONA_FORK
 
+#include "catalog/pg_tablespace_d.h"
+#include "nodes/pg_list.h"
 #include "storage/shmem.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
@@ -28,6 +30,10 @@
 #include <sys/time.h>
 
 #define PRINCIPAL_KEY_DEFAULT_NAME	"tde-global-catalog-key"
+#define KEYRING_DEFAULT_NAME "default_global_tablespace_keyring"
+
+#define DefaultKeyProvider GetKeyProviderByName(KEYRING_DEFAULT_NAME, \
+										GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID)
 
 typedef enum
 {
@@ -39,61 +45,30 @@ typedef enum
 
 typedef struct EncryptionStateData
 {
-	GenericKeyring *keyring;
 	RelKeyData *internal_keys;
+
+	/* TODO: Since for the global tablespace we always keep the Internal key in
+	 * the memory and read it from disk only once during the server start, hence
+	 * we need the Principal key only once and don't have to store it in a
+	 * cache.
+	 */
 	TDEPrincipalKey principal_key;
 }			EncryptionStateData;
 
 static EncryptionStateData * EncryptionState = NULL;
 
-/* GUC */
-static char *KRingProviderType = NULL;
-static char *KRingProviderFilePath = NULL;
-
 static void init_gl_catalog_keys(void);
-static void init_keyring(void);
+static void init_default_keyring(void);
 static TDEPrincipalKey * create_principal_key(const char *key_name,
 											  GenericKeyring * keyring, Oid dbOid, Oid spcOid,
 											  bool ensure_new_key);
 static void cache_internal_key(RelKeyData * ikey, InternalKeyType type);
 
-void
-TDEGlCatInitGUC(void)
-{
-	DefineCustomStringVariable("pg_tde.global_keyring_type",
-							   "Keyring type for global catalog",
-							   NULL,
-							   &KRingProviderType,
-							   NULL,
-							   PGC_POSTMASTER,
-							   0,	/* no flags required */
-							   NULL,
-							   NULL,
-							   NULL
-		);
-	DefineCustomStringVariable("pg_tde.global_keyring_file_path",
-							   "Keyring file options for global catalog",
-							   NULL,
-							   &KRingProviderFilePath,
-							   NULL,
-							   PGC_POSTMASTER,
-							   0,	/* no flags required */
-							   NULL,
-							   NULL,
-							   NULL
-		);
-}
-
 
 Size
 TDEGlCatEncStateSize(void)
 {
-	Size		size;
-
-	size = sizeof(EncryptionStateData);
-	size = add_size(size, sizeof(KeyringProviders));
-
-	return MAXALIGN(size);
+	return MAXALIGN(sizeof(EncryptionStateData));
 }
 
 void
@@ -106,9 +81,6 @@ TDEGlCatShmemInit(void)
 		ShmemInitStruct("TDE XLog Encryption State",
 						TDEGlCatEncStateSize(), &foundBuf);
 
-	allocptr = ((char *) EncryptionState) + MAXALIGN(sizeof(EncryptionStateData));
-	EncryptionState->keyring = (GenericKeyring *) allocptr;
-	memset(EncryptionState->keyring, 0, sizeof(KeyringProviders));
 	memset(&EncryptionState->principal_key, 0, sizeof(TDEPrincipalKey));
 }
 
@@ -117,7 +89,7 @@ TDEGlCatKeyInit(void)
 {
 	char		db_map_path[MAXPGPATH] = {0};
 
-	init_keyring();
+	init_default_keyring();
 
 	pg_tde_set_db_file_paths(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID),
 							 db_map_path, NULL);
@@ -129,7 +101,8 @@ TDEGlCatKeyInit(void)
 	{
 		RelKeyData *ikey;
 
-		ikey = pg_tde_get_key_from_file(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID), EncryptionState->keyring);
+		ikey = pg_tde_get_key_from_file(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID),
+									NULL);
 		cache_internal_key(ikey, TDE_INTERNAL_XLOG_KEY);
 	}
 }
@@ -189,22 +162,27 @@ GetGlCatInternalKey(Oid obj_id)
 	return EncryptionState->internal_keys + ktype;
 }
 
-/*
- * TODO: should be aligned with the rest of the keyring_provider code after its
- * 		 refactoring
- *
- * TODO: add Vault
- */
 static void
-init_keyring(void)
+init_default_keyring(void)
 {
-	EncryptionState->keyring->type = get_keyring_provider_from_typename(KRingProviderType);
-	switch (EncryptionState->keyring->type)
+	if (GetAllKeyringProviders(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID) == NIL)
 	{
-		case FILE_KEY_PROVIDER:
-			FileKeyring * kring = (FileKeyring *) EncryptionState->keyring;
-			strncpy(kring->file_name, KRingProviderFilePath, sizeof(kring->file_name));
-			break;
+		static KeyringProvideRecord provider = {
+			.provider_name = KEYRING_DEFAULT_NAME,
+			.provider_type = FILE_KEY_PROVIDER,
+			.options = 
+				"{"
+					"\"type\": \"file\","
+					" \"path\": \"pg_tde_default_keyring_CHANGE_IT_AND_REMOVE\"" /*TODO: not sure about the location*/
+				"}"
+		};
+
+		/* TODO: should we remove it automaticaly on pg_tde_rotate_global_key() ? */
+		save_new_key_provider_info(&provider, GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, true);
+		elog(INFO,
+				"default keyring has been created for the global tablespace (WAL)."
+				" Change it with pg_tde_add_global_key_provider_* and run pg_tde_rotate_global_key."
+				);
 	}
 }
 
@@ -220,8 +198,9 @@ init_gl_catalog_keys(void)
 	RelFileLocator *rlocator;
 	TDEPrincipalKey *mkey;
 
+	/* TODO: Use SetPrincipalKey()? */
 	mkey = create_principal_key(PRINCIPAL_KEY_DEFAULT_NAME,
-								EncryptionState->keyring,
+								DefaultKeyProvider,
 								GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, false);
 
 	memset(&int_key, 0, sizeof(InternalKey));
@@ -269,7 +248,7 @@ create_principal_key(const char *key_name, GenericKeyring * keyring,
 	if (keyInfo == NULL)
 	{
 		ereport(ERROR,
-				(errmsg("failed to retrieve principal key")));
+				(errmsg("failed to generate principal key")));
 	}
 
 	principalKey->keyLength = keyInfo->data.len;

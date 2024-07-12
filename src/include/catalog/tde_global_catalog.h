@@ -13,6 +13,7 @@
 
 #include "postgres.h"
 
+#include "access/pg_tde_tdemap.h"
 #include "catalog/tde_principal_key.h"
 
 /* 
@@ -29,7 +30,6 @@
 	_obj_oid \
 }
 
-extern void TDEGlCatInitGUC(void);
 extern Size TDEGlCatEncStateSize(void);
 extern void TDEGlCatShmemInit(void);
 extern void TDEGlCatKeyInit(void);

@@ -71,6 +71,7 @@ static void clear_principal_key_cache(Oid databaseId) ;
 static inline dshash_table *get_principal_key_Hash(void);
 static TDEPrincipalKey *get_principal_key_from_cache(Oid dbOid);
 static void push_principal_key_to_cache(TDEPrincipalKey *principalKey);
+static Datum pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid);
 
 static const TDEShmemSetupRoutine principal_key_info_shmem_routine = {
     .init_shared_state = initialize_shared_state,
@@ -277,7 +278,7 @@ GetPrincipalKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
 
     if (keyring == NULL)
     {
-        keyring = GetKeyProviderByID(principalKeyInfo->keyringId);
+        keyring = GetKeyProviderByID(principalKeyInfo->keyringId, dbOid, spcOid);
         if (keyring == NULL)
         {
             LWLockRelease(lock_cache);
@@ -417,7 +418,7 @@ bool
 SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new_key)
 {
     TDEPrincipalKey *principal_key = set_principal_key_with_keyring(key_name, 
-                                        GetKeyProviderByName(provider_name), 
+                                        GetKeyProviderByName(provider_name, MyDatabaseId, MyDatabaseTableSpace), 
                                         MyDatabaseId, MyDatabaseTableSpace, 
                                         ensure_new_key);
 
@@ -451,12 +452,16 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
 
         if (new_provider_name != NULL)
         {
-            new_principal_key.keyInfo.keyringId = GetKeyProviderByName(new_provider_name)->key_id;
+            new_principal_key.keyInfo.keyringId = GetKeyProviderByName(new_provider_name, 
+                                new_principal_key.keyInfo.databaseId,
+                                new_principal_key.keyInfo.tablespaceId)->key_id;
         }
     }
 
     /* We need a valid keyring structure */
-    keyring = GetKeyProviderByID(new_principal_key.keyInfo.keyringId);
+    keyring = GetKeyProviderByID(new_principal_key.keyInfo.keyringId, 
+                                new_principal_key.keyInfo.databaseId,
+                                new_principal_key.keyInfo.tablespaceId);
 
     keyInfo = load_latest_versioned_key_name(&new_principal_key.keyInfo, keyring, ensure_new_key);
 
@@ -522,7 +527,7 @@ load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info, GenericK
         /* vault-v2 returns 404 (KEYRING_CODE_RESOURCE_NOT_AVAILABLE) when key is not found */
         if (kr_ret != KEYRING_CODE_SUCCESS && kr_ret != KEYRING_CODE_RESOURCE_NOT_AVAILABLE)
         {
-            ereport(PANIC,
+            ereport(FATAL,
                 (errmsg("failed to retrieve principal key from keyring provider :\"%s\"", keyring->provider_name),
                     errdetail("Error code: %d", kr_ret)));
         }
@@ -743,8 +748,62 @@ pg_tde_rotate_database_key(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(ret);
 }
 
+PG_FUNCTION_INFO_V1(pg_tde_rotate_global_key);
+#ifdef PERCONA_FORK
+Datum
+pg_tde_rotate_global_key(PG_FUNCTION_ARGS)
+{
+    char *new_principal_key_name = NULL;
+    char *new_provider_name =  NULL;
+    bool ensure_new_key;
+    bool ret;
+    TDEPrincipalKey *current_key;
+
+    if (!PG_ARGISNULL(0))
+        new_principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
+    if (!PG_ARGISNULL(1))
+        new_provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
+    ensure_new_key = PG_GETARG_BOOL(2);
+
+
+    ereport(LOG, (errmsg("Rotating principal key to [%s : %s] for the database", new_principal_key_name, new_provider_name)));
+    current_key = GetPrincipalKey(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, NULL);
+    ret = RotatePrincipalKey(current_key, new_principal_key_name, new_provider_name, ensure_new_key);
+    PG_RETURN_BOOL(ret);
+}
+#else
+Datum
+pg_tde_rotate_global_key(PG_FUNCTION_ARGS)
+{
+    ereport(ERROR, (errmsg("pg_tde_rotate_global_key avaliable only with PERCONA_FORK")));
+    PG_RETURN_BOOL(false);
+}
+#endif
+
 PG_FUNCTION_INFO_V1(pg_tde_database_key_info);
 Datum pg_tde_database_key_info(PG_FUNCTION_ARGS)
+{
+    return pg_tde_get_key_info(fcinfo, MyDatabaseId, MyDatabaseTableSpace);
+}
+
+PG_FUNCTION_INFO_V1(pg_tde_global_key_info);
+#ifdef PERCONA_FORK
+Datum
+pg_tde_global_key_info(PG_FUNCTION_ARGS)
+{
+    return pg_tde_get_key_info(fcinfo, GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID);
+}
+#else
+Datum
+pg_tde_global_key_info(PG_FUNCTION_ARGS)
+{
+    ereport(ERROR, (errmsg("pg_tde_global_key_info avaliable only with PERCONA_FORK")));
+    PG_RETURN_NULL();
+}
+#endif
+
+static Datum 
+pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
 {
     TupleDesc tupdesc;
     Datum values[6];
@@ -761,7 +820,7 @@ Datum pg_tde_database_key_info(PG_FUNCTION_ARGS)
                 (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
                     errmsg("function returning record called in context that cannot accept type record")));
 
-    principal_key = GetPrincipalKey(MyDatabaseId, MyDatabaseTableSpace, NULL);
+    principal_key = GetPrincipalKey(dbOid, spcOid, NULL);
     if (principal_key == NULL)
 	{
 		ereport(ERROR,
@@ -770,7 +829,7 @@ Datum pg_tde_database_key_info(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 	}
 
-    keyring = GetKeyProviderByID(principal_key->keyInfo.keyringId);
+    keyring = GetKeyProviderByID(principal_key->keyInfo.keyringId, dbOid, spcOid);
 
     /* Initialize the values and null flags */
 

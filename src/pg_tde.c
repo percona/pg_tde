@@ -108,7 +108,6 @@ _PG_init(void)
 	InitializeKeyProviderInfo();
 #ifdef PERCONA_FORK
 	XLogInitGUC();
-	TDEGlCatInitGUC();
 #endif
 	prev_shmem_request_hook = shmem_request_hook;
 	shmem_request_hook = tde_shmem_request;
