@@ -70,7 +70,7 @@ Install `pg_tde` using one of available installation methods:
     docker run --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d perconalab/pg_tde
     ```    
 
-    It builds and adds `pg_tde` extension to PostgreSQL 16. The `postgresql.conf` contains the required modifications, and the extension is added to `template1` - with this, all new databases automatically have the `pg_tde` extension loaded. 
+    It builds and adds `pg_tde` extension to PostgreSQL 16. The `postgresql.conf` contains the required modifications. The `pg_tde` extension is added to `template1` so that all new databases automatically have the `pg_tde` extension loaded. 
 
     Keys are not created automatically, each database requires a key provider and a principal key before encrypted tables can be used. For that, see the instructions in the [Setup](setup.md) section, starting with the 4th point, as the first 3 steps are already completed in the docker image.
 
