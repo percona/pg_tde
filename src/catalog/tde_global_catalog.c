@@ -101,8 +101,7 @@ TDEGlCatKeyInit(void)
 	{
 		RelKeyData *ikey;
 
-		ikey = pg_tde_get_key_from_file(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID),
-									NULL);
+		ikey = pg_tde_get_key_from_file(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID));
 		cache_internal_key(ikey, TDE_INTERNAL_XLOG_KEY);
 	}
 }

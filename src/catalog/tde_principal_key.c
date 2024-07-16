@@ -206,8 +206,9 @@ save_principal_key_info(TDEPrincipalKeyInfo *principal_key_info)
  * throws an error.
  */
 TDEPrincipalKey *
-GetPrincipalKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
+GetPrincipalKey(Oid dbOid, Oid spcOid)
 {
+    GenericKeyring *keyring;
     TDEPrincipalKey *principalKey = NULL;
     TDEPrincipalKeyInfo *principalKeyInfo = NULL;
     const keyInfo *keyInfo = NULL;
@@ -276,17 +277,14 @@ GetPrincipalKey(Oid dbOid, Oid spcOid, GenericKeyring *keyring)
         return NULL;
     }
 
+    keyring = GetKeyProviderByID(principalKeyInfo->keyringId, dbOid, spcOid);
     if (keyring == NULL)
     {
-        keyring = GetKeyProviderByID(principalKeyInfo->keyringId, dbOid, spcOid);
-        if (keyring == NULL)
-        {
-            LWLockRelease(lock_cache);
-            LWLockRelease(lock_files);
+        LWLockRelease(lock_cache);
+        LWLockRelease(lock_files);
 
-	    	recursion--;
-            return NULL;
-        }
+        recursion--;
+        return NULL;
     }
 
     keyInfo = KeyringGetKey(keyring, principalKeyInfo->keyId.versioned_name, false, &keyring_ret);
@@ -743,7 +741,7 @@ pg_tde_rotate_database_key(PG_FUNCTION_ARGS)
 
 
     ereport(LOG, (errmsg("Rotating principal key to [%s : %s] for the database", new_principal_key_name, new_provider_name)));
-    current_key = GetPrincipalKey(MyDatabaseId, MyDatabaseTableSpace, NULL);
+    current_key = GetPrincipalKey(MyDatabaseId, MyDatabaseTableSpace);
     ret = RotatePrincipalKey(current_key, new_principal_key_name, new_provider_name, ensure_new_key);
     PG_RETURN_BOOL(ret);
 }
@@ -767,7 +765,7 @@ pg_tde_rotate_global_key(PG_FUNCTION_ARGS)
 
 
     ereport(LOG, (errmsg("Rotating principal key to [%s : %s] for the database", new_principal_key_name, new_provider_name)));
-    current_key = GetPrincipalKey(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, NULL);
+    current_key = GetPrincipalKey(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID);
     ret = RotatePrincipalKey(current_key, new_principal_key_name, new_provider_name, ensure_new_key);
     PG_RETURN_BOOL(ret);
 }
@@ -820,7 +818,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
                 (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
                     errmsg("function returning record called in context that cannot accept type record")));
 
-    principal_key = GetPrincipalKey(dbOid, spcOid, NULL);
+    principal_key = GetPrincipalKey(dbOid, spcOid);
     if (principal_key == NULL)
 	{
 		ereport(ERROR,
