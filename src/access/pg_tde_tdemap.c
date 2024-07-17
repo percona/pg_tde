@@ -1172,6 +1172,7 @@ pg_tde_perform_rotate_key(TDEPrincipalKey *principal_key, TDEPrincipalKey *new_p
 	xlrec->keydata_size = keydata_size;
 
 	/* TODO: pgstat_report_wait_start / pgstat_report_wait_end */
+	/* TODO: error handling */
 	pg_pread(m_fd[NEW_PRINCIPAL_KEY], xlrec->buff, xlrec->map_size, 0);
 	pg_pread(k_fd[NEW_PRINCIPAL_KEY], &xlrec->buff[xlrec->map_size], xlrec->keydata_size, 0);
 

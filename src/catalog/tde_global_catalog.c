@@ -43,46 +43,18 @@ typedef enum
 	TDE_INTERNAL_KEYS_COUNT
 }			InternalKeyType;
 
-typedef struct EncryptionStateData
-{
-	RelKeyData *internal_keys;
-
-	/* TODO: Since for the global tablespace we always keep the Internal key in
-	 * the memory and read it from disk only once during the server start, hence
-	 * we need the Principal key only once and don't have to store it in a
-	 * cache.
-	 */
-	TDEPrincipalKey principal_key;
-}			EncryptionStateData;
-
-static EncryptionStateData * EncryptionState = NULL;
+/* Since for the global tablespace, we always keep the Internal key in the memory
+ * and read it from disk only once during the server start, we need no cache for
+ * the principal key.
+ */
+static RelKeyData *internal_keys_cache = NULL;
 
 static void init_gl_catalog_keys(void);
 static void init_default_keyring(void);
 static TDEPrincipalKey * create_principal_key(const char *key_name,
-											  GenericKeyring * keyring, Oid dbOid, Oid spcOid,
-											  bool ensure_new_key);
+											  GenericKeyring * keyring, Oid dbOid,
+											  Oid spcOid, bool ensure_new_key);
 static void cache_internal_key(RelKeyData * ikey, InternalKeyType type);
-
-
-Size
-TDEGlCatEncStateSize(void)
-{
-	return MAXALIGN(sizeof(EncryptionStateData));
-}
-
-void
-TDEGlCatShmemInit(void)
-{
-	bool		foundBuf;
-	char	   *allocptr;
-
-	EncryptionState = (EncryptionStateData *)
-		ShmemInitStruct("TDE XLog Encryption State",
-						TDEGlCatEncStateSize(), &foundBuf);
-
-	memset(&EncryptionState->principal_key, 0, sizeof(TDEPrincipalKey));
-}
 
 void
 TDEGlCatKeyInit(void)
@@ -106,24 +78,6 @@ TDEGlCatKeyInit(void)
 	}
 }
 
-TDEPrincipalKey *
-TDEGetGlCatKeyFromCache(void)
-{
-	TDEPrincipalKey *mkey;
-
-	mkey = &EncryptionState->principal_key;
-	if (mkey->keyLength == 0)
-		return NULL;
-
-	return mkey;
-}
-
-void
-TDEPutGlCatKeyInCache(TDEPrincipalKey * mkey)
-{
-	memcpy(&EncryptionState->principal_key, mkey, sizeof(TDEPrincipalKey));
-}
-
 /* Internal Key should be in the TopMemmoryContext because of SSL contexts. This
  * context is being initialized by OpenSSL with the pointer to the encryption
  * context which is valid only for the current backend. So new backends have to
@@ -134,13 +88,13 @@ TDEPutGlCatKeyInCache(TDEPrincipalKey * mkey)
 static void
 cache_internal_key(RelKeyData * ikey, InternalKeyType type)
 {
-	if (EncryptionState->internal_keys == NULL)
+	if (internal_keys_cache == NULL)
 	{
-		EncryptionState->internal_keys =
+		internal_keys_cache =
 			(RelKeyData *) MemoryContextAlloc(TopMemoryContext,
 											  sizeof(RelKeyData) * TDE_INTERNAL_KEYS_COUNT);
 	}
-	memcpy(EncryptionState->internal_keys + type, ikey, sizeof(RelKeyData));
+	memcpy(internal_keys_cache + type, ikey, sizeof(RelKeyData));
 }
 
 
@@ -149,7 +103,7 @@ GetGlCatInternalKey(Oid obj_id)
 {
 	InternalKeyType ktype;
 
-	Assert(EncryptionState->internal_keys != NULL);
+	Assert(internal_keys_cache != NULL);
 	switch (obj_id)
 	{
 		case XLOG_TDE_OID:
@@ -158,7 +112,7 @@ GetGlCatInternalKey(Oid obj_id)
 		default:
 			elog(ERROR, "unknown internal key for Oid %u", obj_id);
 	}
-	return EncryptionState->internal_keys + ktype;
+	return internal_keys_cache + ktype;
 }
 
 static void
@@ -220,7 +174,6 @@ init_gl_catalog_keys(void)
 
 	cache_internal_key(rel_key_data, TDE_INTERNAL_XLOG_KEY);
 	pfree(rel_key_data);
-	TDEPutGlCatKeyInCache(mkey);
 	pfree(mkey);
 }
 

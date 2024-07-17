@@ -227,15 +227,13 @@ GetPrincipalKey(Oid dbOid, Oid spcOid)
 
 	recursion++;
 
-    LWLockAcquire(lock_cache, LW_SHARED);
-#ifdef PERCONA_FORK
-    /* Global catalog has its own cache */
-    if (spcOid == GLOBALTABLESPACE_OID)
-        principalKey = TDEGetGlCatKeyFromCache();
-    else
-#endif
+    /* We don't store global space key in cache */
+    if (spcOid != GLOBALTABLESPACE_OID)
+    {
+        LWLockAcquire(lock_cache, LW_SHARED);
         principalKey = get_principal_key_from_cache(dbOid);
-    LWLockRelease(lock_cache);
+        LWLockRelease(lock_cache);
+    }
 
     if (principalKey)
 	{
@@ -250,13 +248,11 @@ GetPrincipalKey(Oid dbOid, Oid spcOid)
     LWLockAcquire(lock_files, LW_SHARED);
     LWLockAcquire(lock_cache, LW_EXCLUSIVE);
 
-#ifdef PERCONA_FORK
-    /* Global catalog has its own cache */
-    if (spcOid == GLOBALTABLESPACE_OID)
-        principalKey = TDEGetGlCatKeyFromCache();
-    else
-#endif
+    /* We don't store global space key in cache */
+    if (spcOid != GLOBALTABLESPACE_OID)
+    {
         principalKey = get_principal_key_from_cache(dbOid);
+    }
 
     if (principalKey)
     {
@@ -304,12 +300,11 @@ GetPrincipalKey(Oid dbOid, Oid spcOid)
     principalKey->keyLength = keyInfo->data.len;
 
     Assert(dbOid == principalKey->keyInfo.databaseId);
-#ifdef PERCONA_FORK
-    if (spcOid == GLOBALTABLESPACE_OID)
-        TDEPutGlCatKeyInCache(principalKey);
-    else
-#endif
+    /* We don't store global space key in cache */
+    if (spcOid != GLOBALTABLESPACE_OID)
+    {
         push_principal_key_to_cache(principalKey);
+    }
 
     /* Release the exclusive locks here */
     LWLockRelease(lock_cache);
@@ -475,8 +470,7 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
     new_principal_key.keyLength = keyInfo->data.len;
     memcpy(new_principal_key.keyData, keyInfo->data.data, keyInfo->data.len);
     is_rotated = pg_tde_perform_rotate_key(current_key, &new_principal_key);
-    /* TODO: !!! */
-    if (is_rotated) {
+    if (is_rotated && current_key->keyInfo.tablespaceId != GLOBALTABLESPACE_OID) {
         clear_principal_key_cache(current_key->keyInfo.databaseId);
         push_principal_key_to_cache(&new_principal_key);
     }
