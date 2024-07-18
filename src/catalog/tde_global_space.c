@@ -206,6 +206,8 @@ create_principal_key(const char *key_name, GenericKeyring * keyring,
 	principalKey->keyInfo.keyId.version = DEFAULT_PRINCIPAL_KEY_VERSION;
 	principalKey->keyInfo.keyringId = keyring->key_id;
 	strncpy(principalKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
+	snprintf(principalKey->keyInfo.keyId.versioned_name, TDE_KEY_NAME_LEN,
+			"%s_%d", principalKey->keyInfo.keyId.name, principalKey->keyInfo.keyId.version);
 	gettimeofday(&principalKey->keyInfo.creationTime, NULL);
 
 	keyInfo = KeyringGenerateNewKeyAndStore(keyring, principalKey->keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, false);
