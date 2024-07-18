@@ -47,13 +47,13 @@ typedef enum
  * and read it from disk only once during the server start, we need no cache for
  * the principal key.
  */
-static RelKeyData *internal_keys_cache = NULL;
+static RelKeyData * internal_keys_cache = NULL;
 
 static void init_gl_catalog_keys(void);
 static void init_default_keyring(void);
 static TDEPrincipalKey * create_principal_key(const char *key_name,
 											  GenericKeyring * keyring, Oid dbOid,
-											  Oid spcOid, bool ensure_new_key);
+											  Oid spcOid);
 static void cache_internal_key(RelKeyData * ikey, InternalKeyType type);
 
 void
@@ -78,7 +78,8 @@ TDEGlCatKeyInit(void)
 	}
 }
 
-/* Internal Key should be in the TopMemmoryContext because of SSL contexts. This
+/*
+ * Internal Key should be in the TopMemmoryContext because of SSL contexts. This
  * context is being initialized by OpenSSL with the pointer to the encryption
  * context which is valid only for the current backend. So new backends have to
  * inherit a cached key with NULL SSL connext and any changes to it have to remain
@@ -120,22 +121,27 @@ init_default_keyring(void)
 {
 	if (GetAllKeyringProviders(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID) == NIL)
 	{
-		static KeyringProvideRecord provider = {
+		static KeyringProvideRecord provider =
+		{
 			.provider_name = KEYRING_DEFAULT_NAME,
-			.provider_type = FILE_KEY_PROVIDER,
-			.options = 
+				.provider_type = FILE_KEY_PROVIDER,
+				.options =
 				"{"
-					"\"type\": \"file\","
-					" \"path\": \"pg_tde_default_keyring_CHANGE_IT_AND_REMOVE\"" /*TODO: not sure about the location*/
+				"\"type\": \"file\","
+				" \"path\": \"pg_tde_default_keyring_CHANGE_IT_AND_REMOVE\""	/* TODO: not sure about
+																				 * the location */
 				"}"
 		};
 
-		/* TODO: should we remove it automaticaly on pg_tde_rotate_global_key() ? */
+		/*
+		 * TODO: should we remove it automaticaly on
+		 * pg_tde_rotate_global_key() ?
+		 */
 		save_new_key_provider_info(&provider, GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, true);
 		elog(INFO,
-				"default keyring has been created for the global tablespace (WAL)."
-				" Change it with pg_tde_add_global_key_provider_* and run pg_tde_rotate_global_key."
-				);
+			 "default keyring has been created for the global tablespace (WAL)."
+			 " Change it with pg_tde_add_global_key_provider_* and run pg_tde_rotate_global_key."
+			);
 	}
 }
 
@@ -151,10 +157,9 @@ init_gl_catalog_keys(void)
 	RelFileLocator *rlocator;
 	TDEPrincipalKey *mkey;
 
-	/* TODO: Use SetPrincipalKey()? */
 	mkey = create_principal_key(PRINCIPAL_KEY_DEFAULT_NAME,
 								DefaultKeyProvider,
-								GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, false);
+								GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID);
 
 	memset(&int_key, 0, sizeof(InternalKey));
 
@@ -177,9 +182,18 @@ init_gl_catalog_keys(void)
 	pfree(mkey);
 }
 
+/*
+ * Substantially simplified version of set_principal_key_with_keyring() as during
+ * recovery (server start):
+ * - we can't insert XLog records;
+ * - no need for locks;
+ * - we run this func only once, during the first server start and always create
+ *   a new key with the default keyring, hence no need to try to load the key
+ *   first.
+ */
 static TDEPrincipalKey *
 create_principal_key(const char *key_name, GenericKeyring * keyring,
-					 Oid dbOid, Oid spcOid, bool ensure_new_key)
+					 Oid dbOid, Oid spcOid)
 {
 	TDEPrincipalKey *principalKey;
 	keyInfo    *keyInfo = NULL;
@@ -192,10 +206,7 @@ create_principal_key(const char *key_name, GenericKeyring * keyring,
 	strncpy(principalKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
 	gettimeofday(&principalKey->keyInfo.creationTime, NULL);
 
-	keyInfo = load_latest_versioned_key_name(&principalKey->keyInfo, keyring, ensure_new_key);
-
-	if (keyInfo == NULL)
-		keyInfo = KeyringGenerateNewKeyAndStore(keyring, principalKey->keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, false);
+	keyInfo = KeyringGenerateNewKeyAndStore(keyring, principalKey->keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, false);
 
 	if (keyInfo == NULL)
 	{

@@ -72,6 +72,13 @@ static inline dshash_table *get_principal_key_Hash(void);
 static TDEPrincipalKey *get_principal_key_from_cache(Oid dbOid);
 static void push_principal_key_to_cache(TDEPrincipalKey *principalKey);
 static Datum pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid);
+static keyInfo *load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info, 
+												GenericKeyring *keyring,
+												bool ensure_new_key);
+static TDEPrincipalKey *set_principal_key_with_keyring(const char *key_name, 
+												GenericKeyring *keyring,
+												Oid dbOid, Oid spcOid,
+												bool ensure_new_key);
 
 static const TDEShmemSetupRoutine principal_key_info_shmem_routine = {
     .init_shared_state = initialize_shared_state,
