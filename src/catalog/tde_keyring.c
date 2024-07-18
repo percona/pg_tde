@@ -14,7 +14,7 @@
 #include "access/xlog.h"
 #include "access/xloginsert.h"
 #include "access/pg_tde_xlog.h"
-#include "catalog/tde_global_catalog.h"
+#include "catalog/tde_global_space.h"
 #include "catalog/tde_keyring.h"
 #include "catalog/tde_principal_key.h"
 #include "access/skey.h"

@@ -1,11 +1,11 @@
 /*-------------------------------------------------------------------------
  *
- * tde_global_catalog.c
+ * tde_global_space.c
  *	  Global catalog key management
  *
  *
  * IDENTIFICATION
- *	  src/catalog/tde_global_catalog.c
+ *	  src/catalog/tde_global_space.c
  *
  *-------------------------------------------------------------------------
  */
@@ -21,7 +21,7 @@
 #include "utils/memutils.h"
 
 #include "access/pg_tde_tdemap.h"
-#include "catalog/tde_global_catalog.h"
+#include "catalog/tde_global_space.h"
 #include "catalog/tde_keyring.h"
 #include "catalog/tde_principal_key.h"
 
@@ -49,7 +49,7 @@ typedef enum
  */
 static RelKeyData * internal_keys_cache = NULL;
 
-static void init_gl_catalog_keys(void);
+static void init_keys(void);
 static void init_default_keyring(void);
 static TDEPrincipalKey * create_principal_key(const char *key_name,
 											  GenericKeyring * keyring, Oid dbOid,
@@ -57,17 +57,16 @@ static TDEPrincipalKey * create_principal_key(const char *key_name,
 static void cache_internal_key(RelKeyData * ikey, InternalKeyType type);
 
 void
-TDEGlCatKeyInit(void)
+TDEInitGlobalKeys(void)
 {
 	char		db_map_path[MAXPGPATH] = {0};
-
-	init_default_keyring();
 
 	pg_tde_set_db_file_paths(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID),
 							 db_map_path, NULL);
 	if (access(db_map_path, F_OK) == -1)
 	{
-		init_gl_catalog_keys();
+		init_default_keyring();
+		init_keys();
 	}
 	else
 	{
@@ -100,7 +99,7 @@ cache_internal_key(RelKeyData * ikey, InternalKeyType type)
 
 
 RelKeyData *
-GetGlCatInternalKey(Oid obj_id)
+TDEGetGlobalInternalKey(Oid obj_id)
 {
 	InternalKeyType ktype;
 
@@ -146,10 +145,13 @@ init_default_keyring(void)
 }
 
 /*
- * Keys are created during the cluster start only, so no locks needed here.
+ * Create and store global space keys (principal and internal) and cache the
+ * internal key.
+ *
+ * This function has to be run during the cluster start only, so no locks here.
  */
 static void
-init_gl_catalog_keys(void)
+init_keys(void)
 {
 	InternalKey int_key;
 	RelKeyData *rel_key_data;

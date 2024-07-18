@@ -1,9 +1,9 @@
 /*-------------------------------------------------------------------------
  *
- * tde_global_catalog.h
+ * tde_global_space.h
  *	  Global catalog key management
  *
- * src/include/catalog/tde_global_catalog.h
+ * src/include/catalog/tde_global_space.h
  *
  *-------------------------------------------------------------------------
  */
@@ -16,10 +16,10 @@
 #include "access/pg_tde_tdemap.h"
 #include "catalog/tde_principal_key.h"
 
-/* 
- * Needed for glogbal data (WAL etc) keys identification in caches and storage.
- * We take IDs the oid type operators, so there is no overlap with the "real"
- * catalog object possible.
+/*
+ * Needed for global data (WAL etc) keys identification in caches and storage.
+ * We take Oids of the sql operators, so there is no overlap with the "real"
+ * catalog objects possible.
  */
 #define GLOBAL_DATA_TDE_OID	607 /* Global objects fake "db" */
 #define XLOG_TDE_OID        608
@@ -30,8 +30,7 @@
 	_obj_oid \
 }
 
-extern void TDEGlCatKeyInit(void);
+extern void TDEInitGlobalKeys(void);
+extern RelKeyData * TDEGetGlobalInternalKey(Oid obj_id);
 
-extern RelKeyData *GetGlCatInternalKey(Oid obj_id);
-
-#endif /*TDE_GLOBAL_CATALOG_H*/
+#endif							/* TDE_GLOBAL_CATALOG_H */

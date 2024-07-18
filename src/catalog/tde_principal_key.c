@@ -30,7 +30,7 @@
 
 #include "access/pg_tde_tdemap.h"
 #ifdef PERCONA_FORK
-#include "catalog/tde_global_catalog.h"
+#include "catalog/tde_global_space.h"
 #endif
 
 typedef struct TdePrincipalKeySharedState

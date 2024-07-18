@@ -2,7 +2,7 @@ CREATE EXTENSION pg_tde;
 \getenv root_token ROOT_TOKEN
 SELECT pg_tde_add_database_key_provider_vault_v2('vault-v2',:'root_token','http://127.0.0.1:8200','secret',NULL);
  pg_tde_add_database_key_provider_vault_v2 
-----------------------------------
+-------------------------------------------
                                          1
 (1 row)
 
