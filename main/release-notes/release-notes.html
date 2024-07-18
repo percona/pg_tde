@@ -24,7 +24,7 @@
     
     
       
-        <title>pg_tde tech preview - pg_tde documentation</title>
+        <title>pg_tde release notes - pg_tde documentation</title>
       
     
     
@@ -87,7 +87,7 @@
                  
                  
                  <meta property="og:type" content="website" />
-                 <meta property="og:title" content="pg_tde documentation - pg_tde tech preview" />
+                 <meta property="og:title" content="pg_tde documentation - pg_tde release notes" />
                  <meta property="og:image" content="https://docs.percona.com/pg-stat-monitor/_images/pg_stat_monitor.png">
                  <meta property="og:url" content="https://docs.percona.com/pg-stat-monitor/">
     <script>
@@ -232,7 +232,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              pg_tde tech preview
+              pg_tde release notes
             
           </span>
         </div>
@@ -723,7 +723,7 @@
           
   
   <span class="md-ellipsis">
-    pg_tde tech preview
+    pg_tde release notes
   </span>
   
 
@@ -734,7 +734,7 @@
         
   
   <span class="md-ellipsis">
-    pg_tde tech preview
+    pg_tde release notes
   </span>
   
 
@@ -1010,13 +1010,14 @@
 <p><code>pg_tde</code> extension brings in <a href="tde.md">Transparent Data Encryption (TDE)</a> to PostgreSQL and enables you to keep sensitive data safe and secure.</p>
 <p><a class="md-button" href="../install.html">Get started</a></p>
 <h2 id="beta-2024-06-30">Beta (2024-06-30)<a class="headerlink" href="#beta-2024-06-30" title="Permanent link">&para;</a></h2>
+<p>With this version, the access method for <code>pg_tde</code> extension is renamed <code>pg_tde_basic</code>. Use this access method name to create tables. Find guidelines in <a href="../test.html">Test TDE</a> tutorial.</p>
 <p>The Beta version introduces the following bug fixes and improvements:</p>
 <ul>
 <li>
 <p>Fixed the issue with <code>pg_tde</code> running out of memory used for decrypted tuples. The fix introduces the new component <code>TDEBufferHeapTupleTableSlot</code> that keeps track of the allocated memory for decrypted tuples and frees this memory when the tuple slot is no longer needed.</p>
 </li>
 <li>
-<p>Fixed the issue with adjusting a current position in a file by using raw file descriptor for the lseek function. (Thanks to user <em>rainhard</em> for providing the fix)</p>
+<p>Fixed the issue with adjusting a current position in a file by using raw file descriptor for the <code>lseek</code> function. (Thanks to user <em>rainhard</em> for providing the fix)</p>
 </li>
 <li>
 <p>Enhanced the init script to consider a custom superuser for the POSTGRES_USER parameter when <code>pg_tde</code> is running via Docker (Thanks to <em>Alejandro Paredero</em> for reporting the issue)</p>
@@ -1096,7 +1097,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 28, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 16, 2024</span>
   </span>
 
     
