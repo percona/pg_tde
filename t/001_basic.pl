@@ -42,8 +42,8 @@ $node->stop();
 $rt_value = $node->start();
 ok($rt_value == 1, "Restart Server");
 
-$rt_value = $node->psql('postgres', "SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');", extra_params => ['-a']);
-$rt_value = $node->psql('postgres', "SELECT pg_tde_set_database_key('test-db-principal-key','file-vault');", extra_params => ['-a']);
+$rt_value = $node->psql('postgres', "SELECT pg_tde_add_database_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');", extra_params => ['-a']);
+$rt_value = $node->psql('postgres', "SELECT pg_tde_set_database_principal_key('test-db-principal-key','file-vault');", extra_params => ['-a']);
 
 $stdout = $node->safe_psql('postgres', 'CREATE TABLE test_enc(id SERIAL,k INTEGER,PRIMARY KEY (id)) USING pg_tde_basic;', extra_params => ['-a']);
 PGTDE::append_to_file($stdout);

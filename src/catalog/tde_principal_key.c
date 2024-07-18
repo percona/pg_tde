@@ -706,10 +706,10 @@ clear_principal_key_cache(Oid databaseId)
 /*
  * SQL interface to set principal key
  */
-PG_FUNCTION_INFO_V1(pg_tde_set_database_key);
-Datum pg_tde_set_database_key(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_tde_set_database_principal_key);
+Datum pg_tde_set_database_principal_key(PG_FUNCTION_ARGS);
 
-Datum pg_tde_set_database_key(PG_FUNCTION_ARGS)
+Datum pg_tde_set_database_principal_key(PG_FUNCTION_ARGS)
 {
     char *principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
     char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
@@ -724,9 +724,9 @@ Datum pg_tde_set_database_key(PG_FUNCTION_ARGS)
 /*
  * SQL interface for key rotation
  */
-PG_FUNCTION_INFO_V1(pg_tde_rotate_database_key);
+PG_FUNCTION_INFO_V1(pg_tde_rotate_database_principal_key);
 Datum
-pg_tde_rotate_database_key(PG_FUNCTION_ARGS)
+pg_tde_rotate_database_principal_key(PG_FUNCTION_ARGS)
 {
     char *new_principal_key_name = NULL;
     char *new_provider_name =  NULL;
@@ -747,10 +747,10 @@ pg_tde_rotate_database_key(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(ret);
 }
 
-PG_FUNCTION_INFO_V1(pg_tde_rotate_global_key);
+PG_FUNCTION_INFO_V1(pg_tde_rotate_global_principal_key);
 #ifdef PERCONA_FORK
 Datum
-pg_tde_rotate_global_key(PG_FUNCTION_ARGS)
+pg_tde_rotate_global_principal_key(PG_FUNCTION_ARGS)
 {
     char *new_principal_key_name = NULL;
     char *new_provider_name =  NULL;
@@ -772,31 +772,31 @@ pg_tde_rotate_global_key(PG_FUNCTION_ARGS)
 }
 #else
 Datum
-pg_tde_rotate_global_key(PG_FUNCTION_ARGS)
+pg_tde_rotate_global_principal_key(PG_FUNCTION_ARGS)
 {
-    ereport(ERROR, (errmsg("pg_tde_rotate_global_key avaliable only with PERCONA_FORK")));
+    ereport(ERROR, (errmsg("pg_tde_rotate_global_principal_key avaliable only with PERCONA_FORK")));
     PG_RETURN_BOOL(false);
 }
 #endif
 
-PG_FUNCTION_INFO_V1(pg_tde_database_key_info);
-Datum pg_tde_database_key_info(PG_FUNCTION_ARGS)
+PG_FUNCTION_INFO_V1(pg_tde_database_principal_key_info);
+Datum pg_tde_database_principal_key_info(PG_FUNCTION_ARGS)
 {
     return pg_tde_get_key_info(fcinfo, MyDatabaseId, MyDatabaseTableSpace);
 }
 
-PG_FUNCTION_INFO_V1(pg_tde_global_key_info);
+PG_FUNCTION_INFO_V1(pg_tde_global_principal_key_info);
 #ifdef PERCONA_FORK
 Datum
-pg_tde_global_key_info(PG_FUNCTION_ARGS)
+pg_tde_global_principal_key_info(PG_FUNCTION_ARGS)
 {
     return pg_tde_get_key_info(fcinfo, GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID);
 }
 #else
 Datum
-pg_tde_global_key_info(PG_FUNCTION_ARGS)
+pg_tde_global_principal_key_info(PG_FUNCTION_ARGS)
 {
-    ereport(ERROR, (errmsg("pg_tde_global_key_info avaliable only with PERCONA_FORK")));
+    ereport(ERROR, (errmsg("pg_tde_global_principal_key_info avaliable only with PERCONA_FORK")));
     PG_RETURN_NULL();
 }
 #endif

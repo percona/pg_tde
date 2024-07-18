@@ -33,8 +33,8 @@
 #include "utils/builtins.h"
 #include "pg_tde.h"
 
-PG_FUNCTION_INFO_V1(pg_tde_add_key_provider_internal);
-Datum pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_tde_add_database_key_provider_internal);
+Datum pg_tde_add_database_key_provider_internal(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(pg_tde_add_global_key_provider_internal);
 Datum pg_tde_add_global_key_provider_internal(PG_FUNCTION_ARGS);
 
@@ -44,7 +44,7 @@ Datum pg_tde_list_all_key_providers(PG_FUNCTION_ARGS);
 #define PG_TDE_KEYRING_FILENAME "pg_tde_keyrings"
 /*
  * These token must be exactly same as defined in
- * pg_tde_add_key_provider_vault_v2 SQL interface
+ * pg_tde_add_database_key_provider_vault_v2 SQL interface
  */
 #define VAULTV2_KEYRING_TOKEN_KEY "token"
 #define VAULTV2_KEYRING_URL_KEY "url"
@@ -53,7 +53,7 @@ Datum pg_tde_list_all_key_providers(PG_FUNCTION_ARGS);
 
 /*
  * These token must be exactly same as defined in
- * pg_tde_add_key_provider_file SQL interface
+ * pg_tde_add_database_key_provider_file SQL interface
  */
 #define FILE_KEYRING_PATH_KEY "path"
 #define FILE_KEYRING_TYPE_KEY "type"
@@ -210,7 +210,7 @@ GetKeyProviderByName(const char *provider_name, Oid dbOid, Oid spcOid)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("key provider \"%s\" does not exists", provider_name),
-				 errhint("Use pg_tde_add_key_provider interface to create the key provider")));
+				 errhint("Use pg_tde_add_database_key_provider interface to create the key provider")));
 	}
 	return keyring;
 }
@@ -536,7 +536,7 @@ get_keyring_infofile_path(char* resPath, Oid dbOid, Oid spcOid)
 }
 
 Datum
-pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS)
+pg_tde_add_database_key_provider_internal(PG_FUNCTION_ARGS)
 {
 	char *provider_type = text_to_cstring(PG_GETARG_TEXT_PP(0));
 	char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));

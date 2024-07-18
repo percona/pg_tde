@@ -1,14 +1,14 @@
 CREATE EXTENSION pg_tde;
 \getenv root_token ROOT_TOKEN
-SELECT pg_tde_add_key_provider_vault_v2('vault-v2',:'root_token','http://127.0.0.1:8200','secret',NULL);
- pg_tde_add_key_provider_vault_v2 
+SELECT pg_tde_add_database_key_provider_vault_v2('vault-v2',:'root_token','http://127.0.0.1:8200','secret',NULL);
+ pg_tde_add_database_key_provider_vault_v2 
 ----------------------------------
-                                1
+                                         1
 (1 row)
 
-SELECT pg_tde_set_database_key('vault-v2-principal-key','vault-v2');
- pg_tde_set_database_key 
--------------------------
+SELECT pg_tde_set_database_principal_key('vault-v2-principal-key','vault-v2');
+ pg_tde_set_database_principal_key 
+-----------------------------------
  t
 (1 row)
 

@@ -4,41 +4,41 @@
 \echo Use "CREATE EXTENSION pg_tde" to load this file. \quit
 
 -- Key Provider Management
-CREATE FUNCTION pg_tde_add_key_provider_internal(provider_type VARCHAR(10), provider_name VARCHAR(128), options JSON)
+CREATE FUNCTION pg_tde_add_database_key_provider_internal(provider_type VARCHAR(10), provider_name VARCHAR(128), options JSON)
 RETURNS INT
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
-CREATE OR REPLACE FUNCTION pg_tde_add_key_provider(provider_type VARCHAR(10), provider_name VARCHAR(128), options JSON)
+CREATE OR REPLACE FUNCTION pg_tde_add_database_key_provider(provider_type VARCHAR(10), provider_name VARCHAR(128), options JSON)
 RETURNS INT
 AS $$
-    SELECT pg_tde_add_key_provider_internal(provider_type, provider_name, options);
+    SELECT pg_tde_add_database_key_provider_internal(provider_type, provider_name, options);
 $$
 LANGUAGE SQL;
 
-CREATE OR REPLACE FUNCTION pg_tde_add_key_provider_file(provider_name VARCHAR(128), file_path TEXT)
+CREATE OR REPLACE FUNCTION pg_tde_add_database_key_provider_file(provider_name VARCHAR(128), file_path TEXT)
 RETURNS INT
 AS $$
 -- JSON keys in the options must be matched to the keys in
 -- load_file_keyring_provider_options function.
 
-    SELECT pg_tde_add_key_provider('file', provider_name,
+    SELECT pg_tde_add_database_key_provider('file', provider_name,
                 json_object('type' VALUE 'file', 'path' VALUE COALESCE(file_path, '')));
 $$
 LANGUAGE SQL;
 
-CREATE OR REPLACE FUNCTION pg_tde_add_key_provider_file(provider_name VARCHAR(128), file_path JSON)
+CREATE OR REPLACE FUNCTION pg_tde_add_database_key_provider_file(provider_name VARCHAR(128), file_path JSON)
 RETURNS INT
 AS $$
 -- JSON keys in the options must be matched to the keys in
 -- load_file_keyring_provider_options function.
 
-    SELECT pg_tde_add_key_provider('file', provider_name,
+    SELECT pg_tde_add_database_key_provider('file', provider_name,
                 json_object('type' VALUE 'file', 'path' VALUE file_path));
 $$
 LANGUAGE SQL;
 
-CREATE OR REPLACE FUNCTION pg_tde_add_key_provider_vault_v2(provider_name VARCHAR(128),
+CREATE OR REPLACE FUNCTION pg_tde_add_database_key_provider_vault_v2(provider_name VARCHAR(128),
                                                         vault_token TEXT,
                                                         vault_url TEXT,
                                                         vault_mount_path TEXT,
@@ -47,7 +47,7 @@ RETURNS INT
 AS $$
 -- JSON keys in the options must be matched to the keys in
 -- load_vaultV2_keyring_provider_options function.
-    SELECT pg_tde_add_key_provider('vault-v2', provider_name,
+    SELECT pg_tde_add_database_key_provider('vault-v2', provider_name,
                             json_object('type' VALUE 'vault-v2',
                             'url' VALUE COALESCE(vault_url,''),
                             'token' VALUE COALESCE(vault_token,''),
@@ -134,17 +134,17 @@ SELECT EXISTS (
     )$$
 LANGUAGE SQL;
 
-CREATE FUNCTION pg_tde_rotate_database_key(new_principal_key_name VARCHAR(255) DEFAULT NULL, new_provider_name VARCHAR(255) DEFAULT NULL, ensure_new_key BOOLEAN DEFAULT TRUE)
+CREATE FUNCTION pg_tde_rotate_database_principal_key(new_principal_key_name VARCHAR(255) DEFAULT NULL, new_provider_name VARCHAR(255) DEFAULT NULL, ensure_new_key BOOLEAN DEFAULT TRUE)
 RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
-CREATE FUNCTION pg_tde_rotate_global_key(new_principal_key_name VARCHAR(255) DEFAULT NULL, new_provider_name VARCHAR(255) DEFAULT NULL, ensure_new_key BOOLEAN DEFAULT TRUE)
+CREATE FUNCTION pg_tde_rotate_global_principal_key(new_principal_key_name VARCHAR(255) DEFAULT NULL, new_provider_name VARCHAR(255) DEFAULT NULL, ensure_new_key BOOLEAN DEFAULT TRUE)
 RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
-CREATE FUNCTION pg_tde_set_database_key(principal_key_name VARCHAR(255), provider_name VARCHAR(255), ensure_new_key BOOLEAN DEFAULT FALSE)
+CREATE FUNCTION pg_tde_set_database_principal_key(principal_key_name VARCHAR(255), provider_name VARCHAR(255), ensure_new_key BOOLEAN DEFAULT FALSE)
 RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
@@ -154,7 +154,7 @@ RETURNS VOID
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
-CREATE FUNCTION pg_tde_database_key_info()
+CREATE FUNCTION pg_tde_database_principal_key_info()
 RETURNS TABLE ( principal_key_name text,
                 key_provider_name text,
                 key_provider_id integer,
@@ -164,7 +164,7 @@ RETURNS TABLE ( principal_key_name text,
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
-CREATE FUNCTION pg_tde_global_key_info()
+CREATE FUNCTION pg_tde_global_principal_key_info()
 RETURNS TABLE ( principal_key_name text,
                 key_provider_name text,
                 key_provider_id integer,
