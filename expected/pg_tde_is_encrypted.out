@@ -38,13 +38,13 @@ SELECT amname FROM pg_class INNER JOIN pg_am ON pg_am.oid = pg_class.relam WHERE
 
 SELECT pg_tde_is_encrypted('test_enc');
  pg_tde_is_encrypted 
---------------------
+---------------------
  t
 (1 row)
 
 SELECT pg_tde_is_encrypted('test_norm');
  pg_tde_is_encrypted 
---------------------
+---------------------
  f
 (1 row)
 

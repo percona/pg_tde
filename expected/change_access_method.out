@@ -31,7 +31,7 @@ SELECT * FROM country_table;
 
 SELECT pg_tde_is_encrypted('country_table');
  pg_tde_is_encrypted 
---------------------
+---------------------
  t
 (1 row)
 
@@ -55,7 +55,7 @@ SELECT * FROM country_table;
 
 SELECT pg_tde_is_encrypted('country_table');
  pg_tde_is_encrypted 
---------------------
+---------------------
  f
 (1 row)
 
@@ -81,7 +81,7 @@ SELECT * FROM country_table;
 
 SELECT pg_tde_is_encrypted('country_table');
  pg_tde_is_encrypted 
---------------------
+---------------------
  t
 (1 row)
 
