@@ -547,12 +547,11 @@ pg_tde_list_all_key_providers(PG_FUNCTION_ARGS)
 	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("pg_tde_list_all_key_providers: Set-valued function called in context that cannot accept a set.")));
+				 errmsg("pg_tde_list_all_key_providers: set-valued function called in context that cannot accept a set")));
 	if (!(rsinfo->allowedModes & SFRM_Materialize))
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("pg_tde_list_all_key_providers: Materialize mode required, but it is not "
-						"allowed in this context.")));
+				 errmsg("pg_tde_list_all_key_providers: materialize mode required, but it is not allowed in this context")));
 
 	/* Switch into long-lived context to construct returned data structures */
 	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
@@ -560,7 +559,7 @@ pg_tde_list_all_key_providers(PG_FUNCTION_ARGS)
 
 	/* Build a tuple descriptor for our result type */
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
-		elog(ERROR, "pg_tde_list_all_key_providers: Return type must be a row type.");
+		elog(ERROR, "pg_tde_list_all_key_providers: return type must be a row type");
 
 	tupstore = tuplestore_begin_heap(true, false, work_mem);
 	rsinfo->returnMode = SFRM_Materialize;
