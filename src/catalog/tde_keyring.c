@@ -33,10 +33,8 @@
 #include "utils/builtins.h"
 #include "pg_tde.h"
 
-PG_FUNCTION_INFO_V1(pg_tde_add_database_key_provider_internal);
-Datum pg_tde_add_database_key_provider_internal(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(pg_tde_add_global_key_provider_internal);
-Datum pg_tde_add_global_key_provider_internal(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_tde_add_key_provider_internal);
+Datum pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(pg_tde_list_all_key_providers);
 Datum pg_tde_list_all_key_providers(PG_FUNCTION_ARGS);
@@ -44,7 +42,7 @@ Datum pg_tde_list_all_key_providers(PG_FUNCTION_ARGS);
 #define PG_TDE_KEYRING_FILENAME "pg_tde_keyrings"
 /*
  * These token must be exactly same as defined in
- * pg_tde_add_database_key_provider_vault_v2 SQL interface
+ * pg_tde_add_key_provider_vault_v2 SQL interface
  */
 #define VAULTV2_KEYRING_TOKEN_KEY "token"
 #define VAULTV2_KEYRING_URL_KEY "url"
@@ -53,7 +51,7 @@ Datum pg_tde_list_all_key_providers(PG_FUNCTION_ARGS);
 
 /*
  * These token must be exactly same as defined in
- * pg_tde_add_database_key_provider_file SQL interface
+ * pg_tde_add_key_provider_file SQL interface
  */
 #define FILE_KEYRING_PATH_KEY "path"
 #define FILE_KEYRING_TYPE_KEY "type"
@@ -210,7 +208,7 @@ GetKeyProviderByName(const char *provider_name, Oid dbOid, Oid spcOid)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("key provider \"%s\" does not exists", provider_name),
-				 errhint("Use pg_tde_add_database_key_provider interface to create the key provider")));
+				 errhint("Use pg_tde_add_key_provider interface to create the key provider")));
 	}
 	return keyring;
 }
@@ -536,33 +534,28 @@ get_keyring_infofile_path(char* resPath, Oid dbOid, Oid spcOid)
 }
 
 Datum
-pg_tde_add_database_key_provider_internal(PG_FUNCTION_ARGS)
+pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS)
 {
 	char *provider_type = text_to_cstring(PG_GETARG_TEXT_PP(0));
 	char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
 	char *options = text_to_cstring(PG_GETARG_TEXT_PP(2));
+	bool is_global = PG_GETARG_BOOL(3);
 	KeyringProvideRecord provider;
+	Oid dbOid = MyDatabaseId;
+	Oid spcOid = MyDatabaseTableSpace;
+
+#ifdef PERCONA_FORK
+	if (is_global)
+	{
+		dbOid = GLOBAL_DATA_TDE_OID;
+		spcOid = GLOBALTABLESPACE_OID;
+	}
+#endif
 
 	strncpy(provider.options, options, sizeof(provider.options));
 	strncpy(provider.provider_name, provider_name, sizeof(provider.provider_name));
 	provider.provider_type = get_keyring_provider_from_typename(provider_type);
-	save_new_key_provider_info(&provider, MyDatabaseId, MyDatabaseTableSpace, false);
-
-	PG_RETURN_INT32(provider.provider_id);
-}
-
-Datum
-pg_tde_add_global_key_provider_internal(PG_FUNCTION_ARGS)
-{
-	char *provider_type = text_to_cstring(PG_GETARG_TEXT_PP(0));
-	char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
-	char *options = text_to_cstring(PG_GETARG_TEXT_PP(2));
-	KeyringProvideRecord provider;
-
-	strncpy(provider.options, options, sizeof(provider.options));
-	strncpy(provider.provider_name, provider_name, sizeof(provider.provider_name));
-	provider.provider_type = get_keyring_provider_from_typename(provider_type);
-	save_new_key_provider_info(&provider, GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, false);
+	save_new_key_provider_info(&provider, dbOid, spcOid, false);
 
 	PG_RETURN_INT32(provider.provider_id);
 }

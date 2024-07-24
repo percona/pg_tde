@@ -127,19 +127,19 @@ init_default_keyring(void)
 				.options =
 				"{"
 				"\"type\": \"file\","
-				" \"path\": \"pg_tde_default_keyring_CHANGE_IT_AND_REMOVE\""	/* TODO: not sure about
+				" \"path\": \"pg_tde_default_keyring_CHANGE_AND_REMOVE_IT\""	/* TODO: not sure about
 																				 * the location */
 				"}"
 		};
 
 		/*
 		 * TODO: should we remove it automaticaly on
-		 * pg_tde_rotate_global_principal_key() ?
+		 * pg_tde_rotate_principal_key() ?
 		 */
 		save_new_key_provider_info(&provider, GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, true);
 		elog(INFO,
 			 "default keyring has been created for the global tablespace (WAL)."
-			 " Change it with pg_tde_add_global_key_provider_* and run pg_tde_rotate_global_principal_key."
+			 " Change it with pg_tde_add_key_provider_* and run pg_tde_rotate_principal_key."
 			);
 	}
 }

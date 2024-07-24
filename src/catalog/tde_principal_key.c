@@ -706,10 +706,10 @@ clear_principal_key_cache(Oid databaseId)
 /*
  * SQL interface to set principal key
  */
-PG_FUNCTION_INFO_V1(pg_tde_set_database_principal_key);
-Datum pg_tde_set_database_principal_key(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(pg_tde_set_principal_key);
+Datum pg_tde_set_principal_key(PG_FUNCTION_ARGS);
 
-Datum pg_tde_set_database_principal_key(PG_FUNCTION_ARGS)
+Datum pg_tde_set_principal_key(PG_FUNCTION_ARGS)
 {
     char *principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
     char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
@@ -724,82 +724,60 @@ Datum pg_tde_set_database_principal_key(PG_FUNCTION_ARGS)
 /*
  * SQL interface for key rotation
  */
-PG_FUNCTION_INFO_V1(pg_tde_rotate_database_principal_key);
+PG_FUNCTION_INFO_V1(pg_tde_rotate_principal_key_internal);
 Datum
-pg_tde_rotate_database_principal_key(PG_FUNCTION_ARGS)
+pg_tde_rotate_principal_key_internal(PG_FUNCTION_ARGS)
 {
     char *new_principal_key_name = NULL;
     char *new_provider_name =  NULL;
     bool ensure_new_key;
+    bool is_global;
     bool ret;
     TDEPrincipalKey *current_key;
+    Oid dbOid = MyDatabaseId;
+    Oid spcOid = MyDatabaseTableSpace;
 
     if (!PG_ARGISNULL(0))
         new_principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
     if (!PG_ARGISNULL(1))
         new_provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
     ensure_new_key = PG_GETARG_BOOL(2);
+    is_global = PG_GETARG_BOOL(3);
 
+#ifdef PERCONA_FORK
+	if (is_global)
+	{
+		dbOid = GLOBAL_DATA_TDE_OID;
+		spcOid = GLOBALTABLESPACE_OID;
+	}
+#endif
 
-    ereport(LOG, (errmsg("Rotating principal key to [%s : %s] for the database", new_principal_key_name, new_provider_name)));
-    current_key = GetPrincipalKey(MyDatabaseId, MyDatabaseTableSpace);
+    ereport(LOG, (errmsg("rotating principal key to [%s : %s] the for the %s", 
+                            new_principal_key_name,
+                            new_provider_name,
+                            is_global ? "cluster" : "database")));
+    current_key = GetPrincipalKey(dbOid, spcOid);
     ret = RotatePrincipalKey(current_key, new_principal_key_name, new_provider_name, ensure_new_key);
     PG_RETURN_BOOL(ret);
 }
 
-PG_FUNCTION_INFO_V1(pg_tde_rotate_global_principal_key);
+PG_FUNCTION_INFO_V1(pg_tde_principal_key_info_internal);
+Datum pg_tde_principal_key_info_internal(PG_FUNCTION_ARGS)
+{
+	Oid dbOid = MyDatabaseId;
+	Oid spcOid = MyDatabaseTableSpace;
+	bool is_global = PG_GETARG_BOOL(0);
+
 #ifdef PERCONA_FORK
-Datum
-pg_tde_rotate_global_principal_key(PG_FUNCTION_ARGS)
-{
-    char *new_principal_key_name = NULL;
-    char *new_provider_name =  NULL;
-    bool ensure_new_key;
-    bool ret;
-    TDEPrincipalKey *current_key;
-
-    if (!PG_ARGISNULL(0))
-        new_principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
-    if (!PG_ARGISNULL(1))
-        new_provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
-    ensure_new_key = PG_GETARG_BOOL(2);
-
-
-    ereport(LOG, (errmsg("Rotating principal key to [%s : %s] for the database", new_principal_key_name, new_provider_name)));
-    current_key = GetPrincipalKey(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID);
-    ret = RotatePrincipalKey(current_key, new_principal_key_name, new_provider_name, ensure_new_key);
-    PG_RETURN_BOOL(ret);
-}
-#else
-Datum
-pg_tde_rotate_global_principal_key(PG_FUNCTION_ARGS)
-{
-    ereport(ERROR, (errmsg("pg_tde_rotate_global_principal_key avaliable only with PERCONA_FORK")));
-    PG_RETURN_BOOL(false);
-}
+	if (is_global)
+	{
+		dbOid = GLOBAL_DATA_TDE_OID;
+		spcOid = GLOBALTABLESPACE_OID;
+	}
 #endif
 
-PG_FUNCTION_INFO_V1(pg_tde_database_principal_key_info);
-Datum pg_tde_database_principal_key_info(PG_FUNCTION_ARGS)
-{
-    return pg_tde_get_key_info(fcinfo, MyDatabaseId, MyDatabaseTableSpace);
+    return pg_tde_get_key_info(fcinfo, dbOid, spcOid);
 }
-
-PG_FUNCTION_INFO_V1(pg_tde_global_principal_key_info);
-#ifdef PERCONA_FORK
-Datum
-pg_tde_global_principal_key_info(PG_FUNCTION_ARGS)
-{
-    return pg_tde_get_key_info(fcinfo, GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID);
-}
-#else
-Datum
-pg_tde_global_principal_key_info(PG_FUNCTION_ARGS)
-{
-    ereport(ERROR, (errmsg("pg_tde_global_principal_key_info avaliable only with PERCONA_FORK")));
-    PG_RETURN_NULL();
-}
-#endif
 
 static Datum 
 pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)

@@ -1,8 +1,8 @@
 -- test https://github.com/Percona-Lab/pg_tde/issues/63
 CREATE EXTENSION pg_tde;
 
-SELECT pg_tde_add_database_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');
-SELECT pg_tde_set_database_principal_key('test-db-principal-key','file-vault');
+SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');
+SELECT pg_tde_set_principal_key('test-db-principal-key','file-vault');
 
 CREATE TEMP TABLE src (f1 text) USING pg_tde_basic;
 -- Crash on INSERT
