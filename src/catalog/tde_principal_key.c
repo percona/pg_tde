@@ -29,9 +29,7 @@
 #include <sys/time.h>
 
 #include "access/pg_tde_tdemap.h"
-#ifdef PERCONA_FORK
 #include "catalog/tde_global_space.h"
-#endif
 
 typedef struct TdePrincipalKeySharedState
 {
@@ -768,13 +766,11 @@ Datum pg_tde_principal_key_info_internal(PG_FUNCTION_ARGS)
 	Oid spcOid = MyDatabaseTableSpace;
 	bool is_global = PG_GETARG_BOOL(0);
 
-#ifdef PERCONA_FORK
 	if (is_global)
 	{
 		dbOid = GLOBAL_DATA_TDE_OID;
 		spcOid = GLOBALTABLESPACE_OID;
 	}
-#endif
 
     return pg_tde_get_key_info(fcinfo, dbOid, spcOid);
 }

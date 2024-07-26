@@ -544,13 +544,11 @@ pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS)
 	Oid dbOid = MyDatabaseId;
 	Oid spcOid = MyDatabaseTableSpace;
 
-#ifdef PERCONA_FORK
 	if (is_global)
 	{
 		dbOid = GLOBAL_DATA_TDE_OID;
 		spcOid = GLOBALTABLESPACE_OID;
 	}
-#endif
 
 	strncpy(provider.options, options, sizeof(provider.options));
 	strncpy(provider.provider_name, provider_name, sizeof(provider.provider_name));
