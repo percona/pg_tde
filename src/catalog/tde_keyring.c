@@ -73,16 +73,11 @@ static VaultV2Keyring *load_vaultV2_keyring_provider_options(Datum keyring_optio
 static void debug_print_kerying(GenericKeyring *keyring);
 static char *get_keyring_infofile_path(char *resPath, Oid dbOid, Oid spcOid);
 static void key_provider_startup_cleanup(int tde_tbl_count, XLogExtensionInstall *ext_info, bool redo, void *arg);
-<<<<<<< HEAD
-static uint32 write_key_provider_info(KeyringProvideRecord *provider, Oid database_id, Oid tablespace_id, off_t position, bool redo);
-static uint32 save_new_key_provider_info(KeyringProvideRecord *provider);
 static const char *get_keyring_provider_typename(ProviderType p_type);
-=======
 static uint32 write_key_provider_info(KeyringProvideRecord *provider, 
 									Oid database_id, Oid tablespace_id,
 									off_t position, bool redo, bool recovery);
 
->>>>>>> b967694 (Use common keyring and key rotation)
 static Size initialize_shared_state(void *start_address);
 static Size required_shared_mem_size(void);
 
@@ -561,7 +556,7 @@ pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS)
 Datum
 pg_tde_list_all_key_providers(PG_FUNCTION_ARGS)
 {
-	List* all_providers = GetAllKeyringProviders();
+	List* all_providers = GetAllKeyringProviders(MyDatabaseId, MyDatabaseTableSpace);
 	ListCell *lc;
 	Tuplestorestate *tupstore;
 	TupleDesc tupdesc;
@@ -608,7 +603,6 @@ pg_tde_list_all_key_providers(PG_FUNCTION_ARGS)
 
 		debug_print_kerying(keyring);
 	}
-	tuplestore_donestoring(tupstore);
 	list_free_deep(all_providers);
 	return (Datum)0;
 }

@@ -66,12 +66,8 @@ CREATE FUNCTION pg_tde_list_all_key_providers
 RETURNS SETOF record
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT VOLATILE;
--- Global Tblespace Key Provider Management
-CREATE FUNCTION pg_tde_add_global_key_provider_internal(provider_type VARCHAR(10), provider_name VARCHAR(128), options JSON)
-RETURNS INT
-AS 'MODULE_PATHNAME'
-LANGUAGE C;
 
+-- Global Tblespace Key Provider Management
 CREATE OR REPLACE FUNCTION pg_tde_add_key_provider(PG_TDE_GLOBAL, provider_type VARCHAR(10), provider_name VARCHAR(128), options JSON)
 RETURNS INT
 AS $$
