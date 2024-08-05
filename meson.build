@@ -43,6 +43,7 @@ pg_tde_sources = files(
 
         'src/catalog/tde_global_space.c',
         'src/catalog/tde_keyring.c',
+        'src/catalog/tde_keyring_parse_opts.c',
         'src/catalog/tde_principal_key.c',
         'src/common/pg_tde_shmem.c',
         'src/common/pg_tde_utils.c',
