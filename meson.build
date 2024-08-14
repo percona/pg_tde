@@ -107,7 +107,9 @@ tests += {
       't/001_basic.pl',
       't/002_rotate_key.pl',
       't/003_remote_config.pl',
-      't/004_file_config.pl'
+      't/004_file_config.pl',
+      't/005_multiple_extensions.pl',
+      't/006_remote_vault_config.pl'
     ],
   },
 }

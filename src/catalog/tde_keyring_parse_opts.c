@@ -3,8 +3,6 @@
  * tde_keyring_parse_opts.c
  *      Parser routines for the keyring JSON options
  * 
- * TODO: add unit tests !!!
- * 
  * Each value in the JSON document can be either scalar (string) - a value itself
  * or a reference to the external object that contains the value. Though the top
  * level field "type" can be only scalar.
@@ -432,6 +430,9 @@ get_remote_kring_value(const char *url, const char *field_name)
 		return NULL;
 	}
 
+	/* remove trailing whitespace */
+	outStr.ptr[strcspn(outStr.ptr, " \t\n\r")] = '\0';
+	
 	return outStr.ptr;
 }
 
@@ -451,7 +452,8 @@ get_file_kring_value(const char *path, const char *field_name)
 	/* TODO: we never pfree it */
 	val = palloc0(MAX_CONFIG_FILE_DATA_LENGTH);
 	pg_pread(fd, val, MAX_CONFIG_FILE_DATA_LENGTH, 0);
-	val[strcspn(val, "\r\n")] = 0;
+	/* remove trailing whitespace */
+	val[strcspn(val, " \t\n\r")] = '\0';
 
 	close(fd);
 	return val;
