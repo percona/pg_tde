@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="_images/postgresql-fav.svg">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.31">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
     
     
       
@@ -890,13 +890,13 @@
 <p>To check if the data is encrypted, do the following:</p>
 <ol>
 <li>
-<p>Create a table in the database for which you have <a href="setup.html">enabled <code>pg_tde</code></a>. Enabling <code>pg_tde</code> extension creates the table access method <code>pg_tde_basic</code>. To enable data encryption, create the table using this access method as follows:</p>
-<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="o">&lt;</span><span class="k">table_name</span><span class="o">&gt;</span><span class="w"> </span><span class="p">(</span><span class="o">&lt;</span><span class="n">field</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&lt;</span><span class="n">datatype</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">pg_tde_basic</span><span class="p">;</span>
+<p>Create a table in the database for which you have <a href="setup.html">enabled <code>pg_tde</code></a>. Enabling <code>pg_tde</code> extension creates the table access method <code>tde_heap_basic</code>. To enable data encryption, create the table using this access method as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="o">&lt;</span><span class="k">table_name</span><span class="o">&gt;</span><span class="w"> </span><span class="p">(</span><span class="o">&lt;</span><span class="n">field</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&lt;</span><span class="n">datatype</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">tde_heap_basic</span><span class="p">;</span>
 </code></pre></div>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
-<p>You can enable data encryption by default by setting the <code>default_table_access_method</code> to <code>pg_tde_basic</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="k">SET</span><span class="w"> </span><span class="n">default_table_access_method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pg_tde_basic</span><span class="p">;</span>
+<p>You can enable data encryption by default by setting the <code>default_table_access_method</code> to <code>tde_heap_basic</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SET</span><span class="w"> </span><span class="n">default_table_access_method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tde_heap_basic</span><span class="p">;</span>
 </code></pre></div>
 </div>
 </li>
@@ -949,7 +949,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 30, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">August 19, 2024</span>
   </span>
 
     
@@ -1062,7 +1062,7 @@
     
 <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 
-      <script src="assets/javascripts/bundle.fe8b6f2b.min.js"></script>
+      <script src="assets/javascripts/bundle.471ce7a9.min.js"></script>
       
         <script src="js/version-select.js"></script>
       
