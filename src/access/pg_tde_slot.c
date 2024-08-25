@@ -54,6 +54,8 @@ tdeheap_tts_buffer_heap_init(TupleTableSlot *slot)
 static void
 tdeheap_tts_buffer_heap_release(TupleTableSlot *slot)
 {
+	TDEBufferHeapTupleTableSlot *bslot = (TDEBufferHeapTupleTableSlot *) slot;
+	bslot->decrypted_tuple = NULL;
 }
 
 static void
@@ -61,8 +63,6 @@ tdeheap_tts_buffer_heap_clear(TupleTableSlot *slot)
 {
 	TDEBufferHeapTupleTableSlot *bslot = (TDEBufferHeapTupleTableSlot *) slot;
 
-	if (bslot->decrypted_tuple)
-		tdeheap_freetuple(bslot->decrypted_tuple);
 	bslot->decrypted_tuple = NULL;
 
 	/*
@@ -242,19 +242,6 @@ tdeheap_tts_buffer_heap_copyslot(TupleTableSlot *dstslot, TupleTableSlot *srcslo
 		memcpy(&bdstslot->base.tupdata, bdstslot->base.tuple, sizeof(HeapTupleData));
 		bdstslot->base.tuple = &bdstslot->base.tupdata;
 	}
-}
-
-static HeapTuple
-tdeheap_tts_buffer_heap_get_heap_tuple(TupleTableSlot *slot)
-{
-	BufferHeapTupleTableSlot *bslot = (BufferHeapTupleTableSlot *) slot;
-
-	Assert(!TTS_EMPTY(slot));
-
-	if (!bslot->base.tuple)
-		tdeheap_tts_buffer_heap_materialize(slot);
-
-	return bslot->base.tuple;
 }
 
 static HeapTuple
@@ -448,6 +435,24 @@ tdeheap_slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *of
 		slot->tts_flags &= ~TTS_FLAG_SLOW;
 }
 
+static HeapTuple
+slot_copytuple(void* buffer, HeapTuple tuple)
+{
+	HeapTuple	newTuple;
+
+	if (!HeapTupleIsValid(tuple) || tuple->t_data == NULL)
+		return NULL;
+
+	newTuple = (HeapTuple) buffer;
+	newTuple->t_len = tuple->t_len;
+	newTuple->t_self = tuple->t_self;
+	newTuple->t_tableOid = tuple->t_tableOid;
+	newTuple->t_data = (HeapTupleHeader) ((char *) newTuple + HEAPTUPLESIZE);
+	// TODO: no need for this memcpy, don't decrypt in place instead!
+	memcpy((char *) newTuple->t_data, (char *) tuple->t_data, tuple->t_len);
+	return newTuple;
+}
+
 const TupleTableSlotOps TTSOpsTDEBufferHeapTuple = {
 	.base_slot_size = sizeof(TDEBufferHeapTupleTableSlot),
 	.init = tdeheap_tts_buffer_heap_init,
@@ -460,7 +465,7 @@ const TupleTableSlotOps TTSOpsTDEBufferHeapTuple = {
 	.is_current_xact_tuple = tdeheap_buffer_is_current_xact_tuple,
 #endif
 	.copyslot = tdeheap_tts_buffer_heap_copyslot,
-	.get_heap_tuple = tdeheap_tts_buffer_heap_get_heap_tuple,
+	.get_heap_tuple = NULL,
 
 	/* A buffer heap tuple table slot can not "own" a minimal tuple. */
 	.get_minimal_tuple = NULL,
@@ -509,7 +514,7 @@ PGTdeExecStoreBufferHeapTuple(Relation rel,
 	if (rel->rd_rel->relkind != RELKIND_TOASTVALUE)
 	{
 		RelKeyData *key = GetRelationKey(rel->rd_locator);
-		bslot->decrypted_tuple = tdeheap_copytuple(tuple);
+		bslot->decrypted_tuple = slot_copytuple(bslot->decrypted_buffer, tuple);
 		PG_TDE_DECRYPT_TUPLE_EX(tuple, bslot->decrypted_tuple, key, "ExecStoreBuffer");
 		/* TODO: revisit this */
 		tuple->t_data = bslot->decrypted_tuple->t_data;
@@ -551,7 +556,7 @@ PGTdeExecStorePinnedBufferHeapTuple(Relation rel,
 	{
 		RelKeyData *key = GetRelationKey(rel->rd_locator);
 
-		bslot->decrypted_tuple = tdeheap_copytuple(tuple);
+		bslot->decrypted_tuple = slot_copytuple(bslot->decrypted_buffer, tuple);
 		PG_TDE_DECRYPT_TUPLE_EX(tuple, bslot->decrypted_tuple, key, "ExecStorePinnedBuffer");
 		/* TODO: revisit this */
 		tuple->t_data = bslot->decrypted_tuple->t_data;
