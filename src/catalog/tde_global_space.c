@@ -15,15 +15,16 @@
 #ifdef PERCONA_EXT
 
 #include "catalog/pg_tablespace_d.h"
-#include "nodes/pg_list.h"
-#include "storage/shmem.h"
-#include "utils/guc.h"
 #include "utils/memutils.h"
 
 #include "access/pg_tde_tdemap.h"
 #include "catalog/tde_global_space.h"
 #include "catalog/tde_keyring.h"
-#include "catalog/tde_principal_key.h"
+#include "common/pg_tde_utils.h"
+
+#ifdef FRONTEND
+#include "pg_tde_fe.h"
+#endif
 
 #include <openssl/rand.h>
 #include <openssl/err.h>
@@ -35,15 +36,19 @@
 #define DefaultKeyProvider GetKeyProviderByName(KEYRING_DEFAULT_NAME, \
 										GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID)
 
+#ifndef FRONTEND
 static void init_keys(void);
 static void init_default_keyring(void);
 static TDEPrincipalKey * create_principal_key(const char *key_name,
 											  GenericKeyring * keyring, Oid dbOid,
 											  Oid spcOid);
+#endif		/* !FRONTEND */
+
 
 void
-TDEInitGlobalKeys(void)
+TDEInitGlobalKeys()
 {
+#ifndef FRONTEND
 	char		db_map_path[MAXPGPATH] = {0};
 
 	pg_tde_set_db_file_paths(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID),
@@ -54,6 +59,7 @@ TDEInitGlobalKeys(void)
 		init_keys();
 	}
 	else
+#endif		/* !FRONTEND */
 	{
 		RelKeyData *ikey;
 
@@ -70,6 +76,8 @@ TDEInitGlobalKeys(void)
 		pg_tde_put_key_into_map(XLOG_TDE_OID, ikey);
 	}
 }
+
+#ifndef FRONTEND
 
 static void
 init_default_keyring(void)
@@ -181,4 +189,6 @@ create_principal_key(const char *key_name, GenericKeyring * keyring,
 
 	return principalKey;
 }
+#endif		/* FRONTEND */
+
 #endif							/* PERCONA_EXT */

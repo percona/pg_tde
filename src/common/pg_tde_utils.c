@@ -10,12 +10,15 @@
  */
 
 #include "postgres.h"
-#include "access/genam.h"
-#include "access/heapam.h"
+
 #include "catalog/pg_tablespace_d.h"
 #include "utils/snapmgr.h"
 #include "commands/defrem.h"
 #include "common/pg_tde_utils.h"
+
+#ifndef FRONTEND
+#include "access/genam.h"
+#include "access/heapam.h"
 
 Oid
 get_tde_basic_table_am_oid(void)
@@ -78,6 +81,8 @@ get_tde_tables_count(void)
     list_free(tde_tables);
     return count;
 }
+
+#endif          /* !FRONTEND */
 
 /* returns the palloc'd string */
 char *
