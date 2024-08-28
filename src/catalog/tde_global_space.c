@@ -32,6 +32,7 @@
 
 #define PRINCIPAL_KEY_DEFAULT_NAME	"tde-global-catalog-key"
 #define KEYRING_DEFAULT_NAME "default_global_tablespace_keyring"
+#define KEYRING_DEFAULT_FILE_NAME "pg_tde_default_keyring_CHANGE_AND_REMOVE_IT"
 
 #define DefaultKeyProvider GetKeyProviderByName(KEYRING_DEFAULT_NAME, \
 										GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID)
@@ -42,11 +43,11 @@ static void init_default_keyring(void);
 static TDEPrincipalKey * create_principal_key(const char *key_name,
 											  GenericKeyring * keyring, Oid dbOid,
 											  Oid spcOid);
-#endif		/* !FRONTEND */
+#endif							/* !FRONTEND */
 
 
 void
-TDEInitGlobalKeys()
+TDEInitGlobalKeys(const char *dir)
 {
 #ifndef FRONTEND
 	char		db_map_path[MAXPGPATH] = {0};
@@ -59,20 +60,23 @@ TDEInitGlobalKeys()
 		init_keys();
 	}
 	else
-#endif		/* !FRONTEND */
+#endif							/* !FRONTEND */
 	{
 		RelKeyData *ikey;
-
+		
+		if (dir != NULL)
+			pg_tde_set_globalspace_dir(dir);
 		ikey = pg_tde_get_key_from_file(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID));
 
 		/*
-		* Internal Key should be in the TopMemmoryContext because of SSL contexts. This
-		* context is being initialized by OpenSSL with the pointer to the encryption
-		* context which is valid only for the current backend. So new backends have to
-		* inherit a cached key with NULL SSL connext and any changes to it have to remain
-		* local ot the backend.
-		* (see https://github.com/Percona-Lab/pg_tde/pull/214#discussion_r1648998317)
-		*/
+		 * Internal Key should be in the TopMemmoryContext because of SSL
+		 * contexts. This context is being initialized by OpenSSL with the
+		 * pointer to the encryption context which is valid only for the
+		 * current backend. So new backends have to inherit a cached key with
+		 * NULL SSL connext and any changes to it have to remain local ot the
+		 * backend. (see
+		 * https://github.com/Percona-Lab/pg_tde/pull/214#discussion_r1648998317)
+		 */
 		pg_tde_put_key_into_map(XLOG_TDE_OID, ikey);
 	}
 }
@@ -84,17 +88,25 @@ init_default_keyring(void)
 {
 	if (GetAllKeyringProviders(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID) == NIL)
 	{
+		char		path[MAXPGPATH] = {0};
 		static KeyringProvideRecord provider =
 		{
 			.provider_name = KEYRING_DEFAULT_NAME,
 				.provider_type = FILE_KEY_PROVIDER,
-				.options =
-				"{"
-				"\"type\": \"file\","
-				" \"path\": \"pg_tde_default_keyring_CHANGE_AND_REMOVE_IT\""	/* TODO: not sure about
-																				 * the location */
-				"}"
 		};
+
+		if (getcwd(path, sizeof(path)) == NULL)
+			elog(WARNING, "unable to get current working dir");
+		
+		/* TODO: not sure about the location. Currently it's in $PGDATA */
+		join_path_components(path, path, KEYRING_DEFAULT_FILE_NAME);
+
+		snprintf(provider.options, MAX_KEYRING_OPTION_LEN,
+				 "{"
+				 "\"type\": \"file\","
+				 "\"path\": \"%s\"" 
+				 "}", path
+			);
 
 		/*
 		 * TODO: should we remove it automaticaly on
@@ -111,11 +123,11 @@ init_default_keyring(void)
 /*
  * Create and store global space keys (principal and internal) and cache the
  * internal key.
- * 
- * Since we always keep an Internal key in the memory for the global tablespace 
+ *
+ * Since we always keep an Internal key in the memory for the global tablespace
  * and read it from disk once, only during the server start, we need no cache for
  * the principal key.
- * 
+ *
  * This function has to be run during the cluster start only, so no locks needed.
  */
 static void
@@ -173,7 +185,7 @@ create_principal_key(const char *key_name, GenericKeyring * keyring,
 	principalKey->keyInfo.keyringId = keyring->key_id;
 	strncpy(principalKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
 	snprintf(principalKey->keyInfo.keyId.versioned_name, TDE_KEY_NAME_LEN,
-			"%s_%d", principalKey->keyInfo.keyId.name, principalKey->keyInfo.keyId.version);
+			 "%s_%d", principalKey->keyInfo.keyId.name, principalKey->keyInfo.keyId.version);
 	gettimeofday(&principalKey->keyInfo.creationTime, NULL);
 
 	keyInfo = KeyringGenerateNewKeyAndStore(keyring, principalKey->keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, false);
@@ -189,6 +201,6 @@ create_principal_key(const char *key_name, GenericKeyring * keyring,
 
 	return principalKey;
 }
-#endif		/* FRONTEND */
+#endif							/* FRONTEND */
 
 #endif							/* PERCONA_EXT */

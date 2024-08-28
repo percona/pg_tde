@@ -31,6 +31,6 @@
 	_obj_oid \
 }
 
-extern void TDEInitGlobalKeys(void);
+extern void TDEInitGlobalKeys(const char *dir);
 
 #endif							/* TDE_GLOBAL_CATALOG_H */

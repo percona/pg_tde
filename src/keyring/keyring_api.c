@@ -25,7 +25,7 @@ typedef struct KeyProviders
 #ifndef FRONTEND
 List *registeredKeyProviders = NIL;
 #else
-SimplePtrList *registeredKeyProviders = NULL;
+SimplePtrList registeredKeyProviders = {NULL, NULL};
 #endif
 static KeyProviders *find_key_provider(ProviderType type);
 
@@ -49,7 +49,7 @@ static KeyProviders *
 find_key_provider(ProviderType type)
 {
 	SimplePtrListCell *lc;
-	for (lc = registeredKeyProviders->head; lc; lc = lc->next)
+	for (lc = registeredKeyProviders.head; lc; lc = lc->next)
 	{
 		KeyProviders *kp = (KeyProviders *) lc->ptr;
 		if (kp->type == type)
@@ -88,7 +88,7 @@ bool RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType type)
 	registeredKeyProviders = lappend(registeredKeyProviders, kp);
 	MemoryContextSwitchTo(oldcontext);
 #else
-	simple_ptr_list_append(registeredKeyProviders, kp);
+	simple_ptr_list_append(&registeredKeyProviders, kp);
 #endif
 
 	return true;

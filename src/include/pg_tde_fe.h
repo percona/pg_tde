@@ -17,7 +17,6 @@
 #include "common/logging.h"
 #include "common/file_perm.h"
 
-// #pragma GCC diagnostic warning "-Wno-unused-value"
 #pragma GCC diagnostic ignored "-Wunused-macros"
 #pragma GCC diagnostic ignored "-Wunused-value"
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -46,16 +45,26 @@
 #define errcode_for_file_access() NULL
 #define errcode(e) NULL
 
+#define tde_error_handle_exit(elevel) \
+	do {							\
+		if (elevel >= PANIC)		\
+			pg_unreachable();		\
+		else if (elevel >= ERROR)	\
+			exit(1);				\
+	} while(0)
+
 #define elog(elevel, fmt, ...) \
 	do {							\
 		tde_fe_error_level = elevel;	\
 		errmsg(fmt, ##__VA_ARGS__);		\
+		tde_error_handle_exit(elevel);	\
 	} while(0)
 
 #define ereport(elevel,...)		\
 	do {							\
 		tde_fe_error_level = elevel;	\
-		__VA_ARGS__;				\
+		__VA_ARGS__;					\
+		tde_error_handle_exit(elevel);	\
 	} while(0)
 
 static int	tde_fe_error_level = 0;
@@ -63,7 +72,6 @@ static int	tde_fe_error_level = 0;
 /*
  * -------------
  */
-
 
 #define LWLockAcquire(lock, mode) NULL
 #define LWLockRelease(lock_files) NULL

@@ -506,6 +506,8 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid, Oid 
 #ifndef FRONTEND
 				providers_list = lappend(providers_list, keyring);
 #else
+				if (providers_list == NULL)
+					providers_list = palloc(sizeof(providers_list));
 				simple_ptr_list_append(providers_list, keyring);
 #endif
 			}

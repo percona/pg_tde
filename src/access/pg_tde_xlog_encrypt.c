@@ -28,6 +28,10 @@
 #include "catalog/tde_global_space.h"
 #include "encryption/enc_tde.h"
 
+#ifdef FRONTEND
+#include "pg_tde_fe.h"
+#endif
+
 static XLogPageHeaderData DecryptCurrentPageHrd;
 
 static void SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char* iv_prefix);
