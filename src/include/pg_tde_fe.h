@@ -21,8 +21,9 @@
 #pragma GCC diagnostic ignored "-Wunused-value"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wextra"
+
 /*
- * Errors handeling
+ * Errors handling
  * ----------------------------------------
  */
 

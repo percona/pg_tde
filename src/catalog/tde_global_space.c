@@ -63,9 +63,10 @@ TDEInitGlobalKeys(const char *dir)
 #endif							/* !FRONTEND */
 	{
 		RelKeyData *ikey;
-		
+
 		if (dir != NULL)
 			pg_tde_set_globalspace_dir(dir);
+
 		ikey = pg_tde_get_key_from_file(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID));
 
 		/*
