@@ -12,7 +12,7 @@
 
 #include "postgres.h"
 
-#ifdef PERCONA_FORK
+#ifdef PERCONA_EXT
 #include "pg_tde.h"
 #include "pg_tde_defines.h"
 #include "access/xlog.h"
@@ -311,4 +311,4 @@ SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char* iv_prefix)
 	iv_prefix[11] = (lsn & 0xFF);
 }
 
-#endif				/* PERCONA_FORK */
+#endif				/* PERCONA_EXT */

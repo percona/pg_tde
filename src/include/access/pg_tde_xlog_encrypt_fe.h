@@ -9,7 +9,7 @@
 #ifndef PG_TDE_XLOGENCRYPT_FE_H
 #define PG_TDE_XLOGENCRYPT_FE_H
 
-#ifdef PERCONA_FORK
+#ifdef PERCONA_EXT
 #include "access/pg_tde_xlog_encrypt.h"
 #include "catalog/tde_global_space.h"
 #include "encryption/enc_aes.h"
@@ -24,6 +24,6 @@
 	TDEInitGlobalKeys(kring_dir);	\
 	TDEXLogSmgrInit()
 
-#endif							/* PERCONA_FORK */
+#endif							/* PERCONA_EXT */
 
 #endif							/* PG_TDE_XLOGENCRYPT_FE_H */
