@@ -344,18 +344,13 @@ BEGIN
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_rotate_principal_key', 'varchar, varchar');
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_rotate_principal_key_internal', 'varchar, varchar, BOOLEAN, BOOLEAN');
 
-    PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_list_all_key_providers', 'OUT INT, OUT varchar, OUT varchar, OUT JSON');
-    PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_is_encrypted', 'VARCHAR');
-
-    PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_principal_key_info_internal', 'BOOLEAN');
-    PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_principal_key_info', '');
-    PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_principal_key_info', 'pg_tde_global');
-
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_grant_key_management_to_role', 'TEXT');
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_revoke_key_management_from_role', 'TEXT');
 
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_grant_key_viewer_to_role', 'TEXT');
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_revoke_key_viewer_from_role', 'TEXT');
+
+    PERFORM pg_tde_grant_key_viewer_to_role(target_user_or_role);
 
     RETURN TRUE;
 
