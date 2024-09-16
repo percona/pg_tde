@@ -121,6 +121,7 @@ static int pg_tde_file_header_read(char *tde_filename, int fd, TDEFileHeader *fh
 static bool pg_tde_read_one_map_entry(int fd, const RelFileLocator *rlocator, int flags, TDEMapEntry *map_entry, off_t *offset);
 static RelKeyData* pg_tde_read_one_keydata(int keydata_fd, int32 key_index, TDEPrincipalKey *principal_key);
 static int pg_tde_open_file(char *tde_filename, TDEPrincipalKeyInfo *principal_key_info, bool should_fill_info, int fileFlags, bool *is_new_file, off_t *offset);
+static RelKeyData *pg_tde_get_key_from_cache(Oid rel_id);
 
 #ifndef FRONTEND
 
@@ -131,8 +132,6 @@ static void pg_tde_write_keydata(char *db_keydata_path, TDEPrincipalKeyInfo *pri
 static void pg_tde_write_one_keydata(int keydata_fd, int32 key_index, RelKeyData *enc_rel_key_data);
 static int keyrotation_init_file(TDEPrincipalKeyInfo *new_principal_key_info, char *rotated_filename, char *filename, bool *is_new_file, off_t *curr_pos);
 static void finalize_key_rotation(char *m_path_old, char *k_path_old, char *m_path_new, char *k_path_new);
-
-static RelKeyData *pg_tde_get_key_from_cache(Oid rel_id);
 
 /*
  * Generate an encrypted key for the relation and store it in the keymap file.
@@ -1357,12 +1356,13 @@ pg_tde_put_key_into_cache(Oid rel_id, RelKeyData *key)
 	{
 #ifndef FRONTEND
 		oldCtx = MemoryContextSwitchTo(TopMemoryContext);
-#endif
 		tde_rel_key_cache = palloc(sizeof(RelKeyCache));
-
 		tde_rel_key_cache->data = palloc_aligned(pageSize, pageSize, MCXT_ALLOC_ZERO);
-#ifndef FRONTEND
 		MemoryContextSwitchTo(oldCtx);
+#else
+		tde_rel_key_cache = palloc(sizeof(RelKeyCache));
+		tde_rel_key_cache->data = aligned_alloc(pageSize, pageSize);
+		memset(tde_rel_key_cache->data, 0, pageSize);
 #endif
 
 		if (mlock(tde_rel_key_cache->data, pageSize) == -1)
@@ -1387,10 +1387,11 @@ pg_tde_put_key_into_cache(Oid rel_id, RelKeyData *key)
 
 #ifndef FRONTEND
 		oldCtx = MemoryContextSwitchTo(TopMemoryContext);
-#endif
 		chachePage = palloc_aligned(pageSize, size, MCXT_ALLOC_ZERO);
-#ifndef FRONTEND
 		MemoryContextSwitchTo(oldCtx);
+#else
+		chachePage = aligned_alloc(pageSize, size);
+		memset(chachePage, 0, size);
 #endif
 
 		memcpy(chachePage, tde_rel_key_cache->data, old_size);
