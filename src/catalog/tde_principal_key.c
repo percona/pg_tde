@@ -42,7 +42,7 @@
 
 typedef struct TdePrincipalKeySharedState
 {
-    LWLock *Locks;
+    LWLockPadded *Locks;
     int hashTrancheId;
     dshash_table_handle hashHandle;
     void *rawDsaArea; /* DSA area pointer */
@@ -106,7 +106,7 @@ tde_lwlock_mk_files(void)
 {
     Assert(principalKeyLocalState.sharedPrincipalKeyState);
 
-    return &principalKeyLocalState.sharedPrincipalKeyState->Locks[TDE_LWLOCK_MK_FILES];
+    return &(principalKeyLocalState.sharedPrincipalKeyState)->Locks[TDE_LWLOCK_MK_FILES].lock;
 }
 
 LWLock *
@@ -114,7 +114,7 @@ tde_lwlock_mk_cache(void)
 {
     Assert(principalKeyLocalState.sharedPrincipalKeyState);
 
-    return &principalKeyLocalState.sharedPrincipalKeyState->Locks[TDE_LWLOCK_MK_CACHE];
+    return &principalKeyLocalState.sharedPrincipalKeyState->Locks[TDE_LWLOCK_MK_CACHE].lock;
 }
 
 static Size
@@ -144,7 +144,8 @@ initialize_shared_state(void *start_address)
     principalKeyLocalState.dsa = NULL;
     principalKeyLocalState.sharedHash = NULL;
 
-    sharedState->Locks = GetLWLocks();
+    sharedState->Locks = GetNamedLWLockTranche(TDE_TRANCHE_NAME);
+
     principalKeyLocalState.sharedPrincipalKeyState = sharedState;
     return sizeof(TdePrincipalKeySharedState);
 }
