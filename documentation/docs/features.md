@@ -15,6 +15,5 @@ The following table provides features available for each version:
 | | Logical replication of encrypted tables | 
 
 
-<i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead for most situations. However, in some specific applications such as those using JSONB operations, performance degradation might be higher.
 
 [Get started](install.md){.md-button}
