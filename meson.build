@@ -93,6 +93,7 @@ tests += {
       'move_large_tuples',
       'non_sorted_off_compact',
       'update_compare_indexes',
+      'update',
       'pg_tde_is_encrypted',
       'test_issue_153_fix',
       'multi_insert',
