@@ -13,11 +13,9 @@
 static RelKeyData*
 tde_smgr_get_key(SMgrRelation reln)
 {
-	// TODO: This recursion counter is a dirty hack until the metadata is in the catalog
-	// As otherwise we would call GetPrincipalKey recursively and deadlock
-	static int recursion = 0;
 	TdeCreateEvent *event;
 	RelKeyData *rkd;
+	TDEPrincipalKey *pk;
 
 	if(IsCatalogRelationOid(reln->smgr_rlocator.locator.relNumber))
 	{
@@ -25,16 +23,11 @@ tde_smgr_get_key(SMgrRelation reln)
 		return NULL;
 	}
 
-	if(recursion != 0) 
+	LWLockAcquire(tde_lwlock_enc_keys(), LW_SHARED);
+	pk = GetPrincipalKey(reln->smgr_rlocator.locator.dbOid, reln->smgr_rlocator.locator.spcOid, LW_SHARED);
+	LWLockRelease(tde_lwlock_enc_keys());
+	if(pk == NULL)
 	{
-		return NULL;
-	}
-
-	recursion++;
-
-	if(GetPrincipalKey(reln->smgr_rlocator.locator.dbOid, reln->smgr_rlocator.locator.spcOid)==NULL)
-	{
-		recursion--;
 		return NULL;
 	}
 
@@ -45,14 +38,12 @@ tde_smgr_get_key(SMgrRelation reln)
 
 	if(rkd != NULL)
 	{
-		recursion--;
 		return rkd;
 	}
 
 	// if this is a CREATE TABLE, we have to generate the key
 	if(event->encryptMode == true && event->eventType == TDE_TABLE_CREATE_EVENT)
 	{
-		recursion--;
 		return pg_tde_create_key_map_entry(&reln->smgr_rlocator.locator);
 	}
 	
@@ -61,11 +52,8 @@ tde_smgr_get_key(SMgrRelation reln)
 	{
 		// For now keep it simple and create separate key for indexes
 		// Later we might modify the map infrastructure to support the same keys
-		recursion--;
 		return pg_tde_create_key_map_entry(&reln->smgr_rlocator.locator);
 	}
-
-	recursion--;
 
 	return NULL;
 }
