@@ -4,7 +4,7 @@ on: [pull_request, workflow_dispatch]
 jobs:
   build:
     name: pg-16-src-meson-test
-    runs-on: macos-15
+    runs-on: macos-14
     steps:
       - name: Install dependencies
         run: |
