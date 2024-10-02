@@ -113,7 +113,7 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 
 		tablespace_oid = stmt->tablespacename != NULL ? get_tablespace_oid(stmt->tablespacename, false) 
 						 : MyDatabaseTableSpace;  
-		principal_key = GetPrincipalKey(MyDatabaseId, tablespace_oid);
+		principal_key = GetPrincipalKey(MyDatabaseId, tablespace_oid, LW_SHARED);
 		if (principal_key == NULL)
 		{
 			ereport(ERROR,
