@@ -1,17 +1,8 @@
-\set tde_am tde_heap
-\i sql/subtransaction.inc
 CREATE EXTENSION pg_tde;
-SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');
- pg_tde_add_key_provider_file 
-------------------------------
-                            1
-(1 row)
 
+SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');
 SELECT pg_tde_set_principal_key('test-db-principal-key','file-vault');
- pg_tde_set_principal_key 
---------------------------
- t
-(1 row)
+
 
 BEGIN;                      -- Nesting level 1
 SAVEPOINT sp;
@@ -21,6 +12,7 @@ SAVEPOINT sp;
 CREATE TABLE bar(s TEXT);   -- Nesting level 2
 ROLLBACK TO sp;             -- Rollback should not affect first subtransaction
 COMMIT;
+
 BEGIN;                      -- Nesting level 1
 SAVEPOINT sp;
 DROP TABLE foo;             -- Nesting level 2
@@ -29,4 +21,5 @@ SAVEPOINT sp;
 CREATE TABLE bar(s TEXT);   -- Nesting level 2
 ROLLBACK TO sp;             -- Rollback should not affect first subtransaction
 COMMIT;
+
 DROP EXTENSION pg_tde;
