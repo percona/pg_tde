@@ -18,8 +18,7 @@
 
 typedef enum
 {
-    TDE_LWLOCK_MK_CACHE,
-    TDE_LWLOCK_MK_FILES,
+    TDE_LWLOCK_ENC_KEY,
     TDE_LWLOCK_PI_FILES,
 
     /* Must be the last entry in the enum */
@@ -57,6 +56,5 @@ extern void RegisterShmemRequest(const TDEShmemSetupRoutine *routine);
 extern void TdeShmemInit(void);
 extern Size TdeRequiredSharedMemorySize(void);
 extern int TdeRequiredLocksCount(void);
-extern LWLock *GetLWLocks(void);
 
 #endif /*PG_TDE_SHMEM_H*/
