@@ -62,12 +62,12 @@ Install `pg_tde` using one of available installation methods:
 
 === "Run in Docker"
 
-    You can find Docker images built from the current main branch on [Docker Hub](https://hub.docker.com/r/perconalab/pg_tde). Images are built on top of [postgres:16](https://hub.docker.com/_/postgres) official image.     
+    You can find Docker images built from the current main branch on [Docker Hub](https://hub.docker.com/r/percona/pg_tde). Images are built on top of [postgres:16](https://hub.docker.com/_/postgres) official image.
 
     To run `pg_tde` in Docker, use the following command:    
 
     ```
-    docker run --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d perconalab/pg_tde
+    docker run --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d percona/pg_tde
     ```    
 
     It builds and adds `pg_tde` extension to PostgreSQL 16. The `postgresql.conf` contains the required modifications. The `pg_tde` extension is added to `template1` so that all new databases automatically have the `pg_tde` extension loaded. 

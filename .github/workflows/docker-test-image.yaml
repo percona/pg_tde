@@ -12,7 +12,7 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t perconalab/pg_tde:${{ github.sha }} -t pg_tde-test . -f docker/Dockerfile
+        docker build -t percona/pg_tde:${{ github.sha }} -t pg_tde-test . -f docker/Dockerfile
 
     - name: Run and test Docker image
       run: |
