@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Load the pg_tde at the start time. The extension requires additional shared memory; therefore,  add the pg_tde value for the shared_preload_libraries parameter and restart the postgresql instance.">
+        <meta name="description" content="Documentation">
       
       
         <meta name="author" content="Percona LLC">
@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="_images/postgresql-fav.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.40">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.8c3ca2c6.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.0253249f.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
@@ -88,8 +88,8 @@
                  
                  <meta property="og:type" content="website" />
                  <meta property="og:title" content="pg_tde documentation - Set up" />
-                 <meta property="og:image" content="https://docs.percona.com/pg-stat-monitor/_images/pg_stat_monitor.png">
-                 <meta property="og:url" content="https://docs.percona.com/pg-stat-monitor/">
+                 <meta property="og:image" content="https://percona-lab.github.io/pg_tde/main/documentation/_images/pg_tde.png">
+                 <meta property="og:url" content="https://percona-lab.github.io/pg_tde/main/">
     <script>
         !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
         posthog.init('phc_7unoI9J6Fm0SMrfDp35xNOpCRTkOAibbffQwdGWbHnL',{api_host:'https://eu.posthog.com'})
@@ -589,6 +589,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#enable-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enable extension
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-provider-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key provider configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wal-encryption-configuration-tech-preview" class="md-nav__link">
+    <span class="md-ellipsis">
+      WAL encryption configuration (tech preview)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       Next steps
@@ -710,6 +737,27 @@
   
   <span class="md-ellipsis">
     Use reference to external parameters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="decrypt.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Decrypt an encrypted table
   </span>
   
 
@@ -856,6 +904,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#enable-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enable extension
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-provider-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key provider configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wal-encryption-configuration-tech-preview" class="md-nav__link">
+    <span class="md-ellipsis">
+      WAL encryption configuration (tech preview)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       Next steps
@@ -905,6 +980,7 @@
 
 
 <h1 id="set-up-pg_tde">Set up <code>pg_tde</code><a class="headerlink" href="#set-up-pg_tde" title="Permanent link">&para;</a></h1>
+<h2 id="enable-extension">Enable extension<a class="headerlink" href="#enable-extension" title="Permanent link">&para;</a></h2>
 <p>Load the <code>pg_tde</code> at the start time. The extension requires additional shared memory; therefore,  add the <code>pg_tde</code> value for the <code>shared_preload_libraries</code> parameter and restart the <code>postgresql</code> instance.</p>
 <ol>
 <li>
@@ -937,6 +1013,9 @@
 </code></pre></div>
 </div>
 </li>
+</ol>
+<h2 id="key-provider-configuration">Key provider configuration<a class="headerlink" href="#key-provider-configuration" title="Permanent link">&para;</a></h2>
+<ol>
 <li>
 <p>Set up a key provider for the database where you have enabled the extension</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">With HaschiCorp Vault</label><label for="__tabbed_1_2">With keyring file</label></div>
@@ -967,6 +1046,64 @@
 </li>
 </ol>
 <p><i info><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Info:</i> The key provider configuration is stored in the database catalog in an unencrypted table. See <a href="external-parameters.html">how to use external reference to parameters</a> to add an extra security layer to your setup.</p>
+<h2 id="wal-encryption-configuration-tech-preview">WAL encryption configuration (tech preview)<a class="headerlink" href="#wal-encryption-configuration-tech-preview" title="Permanent link">&para;</a></h2>
+<p>Perform this step if you <a href="https://docs.percona.com/postgresql/17/installing.html">installed Percona Server for PostgreSQL <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2m6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.75.75 0 0 1-1.042-.018.75.75 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1"/></svg></span></a>. Otherwise, proceed to the <a href="#next-steps">Next steps</a>.</p>
+<p>After you <a href="#enable-extension">enabled <code>pg_tde</code></a> and started the Percona Server for PostgreSQL, a principal key and a keyring for WAL are created. Now you need to instruct <code>pg_tde</code> to encrypt WAL files by configuring WAL encryption. Here&rsquo;s how to do it:</p>
+<ol>
+<li>
+<p>Enable WAL level encryption using the <code>ALTER SYSTEM SET</code> command:</p>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">SYSTEM</span><span class="w"> </span><span class="k">set</span><span class="w"> </span><span class="n">pg_tde</span><span class="p">.</span><span class="n">wal_encrypt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">on</span><span class="p">;</span>
+</code></pre></div>
+</li>
+<li>
+<p>Restart the server to apply the changes.</p>
+<ul>
+<li>On Debian and Ubuntu:    </li>
+</ul>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>postgresql.service
+</code></pre></div>
+<ul>
+<li>On RHEL and derivatives</li>
+</ul>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>postgresql-17
+</code></pre></div>
+</li>
+<li>
+<p>We highly recommend you to create your own keyring and rotate the principal key. This is because the default principal key is created from the local keyfile and is stored unencrypted. </p>
+</li>
+</ol>
+<p>Set up the key provider for WAL encryption</p>
+<p>=== &ldquo;With HaschiCorp Vault&rdquo;</p>
+<div class="highlight"><pre><span></span><code>    ```sql
+    SELECT pg_tde_add_key_provider_vault_v2(&#39;PG_TDE_GLOBAL&#39;,&#39;provider-name&#39;,:&#39;secret_token&#39;,&#39;url&#39;,&#39;mount&#39;,&#39;ca_path&#39;);
+    ```
+
+    where:
+
+    * `PG_TDE_GLOBAL` is the constant that defines the WAL encryption key  
+    * `provider-name` is the name you define for the key provider
+    * `url` is the URL of the Vault server
+    * `mount` is the mount point where the keyring should store the keys
+    * `secret_token` is an access token with read and write access to the above mount point
+    * [optional] `ca_path` is the path of the CA file used for SSL verification
+
+
+=== &quot;With keyring file&quot;
+
+    This setup is intended for development and stores the keys unencrypted in the specified data file.
+
+    ```sql
+    SELECT pg_tde_add_key_provider_file(&#39;provider-name&#39;,&#39;/path/to/the/keyring/data.file&#39;);
+    ```
+</code></pre></div>
+<ol>
+<li>
+<p>Rotate the principal key. Don&rsquo;t forget to specify the <code>PG_TDE_GLOBAL</code> constant to rotate only the principal key for WAL.</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pg_tde_rotate_principal_key</span><span class="p">(</span><span class="s1">&#39;PG_TDE_GLOBAL&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;new-principal-key&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;provider-name&#39;</span><span class="p">);</span>
+</code></pre></div>
+</li>
+</ol>
+<p>Now all WAL files are encrypted.</p>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <p><a class="md-button" href="test.html">Test TDE</a></p>
 <div data-banner="data-banner">
@@ -1002,7 +1139,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 27, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 10, 2024</span>
   </span>
 
     
@@ -1115,7 +1252,7 @@
     
 <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 
-      <script src="assets/javascripts/bundle.525ec568.min.js"></script>
+      <script src="assets/javascripts/bundle.83f73b43.min.js"></script>
       
         <script src="js/version-select.js"></script>
       

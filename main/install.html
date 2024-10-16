@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="_images/postgresql-fav.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.40">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.8c3ca2c6.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.0253249f.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
@@ -88,8 +88,8 @@
                  
                  <meta property="og:type" content="website" />
                  <meta property="og:title" content="pg_tde documentation - Install" />
-                 <meta property="og:image" content="https://docs.percona.com/pg-stat-monitor/_images/pg_stat_monitor.png">
-                 <meta property="og:url" content="https://docs.percona.com/pg-stat-monitor/">
+                 <meta property="og:image" content="https://percona-lab.github.io/pg_tde/main/documentation/_images/pg_tde.png">
+                 <meta property="og:url" content="https://percona-lab.github.io/pg_tde/main/">
     <script>
         !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
         posthog.init('phc_7unoI9J6Fm0SMrfDp35xNOpCRTkOAibbffQwdGWbHnL',{api_host:'https://eu.posthog.com'})
@@ -737,6 +737,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="decrypt.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Decrypt an encrypted table
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -963,12 +984,10 @@
 <div class="tabbed-block">
 <p>Starting with Aplha1 version, you can install the extension as package from Percona repositories using the <code>percona-release</code> tool. The packages are available for the following operating systems:</p>
 <ul>
-<li>Red Hat Enterprise Linux and CentOS 7</li>
 <li>Red Hat Enterprise Linux 8 and compatible derivatives</li>
 <li>Red Hat Enterprise Linux 9 and compatible derivatives</li>
 <li>Ubuntu 20.04 (Focal Fossa)</li>
 <li>Ubuntu 22.04 (Jammy Jellyfish)</li>
-<li>Debian 10 (Buster)</li>
 <li>Debian 11 (Bullseye) </li>
 <li>Debian 12 (Bookworm)</li>
 </ul>
@@ -976,6 +995,7 @@
 <a class="md-button" href="yum.html">Install on RHEL or derivatives</a></p>
 </div>
 <div class="tabbed-block">
+<p>The following steps apply to PostgreSQL 16. To build <code>pg_tde</code> for PostgreSQL 17, replace the version in the commands. </p>
 <ol>
 <li>
 <p>To build <code>pg_tde</code> from source code, you require the following on Ubuntu/Debian:</p>
@@ -1052,7 +1072,7 @@ sudo make USE_PGXS=1 install
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 11, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 16, 2024</span>
   </span>
 
     
@@ -1165,7 +1185,7 @@ sudo make USE_PGXS=1 install
     
 <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 
-      <script src="assets/javascripts/bundle.525ec568.min.js"></script>
+      <script src="assets/javascripts/bundle.83f73b43.min.js"></script>
       
         <script src="js/version-select.js"></script>
       

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="In version Aplha1, pg_tde packages are available in the testing repository for Percona Distribution for PostgreSQL 16.2. Check the list of supported platforms.">
+        <meta name="description" content="The packages for pg_tde Beta are available in the testing repository for Percona Distribution for PostgreSQL 16.">
       
       
         <meta name="author" content="Percona LLC">
@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="_images/postgresql-fav.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.40">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.41">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.8c3ca2c6.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.0253249f.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
@@ -88,8 +88,8 @@
                  
                  <meta property="og:type" content="website" />
                  <meta property="og:title" content="pg_tde documentation - Via yum" />
-                 <meta property="og:image" content="https://docs.percona.com/pg-stat-monitor/_images/pg_stat_monitor.png">
-                 <meta property="og:url" content="https://docs.percona.com/pg-stat-monitor/">
+                 <meta property="og:image" content="https://percona-lab.github.io/pg_tde/main/documentation/_images/pg_tde.png">
+                 <meta property="og:url" content="https://percona-lab.github.io/pg_tde/main/">
     <script>
         !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
         posthog.init('phc_7unoI9J6Fm0SMrfDp35xNOpCRTkOAibbffQwdGWbHnL',{api_host:'https://eu.posthog.com'})
@@ -601,15 +601,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-percona-distribution-for-postgresql" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install Percona Distribution for PostgreSQL
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#install-pg_tde" class="md-nav__link">
     <span class="md-ellipsis">
       Install pg_tde
@@ -761,6 +752,27 @@
   
   <span class="md-ellipsis">
     Use reference to external parameters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="decrypt.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Decrypt an encrypted table
   </span>
   
 
@@ -940,15 +952,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-percona-distribution-for-postgresql" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install Percona Distribution for PostgreSQL
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#install-pg_tde" class="md-nav__link">
     <span class="md-ellipsis">
       Install pg_tde
@@ -1007,25 +1010,15 @@
 
 
 <h1 id="install-pg_tde-on-red-hat-enterprise-linux-and-derivatives">Install <code>pg_tde</code> on Red Hat Enterprise Linux and derivatives<a class="headerlink" href="#install-pg_tde-on-red-hat-enterprise-linux-and-derivatives" title="Permanent link">&para;</a></h1>
-<p>In version Aplha1, <code>pg_tde</code> packages are available in the testing repository for Percona Distribution for PostgreSQL 16.2. Check the <a href="install.html#__tabbed_1_2">list of supported platforms</a>.</p>
+<p>The packages for <code>pg_tde</code> Beta are available in the testing repository for Percona Distribution for PostgreSQL 16. </p>
+<p>The packages for the tech preview <code>pg_tde</code> are available in the experimental repository for Percona Distribution for PostgreSQL 17. </p>
+<p>Check the <a href="install.html#__tabbed_1_2">list of supported platforms</a>.</p>
 <p>This tutorial shows how to install <code>pg_tde</code> with <a href="https://docs.percona.com/postgresql/latest/index.html">Percona Distribution for PostgreSQL</a>.</p>
 <h2 id="preconditions">Preconditions<a class="headerlink" href="#preconditions" title="Permanent link">&para;</a></h2>
 <h3 id="enable-disable-modules">Enable / disable modules<a class="headerlink" href="#enable-disable-modules" title="Permanent link">&para;</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CentOS 7</label><label for="__tabbed_1_2">RHEL8/Oracle Linux 8/Rocky Linux 8</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Install the <code>epel-release</code> package:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>epel-release
-sudo<span class="w"> </span>yum<span class="w"> </span>repolist
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Disable the <code>postgresql</code>  and <code>llvm-toolset</code>modules:    </p>
+<p>For RHEL8/Oracle Linux 8/Rocky Linux 8, disable the <code>postgresql</code>  and <code>llvm-toolset</code>modules:    </p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>dnf<span class="w"> </span>module<span class="w"> </span>disable<span class="w"> </span>postgresql<span class="w"> </span>llvm-toolset
 </code></pre></div>
-</div>
-</div>
-</div>
 <h3 id="install-percona-release">Install <code>percona-release</code><a class="headerlink" href="#install-percona-release" title="Permanent link">&para;</a></h3>
 <p>You need the <code>percona-release</code> repository management tool that enables the desired Percona repository for you.</p>
 <ol>
@@ -1036,18 +1029,54 @@ sudo<span class="w"> </span>yum<span class="w"> </span>repolist
 </li>
 <li>
 <p>Enable the repository</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>percona-release<span class="w"> </span>enable-only<span class="w"> </span>ppg-16.2<span class="w"> </span>testing
+<p>Enable the Percona Distribution for PostgreSQL repository</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">pg_tde Beta</label><label for="__tabbed_1_2">pg_tde Tech preview</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>percona-release<span class="w"> </span>enable-only<span class="w"> </span>ppg-16.4<span class="w"> </span>testing
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>percona-release<span class="w"> </span>enable-only<span class="w"> </span>ppg-17.0<span class="w"> </span>experimental
+</code></pre></div>
+</div>
+</div>
+</div>
+</li>
+</ol>
+<h2 id="install-pg_tde">Install <code>pg_tde</code><a class="headerlink" href="#install-pg_tde" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">pg_tde Beta</label><label for="__tabbed_2_2">pg_tde Tech preview</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<ol>
+<li>
+<p>Install Percona Distribution for PostgreSQL 16 and the required packages, run the following command:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>percona-postgresql-client-common<span class="w"> </span>percona-postgresql-common<span class="w">         </span>percona-postgresql-server-dev-all<span class="w"> </span>percona-postgresql16<span class="w"> </span>percona-postgresql16-contrib<span class="w">         </span>percona-postgresql16-devel<span class="w"> </span>percona-postgresql16-libs
+</code></pre></div>
+</li>
+<li>
+<p>Install <code>pg_tde</code> packages</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>percona-pg_tde_16
 </code></pre></div>
 </li>
 </ol>
-<h2 id="install-percona-distribution-for-postgresql">Install Percona Distribution for PostgreSQL<a class="headerlink" href="#install-percona-distribution-for-postgresql" title="Permanent link">&para;</a></h2>
-<p>To install Percona Distribution for PostgreSQL 16 and the required packages, run the following command:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>percona-postgresql-client-common<span class="w"> </span>percona-postgresql-common<span class="w"> </span>percona-postgresql-server-dev-all<span class="w"> </span>percona-postgresql16<span class="w"> </span>percona-postgresql16-contrib<span class="w"> </span>percona-postgresql16-devel<span class="w"> </span>percona-postgresql16-libs
+</div>
+<div class="tabbed-block">
+<ol>
+<li>
+<p>Install Percona Distribution for PostgreSQL 16 and the required packages, run the following command:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>percona-postgresql-client-common<span class="w"> </span>percona-postgresql-common<span class="w">         </span>percona-postgresql-server-dev-all<span class="w"> </span>percona-postgresql17<span class="w"> </span>percona-postgresql17-contrib<span class="w">         </span>percona-postgresql17-devel<span class="w"> </span>percona-postgresql17-libs
 </code></pre></div>
-<h2 id="install-pg_tde">Install <code>pg_tde</code><a class="headerlink" href="#install-pg_tde" title="Permanent link">&para;</a></h2>
-<p>To install <code>pg_tde</code> packages, run the following command:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>percona-pg_tde_16
+</li>
+<li>
+<p>Install <code>pg_tde</code> packages</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>percona-pg_tde_17
 </code></pre></div>
+</li>
+</ol>
+</div>
+</div>
+</div>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <p><a class="md-button" href="setup.html">Setup</a></p>
 <div data-banner="data-banner">
@@ -1083,7 +1112,7 @@ sudo<span class="w"> </span>yum<span class="w"> </span>repolist
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">April 3, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 8, 2024</span>
   </span>
 
     
@@ -1196,7 +1225,7 @@ sudo<span class="w"> </span>yum<span class="w"> </span>repolist
     
 <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 
-      <script src="assets/javascripts/bundle.525ec568.min.js"></script>
+      <script src="assets/javascripts/bundle.83f73b43.min.js"></script>
       
         <script src="js/version-select.js"></script>
       
