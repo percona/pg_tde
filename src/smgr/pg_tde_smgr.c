@@ -11,7 +11,7 @@
 #ifdef PERCONA_EXT
 
 static RelKeyData*
-tde_smgr_get_key(SMgrRelation reln)
+tde_smgr_get_key(SMgrRelation reln, RelFileLocator* old_locator)
 {
 	TdeCreateEvent *event;
 	RelKeyData *rkd;
@@ -55,6 +55,17 @@ tde_smgr_get_key(SMgrRelation reln)
 		return pg_tde_create_smgr_key(&reln->smgr_rlocator.locator);
 	}
 
+	// check if we had a key for the old locator, if there's one
+	if(old_locator != NULL)
+	{
+		RelKeyData *rkd2 = GetRelationKey(*old_locator);
+		if(rkd2!=NULL)
+		{
+			// create a new key for the new file
+			return pg_tde_create_key_map_entry(&reln->smgr_rlocator.locator);
+		}
+	}
+
 	return NULL;
 }
 
@@ -64,7 +75,7 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 {
 	AesInit();
 
-	RelKeyData* rkd = tde_smgr_get_key(reln);
+	RelKeyData* rkd = tde_smgr_get_key(reln, NULL);
 
 	if(rkd == NULL)
 	{
@@ -106,7 +117,7 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 	AesInit();
 
-	rkd = tde_smgr_get_key(reln);
+	rkd = tde_smgr_get_key(reln, NULL);
 
 	if(rkd == NULL)
 	{
@@ -143,7 +154,7 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 	mdreadv(reln, forknum, blocknum, buffers, nblocks);
 
-	rkd = tde_smgr_get_key(reln);
+	rkd = tde_smgr_get_key(reln, NULL);
 
 	if(rkd == NULL)
 		return;
@@ -176,13 +187,13 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 }
 
 static void
-tde_mdcreate(SMgrRelation reln, ForkNumber forknum, bool isRedo)
+tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool isRedo)
 {
 	// This is the only function that gets called during actual CREATE TABLE/INDEX (EVENT TRIGGER)
 	// so we create the key here by loading it
 	// Later calls then decide to encrypt or not based on the existence of the key
-	tde_smgr_get_key(reln);
-	return mdcreate(reln, forknum, isRedo);
+	tde_smgr_get_key(reln, &relold);
+	return mdcreate(relold, reln, forknum, isRedo);
 }
 
 
