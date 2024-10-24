@@ -16,6 +16,8 @@
 #include "access/pg_tde_tdemap.h"
 #include "utils/relcache.h"
 
+#define TDE_SLOT_DEC_BUF_NUM 3
+
 /* heap tuple residing in a buffer */
 typedef struct TDEBufferHeapTupleTableSlot
 {
@@ -30,9 +32,21 @@ typedef struct TDEBufferHeapTupleTableSlot
 	 * such a case, since presumably base.tuple is pointing into the buffer.)
 	 */
 	Buffer		buffer;			/* tuple's buffer, or InvalidBuffer */
-	char		decrypted_buffer[BLCKSZ];
+	char		decrypted_buffer[TDE_SLOT_DEC_BUF_NUM][BLCKSZ];
+	uint8		current_buff;
 	RelKeyData *cached_relation_key;
 } TDEBufferHeapTupleTableSlot;
+
+static inline char*
+TDESlotGetDecryptedBuffer(TDEBufferHeapTupleTableSlot *bslot)
+{
+	char *buf = bslot->decrypted_buffer[bslot->current_buff++];
+
+	if (bslot->current_buff == (TDE_SLOT_DEC_BUF_NUM - 1))
+		bslot->current_buff = 0;
+
+	return buf;
+}
 
 extern PGDLLIMPORT const TupleTableSlotOps TTSOpsTDEBufferHeapTuple;
 
