@@ -49,6 +49,7 @@ tdeheap_tts_buffer_heap_init(TupleTableSlot *slot)
 {
     TDEBufferHeapTupleTableSlot *bslot = (TDEBufferHeapTupleTableSlot *) slot;
 	bslot->cached_relation_key = NULL;
+	bslot->current_buff = 0;
 }
 
 static void
@@ -521,10 +522,12 @@ PGTdeExecStoreBufferHeapTuple(Relation rel,
 
 	if (rel->rd_rel->relkind != RELKIND_TOASTVALUE)
 	{
+		char *buf = TDESlotGetDecryptedBuffer(bslot);
 		RelKeyData *key = get_current_slot_relation_key(bslot, rel);
-		slot_copytuple(bslot->decrypted_buffer, tuple);
-		PG_TDE_DECRYPT_TUPLE_EX(tuple, (HeapTuple)bslot->decrypted_buffer, key, "ExecStoreBuffer");
-		tuple->t_data = ((HeapTuple)bslot->decrypted_buffer)->t_data;
+
+		slot_copytuple(buf, tuple);
+		PG_TDE_DECRYPT_TUPLE_EX(tuple, (HeapTuple)buf, key, "ExecStoreBuffer");
+		tuple->t_data = ((HeapTuple)buf)->t_data;
 	}
 
 	tdeheap_tts_buffer_heap_store_tuple(slot, tuple, buffer, false);
