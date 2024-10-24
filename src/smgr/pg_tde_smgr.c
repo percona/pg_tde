@@ -27,6 +27,15 @@ typedef struct TDESMgrRelationData
 
 typedef TDESMgrRelationData *TDESMgrRelation;
 
+/*
+ * we only encrypt main and init forks
+ */
+static inline bool
+tde_is_encryption_required(TDESMgrRelation tdereln, ForkNumber forknum)
+{
+	return (tdereln->encrypted_relation && (forknum == MAIN_FORKNUM || forknum == INIT_FORKNUM));
+}
+
 static RelKeyData*
 tde_smgr_get_key(SMgrRelation reln)
 {
@@ -82,11 +91,11 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 	TDESMgrRelation tdereln = (TDESMgrRelation)reln;
 	RelKeyData *rkd = &tdereln->relKey;
 
-	if (!tdereln->encrypted_relation)
+	if (!tde_is_encryption_required(tdereln, forknum))
 	{
 		mdwritev(reln, forknum, blocknum, buffers, nblocks, skipFsync);
 	}
-	else if (forknum == MAIN_FORKNUM || forknum == INIT_FORKNUM)
+	else
 	{
 		char *local_blocks = palloc(BLCKSZ * (nblocks + 1));
 		char *local_blocks_aligned = (char *)TYPEALIGN(PG_IO_ALIGN_SIZE, local_blocks);
@@ -121,11 +130,11 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 	TDESMgrRelation tdereln = (TDESMgrRelation)reln;
 	RelKeyData *rkd = &tdereln->relKey;
 
-	if (!tdereln->encrypted_relation)
+	if (!tde_is_encryption_required(tdereln, forknum))
 	{
 		mdextend(reln, forknum, blocknum, buffer, skipFsync);
 	}
-	else if (forknum == MAIN_FORKNUM || forknum == INIT_FORKNUM)
+	else
 	{
 		char *local_blocks = palloc(BLCKSZ * (1 + 1));
 		char *local_blocks_aligned = (char *)TYPEALIGN(PG_IO_ALIGN_SIZE, local_blocks);
@@ -155,10 +164,7 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 	mdreadv(reln, forknum, blocknum, buffers, nblocks);
 
-	if (!tdereln->encrypted_relation)
-		return;
-
-	if (forknum != MAIN_FORKNUM && forknum != INIT_FORKNUM)
+	if (!tde_is_encryption_required(tdereln, forknum))
 		return;
 
 	AesInit();
