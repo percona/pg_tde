@@ -562,12 +562,12 @@ PGTdeExecStorePinnedBufferHeapTuple(Relation rel,
 
 	if (rel->rd_rel->relkind != RELKIND_TOASTVALUE)
 	{
-		RelKeyData *key = get_current_slot_relation_key(bslot,rel);
+		char *buf = TDESlotGetDecryptedBuffer(bslot);
+		RelKeyData *key = get_current_slot_relation_key(bslot, rel);
 
-		slot_copytuple(bslot->decrypted_buffer, tuple);
-		PG_TDE_DECRYPT_TUPLE_EX(tuple, (HeapTuple)bslot->decrypted_buffer, key, "ExecStorePinnedBuffer");
-		/* TODO: revisit this */
-		tuple->t_data = ((HeapTuple)bslot->decrypted_buffer)->t_data;
+		slot_copytuple(buf, tuple);
+		PG_TDE_DECRYPT_TUPLE_EX(tuple, (HeapTuple)buf, key, "ExecStorePinnedBuffer");
+		tuple->t_data = ((HeapTuple)buf)->t_data;
 	}
 
 	tdeheap_tts_buffer_heap_store_tuple(slot, tuple, buffer, true);
