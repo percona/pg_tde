@@ -386,7 +386,7 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
 bool
 xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 {
-	bool		ret;
+	bool ret;
 
 	ret = pg_tde_write_map_keydata_files(xlrec->map_size, xlrec->buff, xlrec->keydata_size, &xlrec->buff[xlrec->map_size]);
 	clear_principal_key_cache(xlrec->databaseId);

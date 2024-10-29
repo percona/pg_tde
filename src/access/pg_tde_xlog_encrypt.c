@@ -65,7 +65,7 @@ XLogInitGUC(void)
 static int
 XLOGChooseNumBuffers(void)
 {
-	int			xbuffers;
+	int	xbuffers;
 
 	xbuffers = NBuffers / 32;
 	if (xbuffers > (wal_segment_size / XLOG_BLCKSZ))
@@ -81,7 +81,7 @@ XLOGChooseNumBuffers(void)
 Size
 TDEXLogEncryptBuffSize(void)
 {
-	int			xbuffers;
+	int	xbuffers;
 
 	xbuffers = (XLOGbuffers == -1) ? XLOGChooseNumBuffers() : XLOGbuffers;
 	return (Size) XLOG_BLCKSZ * xbuffers;
@@ -100,7 +100,7 @@ TDEXLogEncryptBuffSize(void)
 void
 TDEXLogShmemInit(void)
 {
-	bool		foundBuf;
+	bool foundBuf;
 
 	if (EncryptXLog)
 	{
@@ -312,4 +312,4 @@ SetXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, char *iv_prefix)
 	iv_prefix[11] = (lsn & 0xFF);
 }
 
-#endif							/* PERCONA_EXT */
+#endif /* PERCONA_EXT */

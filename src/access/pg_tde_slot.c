@@ -356,10 +356,10 @@ tdeheap_slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *of
 	HeapTupleHeader tup = tuple->t_data;
 	bool hasnulls = HeapTupleHasNulls(tuple);
 	int	attnum;
-	char *tp;				/* ptr to tuple data */
-	uint32 off;			/* offset in tuple data */
+	char *tp;					/* ptr to tuple data */
+	uint32 off;					/* offset in tuple data */
 	bits8 *bp = tup->t_bits;	/* ptr to null bitmap in tuple */
-	bool slow;			/* can we use/set attcacheoff? */
+	bool slow;					/* can we use/set attcacheoff? */
 
 	/* We can only fetch as many attributes as the tuple has. */
 	natts = Min(HeapTupleHeaderGetNatts(tuple->t_data), natts);
@@ -449,7 +449,7 @@ tdeheap_slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *of
 static HeapTuple
 slot_copytuple(void *buffer, HeapTuple tuple)
 {
-	HeapTuple	newTuple;
+	HeapTuple newTuple;
 
 	if (!HeapTupleIsValid(tuple) || tuple->t_data == NULL)
 		return NULL;

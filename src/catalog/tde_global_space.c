@@ -89,7 +89,7 @@ init_default_keyring(void)
 {
 	if (GetAllKeyringProviders(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID) == NIL)
 	{
-		char		path[MAXPGPATH] = {0};
+		char path[MAXPGPATH] = {0};
 		static KeyringProvideRecord provider =
 		{
 			.provider_name = KEYRING_DEFAULT_NAME,

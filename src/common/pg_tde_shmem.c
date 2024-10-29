@@ -69,9 +69,9 @@ TdeRequiredLocksCount(void)
 void
 TdeShmemInit(void)
 {
-	bool		found;
+	bool found;
 	TdeSharedState *tdeState;
-	Size		required_shmem_size = TdeRequiredSharedMemorySize();
+	Size required_shmem_size = TdeRequiredSharedMemorySize();
 
 	LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
 	/* Create or attach to the shared memory state */
