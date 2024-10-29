@@ -350,16 +350,16 @@ static pg_attribute_always_inline void
 tdeheap_slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp,
 							   int natts)
 {
-	TupleDesc	tupleDesc = slot->tts_tupleDescriptor;
-	Datum	   *values = slot->tts_values;
-	bool	   *isnull = slot->tts_isnull;
+	TupleDesc tupleDesc = slot->tts_tupleDescriptor;
+	Datum *values = slot->tts_values;
+	bool *isnull = slot->tts_isnull;
 	HeapTupleHeader tup = tuple->t_data;
-	bool		hasnulls = HeapTupleHasNulls(tuple);
-	int			attnum;
-	char	   *tp;				/* ptr to tuple data */
-	uint32		off;			/* offset in tuple data */
-	bits8	   *bp = tup->t_bits;	/* ptr to null bitmap in tuple */
-	bool		slow;			/* can we use/set attcacheoff? */
+	bool hasnulls = HeapTupleHasNulls(tuple);
+	int	attnum;
+	char *tp;				/* ptr to tuple data */
+	uint32 off;			/* offset in tuple data */
+	bits8 *bp = tup->t_bits;	/* ptr to null bitmap in tuple */
+	bool slow;			/* can we use/set attcacheoff? */
 
 	/* We can only fetch as many attributes as the tuple has. */
 	natts = Min(HeapTupleHeaderGetNatts(tuple->t_data), natts);

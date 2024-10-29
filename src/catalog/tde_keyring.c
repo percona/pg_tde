@@ -623,7 +623,7 @@ load_vaultV2_keyring_provider_options(char *keyring_options)
 static void
 debug_print_kerying(GenericKeyring *keyring)
 {
-	int			debug_level = DEBUG2;
+	int debug_level = DEBUG2;
 
 	elog(debug_level, "Keyring type: %d", keyring->type);
 	elog(debug_level, "Keyring name: %s", keyring->provider_name);
@@ -648,7 +648,7 @@ debug_print_kerying(GenericKeyring *keyring)
 static char *
 get_keyring_infofile_path(char *resPath, Oid dbOid, Oid spcOid)
 {
-	char	   *db_path = pg_tde_get_tde_file_dir(dbOid, spcOid);
+	char *db_path = pg_tde_get_tde_file_dir(dbOid, spcOid);
 
 	Assert(db_path != NULL);
 	join_path_components(resPath, db_path, PG_TDE_KEYRING_FILENAME);

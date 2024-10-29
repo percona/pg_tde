@@ -47,7 +47,7 @@ typedef enum JsonKeringSemState
 {
 	JK_EXPECT_TOP_FIELD,
 	JK_EXPECT_EXTERN_VAL,
-}			JsonKeringSemState;
+} JsonKeringSemState;
 
 #define KEYRING_REMOTE_FIELD_TYPE "remote"
 #define KEYRING_FILE_FIELD_TYPE "file"
@@ -71,7 +71,7 @@ typedef enum JsonKeyringField
 
 	/* must be the last */
 	JK_FIELDS_TOTAL
-}			JsonKeyringField;
+} JsonKeyringField;
 
 static const char *JK_FIELD_NAMES[JK_FIELDS_TOTAL] = {
 	[JK_FIELD_UNKNOWN] = "unknownField",
@@ -444,8 +444,8 @@ get_remote_kring_value(const char *url, const char *field_name)
 static char *
 get_file_kring_value(const char *path, const char *field_name)
 {
-	int			fd = -1;
-	char	   *val;
+	int	fd = -1;
+	char *val;
 
 	fd = BasicOpenFile(path, O_RDONLY);
 	if (fd < 0)

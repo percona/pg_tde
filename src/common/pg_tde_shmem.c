@@ -137,7 +137,7 @@ TdeShmemInit(void)
 static void
 tde_shmem_shutdown(int code, Datum arg)
 {
-	ListCell   *lc;
+	ListCell *lc;
 
 	foreach(lc, registeredShmemRequests)
 	{

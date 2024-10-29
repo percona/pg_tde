@@ -66,29 +66,29 @@
 
 typedef struct TDEFileHeader
 {
-	int32		file_version;
+	int32 file_version;
 	TDEPrincipalKeyInfo principal_key_info;
 } TDEFileHeader;
 
 typedef struct TDEMapEntry
 {
 	RelFileNumber relNumber;
-	uint32		flags;
-	int32		key_index;
+	uint32 flags;
+	int32 key_index;
 } TDEMapEntry;
 
 typedef struct TDEMapFilePath
 {
-	char		map_path[MAXPGPATH];
-	char		keydata_path[MAXPGPATH];
+	char map_path[MAXPGPATH];
+	char keydata_path[MAXPGPATH];
 } TDEMapFilePath;
 
 
 typedef struct RelKeyCacheRec
 {
 	RelFileNumber rel_number;
-	uint32		key_type;
-	RelKeyData	key;
+	uint32 key_type;
+	RelKeyData key;
 } RelKeyCacheRec;
 
 /*
@@ -106,10 +106,9 @@ typedef struct RelKeyCacheRec
  */
 typedef struct RelKeyCache
 {
-	RelKeyCacheRec *data;		/* must be a multiple of a memory page
-								 * (usually 4Kb) */
-	int			len;			/* num of RelKeyCacheRecs currenty in cache */
-	int			cap;			/* max amount of RelKeyCacheRec data can fit */
+	RelKeyCacheRec *data; /* must be a multiple of a memory page (usually 4Kb) */
+	int	len;			/* num of RelKeyCacheRecs currenty in cache */
+	int	cap;			/* max amount of RelKeyCacheRec data can fit */
 } RelKeyCache;
 
 RelKeyCache *tde_rel_key_cache = NULL;
@@ -248,7 +247,7 @@ RelKeyData *
 tde_encrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *rel_key_data, const RelFileLocator *rlocator)
 {
 	RelKeyData *enc_rel_key_data;
-	size_t		enc_key_bytes;
+	size_t enc_key_bytes;
 
 	AesEncryptKey(principal_key, rlocator, rel_key_data, &enc_rel_key_data, &enc_key_bytes);
 
@@ -1088,10 +1087,10 @@ tde_decrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *enc_rel_key_data
 static int
 pg_tde_open_file(char *tde_filename, TDEPrincipalKeyInfo *principal_key_info, bool should_fill_info, int fileFlags, bool *is_new_file, off_t *curr_pos)
 {
-	int			fd = -1;
+	int	fd = -1;
 	TDEFileHeader fheader;
-	off_t		bytes_read = 0;
-	off_t		bytes_written = 0;
+	off_t bytes_read = 0;
+	off_t bytes_written = 0;
 
 	/*
 	 * Ensuring that we always open the file in binary mode. The caller must
