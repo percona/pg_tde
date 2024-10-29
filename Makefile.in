@@ -79,6 +79,6 @@ update-typedefs:
 
 # Indents projects sources.
 indent:
-	pgindent --typedefs=typedefs-full.list --exclude=pgident_exclude .
+	pgindent --typedefs=typedefs-full.list --exclude=pgindent_exclude .
 
 .PHONY: update-typedefs indent
