@@ -355,7 +355,7 @@ tdeheap_slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *of
 	bool *isnull = slot->tts_isnull;
 	HeapTupleHeader tup = tuple->t_data;
 	bool hasnulls = HeapTupleHasNulls(tuple);
-	int	attnum;
+	int attnum;
 	char *tp;					/* ptr to tuple data */
 	uint32 off;					/* offset in tuple data */
 	bits8 *bp = tup->t_bits;	/* ptr to null bitmap in tuple */

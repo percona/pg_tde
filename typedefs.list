@@ -36,6 +36,7 @@ LVSavedErrInfo
 LogicalRewriteMappingData
 LogicalRewriteMappingData
 PendingMapEntryDelete
+ProviderScanType
 PruneFreezeResult
 RelKeyCache
 RelKeyCacheRec

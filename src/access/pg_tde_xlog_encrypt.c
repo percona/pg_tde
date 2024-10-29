@@ -44,7 +44,7 @@ static XLogPageHeaderData EncryptCurrentPageHrd;
 
 static ssize_t TDEXLogWriteEncryptedPages(int fd, const void *buf, size_t count, off_t offset);
 static char *TDEXLogEncryptBuf = NULL;
-static int	XLOGChooseNumBuffers(void);
+static int XLOGChooseNumBuffers(void);
 
 void
 XLogInitGUC(void)
@@ -65,7 +65,7 @@ XLogInitGUC(void)
 static int
 XLOGChooseNumBuffers(void)
 {
-	int	xbuffers;
+	int xbuffers;
 
 	xbuffers = NBuffers / 32;
 	if (xbuffers > (wal_segment_size / XLOG_BLCKSZ))
@@ -81,7 +81,7 @@ XLOGChooseNumBuffers(void)
 Size
 TDEXLogEncryptBuffSize(void)
 {
-	int	xbuffers;
+	int xbuffers;
 
 	xbuffers = (XLOGbuffers == -1) ? XLOGChooseNumBuffers() : XLOGbuffers;
 	return (Size) XLOG_BLCKSZ * xbuffers;

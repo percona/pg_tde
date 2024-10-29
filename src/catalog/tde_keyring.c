@@ -45,7 +45,7 @@ typedef enum ProviderScanType
 	PROVIDER_SCAN_BY_ID,
 	PROVIDER_SCAN_BY_TYPE,
 	PROVIDER_SCAN_ALL
-}			ProviderScanType;
+} ProviderScanType;
 
 #define PG_TDE_KEYRING_FILENAME "pg_tde_keyrings"
 
@@ -67,10 +67,10 @@ static void simple_list_free(SimplePtrList *list);
 static List *scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid, Oid spcOid);
 
 PG_FUNCTION_INFO_V1(pg_tde_add_key_provider_internal);
-Datum		pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS);
+Datum pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(pg_tde_list_all_key_providers);
-Datum		pg_tde_list_all_key_providers(PG_FUNCTION_ARGS);
+Datum pg_tde_list_all_key_providers(PG_FUNCTION_ARGS);
 
 #define PG_TDE_LIST_PROVIDERS_COLS 4
 
@@ -177,7 +177,7 @@ GenericKeyring *
 GetKeyProviderByName(const char *provider_name, Oid dbOid, Oid spcOid)
 {
 	GenericKeyring *keyring = NULL;
-	List	   *providers = scan_key_provider_file(PROVIDER_SCAN_BY_NAME, (void *) provider_name, dbOid, spcOid);
+	List *providers = scan_key_provider_file(PROVIDER_SCAN_BY_NAME, (void *) provider_name, dbOid, spcOid);
 
 	if (providers != NIL)
 	{
@@ -201,8 +201,8 @@ write_key_provider_info(KeyringProvideRecord *provider, Oid database_id,
 {
 	off_t bytes_written = 0;
 	off_t curr_pos = 0;
-	int	fd;
-	int	max_provider_id = 0;
+	int fd;
+	int max_provider_id = 0;
 	char kp_info_path[MAXPGPATH] = {0};
 	KeyringProvideRecord existing_provider;
 
@@ -330,8 +330,8 @@ pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS)
 	char *options = text_to_cstring(PG_GETARG_TEXT_PP(2));
 	bool is_global = PG_GETARG_BOOL(3);
 	KeyringProvideRecord provider;
-	Oid	dbOid = MyDatabaseId;
-	Oid	spcOid = MyDatabaseTableSpace;
+	Oid dbOid = MyDatabaseId;
+	Oid spcOid = MyDatabaseTableSpace;
 
 	if (is_global)
 	{
@@ -388,7 +388,7 @@ pg_tde_list_all_key_providers(PG_FUNCTION_ARGS)
 		Datum values[PG_TDE_LIST_PROVIDERS_COLS] = {0};
 		bool nulls[PG_TDE_LIST_PROVIDERS_COLS] = {0};
 		GenericKeyring *keyring = (GenericKeyring *) lfirst(lc);
-		int	i = 0;
+		int i = 0;
 
 		values[i++] = Int32GetDatum(keyring->key_id);
 		values[i++] = CStringGetTextDatum(keyring->provider_name);
@@ -406,7 +406,7 @@ GenericKeyring *
 GetKeyProviderByID(int provider_id, Oid dbOid, Oid spcOid)
 {
 	GenericKeyring *keyring = NULL;
-	List	   *providers = scan_key_provider_file(PROVIDER_SCAN_BY_ID, &provider_id, dbOid, spcOid);
+	List *providers = scan_key_provider_file(PROVIDER_SCAN_BY_ID, &provider_id, dbOid, spcOid);
 
 	if (providers != NIL)
 	{
@@ -416,7 +416,7 @@ GetKeyProviderByID(int provider_id, Oid dbOid, Oid spcOid)
 	return keyring;
 }
 
-#endif							/* !FRONTEND */
+#endif /* !FRONTEND */
 
 #ifdef FRONTEND
 GenericKeyring *
@@ -448,7 +448,7 @@ simple_list_free(SimplePtrList *list)
 		cell = next;
 	}
 }
-#endif							/* FRONTEND */
+#endif /* FRONTEND */
 
 /*
  * Scan the key provider info file and can also apply filter based on scanType
@@ -461,7 +461,7 @@ static SimplePtrList *
 scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid, Oid spcOid)
 {
 	off_t curr_pos = 0;
-	int	fd;
+	int fd;
 	char kp_info_path[MAXPGPATH] = {0};
 	KeyringProvideRecord provider;
 #ifndef FRONTEND
@@ -662,7 +662,7 @@ get_keyring_infofile_path(char *resPath, Oid dbOid, Oid spcOid)
 static bool
 fetch_next_key_provider(int fd, off_t *curr_pos, KeyringProvideRecord *provider)
 {
-	off_t		bytes_read = 0;
+	off_t bytes_read = 0;
 
 	Assert(provider != NULL);
 	Assert(fd >= 0);
