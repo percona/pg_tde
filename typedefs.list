@@ -19,10 +19,13 @@ IndexFetchHeapData
 IndexFetchHeapData
 InternalKey
 JsonKeyringState
+JsonVaultRespField
+JsonVaultRespSemState
 JsonVaultRespState
 KeyProviders
 KeyringProvideRecord
 KeyringProviderXLRecord
+KeyringReturnCode
 LVPagePruneState
 LVRelState
 LVRelState
@@ -47,6 +50,7 @@ TDEBufferHeapTupleTableSlot
 TDEFileHeader
 TDEKeyringRoutine
 TDELocalState
+TDELockTypes
 TDEMapEntry
 TDEMapFilePath
 TDEPrincipalKey
@@ -54,6 +58,7 @@ TDEPrincipalKeyId
 TDEPrincipalKeyInfo
 TDEShmemSetupRoutine
 TdeCreateEvent
+TdeCreateEventType
 TdeKeyProviderInfoSharedState
 TdePrincipalKeySharedState
 TdePrincipalKeylocalState
