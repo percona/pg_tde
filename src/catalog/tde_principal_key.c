@@ -43,9 +43,9 @@
 typedef struct TdePrincipalKeySharedState
 {
 	LWLockPadded *Locks;
-	int			hashTrancheId;
+	int	hashTrancheId;
 	dshash_table_handle hashHandle;
-	void	   *rawDsaArea;		/* DSA area pointer */
+	void *rawDsaArea;		/* DSA area pointer */
 
 } TdePrincipalKeySharedState;
 
@@ -314,7 +314,7 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
 	TDEPrincipalKey new_principal_key;
 	const keyInfo *keyInfo = NULL;
 	GenericKeyring *keyring;
-	bool		is_rotated;
+	bool is_rotated;
 	MemoryContext keyRotateCtx;
 	MemoryContext oldCtx;
 
@@ -403,8 +403,8 @@ keyInfo *
 load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info, GenericKeyring *keyring, bool ensure_new_key)
 {
 	KeyringReturnCodes kr_ret;
-	keyInfo    *keyInfo = NULL;
-	int			base_version = principal_key_info->keyId.version;
+	keyInfo *keyInfo = NULL;
+	int	base_version = principal_key_info->keyId.version;
 
 	Assert(principal_key_info != NULL);
 	Assert(keyring != NULL);
@@ -477,9 +477,9 @@ GetPrincipalKeyProviderId(void)
 {
 	TDEPrincipalKey *principalKey = NULL;
 	TDEPrincipalKeyInfo *principalKeyInfo = NULL;
-	Oid			keyringId = InvalidOid;
-	Oid			dbOid = MyDatabaseId;
-	LWLock	   *lock_files = tde_lwlock_enc_keys();
+	Oid	keyringId = InvalidOid;
+	Oid	dbOid = MyDatabaseId;
+	LWLock *lock_files = tde_lwlock_enc_keys();
 
 	LWLockAcquire(lock_files, LW_SHARED);
 
@@ -548,8 +548,8 @@ static void
 push_principal_key_to_cache(TDEPrincipalKey *principalKey)
 {
 	TDEPrincipalKey *cacheEntry = NULL;
-	Oid			databaseId = principalKey->keyInfo.databaseId;
-	bool		found = false;
+	Oid databaseId = principalKey->keyInfo.databaseId;
+	bool found = false;
 
 	cacheEntry = dshash_find_or_insert(get_principal_key_Hash(),
 									   &databaseId, &found);
@@ -622,10 +622,10 @@ Datum		pg_tde_set_principal_key(PG_FUNCTION_ARGS);
 Datum
 pg_tde_set_principal_key(PG_FUNCTION_ARGS)
 {
-	char	   *principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
-	char	   *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
-	bool		ensure_new_key = PG_GETARG_BOOL(2);
-	bool		ret;
+	char *principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
+	bool ensure_new_key = PG_GETARG_BOOL(2);
+	bool ret;
 
 	ereport(LOG, (errmsg("Setting principal key [%s : %s] for the database", principal_key_name, provider_name)));
 	ret = SetPrincipalKey(principal_key_name, provider_name, ensure_new_key);
@@ -639,14 +639,14 @@ PG_FUNCTION_INFO_V1(pg_tde_rotate_principal_key_internal);
 Datum
 pg_tde_rotate_principal_key_internal(PG_FUNCTION_ARGS)
 {
-	char	   *new_principal_key_name = NULL;
-	char	   *new_provider_name = NULL;
-	bool		ensure_new_key;
-	bool		is_global;
-	bool		ret;
+	char *new_principal_key_name = NULL;
+	char *new_provider_name = NULL;
+	bool ensure_new_key;
+	bool is_global;
+	bool ret;
 	TDEPrincipalKey *current_key;
-	Oid			dbOid = MyDatabaseId;
-	Oid			spcOid = MyDatabaseTableSpace;
+	Oid	dbOid = MyDatabaseId;
+	Oid	spcOid = MyDatabaseTableSpace;
 
 	if (!PG_ARGISNULL(0))
 		new_principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
@@ -680,9 +680,9 @@ PG_FUNCTION_INFO_V1(pg_tde_principal_key_info_internal);
 Datum
 pg_tde_principal_key_info_internal(PG_FUNCTION_ARGS)
 {
-	Oid			dbOid = MyDatabaseId;
-	Oid			spcOid = MyDatabaseTableSpace;
-	bool		is_global = PG_GETARG_BOOL(0);
+	Oid	dbOid = MyDatabaseId;
+	Oid	spcOid = MyDatabaseTableSpace;
+	bool is_global = PG_GETARG_BOOL(0);
 
 	if (is_global)
 	{
@@ -696,11 +696,11 @@ pg_tde_principal_key_info_internal(PG_FUNCTION_ARGS)
 static Datum
 pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
 {
-	TupleDesc	tupdesc;
-	Datum		values[6];
-	bool		isnull[6];
-	HeapTuple	tuple;
-	Datum		result;
+	TupleDesc tupdesc;
+	Datum values[6];
+	bool isnull[6];
+	HeapTuple tuple;
+	Datum result;
 	TDEPrincipalKey *principal_key;
 	TimestampTz ts;
 	GenericKeyring *keyring;

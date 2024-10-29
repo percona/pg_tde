@@ -46,12 +46,12 @@
 
 const EVP_CIPHER *cipher = NULL;
 const EVP_CIPHER *cipher2 = NULL;
-int			cipher_block_size = 0;
+int	cipher_block_size = 0;
 
 void
 AesInit(void)
 {
-	static int	initialized = 0;
+	static int initialized = 0;
 
 	if (!initialized)
 	{
@@ -106,7 +106,7 @@ AesRunCtr(EVP_CIPHER_CTX **ctxPtr, int enc, const unsigned char *key, const unsi
 static void
 AesRunCbc(int enc, const unsigned char *key, const unsigned char *iv, const unsigned char *in, int in_len, unsigned char *out, int *out_len)
 {
-	int			out_len_final = 0;
+	int	out_len_final = 0;
 	EVP_CIPHER_CTX *ctx = NULL;
 
 	ctx = EVP_CIPHER_CTX_new();

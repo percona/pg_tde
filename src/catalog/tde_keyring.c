@@ -199,11 +199,11 @@ static uint32
 write_key_provider_info(KeyringProvideRecord *provider, Oid database_id,
 						Oid tablespace_id, off_t position, bool redo, bool recovery)
 {
-	off_t		bytes_written = 0;
-	off_t		curr_pos = 0;
-	int			fd;
-	int			max_provider_id = 0;
-	char		kp_info_path[MAXPGPATH] = {0};
+	off_t bytes_written = 0;
+	off_t curr_pos = 0;
+	int	fd;
+	int	max_provider_id = 0;
+	char kp_info_path[MAXPGPATH] = {0};
 	KeyringProvideRecord existing_provider;
 
 	Assert(provider != NULL);
@@ -325,13 +325,13 @@ cleanup_key_provider_info(Oid databaseId, Oid tablespaceId)
 Datum
 pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS)
 {
-	char	   *provider_type = text_to_cstring(PG_GETARG_TEXT_PP(0));
-	char	   *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
-	char	   *options = text_to_cstring(PG_GETARG_TEXT_PP(2));
-	bool		is_global = PG_GETARG_BOOL(3);
+	char *provider_type = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
+	char *options = text_to_cstring(PG_GETARG_TEXT_PP(2));
+	bool is_global = PG_GETARG_BOOL(3);
 	KeyringProvideRecord provider;
-	Oid			dbOid = MyDatabaseId;
-	Oid			spcOid = MyDatabaseTableSpace;
+	Oid	dbOid = MyDatabaseId;
+	Oid	spcOid = MyDatabaseTableSpace;
 
 	if (is_global)
 	{
@@ -350,10 +350,10 @@ pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS)
 Datum
 pg_tde_list_all_key_providers(PG_FUNCTION_ARGS)
 {
-	List	   *all_providers = GetAllKeyringProviders(MyDatabaseId, MyDatabaseTableSpace);
-	ListCell   *lc;
+	List *all_providers = GetAllKeyringProviders(MyDatabaseId, MyDatabaseTableSpace);
+	ListCell *lc;
 	Tuplestorestate *tupstore;
-	TupleDesc	tupdesc;
+	TupleDesc tupdesc;
 	MemoryContext per_query_ctx;
 	MemoryContext oldcontext;
 	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
@@ -385,10 +385,10 @@ pg_tde_list_all_key_providers(PG_FUNCTION_ARGS)
 
 	foreach(lc, all_providers)
 	{
-		Datum		values[PG_TDE_LIST_PROVIDERS_COLS] = {0};
-		bool		nulls[PG_TDE_LIST_PROVIDERS_COLS] = {0};
+		Datum values[PG_TDE_LIST_PROVIDERS_COLS] = {0};
+		bool nulls[PG_TDE_LIST_PROVIDERS_COLS] = {0};
 		GenericKeyring *keyring = (GenericKeyring *) lfirst(lc);
-		int			i = 0;
+		int	i = 0;
 
 		values[i++] = Int32GetDatum(keyring->key_id);
 		values[i++] = CStringGetTextDatum(keyring->provider_name);
@@ -460,12 +460,12 @@ static SimplePtrList *
 #endif
 scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid, Oid spcOid)
 {
-	off_t		curr_pos = 0;
-	int			fd;
-	char		kp_info_path[MAXPGPATH] = {0};
+	off_t curr_pos = 0;
+	int	fd;
+	char kp_info_path[MAXPGPATH] = {0};
 	KeyringProvideRecord provider;
 #ifndef FRONTEND
-	List	   *providers_list = NIL;
+	List *providers_list = NIL;
 #else
 	SimplePtrList *providers_list = NULL;
 #endif

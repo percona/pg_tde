@@ -23,7 +23,7 @@ typedef struct KeyProviders
 } KeyProviders;
 
 #ifndef FRONTEND
-List	   *registeredKeyProviders = NIL;
+List *registeredKeyProviders = NIL;
 #else
 SimplePtrList registeredKeyProviders = {NULL, NULL};
 #endif
@@ -33,7 +33,7 @@ static KeyProviders *find_key_provider(ProviderType type);
 static KeyProviders *
 find_key_provider(ProviderType type)
 {
-	ListCell   *lc;
+	ListCell *lc;
 
 	foreach(lc, registeredKeyProviders)
 	{
@@ -132,7 +132,7 @@ KeyringStoreKey(GenericKeyring *keyring, keyInfo *key, bool throw_error)
 keyInfo *
 KeyringGenerateNewKey(const char *key_name, unsigned key_len)
 {
-	keyInfo    *key;
+	keyInfo *key;
 
 	Assert(key_len <= 32);
 	key = palloc(sizeof(keyInfo));
@@ -149,7 +149,7 @@ KeyringGenerateNewKey(const char *key_name, unsigned key_len)
 keyInfo *
 KeyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len, bool throw_error)
 {
-	keyInfo    *key = KeyringGenerateNewKey(key_name, key_len);
+	keyInfo *key = KeyringGenerateNewKey(key_name, key_len);
 
 	if (key == NULL)
 	{

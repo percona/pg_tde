@@ -45,15 +45,15 @@ PG_MODULE_MAGIC;
 struct OnExtInstall
 {
 	pg_tde_on_ext_install_callback function;
-	void	   *arg;
+	void *arg;
 };
 
 static struct OnExtInstall on_ext_install_list[MAX_ON_INSTALLS];
 static int	on_ext_install_index = 0;
 static void run_extension_install_callbacks(XLogExtensionInstall *xlrec, bool redo);
-void		_PG_init(void);
-Datum		pg_tde_extension_initialize(PG_FUNCTION_ARGS);
-Datum		pg_tde_version(PG_FUNCTION_ARGS);
+void _PG_init(void);
+Datum pg_tde_extension_initialize(PG_FUNCTION_ARGS);
+Datum pg_tde_version(PG_FUNCTION_ARGS);
 
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 static shmem_request_hook_type prev_shmem_request_hook = NULL;
@@ -176,8 +176,8 @@ on_ext_install(pg_tde_on_ext_install_callback function, void *arg)
 static void
 run_extension_install_callbacks(XLogExtensionInstall *xlrec, bool redo)
 {
-	int			i;
-	int			tde_table_count = 0;
+	int	i;
+	int	tde_table_count = 0;
 
 	/*
 	 * Get the number of tde tables in this database should always be zero.

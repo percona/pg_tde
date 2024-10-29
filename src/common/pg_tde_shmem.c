@@ -17,24 +17,24 @@
 
 typedef struct TdeSharedState
 {
-	LWLock	   *principalKeyLock;
-	int			principalKeyHashTrancheId;
-	void	   *rawDsaArea;		/* DSA area pointer to store cache hashes */
+	LWLock *principalKeyLock;
+	int principalKeyHashTrancheId;
+	void *rawDsaArea;		/* DSA area pointer to store cache hashes */
 	dshash_table_handle principalKeyHashHandle;
 } TdeSharedState;
 
 typedef struct TDELocalState
 {
 	TdeSharedState *sharedTdeState;
-	dsa_area  **dsa;			/* local dsa area for backend attached to the
+	dsa_area **dsa;			/* local dsa area for backend attached to the
 								 * dsa area created by postmaster at startup. */
 	dshash_table *principalKeySharedHash;
 } TDELocalState;
 
 static void tde_shmem_shutdown(int code, Datum arg);
 
-List	   *registeredShmemRequests = NIL;
-bool		shmemInited = false;
+List *registeredShmemRequests = NIL;
+bool shmemInited = false;
 
 void
 RegisterShmemRequest(const TDEShmemSetupRoutine *routine)
@@ -46,8 +46,8 @@ RegisterShmemRequest(const TDEShmemSetupRoutine *routine)
 Size
 TdeRequiredSharedMemorySize(void)
 {
-	Size		sz = 0;
-	ListCell   *lc;
+	Size sz = 0;
+	ListCell *lc;
 
 	foreach(lc, registeredShmemRequests)
 	{
@@ -81,11 +81,11 @@ TdeShmemInit(void)
 	if (!found)
 	{
 		/* First time through ... */
-		char	   *p = (char *) tdeState;
-		dsa_area   *dsa;
-		ListCell   *lc;
-		Size		used_size = 0;
-		Size		dsa_area_size;
+		char *p = (char *) tdeState;
+		dsa_area *dsa;
+		ListCell *lc;
+		Size used_size = 0;
+		Size dsa_area_size;
 
 		p += MAXALIGN(sizeof(TdeSharedState));
 		used_size += MAXALIGN(sizeof(TdeSharedState));

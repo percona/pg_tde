@@ -44,11 +44,11 @@ InstallFileKeyring(void)
 static keyInfo *
 get_key_by_name(GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes * return_code)
 {
-	keyInfo    *key = NULL;
-	int			fd = -1;
+	keyInfo *key = NULL;
+	int fd = -1;
 	FileKeyring *file_keyring = (FileKeyring *) keyring;
-	off_t		bytes_read = 0;
-	off_t		curr_pos = 0;
+	off_t bytes_read = 0;
+	off_t curr_pos = 0;
 
 	*return_code = KEYRING_CODE_SUCCESS;
 
@@ -99,9 +99,9 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, bool throw_error,
 static KeyringReturnCodes
 set_key_by_name(GenericKeyring *keyring, keyInfo *key, bool throw_error)
 {
-	off_t		bytes_written = 0;
-	off_t		curr_pos = 0;
-	int			fd;
+	off_t bytes_written = 0;
+	off_t curr_pos = 0;
+	int	fd;
 	FileKeyring *file_keyring = (FileKeyring *) keyring;
 	keyInfo    *existing_key;
 	KeyringReturnCodes return_code = KEYRING_CODE_SUCCESS;

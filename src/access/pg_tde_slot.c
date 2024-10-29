@@ -481,7 +481,8 @@ const TupleTableSlotOps TTSOpsTDEBufferHeapTuple = {
 	/* A buffer heap tuple table slot can not "own" a minimal tuple. */
 	.get_minimal_tuple = NULL,
 	.copy_heap_tuple = tdeheap_tts_buffer_heap_copy_heap_tuple,
-.copy_minimal_tuple = tdeheap_tts_buffer_heap_copy_minimal_tuple};
+	.copy_minimal_tuple = tdeheap_tts_buffer_heap_copy_minimal_tuple
+};
 
 /* --------------------------------
  *		ExecStoreBufferHeapTuple

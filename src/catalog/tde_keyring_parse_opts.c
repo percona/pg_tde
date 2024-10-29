@@ -100,7 +100,7 @@ typedef struct JsonKeyringState
 	 * Caller's options to be set from JSON values. Expected either
 	 * `VaultV2Keyring` or `FileKeyring`
 	 */
-	void	   *provider_opts;
+	void *provider_opts;
 
 	/*
 	 * A field hierarchy of the current branch, field[level] is the current
@@ -109,17 +109,17 @@ typedef struct JsonKeyringState
 	 */
 	JsonKeyringField field[MAX_JSON_DEPTH];
 	JsonKeringSemState state;
-	int			level;
+	int	level;
 
 	/*
 	 * The rest of the scalar fields might be in the JSON document but has no
 	 * direct value for the caller. Although we need them for the values
 	 * extraction or state tracking.
 	 */
-	char	   *kring_type;
-	char	   *field_type;
-	char	   *extern_url;
-	char	   *extern_path;
+	char *kring_type;
+	char *field_type;
+	char *extern_url;
+	char *extern_path;
 } JsonKeyringState;
 
 static JsonParseErrorType json_kring_scalar(void *state, char *token, JsonTokenType tokentype);

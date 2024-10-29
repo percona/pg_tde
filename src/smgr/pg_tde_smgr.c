@@ -19,11 +19,11 @@ typedef struct TDESMgrRelationData
 	 * for md.c; per-fork arrays of the number of open segments
 	 * (md_num_open_segs) and the segments themselves (md_seg_fds).
 	 */
-	int			md_num_open_segs[MAX_FORKNUM + 1];
+	int	md_num_open_segs[MAX_FORKNUM + 1];
 	struct _MdfdVec *md_seg_fds[MAX_FORKNUM + 1];
 
-	bool		encrypted_relation;
-	RelKeyData	relKey;
+	bool encrypted_relation;
+	RelKeyData relKey;
 }			TDESMgrRelationData;
 
 typedef TDESMgrRelationData * TDESMgrRelation;
@@ -142,9 +142,9 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 	}
 	else
 	{
-		char	   *local_blocks = palloc(BLCKSZ * (1 + 1));
-		char	   *local_blocks_aligned = (char *) TYPEALIGN(PG_IO_ALIGN_SIZE, local_blocks);
-		int			out_len = BLCKSZ;
+		char *local_blocks = palloc(BLCKSZ * (1 + 1));
+		char *local_blocks_aligned = (char *) TYPEALIGN(PG_IO_ALIGN_SIZE, local_blocks);
+		int	out_len = BLCKSZ;
 		unsigned char iv[16] = {
 			0,
 		};
@@ -164,7 +164,7 @@ static void
 tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 			void **buffers, BlockNumber nblocks)
 {
-	int			out_len = BLCKSZ;
+	int	out_len = BLCKSZ;
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
 	RelKeyData *rkd = &tdereln->relKey;
 

@@ -18,14 +18,13 @@
 #define MAP_ENTRY_EMPTY         0x00
 #define TDE_KEY_TYPE_HEAP_BASIC 0x01
 #define TDE_KEY_TYPE_SMGR       0x02
-#define TDE_KEY_TYPE_GLOBAL 0x04
+#define TDE_KEY_TYPE_GLOBAL     0x04
 #define MAP_ENTRY_VALID (TDE_KEY_TYPE_HEAP_BASIC | TDE_KEY_TYPE_SMGR | TDE_KEY_TYPE_GLOBAL)
 
 typedef struct InternalKey
 {
-	uint8		key[INTERNAL_KEY_LEN];
-	void	   *ctx;			/* TODO: shouldn't be here / written to the
-								 * disk */
+	uint8 key[INTERNAL_KEY_LEN];
+	void *ctx;			/* TODO: shouldn't be here / written to the disk */
 } InternalKey;
 
 typedef struct RelKeyData
@@ -38,8 +37,8 @@ typedef struct RelKeyData
 typedef struct XLogRelKey
 {
 	RelFileLocator rlocator;
-	uint32		entry_type;
-	RelKeyData	relKey;
+	uint32 entry_type;
+	RelKeyData relKey;
 } XLogRelKey;
 
 extern RelKeyData *pg_tde_create_smgr_key(const RelFileLocator *newrlocator);
@@ -72,4 +71,4 @@ const char *tde_sprint_key(InternalKey *k);
 
 extern RelKeyData *pg_tde_put_key_into_cache(RelFileNumber rel_num, uint32 key_type, RelKeyData *key);
 
-#endif							/* PG_TDE_MAP_H */
+#endif /* PG_TDE_MAP_H */

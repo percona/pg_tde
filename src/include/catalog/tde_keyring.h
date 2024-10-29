@@ -25,7 +25,7 @@
 #define MAX_PROVIDER_NAME_LEN 128	/* pg_tde_key_provider's provider_name
 									 * size */
 #define MAX_VAULT_V2_KEY_LEN 128	/* From hashi corp docs */
-#define MAX_KEYRING_OPTION_LEN	1024
+#define MAX_KEYRING_OPTION_LEN 1024
 typedef enum ProviderType
 {
 	UNKNOWN_KEY_PROVIDER,
@@ -37,40 +37,39 @@ typedef enum ProviderType
 typedef struct GenericKeyring
 {
 	ProviderType type;			/* Must be the first field */
-	Oid			key_id;
-	char		provider_name[MAX_PROVIDER_NAME_LEN];
-	char		options[MAX_KEYRING_OPTION_LEN];	/* User provided options
-													 * string */
+	Oid	key_id;
+	char provider_name[MAX_PROVIDER_NAME_LEN];
+	char options[MAX_KEYRING_OPTION_LEN];	/* User provided options string */
 } GenericKeyring;
 
 typedef struct FileKeyring
 {
 	GenericKeyring keyring;		/* Must be the first field */
-	char		file_name[MAXPGPATH];
+	char file_name[MAXPGPATH];
 } FileKeyring;
 
 typedef struct VaultV2Keyring
 {
 	GenericKeyring keyring;		/* Must be the first field */
-	char		vault_token[MAX_VAULT_V2_KEY_LEN];
-	char		vault_url[MAXPGPATH];
-	char		vault_ca_path[MAXPGPATH];
-	char		vault_mount_path[MAXPGPATH];
+	char vault_token[MAX_VAULT_V2_KEY_LEN];
+	char vault_url[MAXPGPATH];
+	char vault_ca_path[MAXPGPATH];
+	char vault_mount_path[MAXPGPATH];
 } VaultV2Keyring;
 
 /* This record goes into key provider info file */
 typedef struct KeyringProvideRecord
 {
-	int			provider_id;
-	char		provider_name[MAX_PROVIDER_NAME_LEN];
-	char		options[MAX_KEYRING_OPTION_LEN];
+	int	provider_id;
+	char provider_name[MAX_PROVIDER_NAME_LEN];
+	char options[MAX_KEYRING_OPTION_LEN];
 	ProviderType provider_type;
 } KeyringProvideRecord;
 typedef struct KeyringProviderXLRecord
 {
-	Oid			database_id;
-	Oid			tablespace_id;
-	off_t		offset_in_file;
+	Oid	database_id;
+	Oid	tablespace_id;
+	off_t offset_in_file;
 	KeyringProvideRecord provider;
 } KeyringProviderXLRecord;
 
@@ -85,4 +84,4 @@ extern uint32 redo_key_provider_info(KeyringProviderXLRecord *xlrec);
 
 extern bool ParseKeyringJSONOptions(ProviderType provider_type, void *out_opts,
 									char *in_buf, int buf_len);
-#endif							/* TDE_KEYRING_H */
+#endif /* TDE_KEYRING_H */

@@ -20,10 +20,10 @@
 
 typedef struct PendingMapEntryDelete
 {
-	off_t		map_entry_offset;	/* map entry offset */
+	off_t map_entry_offset;	/* map entry offset */
 	RelFileLocator rlocator;	/* main for use as relation OID */
-	bool		atCommit;		/* T=delete at commit; F=delete at abort */
-	int			nestLevel;		/* xact nesting level of request */
+	bool atCommit;		/* T=delete at commit; F=delete at abort */
+	int	nestLevel;		/* xact nesting level of request */
 	struct PendingMapEntryDelete *next; /* linked-list link */
 } PendingMapEntryDelete;
 

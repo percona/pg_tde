@@ -38,14 +38,14 @@ typedef enum
 	JRESP_EXPECT_TOP_DATA,
 	JRESP_EXPECT_DATA,
 	JRESP_EXPECT_KEY
-}			JsonVaultRespSemState;
+} JsonVaultRespSemState;
 
 typedef enum
 {
 	JRESP_F_UNUSED,
 
 	JRESP_F_KEY
-}			JsonVaultRespField;
+} JsonVaultRespField;
 
 typedef struct JsonVaultRespState
 {
@@ -88,7 +88,7 @@ curl_setup_token(VaultV2Keyring *keyring)
 {
 	if (curlList == NULL)
 	{
-		char		tokenHeader[256];
+		char tokenHeader[256];
 
 		strcpy(tokenHeader, "X-Vault-Token:");
 		strcat(tokenHeader, keyring->vault_token);
@@ -170,12 +170,12 @@ static KeyringReturnCodes
 set_key_by_name(GenericKeyring *keyring, keyInfo *key, bool throw_error)
 {
 	VaultV2Keyring *vault_keyring = (VaultV2Keyring *) keyring;
-	char		url[VAULT_URL_MAX_LEN];
-	CurlString	str;
-	long		httpCode = 0;
-	char		jsonText[512];
+	char url[VAULT_URL_MAX_LEN];
+	CurlString str;
+	long httpCode = 0;
+	char jsonText[512];
 	char keyData[64];
-	int			keyLen = 0;
+	int	keyLen = 0;
 
 	Assert(key != NULL);
 
@@ -185,7 +185,7 @@ set_key_by_name(GenericKeyring *keyring, keyInfo *key, bool throw_error)
 	 */
 	/* Simpler than using the limited pg json api */
 	keyLen = pg_b64_encode((char *) key->data.data, key->data.len, keyData, 64);
-	keyData[	keyLen] = 0;
+	keyData[keyLen] = 0;
 
 	snprintf(jsonText, 512, "{\"data\":{\"key\":\"%s\"}}", keyData);
 
@@ -220,10 +220,10 @@ static keyInfo *
 get_key_by_name(GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes * return_code)
 {
 	VaultV2Keyring *vault_keyring = (VaultV2Keyring *) keyring;
-	keyInfo    *key = NULL;
-	char		url[VAULT_URL_MAX_LEN];
-	CurlString	str;
-	long		httpCode = 0;
+	keyInfo *key = NULL;
+	char url[VAULT_URL_MAX_LEN];
+	CurlString str;
+	long httpCode = 0;
 	JsonParseErrorType json_error;
 	JsonLexContext *jlex = NULL;
 	JsonVaultRespState parse;

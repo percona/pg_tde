@@ -38,11 +38,11 @@ get_tde_table_am_oid(void)
 List *
 get_all_tde_tables(void)
 {
-	Relation	pg_class;
+	Relation pg_class;
 	SysScanDesc scan;
-	HeapTuple	tuple;
-	List	   *tde_tables = NIL;
-	Oid			am_oid = get_tde_basic_table_am_oid();
+	HeapTuple tuple;
+	List *tde_tables = NIL;
+	Oid	am_oid = get_tde_basic_table_am_oid();
 
 	/* Open the pg_class table */
 	pg_class = table_open(RelationRelationId, AccessShareLock);
@@ -76,8 +76,8 @@ get_all_tde_tables(void)
 int
 get_tde_tables_count(void)
 {
-	List	   *tde_tables = get_all_tde_tables();
-	int			count = list_length(tde_tables);
+	List *tde_tables = get_all_tde_tables();
+	int	count = list_length(tde_tables);
 
 	list_free(tde_tables);
 	return count;
