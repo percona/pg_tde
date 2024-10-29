@@ -41,9 +41,9 @@
 #ifndef FRONTEND
 static void init_keys(void);
 static void init_default_keyring(void);
-static TDEPrincipalKey * create_principal_key(const char *key_name,
-											  GenericKeyring * keyring, Oid dbOid,
-											  Oid spcOid);
+static TDEPrincipalKey *create_principal_key(const char *key_name,
+											 GenericKeyring *keyring, Oid dbOid,
+											 Oid spcOid);
 #endif							/* !FRONTEND */
 
 
@@ -53,7 +53,7 @@ TDEInitGlobalKeys(const char *dir)
 #ifndef FRONTEND
 	char		db_map_path[MAXPGPATH] = {0};
 
-	pg_tde_set_db_file_paths(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID,  db_map_path, NULL);
+	pg_tde_set_db_file_paths(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, db_map_path, NULL);
 	if (access(db_map_path, F_OK) == -1)
 	{
 		init_default_keyring();
@@ -93,19 +93,19 @@ init_default_keyring(void)
 		static KeyringProvideRecord provider =
 		{
 			.provider_name = KEYRING_DEFAULT_NAME,
-				.provider_type = FILE_KEY_PROVIDER,
+			.provider_type = FILE_KEY_PROVIDER,
 		};
 
 		if (getcwd(path, sizeof(path)) == NULL)
 			elog(WARNING, "unable to get current working dir");
-		
+
 		/* TODO: not sure about the location. Currently it's in $PGDATA */
 		join_path_components(path, path, KEYRING_DEFAULT_FILE_NAME);
 
 		snprintf(provider.options, MAX_KEYRING_OPTION_LEN,
 				 "{"
 				 "\"type\": \"file\","
-				 "\"path\": \"%s\"" 
+				 "\"path\": \"%s\""
 				 "}", path
 			);
 
@@ -173,7 +173,7 @@ init_keys(void)
  *   first.
  */
 static TDEPrincipalKey *
-create_principal_key(const char *key_name, GenericKeyring * keyring,
+create_principal_key(const char *key_name, GenericKeyring *keyring,
 					 Oid dbOid, Oid spcOid)
 {
 	TDEPrincipalKey *principalKey;
@@ -198,6 +198,7 @@ create_principal_key(const char *key_name, GenericKeyring * keyring,
 	}
 
 	principalKey->keyLength = keyInfo->data.len;
+
 	memcpy(principalKey->keyData, keyInfo->data.data, keyInfo->data.len);
 
 	return principalKey;

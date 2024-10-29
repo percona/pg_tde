@@ -101,8 +101,8 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 	else if (IsA(parsetree, CreateStmt))
 	{
 		CreateStmt *stmt = (CreateStmt *) parsetree;
-		TDEPrincipalKey * principal_key;
-		Oid tablespace_oid;
+		TDEPrincipalKey *principal_key;
+		Oid			tablespace_oid;
 
 		tdeCurrentCreateEvent.eventType = TDE_TABLE_CREATE_EVENT;
 		tdeCurrentCreateEvent.relation = stmt->relation;
@@ -110,15 +110,16 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 		if (stmt->accessMethod && strcmp(stmt->accessMethod, "tde_heap") == 0)
 		{
 			tdeCurrentCreateEvent.encryptMode = true;
-		} else if ((stmt->accessMethod == NULL || stmt->accessMethod[0] ==0) && strcmp(default_table_access_method, "tde_heap") == 0)
+		}
+		else if ((stmt->accessMethod == NULL || stmt->accessMethod[0] == 0) && strcmp(default_table_access_method, "tde_heap") == 0)
 		{
 			tdeCurrentCreateEvent.encryptMode = true;
 		}
 
-		if(tdeCurrentCreateEvent.encryptMode)
+		if (tdeCurrentCreateEvent.encryptMode)
 		{
-			tablespace_oid = stmt->tablespacename != NULL ? get_tablespace_oid(stmt->tablespacename, false) 
-							 : MyDatabaseTableSpace;  
+			tablespace_oid = stmt->tablespacename != NULL ? get_tablespace_oid(stmt->tablespacename, false)
+				: MyDatabaseTableSpace;
 			LWLockAcquire(tde_lwlock_enc_keys(), LW_SHARED);
 			principal_key = GetPrincipalKey(MyDatabaseId, tablespace_oid, LW_SHARED);
 			LWLockRelease(tde_lwlock_enc_keys());
@@ -135,24 +136,30 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 	{
 		LOCKMODE	lockmode = AccessShareLock; /* TODO. Verify lock mode? */
 		AlterTableStmt *stmt = (AlterTableStmt *) parsetree;
-		TDEPrincipalKey * principal_key;
-		Oid		relationId = RangeVarGetRelid(stmt->relation, NoLock, true);
+		TDEPrincipalKey *principal_key;
+		Oid			relationId = RangeVarGetRelid(stmt->relation, NoLock, true);
 		Relation	rel = table_open(relationId, lockmode);
-		Oid tablespace_oid = rel->rd_locator.spcOid;
+		Oid			tablespace_oid = rel->rd_locator.spcOid;
 		ListCell   *lcmd;
+
 		table_close(rel, lockmode);
 
 		foreach(lcmd, stmt->cmds)
-        	{
+		{
 			AlterTableCmd *cmd = (AlterTableCmd *) lfirst(lcmd);
-			if(cmd->subtype == AT_SetAccessMethod && strcmp(cmd->name, "tde_heap")==0) {
+
+			if (cmd->subtype == AT_SetAccessMethod && strcmp(cmd->name, "tde_heap") == 0)
+			{
 				tdeCurrentCreateEvent.encryptMode = true;
 				tdeCurrentCreateEvent.eventType = TDE_TABLE_CREATE_EVENT;
 				tdeCurrentCreateEvent.relation = stmt->relation;
 			}
 		}
 
-		// TODO: also check for tablespace change, if current or new AM is tde_heap!
+		/*
+		 * TODO: also check for tablespace change, if current or new AM is
+		 * tde_heap!
+		 */
 
 		if (tdeCurrentCreateEvent.encryptMode)
 		{

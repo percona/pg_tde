@@ -26,8 +26,8 @@ typedef struct TdeCreateEvent
 								 * contains InvalidOid */
 	RangeVar   *relation;		/* Reference to the parsed relation from
 								 * create statement */
-}			TdeCreateEvent;
+} TdeCreateEvent;
 
-extern TdeCreateEvent * GetCurrentTdeCreateEvent(void);
+extern TdeCreateEvent *GetCurrentTdeCreateEvent(void);
 
 #endif

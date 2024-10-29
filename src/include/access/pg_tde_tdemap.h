@@ -23,22 +23,23 @@
 
 typedef struct InternalKey
 {
-    uint8   key[INTERNAL_KEY_LEN];
-	void*   ctx; /* TODO: shouldn't be here / written to the disk */
+	uint8		key[INTERNAL_KEY_LEN];
+	void	   *ctx;			/* TODO: shouldn't be here / written to the
+								 * disk */
 } InternalKey;
 
 typedef struct RelKeyData
 {
-    TDEPrincipalKeyId  principal_key_id;
-    InternalKey     internal_key;
+	TDEPrincipalKeyId principal_key_id;
+	InternalKey internal_key;
 } RelKeyData;
 
 
 typedef struct XLogRelKey
 {
-	RelFileLocator  rlocator;
-    uint32          entry_type;
-	RelKeyData      relKey;
+	RelFileLocator rlocator;
+	uint32		entry_type;
+	RelKeyData	relKey;
 } XLogRelKey;
 
 extern RelKeyData *pg_tde_create_smgr_key(const RelFileLocator *newrlocator);
@@ -67,8 +68,8 @@ extern RelKeyData *pg_tde_get_key_from_file(const RelFileLocator *rlocator, uint
 
 extern void pg_tde_set_db_file_paths(Oid dbOid, Oid spcOid, char *map_path, char *keydata_path);
 
-const char * tde_sprint_key(InternalKey *k);
+const char *tde_sprint_key(InternalKey *k);
 
 extern RelKeyData *pg_tde_put_key_into_cache(RelFileNumber rel_num, uint32 key_type, RelKeyData *key);
 
-#endif /*PG_TDE_MAP_H*/
+#endif							/* PG_TDE_MAP_H */

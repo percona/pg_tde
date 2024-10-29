@@ -23,7 +23,7 @@ typedef struct KeyProviders
 } KeyProviders;
 
 #ifndef FRONTEND
-List *registeredKeyProviders = NIL;
+List	   *registeredKeyProviders = NIL;
 #else
 SimplePtrList registeredKeyProviders = {NULL, NULL};
 #endif
@@ -33,10 +33,12 @@ static KeyProviders *find_key_provider(ProviderType type);
 static KeyProviders *
 find_key_provider(ProviderType type)
 {
-	ListCell *lc;
-	foreach (lc, registeredKeyProviders)
+	ListCell   *lc;
+
+	foreach(lc, registeredKeyProviders)
 	{
-		KeyProviders *kp = (KeyProviders *)lfirst(lc);
+		KeyProviders *kp = (KeyProviders *) lfirst(lc);
+
 		if (kp->type == type)
 		{
 			return kp;
@@ -49,9 +51,11 @@ static KeyProviders *
 find_key_provider(ProviderType type)
 {
 	SimplePtrListCell *lc;
+
 	for (lc = registeredKeyProviders.head; lc; lc = lc->next)
 	{
 		KeyProviders *kp = (KeyProviders *) lc->ptr;
+
 		if (kp->type == type)
 		{
 			return kp;
@@ -59,9 +63,10 @@ find_key_provider(ProviderType type)
 	}
 	return NULL;
 }
-#endif /* !FRONTEND */
+#endif							/* !FRONTEND */
 
-bool RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType type)
+bool
+RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType type)
 {
 	KeyProviders *kp;
 
@@ -79,10 +84,11 @@ bool RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType type)
 
 #ifndef FRONTEND
 	MemoryContext oldcontext;
+
 	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
 #endif
 	kp = palloc(sizeof(KeyProviders));
-	kp->routine = (TDEKeyringRoutine *)routine;
+	kp->routine = (TDEKeyringRoutine *) routine;
 	kp->type = type;
 #ifndef FRONTEND
 	registeredKeyProviders = lappend(registeredKeyProviders, kp);
@@ -95,9 +101,10 @@ bool RegisterKeyProvider(const TDEKeyringRoutine *routine, ProviderType type)
 }
 
 keyInfo *
-KeyringGetKey(GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes *returnCode)
+KeyringGetKey(GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes * returnCode)
 {
 	KeyProviders *kp = find_key_provider(keyring->type);
+
 	if (kp == NULL)
 	{
 		ereport(throw_error ? ERROR : WARNING,
@@ -112,6 +119,7 @@ KeyringReturnCodes
 KeyringStoreKey(GenericKeyring *keyring, keyInfo *key, bool throw_error)
 {
 	KeyProviders *kp = find_key_provider(keyring->type);
+
 	if (kp == NULL)
 	{
 		ereport(throw_error ? ERROR : WARNING,
@@ -124,14 +132,15 @@ KeyringStoreKey(GenericKeyring *keyring, keyInfo *key, bool throw_error)
 keyInfo *
 KeyringGenerateNewKey(const char *key_name, unsigned key_len)
 {
-	keyInfo *key;
+	keyInfo    *key;
+
 	Assert(key_len <= 32);
 	key = palloc(sizeof(keyInfo));
 	key->data.len = key_len;
 	if (!RAND_bytes(key->data.data, key_len))
 	{
 		pfree(key);
-		return NULL; /*openssl error*/
+		return NULL;			/* openssl error */
 	}
 	strncpy(key->name.name, key_name, sizeof(key->name.name));
 	return key;
@@ -140,7 +149,8 @@ KeyringGenerateNewKey(const char *key_name, unsigned key_len)
 keyInfo *
 KeyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len, bool throw_error)
 {
-	keyInfo *key = KeyringGenerateNewKey(key_name, key_len);
+	keyInfo    *key = KeyringGenerateNewKey(key_name, key_len);
+
 	if (key == NULL)
 	{
 		ereport(throw_error ? ERROR : WARNING,

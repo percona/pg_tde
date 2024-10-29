@@ -2,7 +2,7 @@
  *
  * tde_keyring_parse_opts.c
  *      Parser routines for the keyring JSON options
- * 
+ *
  * Each value in the JSON document can be either scalar (string) - a value itself
  * or a reference to the external object that contains the value. Though the top
  * level field "type" can be only scalar.
@@ -120,14 +120,14 @@ typedef struct JsonKeyringState
 	char	   *field_type;
 	char	   *extern_url;
 	char	   *extern_path;
-}			JsonKeyringState;
+} JsonKeyringState;
 
 static JsonParseErrorType json_kring_scalar(void *state, char *token, JsonTokenType tokentype);
 static JsonParseErrorType json_kring_object_field_start(void *state, char *fname, bool isnull);
 static JsonParseErrorType json_kring_object_start(void *state);
 static JsonParseErrorType json_kring_object_end(void *state);
 
-static void json_kring_assign_scalar(JsonKeyringState * parse, JsonKeyringField field, char *value);
+static void json_kring_assign_scalar(JsonKeyringState *parse, JsonKeyringField field, char *value);
 static char *get_remote_kring_value(const char *url, const char *field_name);
 static char *get_file_kring_value(const char *path, const char *field_name);
 
@@ -364,7 +364,7 @@ json_kring_scalar(void *state, char *token, JsonTokenType tokentype)
 }
 
 static void
-json_kring_assign_scalar(JsonKeyringState * parse, JsonKeyringField field, char *value)
+json_kring_assign_scalar(JsonKeyringState *parse, JsonKeyringField field, char *value)
 {
 	VaultV2Keyring *vault = parse->provider_opts;
 	FileKeyring *file = parse->provider_opts;
@@ -437,7 +437,7 @@ get_remote_kring_value(const char *url, const char *field_name)
 
 	/* remove trailing whitespace */
 	outStr.ptr[strcspn(outStr.ptr, " \t\n\r")] = '\0';
-	
+
 	return outStr.ptr;
 }
 
