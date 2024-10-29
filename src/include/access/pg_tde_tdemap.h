@@ -24,7 +24,7 @@
 typedef struct InternalKey
 {
     uint8   key[INTERNAL_KEY_LEN];
-	void*   ctx; // TODO: shouldn't be here / written to the disk
+	void*   ctx; /* TODO: shouldn't be here / written to the disk */
 } InternalKey;
 
 typedef struct RelKeyData
