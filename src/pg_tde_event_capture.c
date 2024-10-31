@@ -136,19 +136,15 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 	{
 		LOCKMODE	lockmode = AccessShareLock; /* TODO. Verify lock mode? */
 		AlterTableStmt *stmt = (AlterTableStmt *) parsetree;
-		TDEPrincipalKey *principal_key;
-		Oid			relationId = RangeVarGetRelid(stmt->relation, NoLock, true);
-		Relation	rel = table_open(relationId, lockmode);
-		Oid			tablespace_oid = rel->rd_locator.spcOid;
 		ListCell   *lcmd;
-
-		table_close(rel, lockmode);
 
 		foreach(lcmd, stmt->cmds)
 		{
 			AlterTableCmd *cmd = (AlterTableCmd *) lfirst(lcmd);
-
-			if (cmd->subtype == AT_SetAccessMethod && strcmp(cmd->name, "tde_heap") == 0)
+			if (cmd->subtype == AT_SetAccessMethod && 
+				((cmd->name != NULL && strcmp(cmd->name, "tde_heap")==0) ||
+				 (cmd->name == NULL && strcmp(default_table_access_method, "tde_heap") == 0))
+				)
 			{
 				tdeCurrentCreateEvent.encryptMode = true;
 				tdeCurrentCreateEvent.eventType = TDE_TABLE_CREATE_EVENT;
@@ -163,6 +159,12 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 
 		if (tdeCurrentCreateEvent.encryptMode)
 		{
+			TDEPrincipalKey * principal_key;
+			Oid		relationId = RangeVarGetRelid(stmt->relation, NoLock, true);
+			Relation	rel = table_open(relationId, lockmode);
+			Oid tablespace_oid = rel->rd_locator.spcOid;
+			table_close(rel, lockmode);
+
 			LWLockAcquire(tde_lwlock_enc_keys(), LW_SHARED);
 			principal_key = GetPrincipalKey(MyDatabaseId, tablespace_oid, LW_SHARED);
 			LWLockRelease(tde_lwlock_enc_keys());
