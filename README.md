@@ -36,7 +36,7 @@ You can choose one of the given options.
         sudo percona-release enable-only ppg-17
         ```
    3. Install Percona Server for PosrgreSQL
-    - For Debian and Ubuntu
+   - For Debian and Ubuntu
         ```sh
         sudo apt update
         sudo apt install percona-ppg-server-17
