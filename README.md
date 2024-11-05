@@ -2,6 +2,17 @@
 
 `Experimental` PostgreSQL extension that provides data encryption at rest on table level. [We need your feedback!](https://github.com/percona/pg_tde/discussions/151)
 
+## Table of contents
+1. [Overview](#overview)
+2. [Documentation](#documentation)
+3. [Installation](#installation)
+   1. [Percona Server for PostgreSQL](#install-pecona-server-for-postgresql-which-includes-pg_tde-with-package-manager)
+   2. [With package manager](#install-pg_tde-extension-with-package-manager)
+   3. [From sources](#build-and-install-pg_tde-extension-from-sources)
+   4. [Run in docker](#run-in-docker)
+4. [Setting up](#setting-up)
+5. [Helper functions](#helper-functions)
+
 ## Overview
 Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process. As a key provider extension supports file and [Hashicorp Vault](https://www.vaultproject.io/).
 
@@ -188,8 +199,6 @@ To download the latest build of the main branch, use the `HEAD` release from [re
 
 Builds are available in a tar.gz format, containing only the required files, and as a deb package.
 The deb package is built against the pgdg16 release, but this dependency is not yet enforced in the package.
-
-
 
 
 ## Helper functions
