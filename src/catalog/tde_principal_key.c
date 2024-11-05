@@ -807,11 +807,17 @@ get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
 	Assert(dbOid == principalKey->keyInfo.databaseId);
 
 #ifndef FRONTEND
-	/* We don't store global space key in cache */
-	if (spcOid != GLOBALTABLESPACE_OID)
-	{
-		push_principal_key_to_cache(principalKey);
-	}
+    /* We don't store global space key in cache */
+    if (spcOid != GLOBALTABLESPACE_OID)
+    {
+        push_principal_key_to_cache(principalKey);
+
+        /* If we do store key in cache we want to return a cache reference 
+         * rather then a palloc'ed copy.
+         */
+        pfree(principalKey);
+        principalKey = get_principal_key_from_cache(dbOid);
+    }
 #endif
 
 	if (principalKeyInfo)

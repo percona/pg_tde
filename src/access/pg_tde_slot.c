@@ -38,6 +38,7 @@
 
 const TupleTableSlotOps TTSOpsTDEBufferHeapTuple;
 
+static HeapTuple slot_copytuple(void *buffer, HeapTuple tuple);
 static pg_attribute_always_inline void tdeheap_slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp, int natts);
 static inline void tdeheap_tts_buffer_heap_store_tuple(TupleTableSlot *slot,
 													   HeapTuple tuple,
@@ -203,8 +204,8 @@ tdeheap_tts_buffer_heap_materialize(TupleTableSlot *slot)
 static void
 tdeheap_tts_buffer_heap_copyslot(TupleTableSlot *dstslot, TupleTableSlot *srcslot)
 {
-	BufferHeapTupleTableSlot *bsrcslot = (BufferHeapTupleTableSlot *) srcslot;
-	BufferHeapTupleTableSlot *bdstslot = (BufferHeapTupleTableSlot *) dstslot;
+	TDEBufferHeapTupleTableSlot *bsrcslot = (TDEBufferHeapTupleTableSlot *) srcslot;
+	TDEBufferHeapTupleTableSlot *bdstslot = (TDEBufferHeapTupleTableSlot *) dstslot;
 
 	/*
 	 * If the source slot is of a different kind, or is a buffer slot that has
@@ -239,6 +240,14 @@ tdeheap_tts_buffer_heap_copyslot(TupleTableSlot *dstslot, TupleTableSlot *srcslo
 		 */
 		memcpy(&bdstslot->base.tupdata, bdstslot->base.tuple, sizeof(HeapTupleData));
 		bdstslot->base.tuple = &bdstslot->base.tupdata;
+
+		/*
+		 * copy the decrypted buffer content as well
+		 * We only need to copy buffer upto tuple size
+		 */
+		memcpy(bdstslot->decrypted_buffer, bsrcslot->decrypted_buffer, HEAPTUPLESIZE + bsrcslot->base.tuple->t_len);
+		slot_copytuple(bdstslot->decrypted_buffer, bsrcslot->base.tuple);
+		bdstslot->base.tuple->t_data = ((HeapTuple)bdstslot->decrypted_buffer)->t_data;
 	}
 }
 
@@ -527,6 +536,8 @@ PGTdeExecStoreBufferHeapTuple(Relation rel,
 	if (rel->rd_rel->relkind != RELKIND_TOASTVALUE)
 	{
 		RelKeyData *key = get_current_slot_relation_key(bslot, rel);
+
+		Assert(key != NULL);
 
 		slot_copytuple(bslot->decrypted_buffer, tuple);
 		PG_TDE_DECRYPT_TUPLE_EX(tuple, (HeapTuple) bslot->decrypted_buffer, key, "ExecStoreBuffer");

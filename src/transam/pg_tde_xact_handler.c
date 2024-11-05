@@ -103,16 +103,18 @@ do_pending_deletes(bool isCommit)
 	PendingMapEntryDelete *prev;
 	PendingMapEntryDelete *next;
 
-	prev = NULL;
-	for (pending = pendingDeletes; pending != NULL; pending = next)
-	{
-		next = pending->next;
-		if (pending->nestLevel != nestLevel)
-		{
-			/* outer-level entries should not be processed yet */
-			prev = pending;
-			continue;
-		}
+    LWLockAcquire(tde_lwlock_enc_keys(), LW_EXCLUSIVE);
+
+    prev = NULL;
+    for (pending = pendingDeletes; pending != NULL; pending = next)
+    {
+        next = pending->next;
+        if (pending->nestLevel != nestLevel)
+        {
+            /* outer-level entries should not be processed yet */
+            prev = pending;
+            continue;
+        }
 
 		/* unlink list entry first, so we don't retry on failure */
 		if (prev)
@@ -130,7 +132,9 @@ do_pending_deletes(bool isCommit)
 		pfree(pending);
 		/* prev does not change */
 
-	}
+    }
+
+    LWLockRelease(tde_lwlock_enc_keys());
 }
 
 
