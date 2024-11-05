@@ -1,6 +1,6 @@
 # pg_tde: Transparent Database Encryption for PostgreSQL
 
-`Experimental` PostgreSQL extension that provides data encryption at rest on table level. [We need your feedback!](https://github.com/percona/pg_tde/discussions/151)
+The PostgreSQL extension that provides data encryption at rest on the table level. It is in the experimental stage and is actively developed. [We need your feedback!](https://github.com/percona/pg_tde/discussions/151)
 
 ## Table of contents
 1. [Overview](#overview)
@@ -14,7 +14,7 @@
 5. [Helper functions](#helper-functions)
 
 ## Overview
-Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process. As a key provider extension supports file and [Hashicorp Vault](https://www.vaultproject.io/).
+Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process. As a key provider, the extension supports the keyringfile and  [Hashicorp Vault](https://www.vaultproject.io/).
 
 ### This extension provides two `access methods` with different options:
 
@@ -22,24 +22,24 @@ Transparent Data Encryption offers encryption at the file level and solves the p
 - Works with community PostgreSQL 16 and 17
 - Encrypts tuples and WAL
 - **Doesn't** encrypt indexes, temporary files, statistics
-- CPU expensive as it decrypts pages each time they read from bufferpool 
+- CPU expensive as it decrypts pages each time they are read from bufferpool
 
 #### `tde_heap` access method
 - Works only with [Percona Server for PosgreSQL 17](https://docs.percona.com/postgresql/17/postgresql-server.html)
 - Uses extended Storage Manager and WAL APIs
-- Encrypts tupes, WAL and indexes
+- Encrypts tuples, WAL and indexes
 - **Doesn't** encrypt temporary files and statistics **yet**
 - Faster and cheaper than `tde_heap_basic`
 
 ## Documentation
 
-Full and comprehensive documentation about `pg_tde` available at https://percona.github.io/pg_tde/.
+Full and comprehensive documentation about `pg_tde` is available at https://percona.github.io/pg_tde/.
 
 ## Installation
 
 You can choose one of the given options.
 
-### Install Pecona Server for PostgreSQL which includes `pg_tde` with package manager
+### Install Percona Server for PostgreSQL which includes `pg_tde` with the package manager
 
    1. Install [percona-release](https://docs.percona.com/percona-software-repositories/installing.html) tool to configure repositories
    2. Enable Percona Distribuition for PostgreSQL repository  
@@ -120,14 +120,14 @@ There is a [docker image](https://hub.docker.com/r/perconalab/pg_tde) with `pg_t
 ```
 docker run --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d perconalab/pg_tde
 ```
-Docker file available [here](https://github.com/percona/pg_tde/blob/main/docker/Dockerfile)
+Docker file is available [here](https://github.com/percona/pg_tde/blob/main/docker/Dockerfile)
 
 
 _See [Make Builds for Developers](https://github.com/percona/pg_tde/wiki/Make-builds-for-developers) for more info on the build infrastructure._
 
 ## Setting up
 
-  1. Add extension to `shared_preload_libraries`:
+  1. Add extension to the `shared_preload_libraries`:
       1. Via configuration file `postgresql.conf `
             ```
             shared_preload_libraries=pg_tde 
