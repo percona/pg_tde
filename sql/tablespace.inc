@@ -23,4 +23,11 @@ SELECT * FROM test WHERE num1=110;
 
 DROP TABLE test;
 DROP TABLESPACE test_tblspace;
+
+-- check CREATE in non-default tablespace
+CREATE TABLESPACE test_tblspace2 LOCATION '';
+CREATE TABLE test(num1 bigint, num2 double precision, t text) USING :tde_am TABLESPACE test_tblspace2;
+
+DROP TABLE test;
+DROP TABLESPACE test_tblspace2;
 DROP EXTENSION pg_tde;

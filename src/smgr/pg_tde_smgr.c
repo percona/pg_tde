@@ -38,7 +38,7 @@ tde_is_encryption_required(TDESMgrRelation tdereln, ForkNumber forknum)
 }
 
 static RelKeyData *
-tde_smgr_get_key(SMgrRelation reln, RelFileLocator* old_locator)
+tde_smgr_get_key(SMgrRelation reln, RelFileLocator* old_locator, bool createIfNone)
 {
 	TdeCreateEvent *event;
 	RelKeyData *rkd;
@@ -68,8 +68,11 @@ tde_smgr_get_key(SMgrRelation reln, RelFileLocator* old_locator)
 		return rkd;
 	}
 
+	if (!createIfNone)
+		return NULL;
+
 	/* if this is a CREATE TABLE, we have to generate the key */
-	if (event->encryptMode == true && event->eventType == TDE_TABLE_CREATE_EVENT)
+	if(event->encryptMode == true && event->eventType == TDE_TABLE_CREATE_EVENT)
 	{
 		return pg_tde_create_smgr_key(&reln->smgr_rlocator.locator);
 	}
@@ -77,10 +80,11 @@ tde_smgr_get_key(SMgrRelation reln, RelFileLocator* old_locator)
 	/* if this is a CREATE INDEX, we have to load the key based on the table */
 	if (event->encryptMode == true && event->eventType == TDE_INDEX_CREATE_EVENT)
 	{
-		/* For now keep it simple and create separate key for indexes */
-		/*
+		/* 
+		 * For now keep it simple and create separate key for indexes.
+		 *
 		 * Later we might modify the map infrastructure to support the same
-		 * keys
+		 * keys.
 		 */
 		return pg_tde_create_smgr_key(&reln->smgr_rlocator.locator);
 	}
@@ -228,19 +232,16 @@ tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool 
 {
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
 
-	/*
-	 * This is the only function that gets called during actual CREATE
-	 * TABLE/INDEX (EVENT TRIGGER)
-	 */
-	/* so we create the key here by loading it */
-
 	mdcreate(relold, reln, forknum, isRedo);
 
 	/*
+	 * This is the only function that gets called during actual CREATE
+	 * TABLE/INDEX (EVENT TRIGGER) so we create the key here by loading it.
 	 * Later calls then decide to encrypt or not based on the existence of the
-	 * key
+	 * key.
+	 * So we create the key here by loading it
 	 */
-	RelKeyData *key = tde_smgr_get_key(reln, &relold);
+	RelKeyData *key = tde_smgr_get_key(reln, &relold, true);
 
 	if (key)
 	{
@@ -254,14 +255,20 @@ tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool 
 }
 
 /*
- * mdopen() -- Initialize newly-opened relation.
+ * tde_mdopen() -- Initialize newly-opened relation.
  */
 static void
 tde_mdopen(SMgrRelation reln)
 {
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
-	RelKeyData *key = tde_smgr_get_key(reln, NULL);
 
+	/* 
+	 * tde_mdopen() is called before tde_mdcreate() during CREATE. And in case
+	 * of non-default tablespace, the creation of the key will fail here, as
+	 * the storage is yet to be created.
+	 */
+	RelKeyData *key = tde_smgr_get_key(reln, NULL, false);
+	
 	if (key)
 	{
 		tdereln->encrypted_relation = true;
