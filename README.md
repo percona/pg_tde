@@ -1,3 +1,5 @@
+[![Forum](https://img.shields.io/badge/Forum-join-brightgreen)](https://forums.percona.com/)
+
 # pg_tde: Transparent Database Encryption for PostgreSQL
 
 The PostgreSQL extension that provides data encryption at rest on the table level. It is in the experimental stage and is actively developed. [We need your feedback!](https://github.com/percona/pg_tde/discussions/151)
