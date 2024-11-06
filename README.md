@@ -2,7 +2,7 @@
 
 # pg_tde: Transparent Database Encryption for PostgreSQL
 
-The PostgreSQL extension that provides data encryption at rest on the table level. It is in the experimental stage and is actively developed. [We need your feedback!](https://github.com/percona/pg_tde/discussions/151)
+The PostgreSQL extension provides data at rest encryption on table level. It is currently in an experimental phase and is under active development. [We need your feedback!](https://github.com/percona/pg_tde/discussions/151)
 
 ## Table of contents
 1. [Overview](#overview)
