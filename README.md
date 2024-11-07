@@ -40,21 +40,21 @@ Full and comprehensive documentation about `pg_tde` is available at https://perc
 Percona provides binary packages of `pg_tde` extension only for Percona Server for PostgreSQL. Learn how to install them or build `pg_tde` from sources for PSPG in the [documentation](https://percona.github.io/pg_tde/main/install.html).
 
 ## Building from sources for community PostgreSQL
-  1. Install required dependencies
+  1. Install required dependencies (replace XX with 16 or 17)
    - On Debian and Ubuntu:
         ```sh
-        sudo apt install make gcc autoconf libcurl4-openssl-dev
+        sudo apt install make gcc autoconf git libcurl4-openssl-dev postgresql-server-dev-XX
         ```
      
    - On RHEL 8 compatible OS:
         ```sh
         sudo yum install epel-release
-        yum --enablerepo=powertools install git make gcc autoconf libcurl-devel perl-IPC-Run redhat-rpm-config openssl-devel
+        yum --enablerepo=powertools install git make gcc autoconf libcurl-devel perl-IPC-Run redhat-rpm-config openssl-devel postgresqlXX-devel
         ```
 
    - On MacOS:
         ```sh
-        brew install make autoconf curl gettext
+        brew install make autoconf curl gettext postresql@XX
         ```
 
   2. Install or build postgresql 16 or 17
