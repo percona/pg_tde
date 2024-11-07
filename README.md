@@ -21,7 +21,7 @@ Transparent Data Encryption offers encryption at the file level and solves the p
 ### This extension provides two `access methods` with different options:
 
 #### `tde_heap_basic` access method
-- Works with community PostgreSQL 16 and 17
+- Works with community PostgreSQL 16 and 17 or with [Percona Server for PosgreSQL 17](https://docs.percona.com/postgresql/17/postgresql-server.html)
 - Encrypts tuples and WAL
 - **Doesn't** encrypt indexes, temporary files, statistics
 - CPU expensive as it decrypts pages each time they are read from bufferpool
