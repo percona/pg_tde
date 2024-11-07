@@ -7,13 +7,11 @@ The PostgreSQL extension provides data at rest encryption. It is currently in an
 ## Table of contents
 1. [Overview](#overview)
 2. [Documentation](#documentation)
-3. [Installation](#installation)
-   1. [Percona Server for PostgreSQL](#install-pecona-server-for-postgresql-which-includes-pg_tde-with-package-manager)
-   2. [With package manager](#install-pg_tde-extension-with-package-manager)
-   3. [From sources](#build-and-install-pg_tde-extension-from-sources)
-   4. [Run in docker](#run-in-docker)
-4. [Setting up](#setting-up)
-5. [Helper functions](#helper-functions)
+1. [Percona Server for PostgreSQL](#percona-server-for-postgresql)
+3. [Build from sources](#building-from-sources-for-community-postgresql)
+4. [Run in docker](#run-in-docker)
+5. [Setting up](#setting-up)
+6. [Helper functions](#helper-functions)
 
 ## Overview
 Transparent Data Encryption offers encryption at the file level and solves the problem of protecting data at rest. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process. As a key provider, the extension supports the keyringfile and  [Hashicorp Vault](https://www.vaultproject.io/).
