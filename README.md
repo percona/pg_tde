@@ -25,7 +25,7 @@ Transparent Data Encryption offers encryption at the file level and solves the p
 - CPU expensive as it decrypts pages each time they are read from bufferpool
 
 #### `tde_heap` access method
-- Works only with [Percona Server for PosgreSQL 17](https://docs.percona.com/postgresql/17/postgresql-server.html)
+- Works only with [Percona Server for PostgreSQL 17](https://docs.percona.com/postgresql/17/postgresql-server.html)
 - Uses extended Storage Manager and WAL APIs
 - Encrypts tuples, WAL and indexes
 - **Doesn't** encrypt temporary files and statistics **yet**
