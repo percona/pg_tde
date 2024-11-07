@@ -37,64 +37,26 @@ Transparent Data Encryption offers encryption at the file level and solves the p
 
 Full and comprehensive documentation about `pg_tde` is available at https://percona.github.io/pg_tde/.
 
-## Installation
+## Percona Server for PostgreSQL
 
-You can choose one of the given options.
+Percona provides binary packages of `pg_tde` extension only for Percona Server for PostgreSQL. Learn how to install them or build `pg_tde` from sources for PSPG in the [documentation](https://percona.github.io/pg_tde/main/install.html).
 
-### Install Percona Server for PostgreSQL which includes `pg_tde` with the package manager
-
-   1. Install [percona-release](https://docs.percona.com/percona-software-repositories/installing.html) tool to configure repositories
-   2. Enable Percona Distribuition for PostgreSQL repository  
-        ```sh
-        sudo percona-release enable-only ppg-17
-        ```
-   3. Install Percona Server for PosrgreSQL
-   - For Debian and Ubuntu
-        ```sh
-        sudo apt update
-        sudo apt install percona-ppg-server-17
-        ```
-   - For RHEL 8 compatible OS
-        ```sh
-        sudo yum install percona-ppg-server17
-        ```
-
-### Install `pg_tde` extension with package manager
-
-  1. Install [percona-release](https://docs.percona.com/percona-software-repositories/installing.html) tool to configure repositories
-  2. Enable Percona Distribuition for PostgreSQL repository (replace XX with 16 or 17) 
-        ```sh
-        sudo percona-release enable-only ppg-XX
-        ```
-
-  3. Install `pg_tde` extension (replace XX with 16 or 17)
-   - For Debian or Ubuntu
-        ```sh
-        sudo apt update
-        sudo apt install percona-postgresql-XX-pg-tde
-        ```
-   - For RHEL 8 compatible OS
-        ```sh
-        sudo yum install percona-pg_tde_XX
-        ```
-
-
-### Build and install `pg_tde` extension from sources
-  1. Install required dependencies (replace XX with 16 or 17)
+## Building from sources for community PostgreSQL
+  1. Install required dependencies
    - On Debian and Ubuntu:
         ```sh
-        sudo apt install make gcc autoconf libcurl4-openssl-dev postgresql-server-dev-XX
+        sudo apt install make gcc autoconf libcurl4-openssl-dev
         ```
      
    - On RHEL 8 compatible OS:
         ```sh
         sudo yum install epel-release
-        yum --enablerepo=powertools install git make gcc autoconf libcurl-devel perl-IPC-Run redhat-rpm-config openssl-devel postgresqlXX-devel 
+        yum --enablerepo=powertools install git make gcc autoconf libcurl-devel perl-IPC-Run redhat-rpm-config openssl-devel
         ```
 
    - On MacOS:
         ```sh
-        brew install make autoconf curl gettext postresql@XX
+        brew install make autoconf curl gettext
         ```
 
   2. Install or build postgresql 16 or 17
@@ -115,7 +77,7 @@ You can choose one of the given options.
       sudo make USE_PGXS=1 install
       ```
 
-### Run in Docker
+## Run in Docker
 
 There is a [docker image](https://hub.docker.com/r/perconalab/pg_tde) with `pg_tde` based community [PostgreSQL 16](https://hub.docker.com/_/postgres) 
 
@@ -180,7 +142,7 @@ _See [Make Builds for Developers](https://github.com/percona/pg_tde/wiki/Make-bu
         SELECT pg_tde_set_principal_key('my-principal-key','file');
         ```
    
-   6. Specify `tde_heap_basic` or `tde_heap` access method during table creation
+   6. Specify `tde_heap_basic` access method during table creation
         ```sql
         CREATE TABLE albums (
             album_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -210,16 +172,3 @@ The extension provides the following helper functions:
 ### pg_tde_is_encrypted(tablename)
 
 Returns `t` if the table is encrypted (uses the tde_heap_basic access method), or `f` otherwise.
-
-## Base commit
-
-This is based on the heap code as of the following commit:
-
-```
-commit a81e5516fa4bc53e332cb35eefe231147c0e1749 (HEAD -> REL_16_STABLE, origin/REL_16_STABLE)
-Author: Amit Kapila <akapila@postgresql.org>
-Date:   Wed Sep 13 09:48:31 2023 +0530
-
-    Fix the ALTER SUBSCRIPTION to reflect the change in run_as_owner option.
-```
-
