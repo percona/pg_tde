@@ -21,7 +21,7 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
     * On RHEL and derivatives
 
        ```sh
-       sudo systemctl restart postgresql-16
+       sudo systemctl restart postgresql-17
        ```
 
 3. Create the extension using the [CREATE EXTENSION](https://www.postgresql.org/docs/current/sql-createextension.html) command. You must have the privileges of a superuser or a database owner to use this command. Connect to `psql` as a superuser for a database and run the following command:
@@ -78,11 +78,9 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
 ## WAL encryption configuration (tech preview)
 
-Perform this step if you [installed Percona Server for PostgreSQL :octicons-link-external-16:](https://docs.percona.com/postgresql/17/installing.html). Otherwise, proceed to the [Next steps](#next-steps).
-
 After you [enabled `pg_tde`](#enable-extension) and started the Percona Server for PostgreSQL, a principal key and a keyring for WAL are created. Now you need to instruct `pg_tde ` to encrypt WAL files by configuring WAL encryption. Here's how to do it:
 
-1. Enable WAL level encryption using the `ALTER SYSTEM SET` command:
+1. Enable WAL level encryption using the `ALTER SYSTEM SET` command. You need the privileges of the superuser to run this command:
 
     ```sql
     ALTER SYSTEM set pg_tde.wal_encrypt = on;
@@ -104,9 +102,9 @@ After you [enabled `pg_tde`](#enable-extension) and started the Percona Server f
 
 3. We highly recommend you to create your own keyring and rotate the principal key. This is because the default principal key is created from the local keyfile and is stored unencrypted. 
 
-   Set up the key provider for WAL encryption
+    Set up the key provider for WAL encryption
 
-   === "With HaschiCorp Vault"
+    === "With HaschiCorp Vault"
 
         ```sql
         SELECT pg_tde_add_key_provider_vault_v2('PG_TDE_GLOBAL','provider-name',:'secret_token','url','mount','ca_path');
@@ -136,7 +134,7 @@ After you [enabled `pg_tde`](#enable-extension) and started the Percona Server f
     SELECT pg_tde_rotate_principal_key('PG_TDE_GLOBAL', 'new-principal-key', 'provider-name');
     ```
 
-Now all WAL files are encrypted.
+Now all WAL files are encrypted for both encrypted and unencrypted tables.
 
 ## Next steps
 
