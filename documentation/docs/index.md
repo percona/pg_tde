@@ -29,7 +29,7 @@ Users can configure encryption differently for each database, encrypting specifi
 
 ## Versions and supported PostgreSQL deployments
 
-The `pg_tde` extension comes in two distinct versions. These versions are database-specific and differ in terms of what they encrypt and with what access method. Each version is characterized by the database it supports, the access method it provides, and the scope of encryption it offers.
+The `pg_tde` extension comes in two distinct versions with specific access methods to encrypt the data. These versions are database-specific and differ in terms of what they encrypt and with what access method. Each version is characterized by the database it supports, the access method it provides, and the scope of encryption it offers.
 
 * **Version for Percona Server for PostgreSQL**
 
