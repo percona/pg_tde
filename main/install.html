@@ -135,7 +135,7 @@
             
             
   This is a Beta version of Percona Transparent Encryption extension and it is 
-  <strong>not recommended for production environments</strong> yet. We encourage you to test it and give your feedback.
+  <strong>not recommended for production environments</strong> yet. We encourage you to test it and <a href= "https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82">give your feedback</a>.
   This will help us improve the product and make it production-ready faster.
 
           </div>
@@ -192,7 +192,7 @@
             <path d="m7.825 13 5.6 5.6L12 20l-8-8 8-8 1.425 1.4-5.6 5.6H20v2H7.825Z"/>
           </g>
         </svg>
-        <span>Percona Documentation</span>
+        <span>Percona Software for PostgreSQL Documentation</span>
       </a>
     </div>
   </div>
@@ -982,7 +982,7 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Package manager</label><label for="__tabbed_1_2">Build from source</label><label for="__tabbed_1_3">Run in Docker</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>Starting with Aplha1 version, you can install the extension as package from Percona repositories using the <code>percona-release</code> tool. The packages are available for the following operating systems:</p>
+<p>The packages are available for the following operating systems:</p>
 <ul>
 <li>Red Hat Enterprise Linux 8 and compatible derivatives</li>
 <li>Red Hat Enterprise Linux 9 and compatible derivatives</li>
@@ -995,15 +995,15 @@
 <a class="md-button" href="yum.html">Install on RHEL or derivatives</a></p>
 </div>
 <div class="tabbed-block">
-<p>The following steps apply to PostgreSQL 16. To build <code>pg_tde</code> for PostgreSQL 17, replace the version in the commands. </p>
+<p>To build <code>pg_tde</code> from source code, do the following</p>
 <ol>
 <li>
-<p>To build <code>pg_tde</code> from source code, you require the following on Ubuntu/Debian:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>make<span class="w"> </span>gcc<span class="w"> </span>postgresql-server-dev-16<span class="w"> </span>libcurl4-openssl-dev
+<p>On Ubuntu/Debian: Install the following dependencies required for the build:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>make<span class="w"> </span>gcc<span class="w"> </span>postgresql-server-dev-17<span class="w"> </span>libcurl4-openssl-dev
 </code></pre></div>
 </li>
 <li>
-<p><a href="https://docs.percona.com/postgresql/16/installing.html">Install Percona Distribution for PostgreSQL 16</a> or <a href="https://www.postgresql.org/download/">upstream PostgreSQL 16</a></p>
+<p><a href="https://docs.percona.com/postgresql/17/installing.html">Install Percona Distribution for PostgreSQL 17</a> or <a href="https://www.postgresql.org/download/">upstream PostgreSQL 17</a></p>
 </li>
 <li>
 <p>If PostgreSQL is installed in a non standard directory, set the <code>PG_CONFIG</code> environment variable to point to the <code>pg_config</code> executable.</p>
@@ -1024,11 +1024,15 @@ sudo make USE_PGXS=1 install
 </ol>
 </div>
 <div class="tabbed-block">
-<p>You can find Docker images built from the current main branch on <a href="https://hub.docker.com/r/perconalab/pg_tde">Docker Hub</a>. Images are built on top of <a href="https://hub.docker.com/_/postgres">postgres:16</a> official image.     </p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The steps below are for the <code>pg_tde</code> community version. </p>
+</div>
+<p>You can find Docker images built from the current main branch on <a href="https://hub.docker.com/r/perconalab/pg_tde">Docker Hub</a>. Images are built on top of <a href="https://hub.docker.com/_/postgres">postgres:17</a> official image.     </p>
 <p>To run <code>pg_tde</code> in Docker, use the following command:    </p>
 <div class="highlight"><pre><span></span><code>docker run --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d perconalab/pg_tde
 </code></pre></div>
-<p>It builds and adds <code>pg_tde</code> extension to PostgreSQL 16. The <code>postgresql.conf</code> contains the required modifications. The <code>pg_tde</code> extension is added to <code>template1</code> so that all new databases automatically have the <code>pg_tde</code> extension loaded. </p>
+<p>It builds and adds <code>pg_tde</code> extension to PostgreSQL 17. The <code>postgresql.conf</code> contains the required modifications. The <code>pg_tde</code> extension is added to <code>template1</code> so that all new databases automatically have the <code>pg_tde</code> extension loaded. </p>
 <p>Keys are not created automatically. You must configure a key provider and a principal key for each database  where you wish to use encrypted tables. See the instructions in the <a href="setup.html">Setup</a> section, starting with the 4<sup>th</sup> point, as the first 3 steps are already completed in the Docker image.</p>
 <p>See <a href="https://hub.docker.com/_/postgres">Docker Docs</a> on usage.    </p>
 <p>You can also build a Docker image manually with:    </p>
@@ -1044,7 +1048,7 @@ sudo make USE_PGXS=1 install
 <h2 class="title" id="get-expert-help">Get expert help<a class="headerlink" href="#get-expert-help" title="Permanent link">&para;</a></h2>
 <p>If you need assistance, visit the community forum for comprehensive and free database knowledge, or contact our Percona Database Experts for professional support and services.</p>
 <div class="actions">
-<p><a href="https://forums.percona.com/c/postgresql/25?utm_campaign=Doc%20pages"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 4v7H5.17L4 12.17V4zm1-2H3a1 1 0 0 0-1 1v14l4-4h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1m5 4h-2v9H6v2a1 1 0 0 0 1 1h11l4 4V7a1 1 0 0 0-1-1"/></svg></span> Community Forum</a> <a href="https://www.percona.com/about/contact"><span class="twemoji"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<p><a href="https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 4v7H5.17L4 12.17V4zm1-2H3a1 1 0 0 0-1 1v14l4-4h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1m5 4h-2v9H6v2a1 1 0 0 0 1 1h11l4 4V7a1 1 0 0 0-1-1"/></svg></span> Community Forum</a> <a href="https://www.percona.com/about/contact"><span class="twemoji"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M19.3996 14.148C21.9082 12.5083 22.7289 9.16368 21.2109 6.53493C20.4502 5.21636 19.2207 4.27206 17.7497 3.87776C16.3868 3.51187 14.9634 3.6615 13.7106 4.29444L12 1.33337L8.44934 7.48295L0.242432 21.6959H23.7576L19.3996 14.148ZM17.3474 5.38416C18.4167 5.66894 19.3064 6.35548 19.8606 7.31143C20.9499 9.19582 20.384 11.5859 18.6176 12.7931L14.4917 5.64797C15.3806 5.22055 16.3831 5.12734 17.3474 5.38416ZM12 4.45432L21.0533 20.135H15.7562L9.35029 9.04341L11.9995 4.45478L12 4.45432ZM2.94667 20.135L8.44888 10.6071L13.9511 20.135H2.94667Z"/>
 </svg></span> Get a Percona Expert</a></p>
 <p><a class="glightbox" href="https://static.scarf.sh/a.png?x-pxid=b95a2b04-c5c7-47f9-bb4e-b7fc13c3ab0d" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=b95a2b04-c5c7-47f9-bb4e-b7fc13c3ab0d" /></a></p>
@@ -1072,7 +1076,7 @@ sudo make USE_PGXS=1 install
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 11, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 7, 2024</span>
   </span>
 
     

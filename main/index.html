@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="pg_tde is the extension that brings in Transparent Data Encryption (TDE) to PostgreSQL and enables users to keep sensitive data safe and secure. It enables users to configure encryption differently for each database, encrypting specific tables in some databases with different encryption keys, while keeping others non encrypted.">
+        <meta name="description" content="pg_tde is the extension that brings in Transparent Data Encryption (TDE) to PostgreSQL and enables users to keep sensitive data safe and secure. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.">
       
       
         <meta name="author" content="Percona LLC">
@@ -131,7 +131,7 @@
             
             
   This is a Beta version of Percona Transparent Encryption extension and it is 
-  <strong>not recommended for production environments</strong> yet. We encourage you to test it and give your feedback.
+  <strong>not recommended for production environments</strong> yet. We encourage you to test it and <a href= "https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82">give your feedback</a>.
   This will help us improve the product and make it production-ready faster.
 
           </div>
@@ -188,7 +188,7 @@
             <path d="m7.825 13 5.6 5.6L12 20l-8-8 8-8 1.425 1.4-5.6 5.6H20v2H7.825Z"/>
           </g>
         </svg>
-        <span>Percona Documentation</span>
+        <span>Percona Software for PostgreSQL Documentation</span>
       </a>
     </div>
   </div>
@@ -447,7 +447,7 @@
         <li class="md-nav__item">
   <a href="#whats-encrypted" class="md-nav__link">
     <span class="md-ellipsis">
-      What&rsquo;s encrypted
+      What&rsquo;s encrypted:
     </span>
   </a>
   
@@ -463,11 +463,26 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-postgresql-versions" class="md-nav__link">
+  <a href="#versions-and-supported-postgresql-deployments" class="md-nav__link">
     <span class="md-ellipsis">
-      Supported PostgreSQL versions
+      Versions and supported PostgreSQL deployments
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Versions and supported PostgreSQL deployments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-version-to-chose" class="md-nav__link">
+    <span class="md-ellipsis">
+      Which version to chose?
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -909,7 +924,7 @@
         <li class="md-nav__item">
   <a href="#whats-encrypted" class="md-nav__link">
     <span class="md-ellipsis">
-      What&rsquo;s encrypted
+      What&rsquo;s encrypted:
     </span>
   </a>
   
@@ -925,11 +940,26 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-postgresql-versions" class="md-nav__link">
+  <a href="#versions-and-supported-postgresql-deployments" class="md-nav__link">
     <span class="md-ellipsis">
-      Supported PostgreSQL versions
+      Versions and supported PostgreSQL deployments
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Versions and supported PostgreSQL deployments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-version-to-chose" class="md-nav__link">
+    <span class="md-ellipsis">
+      Which version to chose?
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -992,34 +1022,48 @@
 
 
 <h1 id="pg_tde-documentation"><code>pg_tde</code> documentation<a class="headerlink" href="#pg_tde-documentation" title="Permanent link">&para;</a></h1>
-<p><code>pg_tde</code> is the extension that brings in <a href="tde.html">Transparent Data Encryption (TDE)</a> to PostgreSQL and enables users to keep sensitive data safe and secure. It enables users to configure encryption differently for each database, encrypting specific tables in some databases with different encryption keys, while keeping others non encrypted. </p>
+<p><code>pg_tde</code> is the extension that brings in <a href="tde.html">Transparent Data Encryption (TDE)</a> to PostgreSQL and enables users to keep sensitive data safe and secure. The encryption is transparent for users allowing them to access and manipulate the data and not to worry about the encryption process.</p>
+<p>Users can configure encryption differently for each database, encrypting specific tables in some databases with different encryption keys, while keeping others non encrypted. </p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p>This is the Beta version of the extension and is not meant for production use yet. <a href="release-notes/release-notes.html">Release notes</a></p>
+<p>This extension is in the experimental phase and is under active development. It is not meant for production use yet. </p>
 </div>
-<h2 id="whats-encrypted">What&rsquo;s encrypted<a class="headerlink" href="#whats-encrypted" title="Permanent link">&para;</a></h2>
+<p><a class="md-button" href="release-notes/release-notes.html">What&rsquo;s new </a></p>
+<h2 id="whats-encrypted">What&rsquo;s encrypted:<a class="headerlink" href="#whats-encrypted" title="Permanent link">&para;</a></h2>
 <p><code>pg_tde</code> encrypts the following:</p>
 <ul>
 <li>User data in tables, including TOAST tables, that are created using the extension. Metadata of those tables is not encrypted. </li>
-<li>Write-Ahead Log (WAL) data for tables created using the extension </li>
 <li>Temporary tables created during the database operation for data tables created using the extension</li>
+<li>Write-Ahead Log (WAL) data for the entire database cluster. This includes WAL data in encrypted and non-encrypted tables</li>
+<li>Indexes on encrypted tables </li>
+<li>Logical replication on encrypted tables</li>
 </ul>
 <h2 id="known-limitations">Known limitations<a class="headerlink" href="#known-limitations" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Logical replication is not available as it doesn&rsquo;t work with encrypted tables.</li>
 <li>Keys in the local keyfile are stored unencrypted.</li>
-<li>Indexes and <code>NULL</code> bitmaps of tuples are currently not encrypted. </li>
+<li>System tables are currently not encrypted.</li>
 </ul>
 <p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2z"/></svg></span> Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead for most situations. However, in some specific applications such as those using JSONB operations, performance degradation might be higher.</p>
+<h2 id="versions-and-supported-postgresql-deployments">Versions and supported PostgreSQL deployments<a class="headerlink" href="#versions-and-supported-postgresql-deployments" title="Permanent link">&para;</a></h2>
+<p>The <code>pg_tde</code> extension comes in two distinct versions with specific access methods to encrypt the data. These versions are database-specific and differ in terms of what they encrypt and with what access method. Each version is characterized by the database it supports, the access method it provides, and the scope of encryption it offers.</p>
+<ul>
+<li>
+<p><strong>Version for Percona Server for PostgreSQL</strong></p>
+<p>This <code>pg_tde</code> version is based on and supported for <a href="https://docs.percona.com/postgresql/17/postgresql-server.html">Percona Server for PostgreSQL 17.x <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2m6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.75.75 0 0 1-1.042-.018.75.75 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1"/></svg></span></a> - an open source binary drop-in replacement for PostgreSQL Community. It provides the <code>tde_heap</code> access method and offers <a href="#whats-encrypted">full encryption capabilities</a>. </p>
+</li>
+<li>
+<p><strong>Community version</strong></p>
+<p>This version is supported for PostgreSQL Community 16 and 17, and Percona Distribution for PostgreSQL 16. It provides the <code>tde_heap_basic</code> access method, offering limited encryption features. The limitations are in encrypting WAL data only for tables created using the extension and no support of index encryption nor logical replication.</p>
+</li>
+</ul>
+<h3 id="which-version-to-chose">Which version to chose?<a class="headerlink" href="#which-version-to-chose" title="Permanent link">&para;</a></h3>
+<p>The answer is pretty straightforward: if you don&rsquo;t use indexes and don&rsquo;t need index encryption, use the community version and the <code>tde_heap_basic</code> access method. Check the <a href="https://github.com/percona/pg_tde/blob/main/README.md">upstream documentation <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2m6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.75.75 0 0 1-1.042-.018.75.75 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1"/></svg></span></a> how to get started.</p>
+<p>Otherwise, enjoy full encryption with the Percona Server for PostgreSQL version and the <code>tde_heap</code> access method. </p>
+<p>Still not sure? <a href="https://www.percona.com/about/contact">Contact our experts</a> to find the best solution for you.</p>
 <p><a class="md-button" href="install.html">Get started</a></p>
-<h2 id="supported-postgresql-versions">Supported PostgreSQL versions<a class="headerlink" href="#supported-postgresql-versions" title="Permanent link">&para;</a></h2>
-<p><code>pg_tde</code> is currently based on Percona Server for PostgreSQL 17.0 and upstream PostgreSQL 16.x. </p>
-<p>It is also supported for Percona Distribution for PostgreSQL 16.x and upstream PostgreSQL 16.x. </p>
 <h2 id="future-releases">Future releases<a class="headerlink" href="#future-releases" title="Permanent link">&para;</a></h2>
 <p>The following is planned for future releases of <code>pg_tde</code>:</p>
 <ul>
-<li>Encryption of indexes and <code>NULL</code> bitmaps of tuples</li>
-<li>Logical replication support</li>
 <li>KMIP integration for key management</li>
 <li>Global principal key management</li>
 </ul>
@@ -1032,7 +1076,7 @@
 <h2 class="title" id="get-expert-help">Get expert help<a class="headerlink" href="#get-expert-help" title="Permanent link">&para;</a></h2>
 <p>If you need assistance, visit the community forum for comprehensive and free database knowledge, or contact our Percona Database Experts for professional support and services.</p>
 <div class="actions">
-<p><a href="https://forums.percona.com/c/postgresql/25?utm_campaign=Doc%20pages"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 4v7H5.17L4 12.17V4zm1-2H3a1 1 0 0 0-1 1v14l4-4h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1m5 4h-2v9H6v2a1 1 0 0 0 1 1h11l4 4V7a1 1 0 0 0-1-1"/></svg></span> Community Forum</a> <a href="https://www.percona.com/about/contact"><span class="twemoji"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<p><a href="https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 4v7H5.17L4 12.17V4zm1-2H3a1 1 0 0 0-1 1v14l4-4h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1m5 4h-2v9H6v2a1 1 0 0 0 1 1h11l4 4V7a1 1 0 0 0-1-1"/></svg></span> Community Forum</a> <a href="https://www.percona.com/about/contact"><span class="twemoji"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M19.3996 14.148C21.9082 12.5083 22.7289 9.16368 21.2109 6.53493C20.4502 5.21636 19.2207 4.27206 17.7497 3.87776C16.3868 3.51187 14.9634 3.6615 13.7106 4.29444L12 1.33337L8.44934 7.48295L0.242432 21.6959H23.7576L19.3996 14.148ZM17.3474 5.38416C18.4167 5.66894 19.3064 6.35548 19.8606 7.31143C20.9499 9.19582 20.384 11.5859 18.6176 12.7931L14.4917 5.64797C15.3806 5.22055 16.3831 5.12734 17.3474 5.38416ZM12 4.45432L21.0533 20.135H15.7562L9.35029 9.04341L11.9995 4.45478L12 4.45432ZM2.94667 20.135L8.44888 10.6071L13.9511 20.135H2.94667Z"/>
 </svg></span> Get a Percona Expert</a></p>
 <p><a class="glightbox" href="https://static.scarf.sh/a.png?x-pxid=b95a2b04-c5c7-47f9-bb4e-b7fc13c3ab0d" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=b95a2b04-c5c7-47f9-bb4e-b7fc13c3ab0d" /></a></p>
@@ -1060,7 +1104,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 8, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 7, 2024</span>
   </span>
 
     

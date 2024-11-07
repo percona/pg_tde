@@ -135,7 +135,7 @@
             
             
   This is a Beta version of Percona Transparent Encryption extension and it is 
-  <strong>not recommended for production environments</strong> yet. We encourage you to test it and give your feedback.
+  <strong>not recommended for production environments</strong> yet. We encourage you to test it and <a href= "https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82">give your feedback</a>.
   This will help us improve the product and make it production-ready faster.
 
           </div>
@@ -192,7 +192,7 @@
             <path d="m7.825 13 5.6 5.6L12 20l-8-8 8-8 1.425 1.4-5.6 5.6H20v2H7.825Z"/>
           </g>
         </svg>
-        <span>Percona Documentation</span>
+        <span>Percona Software for PostgreSQL Documentation</span>
       </a>
     </div>
   </div>
@@ -1047,11 +1047,10 @@
 </ol>
 <p><i info><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Info:</i> The key provider configuration is stored in the database catalog in an unencrypted table. See <a href="external-parameters.html">how to use external reference to parameters</a> to add an extra security layer to your setup.</p>
 <h2 id="wal-encryption-configuration-tech-preview">WAL encryption configuration (tech preview)<a class="headerlink" href="#wal-encryption-configuration-tech-preview" title="Permanent link">&para;</a></h2>
-<p>Perform this step if you <a href="https://docs.percona.com/postgresql/17/installing.html">installed Percona Server for PostgreSQL <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2m6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.75.75 0 0 1-1.042-.018.75.75 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1"/></svg></span></a>. Otherwise, proceed to the <a href="#next-steps">Next steps</a>.</p>
 <p>After you <a href="#enable-extension">enabled <code>pg_tde</code></a> and started the Percona Server for PostgreSQL, a principal key and a keyring for WAL are created. Now you need to instruct <code>pg_tde</code> to encrypt WAL files by configuring WAL encryption. Here&rsquo;s how to do it:</p>
 <ol>
 <li>
-<p>Enable WAL level encryption using the <code>ALTER SYSTEM SET</code> command:</p>
+<p>Enable WAL level encryption using the <code>ALTER SYSTEM SET</code> command. You need the privileges of the superuser to run this command:</p>
 <div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">SYSTEM</span><span class="w"> </span><span class="k">set</span><span class="w"> </span><span class="n">pg_tde</span><span class="p">.</span><span class="n">wal_encrypt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">on</span><span class="p">;</span>
 </code></pre></div>
 </li>
@@ -1070,9 +1069,9 @@
 </li>
 <li>
 <p>We highly recommend you to create your own keyring and rotate the principal key. This is because the default principal key is created from the local keyfile and is stored unencrypted. </p>
+<p>Set up the key provider for WAL encryption</p>
 </li>
 </ol>
-<p>Set up the key provider for WAL encryption</p>
 <p>=== &ldquo;With HashiCorp Vault&rdquo;</p>
 <div class="highlight"><pre><span></span><code>    ```sql
     SELECT pg_tde_add_key_provider_vault_v2(&#39;PG_TDE_GLOBAL&#39;,&#39;provider-name&#39;,:&#39;secret_token&#39;,&#39;url&#39;,&#39;mount&#39;,&#39;ca_path&#39;);
@@ -1103,7 +1102,7 @@
 </code></pre></div>
 </li>
 </ol>
-<p>Now all WAL files are encrypted.</p>
+<p>Now all WAL files are encrypted for both encrypted and unencrypted tables.</p>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <p><a class="md-button" href="test.html">Test TDE</a></p>
 <div data-banner="data-banner">
@@ -1111,7 +1110,7 @@
 <h2 class="title" id="get-expert-help">Get expert help<a class="headerlink" href="#get-expert-help" title="Permanent link">&para;</a></h2>
 <p>If you need assistance, visit the community forum for comprehensive and free database knowledge, or contact our Percona Database Experts for professional support and services.</p>
 <div class="actions">
-<p><a href="https://forums.percona.com/c/postgresql/25?utm_campaign=Doc%20pages"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 4v7H5.17L4 12.17V4zm1-2H3a1 1 0 0 0-1 1v14l4-4h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1m5 4h-2v9H6v2a1 1 0 0 0 1 1h11l4 4V7a1 1 0 0 0-1-1"/></svg></span> Community Forum</a> <a href="https://www.percona.com/about/contact"><span class="twemoji"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<p><a href="https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 4v7H5.17L4 12.17V4zm1-2H3a1 1 0 0 0-1 1v14l4-4h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1m5 4h-2v9H6v2a1 1 0 0 0 1 1h11l4 4V7a1 1 0 0 0-1-1"/></svg></span> Community Forum</a> <a href="https://www.percona.com/about/contact"><span class="twemoji"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M19.3996 14.148C21.9082 12.5083 22.7289 9.16368 21.2109 6.53493C20.4502 5.21636 19.2207 4.27206 17.7497 3.87776C16.3868 3.51187 14.9634 3.6615 13.7106 4.29444L12 1.33337L8.44934 7.48295L0.242432 21.6959H23.7576L19.3996 14.148ZM17.3474 5.38416C18.4167 5.66894 19.3064 6.35548 19.8606 7.31143C20.9499 9.19582 20.384 11.5859 18.6176 12.7931L14.4917 5.64797C15.3806 5.22055 16.3831 5.12734 17.3474 5.38416ZM12 4.45432L21.0533 20.135H15.7562L9.35029 9.04341L11.9995 4.45478L12 4.45432ZM2.94667 20.135L8.44888 10.6071L13.9511 20.135H2.94667Z"/>
 </svg></span> Get a Percona Expert</a></p>
 <p><a class="glightbox" href="https://static.scarf.sh/a.png?x-pxid=b95a2b04-c5c7-47f9-bb4e-b7fc13c3ab0d" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=b95a2b04-c5c7-47f9-bb4e-b7fc13c3ab0d" /></a></p>
