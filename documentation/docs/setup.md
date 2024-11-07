@@ -44,7 +44,7 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
 1. Set up a key provider for the database where you have enabled the extension
 
-    === "With HaschiCorp Vault"
+    === "With HashiCorp Vault"
 
         ```sql
         SELECT pg_tde_add_key_provider_vault_v2('provider-name',:'secret_token','url','mount','ca_path');
@@ -103,8 +103,8 @@ After you [enabled `pg_tde`](#enable-extension) and started the Percona Server f
 3. We highly recommend you to create your own keyring and rotate the principal key. This is because the default principal key is created from the local keyfile and is stored unencrypted. 
 
     Set up the key provider for WAL encryption
-
-    === "With HaschiCorp Vault"
+    
+   === "With HashiCorp Vault"
 
         ```sql
         SELECT pg_tde_add_key_provider_vault_v2('PG_TDE_GLOBAL','provider-name',:'secret_token','url','mount','ca_path');
