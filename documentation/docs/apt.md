@@ -1,7 +1,5 @@
 # Install `pg_tde` on Debian or Ubuntu
 
-The packages for `pg_tde` {{release}} are available in the testing repository for Percona Distribution for PostgreSQL 16. 
-
 The packages for the tech preview `pg_tde` are available in the experimental repository for Percona Distribution for PostgreSQL 17. 
 
 Check the [list of supported platforms](install.md#__tabbed_1_2).
@@ -39,12 +37,6 @@ You need the `percona-release` repository management tool that enables the desir
 
 4. Enable the Percona Distribution for PostgreSQL repository
 
-    === "pg_tde Beta"
-
-        ```bash
-        sudo percona-release enable-only ppg-{{pgversion16}} testing
-        ```
-    
     === "pg_tde Tech preview"
 
         ```bash
@@ -59,21 +51,6 @@ You need the `percona-release` repository management tool that enables the desir
 
 ## Install `pg_tde`
 
-=== "pg_tde Beta"
-
-    1. Install Percona Distribution for PostgreSQL. 
-    
-        Run the following command to install Percona Distribution for PostgreSQL and the required packages:
-
-        ```bash
-        sudo apt-get install -y percona-postgresql-16 percona-postgresql-contrib     percona-postgresql-server-dev-all
-        ```
-
-    2. Install `pg_tde` packages
-        
-        ```bash
-        sudo apt-get install percona-postgresql-16-pg-tde
-        ```
 
 === "pg_tde Tech preview"
 
