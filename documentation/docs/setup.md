@@ -65,12 +65,24 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
         ```sql
         SELECT pg_tde_add_key_provider_file('provider-name','/path/to/the/keyring/data.file');
         ```
+
+	<i warning>:material-information: Warning:</i> Example for testing purposes only:
+
+	```sql
+	SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pg_tde_test_local_keyring.per');
+	```
        
        
 2. Add a principal key
 
     ```sql
     SELECT pg_tde_set_principal_key('name-of-the-principal-key', 'provider-name');
+    ```
+
+    <i warning>:material-information: Warning:</i> Example for testing purposes only:
+
+    ```sql
+    SELECT pg_tde_set_principal_key('test-db-master-key','file-vault');
     ```
 
    <i info>:material-information: Info:</i> The key provider configuration is stored in the database catalog in an unencrypted table. See [how to use external reference to parameters](external-parameters.md) to add an extra security layer to your setup.
