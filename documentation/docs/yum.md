@@ -28,27 +28,23 @@ You need the `percona-release` repository management tool that enables the desir
 
 2. Enable the repository
 
-    === "pg_tde Tech preview"
-
-        ```bash
-        sudo percona-release enable-only ppg-{{pgversion17}} experimental
-        ```
+    ```bash
+    sudo percona-release enable-only ppg-{{pgversion17}} experimental
+    ```
 
 ## Install `pg_tde`
 
-=== "pg_tde Tech preview"
-   
-    1. Install Percona Distribution for PostgreSQL 17 and the required packages, run the following command:
+1. Install Percona Distribution for PostgreSQL 17 and the required packages, run the following command:
 
-        ```bash
-        sudo yum -y install percona-postgresql-client-common percona-postgresql-common percona-postgresql-server-dev-all percona-postgresql17 percona-postgresql17-contrib percona-postgresql17-devel percona-postgresql17-libs
-        ```
+    ```bash
+    sudo yum -y install percona-postgresql-client-common percona-postgresql-common percona-postgresql-server-dev-all percona-postgresql17 percona-postgresql17-contrib percona-postgresql17-devel percona-postgresql17-libs
+    ```
     
-    2. Install `pg_tde` packages
+2. Install `pg_tde` packages
         
-        ```bash
-        sudo yum install percona-pg_tde_17
-        ```
+    ```bash
+    sudo yum install percona-pg_tde_17
+    ```
 
 
 ## Next steps

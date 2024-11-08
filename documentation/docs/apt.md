@@ -37,19 +37,17 @@ You need the `percona-release` repository management tool that enables the desir
 
 4. Enable the Percona Distribution for PostgreSQL repository
 
-   Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates. 
+    Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates. 
 
-   ```{.bash data-prompt="$"}
-   $ sudo percona-release setup ppg-{{pgversion}}
-   ```
+    ```{.bash data-prompt="$"}
+    $ sudo percona-release setup ppg-17
+    ```
 
 5. Enable the experimental Percona Distribution for PostgreSQL repository that contains the pg_tde package
 
-    === "pg_tde Tech preview"
-
-        ```bash
-        sudo percona-release enable-only ppg-{{pgversion17}} experimental
-        ```
+    ```bash
+    sudo percona-release enable-only ppg-{{pgversion17}} experimental
+    ```
 
 6. Update the local cache
 
@@ -60,21 +58,19 @@ You need the `percona-release` repository management tool that enables the desir
 ## Install `pg_tde`
 
 
-=== "pg_tde Tech preview"
-
-    1. Install Percona Distribution for PostgreSQL. 
+1. Install Percona Distribution for PostgreSQL. 
     
-        Run the following command to install Percona Distribution for PostgreSQL and the required packages:
+    Run the following command to install Percona Distribution for PostgreSQL and the required packages:
 
-        ```bash
-        sudo apt-get install -y percona-postgresql-17 percona-postgresql-contrib percona-postgresql-server-dev-all
-        ```
+    ```bash
+    sudo apt-get install -y percona-postgresql-17 percona-postgresql-contrib percona-postgresql-server-dev-all
+    ```
 
-    2. Install `pg_tde` packages
+2. Install `pg_tde` packages
         
-        ```bash
-        sudo apt-get install percona-postgresql-17-pg-tde
-        ```
+    ```bash
+    sudo apt-get install percona-postgresql-17-pg-tde
+    ```
 
 
 ## Next step 
