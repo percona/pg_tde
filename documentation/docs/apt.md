@@ -46,7 +46,7 @@ You need the `percona-release` repository management tool that enables the desir
 5. Enable the experimental Percona Distribution for PostgreSQL repository that contains the pg_tde package
 
     ```bash
-    sudo percona-release enable-only ppg-{{pgversion17}} experimental
+    sudo percona-release enable ppg-{{pgversion17}} experimental
     ```
 
 6. Update the local cache
