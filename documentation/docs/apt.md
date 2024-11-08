@@ -59,7 +59,7 @@ You need the `percona-release` repository management tool that enables the desir
         Run the following command to install Percona Distribution for PostgreSQL and the required packages:
 
         ```bash
-        sudo apt-get install -y percona-postgresql-17 percona-postgresql-contrib     percona-postgresql-server-dev-all
+        sudo apt-get install -y percona-postgresql-17 percona-postgresql-contrib percona-postgresql-server-dev-all
         ```
 
     2. Install `pg_tde` packages
