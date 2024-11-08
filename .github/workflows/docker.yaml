@@ -31,7 +31,7 @@ jobs:
 
       - name: Test
         run: |
-          docker run --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d pg_tde-test
+          docker run --pull=never --name pg-tde -e POSTGRES_PASSWORD=mysecretpassword -d perconalab/pg_tde:latest
           sleep 10
           IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' pg-tde)
           echo $IP
