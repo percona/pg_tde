@@ -9,6 +9,7 @@ on:
 
 jobs:
   build-and-push:
+    name: Build and Push
     runs-on: ubuntu-latest
 
     steps:
@@ -24,8 +25,9 @@ jobs:
       - name: Build
         uses: docker/build-push-action@v6
         with:
+          file: docker/Dockerfile
           load: true # Put image in local docker
-          tags: latest
+          tags: perconalab/pg_tde:latest
 
       - name: Test
         run: |
@@ -37,8 +39,8 @@ jobs:
           echo "SELECT * FROM test_enc;" | docker run -e PGPASSWORD=mysecretpassword --rm postgres psql -h $IP -U postgres
 
       - name: Push
-        if: github.event_name == 'push'
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: latest
+          tags: perconalab/pg_tde:latest
