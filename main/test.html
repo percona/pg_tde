@@ -908,15 +908,30 @@
 
 
 <h1 id="test-transparent-data-encryption">Test Transparent Data Encryption<a class="headerlink" href="#test-transparent-data-encryption" title="Permanent link">&para;</a></h1>
+<p>To check if the data is encrypted, do the following:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">pg_tde Tech preview</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>This is the tech preview functionality. Its scope is not yet finalized and can change anytime.<strong> Use it only for testing purposes.</strong></p>
+</div>
+</div>
+</div>
 </div>
 <p>To check if the data is encrypted, do the following:</p>
 <ol>
 <li>
 <p>Create a table in the database for which you have <a href="setup.html">enabled <code>pg_tde</code></a>. Enabling <code>pg_tde</code>    extension creates the table access method <code>tde_heap</code>. To enable data encryption, create the table using this access method as follows:</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="o">&lt;</span><span class="k">table_name</span><span class="o">&gt;</span><span class="w"> </span><span class="p">(</span><span class="o">&lt;</span><span class="n">field</span><span class="o">&gt;</span><span class="w"> </span><span class="o">&lt;</span><span class="n">datatype</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">tde_heap</span><span class="p">;</span>
+</code></pre></div>
+<p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Warning:</i> Example for testing purposes only:</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">albums</span><span class="w"> </span><span class="p">(</span>
+<span class="n">album_id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">GENERATED</span><span class="w"> </span><span class="n">ALWAYS</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="k">IDENTITY</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="n">artist_id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="n">title</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="n">released</span><span class="w"> </span><span class="nb">DATE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="p">)</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">tde_heap</span><span class="p">;</span>
 </code></pre></div>
 </li>
 <li>
@@ -932,6 +947,11 @@
 <span class="k">SELECT</span><span class="w"> </span><span class="n">pg_tde_rotate_principal_key</span><span class="p">(</span><span class="s1">&#39;new-principal-key&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">);</span><span class="w"> </span><span class="c1">-- specify new key name</span>
 <span class="c1">-- or</span>
 <span class="k">SELECT</span><span class="w"> </span><span class="n">pg_tde_rotate_principal_key</span><span class="p">(</span><span class="s1">&#39;new-principal-key&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;new-provider&#39;</span><span class="p">);</span><span class="w"> </span><span class="c1">-- changeprovider</span>
+</code></pre></div>
+</li>
+<li>
+<p>You can encrypt existing table. It requires rewriting the table, so for large tables, it might take a considerable amount of time.</p>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">table_name</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="k">access</span><span class="w"> </span><span class="k">method</span><span class="w">  </span><span class="n">tde_heap</span><span class="p">;</span>
 </code></pre></div>
 </li>
 </ol>
@@ -972,7 +992,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 7, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 8, 2024</span>
   </span>
 
     
