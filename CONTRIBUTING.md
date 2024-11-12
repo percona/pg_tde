@@ -117,9 +117,7 @@ The tests are run automatically with GitHub actions once you commit and push you
 
 ## Contributing to documentation
 
-`pg_tde` documentation is maintained in the `documentation` directory. 
-
-// TODO
+`pg_tde` documentation is maintained in the `documentation` directory. Please read the [Contributing guide](https://github.com/percona/pg_tde/blob/main/documentation/CONTRIBUTING.md) for guidelines how you can contribute to the docs.
 
 ## After your pull request is merged
 
