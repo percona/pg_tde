@@ -60,7 +60,7 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
 
 5. Test your changes locally. See the [Running tests ](#running-tests) section for more information
 6. Update the documentation describing your changes. See the [Contributing to documentation](#contributing-to-documentation) section for details
-8. Commit the changes. Add the Jira issue number at the beginning of your message subject, so that is reads as `<JIRAISSUE> : My commit message`.  Follow this pattern for your commits:
+7. Commit the changes. Add the Jira issue number at the beginning of your message subject, so that is reads as `<JIRAISSUE> : My commit message`.  Follow this pattern for your commits:
 
     ```
     PG-1234:  Main commit message.
@@ -70,9 +70,8 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
 
     The [commit message guidelines](https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53) will help you with writing great commit messages
 
-9. Open a pull request to Percona
-10. Our team will review your code and if everything is correct, will merge it. Otherwise, we will contact you for additional information or with the request to make changes.
-11. Make sure your pull request contains only one commit message
+8. Open a pull request to Percona
+9. Our team will review your code and if everything is correct, will merge it. Otherwise, we will contact you for additional information or with the request to make changes.
 
 ### Building pg_tde
 
