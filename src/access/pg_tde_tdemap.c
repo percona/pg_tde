@@ -880,7 +880,7 @@ FINALIZE:
  * old keyring to the new location.
  * Needed by ALTER TABLE SET TABLESPACE for example.
  */
-bool
+void
 pg_tde_move_rel_key(const RelFileLocator *newrlocator, const RelFileLocator *oldrlocator)
 {
 	RelKeyData 	*rel_key;
@@ -952,6 +952,25 @@ pg_tde_move_rel_key(const RelFileLocator *newrlocator, const RelFileLocator *old
 	LWLockRelease(tde_lwlock_enc_keys());
 
 	pfree(enc_key);
+}
+
+/* Cleans up TDE data related to rlocator */
+void
+pg_tde_clean_map_data(const RelFileLocator *rlocator)
+{
+	char		db_map_path[MAXPGPATH] = {0};
+	off_t		offset = 0;
+	int32		key_index = 0;
+
+	pg_tde_set_db_file_paths(rlocator->dbOid, rlocator->spcOid, db_map_path, NULL);
+	
+	if (access(db_map_path, F_OK) == -1)
+		return;
+
+	key_index = pg_tde_process_map_entry(rlocator, MAP_ENTRY_VALID, db_map_path, &offset, false);
+
+	if (key_index >= 0)
+		pg_tde_free_key_map_entry(rlocator, MAP_ENTRY_VALID, offset);
 }
 
 #endif		/* !FRONTEND */

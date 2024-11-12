@@ -141,7 +141,7 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 		foreach(lcmd, stmt->cmds)
 		{
 			AlterTableCmd *cmd = (AlterTableCmd *) lfirst(lcmd);
-			if (cmd->subtype == AT_SetAccessMethod && 
+			if ((cmd->subtype == AT_SetAccessMethod || cmd->subtype == AT_SetTableSpace) && 
 				((cmd->name != NULL && strcmp(cmd->name, "tde_heap")==0) ||
 				 (cmd->name == NULL && strcmp(default_table_access_method, "tde_heap") == 0))
 				)

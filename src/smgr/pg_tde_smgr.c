@@ -230,8 +230,13 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 static void
 tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool isRedo)
 {
+	RelKeyData* key;
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
 
+	/* 
+	 * We have to ensure that all direcories are created before moving on with 
+	 * the possible key createion. This is crucial for non-default tablespaces.
+	 */
 	mdcreate(relold, reln, forknum, isRedo);
 
 	/*
@@ -239,9 +244,9 @@ tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool 
 	 * TABLE/INDEX (EVENT TRIGGER) so we create the key here by loading it.
 	 * Later calls then decide to encrypt or not based on the existence of the
 	 * key.
-	 * So we create the key here by loading it
+	 * So we create the key here by loading it.
 	 */
-	RelKeyData *key = tde_smgr_get_key(reln, &relold, true);
+	key = tde_smgr_get_key(reln, &relold, true);
 
 	if (key)
 	{
@@ -281,6 +286,14 @@ tde_mdopen(SMgrRelation reln)
 	mdopen(reln);
 }
 
+static void
+tde_mdunlink(RelFileLocatorBackend rlocator, ForkNumber forknum, bool isRedo)
+{
+	pg_tde_clean_map_data(&rlocator.locator);
+
+	mdunlink(rlocator, forknum, isRedo);
+}
+
 static SMgrId tde_smgr_id;
 static const struct f_smgr tde_smgr = {
 	.name = "tde",
@@ -290,7 +303,7 @@ static const struct f_smgr tde_smgr = {
 	.smgr_close = mdclose,
 	.smgr_create = tde_mdcreate,
 	.smgr_exists = mdexists,
-	.smgr_unlink = mdunlink,
+	.smgr_unlink = tde_mdunlink,
 	.smgr_extend = tde_mdextend,
 	.smgr_zeroextend = mdzeroextend,
 	.smgr_prefetch = mdprefetch,
