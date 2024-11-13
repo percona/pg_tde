@@ -73,7 +73,7 @@ extern RelKeyData *tde_encrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyDat
 extern RelKeyData *tde_decrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *enc_rel_key_data, const RelFileLocator *rlocator);
 extern RelKeyData *pg_tde_get_key_from_file(const RelFileLocator *rlocator, uint32 key_type, bool no_map_ok);
 extern void pg_tde_move_rel_key(const RelFileLocator *newrlocator, const RelFileLocator *oldrlocator);
-extern void pg_tde_clean_map_data(const RelFileLocator *rlocator);
+extern void pg_tde_clean_map_data(const RelFileLocator *rlocator, bool error_on_failure);
 
 extern void pg_tde_set_db_file_paths(Oid dbOid, Oid spcOid, char *map_path, char *keydata_path);
 

@@ -289,7 +289,11 @@ tde_mdopen(SMgrRelation reln)
 static void
 tde_mdunlink(RelFileLocatorBackend rlocator, ForkNumber forknum, bool isRedo)
 {
-	pg_tde_clean_map_data(&rlocator.locator);
+	/* 
+	 * tde_mdunlink() being called after the transaction is commited, so we
+	 * cannot have any errors down the call stack.
+	 */
+	pg_tde_clean_map_data(&rlocator.locator, false);
 
 	mdunlink(rlocator, forknum, isRedo);
 }
