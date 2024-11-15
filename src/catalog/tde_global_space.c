@@ -36,7 +36,7 @@
 #define KEYRING_DEFAULT_FILE_NAME "pg_tde_default_keyring_CHANGE_AND_REMOVE_IT"
 
 #define DefaultKeyProvider GetKeyProviderByName(KEYRING_DEFAULT_NAME, \
-										GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID)
+												GLOBAL_DATA_TDE_OID)
 
 #ifndef FRONTEND
 static void init_keys(void);
@@ -53,7 +53,7 @@ TDEInitGlobalKeys(const char *dir)
 #ifndef FRONTEND
 	char db_map_path[MAXPGPATH] = {0};
 
-	pg_tde_set_db_file_paths(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID, db_map_path, NULL);
+	pg_tde_set_db_file_paths(GLOBAL_DATA_TDE_OID, db_map_path, NULL);
 	if (access(db_map_path, F_OK) == -1)
 	{
 		init_default_keyring();
@@ -87,7 +87,7 @@ TDEInitGlobalKeys(const char *dir)
 static void
 init_default_keyring(void)
 {
-	if (GetAllKeyringProviders(GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID) == NIL)
+	if (GetAllKeyringProviders(GLOBAL_DATA_TDE_OID) == NIL)
 	{
 		char path[MAXPGPATH] = {0};
 		static KeyringProvideRecord provider =
@@ -100,7 +100,7 @@ init_default_keyring(void)
 			elog(WARNING, "unable to get current working dir");
 
 		/* TODO: not sure about the location. Currently it's in $PGDATA */
-		join_path_components(path, path, KEYRING_DEFAULT_FILE_NAME);
+		join_path_components(path, PG_TDE_DATA_DIR, KEYRING_DEFAULT_FILE_NAME);
 
 		snprintf(provider.options, MAX_KEYRING_OPTION_LEN,
 				 "{"
@@ -108,6 +108,8 @@ init_default_keyring(void)
 				 "\"path\": \"%s\""
 				 "}", path
 			);
+
+		pg_tde_init_data_dir();
 
 		/*
 		 * TODO: should we remove it automaticaly on

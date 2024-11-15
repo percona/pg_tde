@@ -8,6 +8,7 @@
 #ifndef PG_TDE_MAP_H
 #define PG_TDE_MAP_H
 
+#include "pg_tde.h"
 #include "utils/rel.h"
 #include "access/xlog_internal.h"
 #include "catalog/pg_tablespace_d.h"
@@ -62,9 +63,9 @@ extern RelKeyData *GetSMGRRelationKey(RelFileLocator rel);
 extern RelKeyData *GetHeapBaiscRelationKey(RelFileLocator rel);
 extern RelKeyData *GetTdeGlobaleRelationKey(RelFileLocator rel);
 
-extern void pg_tde_delete_tde_files(Oid dbOid, Oid spcOid);
+extern void pg_tde_delete_tde_files(Oid dbOid);
 
-extern TDEPrincipalKeyInfo *pg_tde_get_principal_key_info(Oid dbOid, Oid spcOid);
+extern TDEPrincipalKeyInfo *pg_tde_get_principal_key_info(Oid dbOid);
 extern bool pg_tde_save_principal_key(TDEPrincipalKeyInfo *principal_key_info);
 extern bool pg_tde_perform_rotate_key(TDEPrincipalKey *principal_key, TDEPrincipalKey *new_principal_key);
 extern bool pg_tde_write_map_keydata_files(off_t map_size, char *m_file_data, off_t keydata_size, char *k_file_data);
@@ -74,7 +75,17 @@ extern RelKeyData *tde_decrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyDat
 extern RelKeyData *pg_tde_get_key_from_file(const RelFileLocator *rlocator, uint32 key_type, bool no_map_ok);
 extern bool pg_tde_move_rel_key(const RelFileLocator *newrlocator, const RelFileLocator *oldrlocator);
 
-extern void pg_tde_set_db_file_paths(Oid dbOid, Oid spcOid, char *map_path, char *keydata_path);
+#define PG_TDE_MAP_FILENAME			"pg_tde_%d_map"
+#define PG_TDE_KEYDATA_FILENAME		"pg_tde_%d_dat"
+
+static inline void
+pg_tde_set_db_file_paths(Oid dbOid, char *map_path, char *keydata_path)
+{
+	if (map_path)
+		join_path_components(map_path, PG_TDE_DATA_DIR, psprintf(PG_TDE_MAP_FILENAME, dbOid));
+	if (keydata_path)
+		join_path_components(keydata_path, PG_TDE_DATA_DIR, psprintf(PG_TDE_KEYDATA_FILENAME, dbOid));
+}
 
 const char *tde_sprint_key(InternalKey *k);
 

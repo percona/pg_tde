@@ -238,7 +238,7 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
 
 	/* TODO: Add the key in the cache? */
 	if (!is_dup_key)
-		is_dup_key = (pg_tde_get_principal_key_info(dbOid, spcOid) != NULL);
+		is_dup_key = (pg_tde_get_principal_key_info(dbOid) != NULL);
 
 	if (!is_dup_key)
 	{
@@ -301,7 +301,7 @@ bool
 SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new_key)
 {
 	TDEPrincipalKey *principal_key = set_principal_key_with_keyring(key_name,
-																	GetKeyProviderByName(provider_name, MyDatabaseId, MyDatabaseTableSpace),
+																	GetKeyProviderByName(provider_name, MyDatabaseId),
 																	MyDatabaseId, MyDatabaseTableSpace,
 																	ensure_new_key);
 
@@ -343,15 +343,13 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
 		if (new_provider_name != NULL)
 		{
 			new_principal_key.keyInfo.keyringId = GetKeyProviderByName(new_provider_name,
-																	   new_principal_key.keyInfo.databaseId,
-																	   new_principal_key.keyInfo.tablespaceId)->key_id;
+																	   new_principal_key.keyInfo.databaseId)->key_id;
 		}
 	}
 
 	/* We need a valid keyring structure */
 	keyring = GetKeyProviderByID(new_principal_key.keyInfo.keyringId,
-								 new_principal_key.keyInfo.databaseId,
-								 new_principal_key.keyInfo.tablespaceId);
+								 new_principal_key.keyInfo.databaseId);
 
 	keyInfo = load_latest_versioned_key_name(&new_principal_key.keyInfo, keyring, ensure_new_key);
 
@@ -493,7 +491,7 @@ GetPrincipalKeyProviderId(void)
 		 * Principal key not present in cache. Try Loading it from the info
 		 * file
 		 */
-		principalKeyInfo = pg_tde_get_principal_key_info(dbOid, MyDatabaseTableSpace);
+		principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
 		if (principalKeyInfo)
 		{
 			keyringId = principalKeyInfo->keyringId;
@@ -582,11 +580,11 @@ principal_key_startup_cleanup(int tde_tbl_count, XLogExtensionInstall *ext_info,
 		return;
 	}
 
-	cleanup_principal_key_info(ext_info->database_id, ext_info->tablespace_id);
+	cleanup_principal_key_info(ext_info->database_id);
 }
 
 void
-cleanup_principal_key_info(Oid databaseId, Oid tablespaceId)
+cleanup_principal_key_info(Oid databaseId)
 {
 	clear_principal_key_cache(databaseId);
 
@@ -596,7 +594,7 @@ cleanup_principal_key_info(Oid databaseId, Oid tablespaceId)
 	 */
 
 	/* Remove the tde files */
-	pg_tde_delete_tde_files(databaseId, tablespaceId);
+	pg_tde_delete_tde_files(databaseId);
 }
 
 static void
@@ -722,7 +720,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
 		PG_RETURN_NULL();
 	}
 
-	keyring = GetKeyProviderByID(principal_key->keyInfo.keyringId, dbOid, spcOid);
+	keyring = GetKeyProviderByID(principal_key->keyInfo.keyringId, dbOid);
 
 	/* Initialize the values and null flags */
 
@@ -779,13 +777,13 @@ get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
-	principalKeyInfo = pg_tde_get_principal_key_info(dbOid, spcOid);
+	principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
 	if (principalKeyInfo == NULL)
 	{
 		return NULL;
 	}
 
-	keyring = GetKeyProviderByID(principalKeyInfo->keyringId, dbOid, spcOid);
+	keyring = GetKeyProviderByID(principalKeyInfo->keyringId, dbOid);
 	if (keyring == NULL)
 	{
 		return NULL;

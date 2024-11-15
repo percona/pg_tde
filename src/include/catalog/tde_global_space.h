@@ -24,8 +24,6 @@
 #define GLOBAL_DATA_TDE_OID	InvalidOid
 #define XLOG_TDE_OID        608
 
-#define GLOBAL_DATA_TDE_OID	InvalidOid
-
 #define GLOBAL_SPACE_RLOCATOR(_obj_oid) (RelFileLocator) { \
 	GLOBALTABLESPACE_OID, \
 	GLOBAL_DATA_TDE_OID, \

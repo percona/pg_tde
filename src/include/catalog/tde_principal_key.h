@@ -58,7 +58,7 @@ typedef struct XLogPrincipalKeyRotate
 #define SizeoOfXLogPrincipalKeyRotate	offsetof(XLogPrincipalKeyRotate, buff)
 
 extern void InitializePrincipalKeyInfo(void);
-extern void cleanup_principal_key_info(Oid databaseId, Oid tablespaceId);
+extern void cleanup_principal_key_info(Oid databaseId);
 
 #ifndef FRONTEND
 extern LWLock *tde_lwlock_enc_keys(void);
