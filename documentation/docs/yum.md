@@ -37,7 +37,7 @@ You need the `percona-release` repository management tool that enables the desir
 You need to install the `percona-postgresql{{pgversion}}-devel` package when working with pg_tde. This package requires dependencies that are not part of the Distribution, but can be installed from the specific repositories:
 
     ```
-    $ sudo dnf config-manager --set-enabled ol9_codeready_builder install perl-IPC-Run -y
+    $ sudo dnf config-manager --set-enabled ol9_codeready_builder
     ```
 
 ## Install `pg_tde`
