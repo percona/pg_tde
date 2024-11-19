@@ -9,9 +9,11 @@
 
 ## I use disk-level encryption. Why should I care about TDE?
 
-Encrypting hard drive encrypts all data, system and application files that are there. However, disk encryption doesn’t protect your data after the boot-up of your system. During runtime, the files are decrypted with disk-encryption.
+Encrypting a hard drive encrypts all data including system and application files that are there. However, disk encryption doesn’t protect your data after the boot-up of your system. During runtime, the files are decrypted with disk-encryption.
 
 TDE focuses specifically on data files and offers a more granular control over encrypted data. It also ensures that files are encrypted on disk during runtime and when moved to another system or storage.
+
+Consider using TDE and storage-level encryption together to add another layer of data security
 
 ## Is TDE enough to ensure data security?
 
@@ -19,6 +21,7 @@ No. TDE is an additional layer to ensure data security. It protects data at rest
 
 * Access control and authentication
 * Strong network security like TLS
+* Disk encryption
 * Regular monitoring and auditing
 * Additional data protection for sensitive fields (e.g., application-layer encryption)
 
