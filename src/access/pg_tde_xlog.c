@@ -47,12 +47,16 @@ tdeheap_rmgr_redo(XLogReaderState *record)
 		pg_tde_write_key_map_entry(&xlrec->rlocator, &xlrec->relKey, pk);
 		LWLockRelease(tde_lwlock_enc_keys());
 	}
-	else if (info == XLOG_TDE_ADD_PRINCIPAL_KEY)
+	else if (info == XLOG_TDE_ADD_PRINCIPAL_KEY || info == XLOG_TDE_UPDATE_PRINCIPAL_KEY)
 	{
 		TDEPrincipalKeyInfo *mkey = (TDEPrincipalKeyInfo *) XLogRecGetData(record);
 
 		LWLockAcquire(tde_lwlock_enc_keys(), LW_EXCLUSIVE);
-		save_principal_key_info(mkey);
+		if (info == XLOG_TDE_ADD_PRINCIPAL_KEY)
+			save_principal_key_info(mkey);
+		else
+			update_principal_key_info(mkey);
+
 		LWLockRelease(tde_lwlock_enc_keys());
 	}
 	else if (info == XLOG_TDE_EXTENSION_INSTALL_KEY)
@@ -110,6 +114,12 @@ tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record)
 
 		appendStringInfo(buf, "add tde principal key for db %u/%u", xlrec->databaseId, xlrec->tablespaceId);
 	}
+	if (info == XLOG_TDE_UPDATE_PRINCIPAL_KEY)
+	{
+		TDEPrincipalKeyInfo *xlrec = (TDEPrincipalKeyInfo *) XLogRecGetData(record);
+
+		appendStringInfo(buf, "Alter key provider to:%d for tde principal key for db %u/%u", xlrec->keyringId, xlrec->databaseId, xlrec->tablespaceId);
+	}
 	if (info == XLOG_TDE_EXTENSION_INSTALL_KEY)
 	{
 		XLogExtensionInstall *xlrec = (XLogExtensionInstall *) XLogRecGetData(record);
@@ -138,6 +148,9 @@ tdeheap_rmgr_identify(uint8 info)
 
 	if ((info & ~XLR_INFO_MASK) == XLOG_TDE_ADD_PRINCIPAL_KEY)
 		return "XLOG_TDE_ADD_PRINCIPAL_KEY";
+
+	if ((info & ~XLR_INFO_MASK) == XLOG_TDE_UPDATE_PRINCIPAL_KEY)
+		return "XLOG_TDE_UPDATE_PRINCIPAL_KEY";
 
 	if ((info & ~XLR_INFO_MASK) == XLOG_TDE_EXTENSION_INSTALL_KEY)
 		return "XLOG_TDE_EXTENSION_INSTALL_KEY";
