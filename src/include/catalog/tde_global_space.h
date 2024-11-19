@@ -21,7 +21,7 @@
  * We take Oids of the sql operators, so there is no overlap with the "real"
  * catalog objects possible.
  */
-#define GLOBAL_DATA_TDE_OID	InvalidOid
+#define GLOBAL_DATA_TDE_OID	607
 #define XLOG_TDE_OID        608
 
 #define GLOBAL_SPACE_RLOCATOR(_obj_oid) (RelFileLocator) { \
@@ -29,6 +29,8 @@
 	GLOBAL_DATA_TDE_OID, \
 	_obj_oid \
 }
+
+#define TDEisInGlobalSpace(dbOid) 	(dbOid == GLOBAL_DATA_TDE_OID)
 
 extern void TDEInitGlobalKeys(const char *dir);
 

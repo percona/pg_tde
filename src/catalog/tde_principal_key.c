@@ -75,10 +75,10 @@ static void shared_memory_shutdown(int code, Datum arg);
 static void principal_key_startup_cleanup(int tde_tbl_count, XLogExtensionInstall *ext_info, bool redo, void *arg);
 static void clear_principal_key_cache(Oid databaseId);
 static inline dshash_table *get_principal_key_Hash(void);
-static TDEPrincipalKey *get_principal_key_from_keyring(Oid dbOid, Oid spcOid);
+static TDEPrincipalKey *get_principal_key_from_keyring(Oid dbOid);
 static TDEPrincipalKey *get_principal_key_from_cache(Oid dbOid);
 static void push_principal_key_to_cache(TDEPrincipalKey *principalKey);
-static Datum pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid);
+static Datum pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid);
 static keyInfo *load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info,
 											   GenericKeyring *keyring,
 											   bool ensure_new_key);
@@ -644,7 +644,6 @@ pg_tde_rotate_principal_key_internal(PG_FUNCTION_ARGS)
 	bool ret;
 	TDEPrincipalKey *current_key;
 	Oid	dbOid = MyDatabaseId;
-	Oid	spcOid = MyDatabaseTableSpace;
 
 	if (!PG_ARGISNULL(0))
 		new_principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
@@ -657,7 +656,6 @@ pg_tde_rotate_principal_key_internal(PG_FUNCTION_ARGS)
 	if (is_global)
 	{
 		dbOid = GLOBAL_DATA_TDE_OID;
-		spcOid = GLOBALTABLESPACE_OID;
 	}
 #endif
 
@@ -667,7 +665,7 @@ pg_tde_rotate_principal_key_internal(PG_FUNCTION_ARGS)
 						 is_global ? "cluster" : "database")));
 
 	LWLockAcquire(tde_lwlock_enc_keys(), LW_EXCLUSIVE);
-	current_key = GetPrincipalKey(dbOid, spcOid, LW_EXCLUSIVE);
+	current_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
 	ret = RotatePrincipalKey(current_key, new_principal_key_name, new_provider_name, ensure_new_key);
 	LWLockRelease(tde_lwlock_enc_keys());
 
@@ -679,20 +677,18 @@ Datum
 pg_tde_principal_key_info_internal(PG_FUNCTION_ARGS)
 {
 	Oid	dbOid = MyDatabaseId;
-	Oid	spcOid = MyDatabaseTableSpace;
 	bool is_global = PG_GETARG_BOOL(0);
 
 	if (is_global)
 	{
 		dbOid = GLOBAL_DATA_TDE_OID;
-		spcOid = GLOBALTABLESPACE_OID;
 	}
 
-	return pg_tde_get_key_info(fcinfo, dbOid, spcOid);
+	return pg_tde_get_key_info(fcinfo, dbOid);
 }
 
 static Datum
-pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
+pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid)
 {
 	TupleDesc tupdesc;
 	Datum values[6];
@@ -710,7 +706,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
 				 errmsg("function returning record called in context that cannot accept type record")));
 
 	LWLockAcquire(tde_lwlock_enc_keys(), LW_SHARED);
-	principal_key = GetPrincipalKey(dbOid, spcOid, LW_SHARED);
+	principal_key = GetPrincipalKey(dbOid, LW_SHARED);
 	LWLockRelease(tde_lwlock_enc_keys());
 	if (principal_key == NULL)
 	{
@@ -767,7 +763,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
  * Caller should hold an exclusive tde_lwlock_enc_keys lock
  */
 TDEPrincipalKey *
-get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
+get_principal_key_from_keyring(Oid dbOid)
 {
 	GenericKeyring *keyring;
 	TDEPrincipalKey *principalKey = NULL;
@@ -806,7 +802,7 @@ get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
 
 #ifndef FRONTEND
     /* We don't store global space key in cache */
-    if (spcOid != GLOBALTABLESPACE_OID)
+    if (!TDEisInGlobalSpace(dbOid))
     {
         push_principal_key_to_cache(principalKey);
 
@@ -840,14 +836,14 @@ get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
  * cache.
  */
 TDEPrincipalKey *
-GetPrincipalKey(Oid dbOid, Oid spcOid, LWLockMode lockMode)
+GetPrincipalKey(Oid dbOid, LWLockMode lockMode)
 {
 #ifndef FRONTEND
 	TDEPrincipalKey *principalKey = NULL;
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), lockMode));
 	/* We don't store global space key in cache */
-	if (spcOid != GLOBALTABLESPACE_OID)
+	if (!TDEisInGlobalSpace(dbOid))
 	{
 		principalKey = get_principal_key_from_cache(dbOid);
 	}
@@ -864,5 +860,5 @@ GetPrincipalKey(Oid dbOid, Oid spcOid, LWLockMode lockMode)
 	}
 #endif
 
-	return get_principal_key_from_keyring(dbOid, spcOid);
+	return get_principal_key_from_keyring(dbOid);
 }

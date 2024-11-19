@@ -138,7 +138,6 @@ pg_tde_extension_initialize(PG_FUNCTION_ARGS)
 	XLogExtensionInstall xlrec;
 
 	xlrec.database_id = MyDatabaseId;
-	xlrec.tablespace_id = MyDatabaseTableSpace;
 	run_extension_install_callbacks(&xlrec, false);
 
 	/*

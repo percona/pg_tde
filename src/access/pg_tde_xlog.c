@@ -114,7 +114,7 @@ tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record)
 	{
 		XLogExtensionInstall *xlrec = (XLogExtensionInstall *) XLogRecGetData(record);
 
-		appendStringInfo(buf, "tde extension install for db %u/%u", xlrec->database_id, xlrec->tablespace_id);
+		appendStringInfo(buf, "tde extension install for db %u", xlrec->database_id);
 	}
 	if (info == XLOG_TDE_ROTATE_KEY)
 	{

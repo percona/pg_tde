@@ -160,7 +160,7 @@ pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, uint32 entry_type
 	LWLock *lock_pk = tde_lwlock_enc_keys();
 
 	LWLockAcquire(lock_pk, LW_EXCLUSIVE);
-	principal_key = GetPrincipalKey(newrlocator->dbOid, newrlocator->spcOid, LW_EXCLUSIVE);
+	principal_key = GetPrincipalKey(newrlocator->dbOid, LW_EXCLUSIVE);
 	if (principal_key == NULL)
 	{
 		LWLockRelease(lock_pk);
@@ -875,7 +875,7 @@ pg_tde_move_rel_key(const RelFileLocator *newrlocator, const RelFileLocator *old
 
 	LWLockAcquire(tde_lwlock_enc_keys(), LW_EXCLUSIVE);
 
-	principal_key = GetPrincipalKey(oldrlocator->dbOid, oldrlocator->spcOid, LW_EXCLUSIVE);
+	principal_key = GetPrincipalKey(oldrlocator->dbOid, LW_EXCLUSIVE);
 	Assert(principal_key);
 
 	key_index = pg_tde_process_map_entry(oldrlocator, MAP_ENTRY_VALID, db_map_path, &offset, false);
@@ -946,7 +946,7 @@ pg_tde_get_key_from_file(const RelFileLocator *rlocator, uint32 key_type, bool n
 	 * key.
 	 */
 	LWLockAcquire(lock_pk, LW_SHARED);
-	principal_key = GetPrincipalKey(rlocator->dbOid, rlocator->spcOid, LW_SHARED);
+	principal_key = GetPrincipalKey(rlocator->dbOid, LW_SHARED);
 	if (principal_key == NULL)
 	{
 		LWLockRelease(lock_pk);

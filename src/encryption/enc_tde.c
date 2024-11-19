@@ -205,7 +205,6 @@ pg_tde_crypt_tuple(HeapTuple tuple, HeapTuple out_tuple, RelKeyData *key, const 
 
 OffsetNumber
 PGTdePageAddItemExtended(RelFileLocator rel,
-						 Oid oid,
 						 BlockNumber bn,
 						 Page page,
 						 Item item,

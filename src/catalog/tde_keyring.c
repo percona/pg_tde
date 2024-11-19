@@ -306,7 +306,7 @@ write_key_provider_info(KeyringProvideRecord *provider, Oid database_id,
  * Save the key provider info to the file
  */
 uint32
-save_new_key_provider_info(KeyringProvideRecord* provider, Oid databaseId, Oid tablespaceId, bool write_xlog)
+save_new_key_provider_info(KeyringProvideRecord* provider, Oid databaseId, bool write_xlog)
 {
 	return write_key_provider_info(provider, databaseId, -1, true, write_xlog);
 }
@@ -335,19 +335,12 @@ pg_tde_add_key_provider_internal(PG_FUNCTION_ARGS)
 	char *options = text_to_cstring(PG_GETARG_TEXT_PP(2));
 	bool is_global = PG_GETARG_BOOL(3);
 	KeyringProvideRecord provider;
-	Oid dbOid = MyDatabaseId;
-	Oid spcOid = MyDatabaseTableSpace;
-
-	if (is_global)
-	{
-		dbOid = GLOBAL_DATA_TDE_OID;
-		spcOid = GLOBALTABLESPACE_OID;
-	}
+	Oid dbOid = is_global ? GLOBAL_DATA_TDE_OID : MyDatabaseId;
 
 	strncpy(provider.options, options, sizeof(provider.options));
 	strncpy(provider.provider_name, provider_name, sizeof(provider.provider_name));
 	provider.provider_type = get_keyring_provider_from_typename(provider_type);
-	save_new_key_provider_info(&provider, dbOid, spcOid, true);
+	save_new_key_provider_info(&provider, dbOid, true);
 
 	PG_RETURN_INT32(provider.provider_id);
 }

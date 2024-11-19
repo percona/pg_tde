@@ -24,7 +24,7 @@ extern void
 
 /* A wrapper to encrypt a tuple before adding it to the buffer */
 extern OffsetNumber
-			PGTdePageAddItemExtended(RelFileLocator rel, Oid oid, BlockNumber bn, Page page,
+			PGTdePageAddItemExtended(RelFileLocator rel, BlockNumber bn, Page page,
 									 Item item,
 									 Size size,
 									 OffsetNumber offsetNumber,

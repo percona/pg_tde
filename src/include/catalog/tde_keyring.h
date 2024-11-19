@@ -79,8 +79,7 @@ extern ProviderType get_keyring_provider_from_typename(char *provider_type);
 extern void cleanup_key_provider_info(Oid databaseId);
 extern void InitializeKeyProviderInfo(void);
 extern uint32 save_new_key_provider_info(KeyringProvideRecord *provider, 
-											Oid databaseId, Oid tablespaceId, 
-											bool write_xlog);
+											Oid databaseId, bool write_xlog);
 extern uint32 redo_key_provider_info(KeyringProviderXLRecord *xlrec);
 
 extern bool ParseKeyringJSONOptions(ProviderType provider_type, void *out_opts,
