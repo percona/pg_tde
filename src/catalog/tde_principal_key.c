@@ -84,7 +84,7 @@ static keyInfo *load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_ke
 											   bool ensure_new_key);
 static TDEPrincipalKey *set_principal_key_with_keyring(const char *key_name,
 													   GenericKeyring *keyring,
-													   Oid dbOid, Oid spcOid,
+													   Oid dbOid,
 													   bool ensure_new_key);
 
 static const TDEShmemSetupRoutine principal_key_info_shmem_routine = {
@@ -222,7 +222,7 @@ save_principal_key_info(TDEPrincipalKeyInfo *principal_key_info)
  */
 TDEPrincipalKey *
 set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
-							   Oid dbOid, Oid spcOid, bool ensure_new_key)
+							   Oid dbOid, bool ensure_new_key)
 {
 	TDEPrincipalKey *principalKey = NULL;
 	LWLock	   *lock_files = tde_lwlock_enc_keys();
@@ -246,7 +246,6 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
 
 		principalKey = palloc(sizeof(TDEPrincipalKey));
 		principalKey->keyInfo.databaseId = dbOid;
-		principalKey->keyInfo.tablespaceId = spcOid;
 		principalKey->keyInfo.keyId.version = DEFAULT_PRINCIPAL_KEY_VERSION;
 		principalKey->keyInfo.keyringId = keyring->key_id;
 		strncpy(principalKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
@@ -302,7 +301,7 @@ SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new
 {
 	TDEPrincipalKey *principal_key = set_principal_key_with_keyring(key_name,
 																	GetKeyProviderByName(provider_name, MyDatabaseId),
-																	MyDatabaseId, MyDatabaseTableSpace,
+																	MyDatabaseId,
 																	ensure_new_key);
 
 	return (principal_key != NULL);
@@ -366,7 +365,7 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
 
 	memcpy(new_principal_key.keyData, keyInfo->data.data, keyInfo->data.len);
 	is_rotated = pg_tde_perform_rotate_key(current_key, &new_principal_key);
-	if (is_rotated && current_key->keyInfo.tablespaceId != GLOBALTABLESPACE_OID)
+	if (is_rotated && !TDEisInGlobalSpace(current_key->keyInfo.databaseId))
 	{
 		clear_principal_key_cache(current_key->keyInfo.databaseId);
 		push_principal_key_to_cache(&new_principal_key);

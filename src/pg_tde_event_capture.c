@@ -21,7 +21,6 @@
 #include "commands/event_trigger.h"
 #include "common/pg_tde_utils.h"
 #include "pg_tde_event_capture.h"
-#include "commands/tablespace.h"
 #include "catalog/tde_principal_key.h"
 #include "miscadmin.h"
 #include "access/tableam.h"
@@ -148,11 +147,6 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 				tdeCurrentCreateEvent.relation = stmt->relation;
 			}
 		}
-
-		/*
-		 * TODO: also check for tablespace change, if current or new AM is
-		 * tde_heap!
-		 */
 
 		if (tdeCurrentCreateEvent.encryptMode)
 		{

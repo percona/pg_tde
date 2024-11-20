@@ -33,7 +33,6 @@ typedef struct TDEPrincipalKeyId
 typedef struct TDEPrincipalKeyInfo
 {
 	Oid	databaseId;
-	Oid	tablespaceId;
 	Oid	userId;
 	Oid	keyringId;
 	struct timeval creationTime;

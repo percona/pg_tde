@@ -187,7 +187,7 @@ pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, uint32 entry_type
 
 	/* Encrypt the key */
 	rel_key_data = tde_create_rel_key(newrlocator->relNumber, &int_key, &principal_key->keyInfo);
-	enc_rel_key_data = tde_encrypt_rel_key(principal_key, rel_key_data, newrlocator);
+	enc_rel_key_data = tde_encrypt_rel_key(principal_key, rel_key_data, newrlocator->dbOid);
 
 	/*
 	 * XLOG internal key
@@ -241,12 +241,12 @@ tde_create_rel_key(RelFileNumber rel_num, InternalKey *key, TDEPrincipalKeyInfo 
  * Encrypts a given key and returns the encrypted one.
  */
 RelKeyData *
-tde_encrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *rel_key_data, const RelFileLocator *rlocator)
+tde_encrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *rel_key_data, Oid dbOid)
 {
 	RelKeyData *enc_rel_key_data;
 	size_t enc_key_bytes;
 
-	AesEncryptKey(principal_key, rlocator, rel_key_data, &enc_rel_key_data, &enc_key_bytes);
+	AesEncryptKey(principal_key, dbOid, rel_key_data, &enc_rel_key_data, &enc_key_bytes);
 
 	return enc_rel_key_data;
 }
@@ -713,14 +713,13 @@ pg_tde_perform_rotate_key(TDEPrincipalKey *principal_key, TDEPrincipalKey *new_p
 
 		rloc.relNumber = read_map_entry.relNumber;
 		rloc.dbOid = principal_key->keyInfo.databaseId;
-		rloc.spcOid = principal_key->keyInfo.tablespaceId;
 
 		/* Let's get the decrypted key and re-encrypt it with the new key. */
 		enc_rel_key_data[OLD_PRINCIPAL_KEY] = pg_tde_read_one_keydata(k_fd[OLD_PRINCIPAL_KEY], key_index[OLD_PRINCIPAL_KEY], principal_key);
 
 		/* Decrypt and re-encrypt keys */
-		rel_key_data[OLD_PRINCIPAL_KEY] = tde_decrypt_rel_key(principal_key, enc_rel_key_data[OLD_PRINCIPAL_KEY], &rloc);
-		enc_rel_key_data[NEW_PRINCIPAL_KEY] = tde_encrypt_rel_key(new_principal_key, rel_key_data[OLD_PRINCIPAL_KEY], &rloc);
+		rel_key_data[OLD_PRINCIPAL_KEY] = tde_decrypt_rel_key(principal_key, enc_rel_key_data[OLD_PRINCIPAL_KEY], principal_key->keyInfo.databaseId);
+		enc_rel_key_data[NEW_PRINCIPAL_KEY] = tde_encrypt_rel_key(new_principal_key, rel_key_data[OLD_PRINCIPAL_KEY], principal_key->keyInfo.databaseId);
 
 		/* Write the given entry at the location pointed by prev_pos */
 		prev_pos[NEW_PRINCIPAL_KEY] = curr_pos[NEW_PRINCIPAL_KEY];
@@ -853,8 +852,7 @@ FINALIZE:
 }
 
 /* 
- * Move relation's key - re-encrypts and saves the relation key with the new
- * relfilenode.
+ * Saves the relation key with the new relfilenode.
  * Needed by ALTER TABLE SET TABLESPACE for example.
  */
 bool
@@ -878,15 +876,14 @@ pg_tde_move_rel_key(const RelFileLocator *newrlocator, const RelFileLocator *old
 	principal_key = GetPrincipalKey(oldrlocator->dbOid, LW_EXCLUSIVE);
 	Assert(principal_key);
 
+	/*
+	 * We don't use internal_key cache to avoid locking complications.
+	 */
 	key_index = pg_tde_process_map_entry(oldrlocator, MAP_ENTRY_VALID, db_map_path, &offset, false);
 	Assert(key_index != -1);
-	/* 
-	 * Re-encrypt relation key. We don't use internal_key cache to avoid locking
-	 * complications.
-	 */
+
 	enc_key = pg_tde_read_keydata(db_keydata_path, key_index, principal_key);
-	rel_key = tde_decrypt_rel_key(principal_key, enc_key, oldrlocator);
-	enc_key = tde_encrypt_rel_key(principal_key, rel_key, newrlocator);
+	rel_key = tde_decrypt_rel_key(principal_key, enc_key, oldrlocator->dbOid);
 
 	xlrec.rlocator = *newrlocator;
 	xlrec.relKey = *enc_key;
@@ -974,7 +971,7 @@ pg_tde_get_key_from_file(const RelFileLocator *rlocator, uint32 key_type, bool n
 	enc_rel_key_data = pg_tde_read_keydata(db_keydata_path, key_index, principal_key);
 	LWLockRelease(lock_pk);
 
-	rel_key_data = tde_decrypt_rel_key(principal_key, enc_rel_key_data, rlocator);
+	rel_key_data = tde_decrypt_rel_key(principal_key, enc_rel_key_data, rlocator->dbOid);
 
 	return rel_key_data;
 }
@@ -1098,12 +1095,12 @@ pg_tde_read_keydata(char *db_keydata_path, int32 key_index, TDEPrincipalKey *pri
  * Decrypts a given key and returns the decrypted one.
  */
 RelKeyData *
-tde_decrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *enc_rel_key_data, const RelFileLocator *rlocator)
+tde_decrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *enc_rel_key_data, Oid dbOid)
 {
 	RelKeyData *rel_key_data = NULL;
 	size_t key_bytes;
 
-	AesDecryptKey(principal_key, rlocator, &rel_key_data, enc_rel_key_data, &key_bytes);
+	AesDecryptKey(principal_key, dbOid, &rel_key_data, enc_rel_key_data, &key_bytes);
 
 	return rel_key_data;
 }

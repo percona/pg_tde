@@ -12,6 +12,7 @@
 #define TDE_GLOBAL_CATALOG_H
 
 #include "postgres.h"
+#include "catalog/pg_tablespace_d.h"
 
 #include "access/pg_tde_tdemap.h"
 #include "catalog/tde_principal_key.h"

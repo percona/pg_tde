@@ -17,7 +17,6 @@
 #include "access/xlog.h"
 #include "access/xlog_internal.h"
 #include "access/xloginsert.h"
-#include "catalog/pg_tablespace_d.h"
 #include "catalog/tde_keyring.h"
 #include "storage/bufmgr.h"
 #include "storage/shmem.h"
@@ -108,7 +107,7 @@ tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record)
 	{
 		TDEPrincipalKeyInfo *xlrec = (TDEPrincipalKeyInfo *) XLogRecGetData(record);
 
-		appendStringInfo(buf, "add tde principal key for db %u/%u", xlrec->databaseId, xlrec->tablespaceId);
+		appendStringInfo(buf, "add tde principal key for db %u", xlrec->databaseId);
 	}
 	if (info == XLOG_TDE_EXTENSION_INSTALL_KEY)
 	{

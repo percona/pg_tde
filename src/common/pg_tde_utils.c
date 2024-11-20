@@ -11,7 +11,6 @@
 
 #include "postgres.h"
 
-#include "catalog/pg_tablespace_d.h"
 #include "utils/snapmgr.h"
 #include "commands/defrem.h"
 #include "common/pg_tde_utils.h"

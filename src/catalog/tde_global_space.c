@@ -14,7 +14,6 @@
 
 #ifdef PERCONA_EXT
 
-#include "catalog/pg_tablespace_d.h"
 #include "utils/memutils.h"
 
 #include "access/pg_tde_tdemap.h"
@@ -42,8 +41,7 @@
 static void init_keys(void);
 static void init_default_keyring(void);
 static TDEPrincipalKey *create_principal_key(const char *key_name,
-											 GenericKeyring *keyring, Oid dbOid,
-											 Oid spcOid);
+											 GenericKeyring *keyring, Oid dbOid);
 #endif /* !FRONTEND */
 
 
@@ -144,7 +142,7 @@ init_keys(void)
 
 	mkey = create_principal_key(PRINCIPAL_KEY_DEFAULT_NAME,
 								DefaultKeyProvider,
-								GLOBAL_DATA_TDE_OID, GLOBALTABLESPACE_OID);
+								GLOBAL_DATA_TDE_OID);
 
 	memset(&int_key, 0, sizeof(InternalKey));
 
@@ -161,7 +159,7 @@ init_keys(void)
 
 	rlocator = &GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID);
 	rel_key_data = tde_create_rel_key(rlocator->relNumber, &int_key, &mkey->keyInfo);
-	enc_rel_key_data = tde_encrypt_rel_key(mkey, rel_key_data, rlocator);
+	enc_rel_key_data = tde_encrypt_rel_key(mkey, rel_key_data, rlocator->dbOid);
 	pg_tde_write_key_map_entry(rlocator, enc_rel_key_data, &mkey->keyInfo);
 	pfree(enc_rel_key_data);
 	pfree(mkey);
@@ -177,15 +175,13 @@ init_keys(void)
  *   first.
  */
 static TDEPrincipalKey *
-create_principal_key(const char *key_name, GenericKeyring *keyring,
-					 Oid dbOid, Oid spcOid)
+create_principal_key(const char *key_name, GenericKeyring *keyring, Oid dbOid)
 {
 	TDEPrincipalKey *principalKey;
 	keyInfo *keyInfo = NULL;
 
 	principalKey = palloc(sizeof(TDEPrincipalKey));
 	principalKey->keyInfo.databaseId = dbOid;
-	principalKey->keyInfo.tablespaceId = spcOid;
 	principalKey->keyInfo.keyId.version = DEFAULT_PRINCIPAL_KEY_VERSION;
 	principalKey->keyInfo.keyringId = keyring->key_id;
 	strncpy(principalKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
