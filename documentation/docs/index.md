@@ -4,7 +4,7 @@
 
 You can configure encryption differently for each database, encrypting specific tables in some databases with different encryption keys while keeping others unencrypted.
 
-Lear more [what is Transparent Data Encryption](tde.md#how-does-it-work) and [why you need it](tde.md#why-do-you-need-tde).
+Learn more [what is Transparent Data Encryption](tde.md#how-does-it-work) and [why you need it](tde.md#why-do-you-need-tde).
 
 !!! important 
 
