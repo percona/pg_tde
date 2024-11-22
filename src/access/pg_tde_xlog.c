@@ -117,7 +117,7 @@ tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record)
 	{
 		TDEPrincipalKeyInfo *xlrec = (TDEPrincipalKeyInfo *) XLogRecGetData(record);
 
-		appendStringInfo(buf, "Alter key provider to:%d for tde principal key for db %u/%u", xlrec->keyringId, xlrec->databaseId, xlrec->tablespaceId);
+		appendStringInfo(buf, "Alter key provider to:%d for tde principal key for db %u", xlrec->keyringId, xlrec->databaseId);
 	}
 	if (info == XLOG_TDE_EXTENSION_INSTALL_KEY)
 	{

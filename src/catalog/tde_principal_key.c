@@ -86,7 +86,7 @@ static TDEPrincipalKey *set_principal_key_with_keyring(const char *key_name,
 													   GenericKeyring *keyring,
 													   Oid dbOid,
 													   bool ensure_new_key);
-static TDEPrincipalKey *alter_keyprovider_for_principal_key(GenericKeyring *newKeyring,Oid dbOid, Oid spcOid);
+static TDEPrincipalKey *alter_keyprovider_for_principal_key(GenericKeyring *newKeyring,Oid dbOid);
 
 static const TDEShmemSetupRoutine principal_key_info_shmem_routine = {
 	.init_shared_state = initialize_shared_state,
@@ -308,8 +308,7 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
  * alter_keyprovider_for_principal_key:
  */
 TDEPrincipalKey *
-alter_keyprovider_for_principal_key(GenericKeyring *newKeyring,
-                                    Oid dbOid, Oid spcOid)
+alter_keyprovider_for_principal_key(GenericKeyring *newKeyring, Oid dbOid)
 {
     TDEPrincipalKeyInfo *principalKeyInfo = NULL;
 	TDEPrincipalKey *principal_key = NULL;
@@ -319,7 +318,7 @@ alter_keyprovider_for_principal_key(GenericKeyring *newKeyring,
 	Assert(newKeyring != NULL);
 	LWLockAcquire(lock_files, LW_EXCLUSIVE);
 
-	principalKeyInfo = pg_tde_get_principal_key_info(dbOid, spcOid);
+	principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
 
 	if (principalKeyInfo == NULL)
 	{
@@ -352,7 +351,7 @@ alter_keyprovider_for_principal_key(GenericKeyring *newKeyring,
 	/* clear the cache as well */
 	clear_principal_key_cache(dbOid);
 
-	principal_key = GetPrincipalKey(dbOid, spcOid, LW_EXCLUSIVE);
+	principal_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
 
 	LWLockRelease(lock_files);
 
@@ -373,8 +372,8 @@ SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new
 bool
 AlterPrincipalKeyKeyring(const char *provider_name)
 {
-    TDEPrincipalKey *principal_key = alter_keyprovider_for_principal_key(GetKeyProviderByName(provider_name, MyDatabaseId, MyDatabaseTableSpace),
-                                                                    MyDatabaseId, MyDatabaseTableSpace);
+    TDEPrincipalKey *principal_key = alter_keyprovider_for_principal_key(GetKeyProviderByName(provider_name, MyDatabaseId),
+                                                                    MyDatabaseId);
 
     return (principal_key != NULL);
 }
