@@ -5,7 +5,6 @@ __pycache__
 /config.cache
 /config.log
 /config.status
-/Makefile
 /autom4te.cache
 /configure~
 t/results

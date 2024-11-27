@@ -63,7 +63,7 @@ TDEInitGlobalKeys(const char *dir)
 		RelKeyData *ikey;
 
 		if (dir != NULL)
-			pg_tde_set_globalspace_dir(dir);
+			pg_tde_set_data_dir(dir);
 
 		ikey = pg_tde_get_key_from_file(&GLOBAL_SPACE_RLOCATOR(XLOG_TDE_OID), TDE_KEY_TYPE_GLOBAL, false);
 
@@ -94,11 +94,10 @@ init_default_keyring(void)
 			.provider_type = FILE_KEY_PROVIDER,
 		};
 
-		if (getcwd(path, sizeof(path)) == NULL)
-			elog(WARNING, "unable to get current working dir");
+		if (realpath(PG_TDE_DATA_DIR, path) == NULL)
+			elog(WARNING, "unable to resolve default keyring paths");
 
-		/* TODO: not sure about the location. Currently it's in $PGDATA */
-		join_path_components(path, PG_TDE_DATA_DIR, KEYRING_DEFAULT_FILE_NAME);
+		join_path_components(path, path, KEYRING_DEFAULT_FILE_NAME);
 
 		snprintf(provider.options, MAX_KEYRING_OPTION_LEN,
 				 "{"
