@@ -8,6 +8,17 @@
 
 typedef unsigned int Oid;
 
+#define MAX_PROVIDER_NAME_LEN 128 /* pg_tde_key_provider's provider_name size*/
+#define MAX_VAULT_V2_KEY_LEN 128  /* From hashi corp docs */
+#define MAX_KEYRING_OPTION_LEN 1024
+typedef enum ProviderType
+{
+    UNKNOWN_KEY_PROVIDER,
+    FILE_KEY_PROVIDER,
+    VAULT_V2_KEY_PROVIDER,
+    KMIP_KEY_PROVIDER,
+} ProviderType;
+
 #define TDE_KEY_NAME_LEN 256
 #define MAX_KEY_DATA_SIZE 32	/* maximum 256 bit encryption */
 #define INTERNAL_KEY_LEN 16
@@ -41,23 +52,6 @@ typedef enum KeyringReturnCodes
 	KEYRING_CODE_DATA_CORRUPTED
 } KeyringReturnCodes;
 
-typedef struct TDEKeyringRoutine
-{
-	keyInfo    *(*keyring_get_key) (GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes * returnCode);
-				KeyringReturnCodes(*keyring_store_key) (GenericKeyring *keyring, keyInfo *key, bool throw_error);
-} TDEKeyringRoutine;
-
-#define MAX_PROVIDER_NAME_LEN 128 /* pg_tde_key_provider's provider_name size*/
-#define MAX_VAULT_V2_KEY_LEN 128  /* From hashi corp docs */
-#define MAX_KEYRING_OPTION_LEN 1024
-typedef enum ProviderType
-{
-    UNKNOWN_KEY_PROVIDER,
-    FILE_KEY_PROVIDER,
-    VAULT_V2_KEY_PROVIDER,
-    KMIP_KEY_PROVIDER,
-} ProviderType;
-
 /* Base type for all keyring */
 typedef struct GenericKeyring
 {
@@ -66,6 +60,12 @@ typedef struct GenericKeyring
     char provider_name[MAX_PROVIDER_NAME_LEN];
     char options[MAX_KEYRING_OPTION_LEN]; /* User provided options string*/
 } GenericKeyring;
+
+typedef struct TDEKeyringRoutine
+{
+	keyInfo    *(*keyring_get_key) (GenericKeyring *keyring, const char *key_name, bool throw_error, KeyringReturnCodes * returnCode);
+				KeyringReturnCodes(*keyring_store_key) (GenericKeyring *keyring, keyInfo *key, bool throw_error);
+} TDEKeyringRoutine;
 
 /*
  * Keyring type name must be in sync with catalog table
