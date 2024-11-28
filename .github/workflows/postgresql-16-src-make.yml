@@ -63,13 +63,6 @@ jobs:
           sudo make install
         working-directory: src
 
-      - name: Build pg_tde
-        run: |
-          ./configure
-          make -j MAJORVERSION=16
-          sudo make install
-        working-directory: src/contrib/pg_tde
-
       - name: Start postgresql cluster with pg_tde
         run: |
           export PATH="/usr/local/pgsql/bin:$PATH"
