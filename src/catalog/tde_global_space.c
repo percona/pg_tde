@@ -94,10 +94,10 @@ init_default_keyring(void)
 			.provider_type = FILE_KEY_PROVIDER,
 		};
 
-		if (realpath(PG_TDE_DATA_DIR, path) == NULL)
-			elog(WARNING, "unable to resolve default keyring paths");
+		char *data_path = make_absolute_path(PG_TDE_DATA_DIR);
 
-		join_path_components(path, path, KEYRING_DEFAULT_FILE_NAME);
+		join_path_components(path, data_path, KEYRING_DEFAULT_FILE_NAME);
+		free(data_path);
 
 		snprintf(provider.options, MAX_KEYRING_OPTION_LEN,
 				 "{"
