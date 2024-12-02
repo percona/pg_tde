@@ -26,6 +26,7 @@ my $pgdata = $node->data_dir;
 # UPDATE postgresql.conf to include/load pg_tde library
 open my $conf, '>>', "$pgdata/postgresql.conf";
 print $conf "shared_preload_libraries = 'pg_tde'\n";
+print $conf "smgr_chain = 'pg_tde,md'\n";
 close $conf;
 
 # Start server
