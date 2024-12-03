@@ -24,7 +24,7 @@ Lear more [what is Transparent Data Encryption](tde.md#how-does-it-work) and [wh
 
 ## Known limitations
 
-* Keys in the local keyfile are stored unencrypted.
+* Keys in the local keyfile are stored unencrypted. For better security we recommend using the Key management storage. 
 * System tables are currently not encrypted.
 
 <i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead for most situations. However, in some specific applications such as those using JSONB operations, performance degradation might be higher.
@@ -43,7 +43,7 @@ The `pg_tde` extension comes in two distinct versions with specific access metho
 
 ### Which version to chose?
 
-The answer is pretty straightforward: if you don't use indexes and don't need index encryption, use the community version and the `tde_heap_basic` access method. Check the [upstream documentation :octicons-link-external-16:](https://github.com/percona/pg_tde/blob/main/README.md) how to get started.
+The answer is pretty straightforward: for data sets where indexing is not mandatory or index encryption is not required, use the community version and the `tde_heap_basic` access method. Check the [upstream documentation :octicons-link-external-16:](https://github.com/percona/pg_tde/blob/main/README.md) how to get started.
 
 Otherwise, enjoy full encryption with the Percona Server for PostgreSQL version and the `tde_heap` access method. 
 
