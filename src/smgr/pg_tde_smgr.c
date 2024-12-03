@@ -101,14 +101,14 @@ tde_smgr_get_key(SMgrRelation reln, RelFileLocator* old_locator, bool can_create
 
 static void
 tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
-			 const void **buffers, BlockNumber nblocks, bool skipFsync)
+			 const void **buffers, BlockNumber nblocks, bool skipFsync, SmgrChainIndex chain_index)
 {
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
 	RelKeyData *rkd = &tdereln->relKey;
 
 	if (!tde_is_encryption_required(tdereln, forknum))
 	{
-		mdwritev(reln, forknum, blocknum, buffers, nblocks, skipFsync);
+		smgr_writev_internal(reln, forknum, blocknum, buffers, nblocks, skipFsync, chain_index+1);
 	}
 	else
 	{
@@ -132,8 +132,8 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 			AesEncrypt(rkd->internal_key.key, iv, ((char **) buffers)[i], BLCKSZ, local_buffers[i], &out_len);
 		}
 
-		mdwritev(reln, forknum, blocknum,
-				 local_buffers, nblocks, skipFsync);
+		smgr_writev_internal(reln, forknum, blocknum,
+				 local_buffers, nblocks, skipFsync, chain_index+1);
 
 		pfree(local_blocks);
 		pfree(local_buffers);
@@ -142,14 +142,14 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 static void
 tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
-			 const void *buffer, bool skipFsync)
+			 const void *buffer, bool skipFsync, SmgrChainIndex chain_index)
 {
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
 	RelKeyData *rkd = &tdereln->relKey;
 
 	if (!tde_is_encryption_required(tdereln, forknum))
 	{
-		mdextend(reln, forknum, blocknum, buffer, skipFsync);
+		smgr_extend_internal(reln, forknum, blocknum, buffer, skipFsync, chain_index+1);
 	}
 	else
 	{
@@ -165,7 +165,7 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 		AesEncrypt(rkd->internal_key.key, iv, ((char *) buffer), BLCKSZ, local_blocks_aligned, &out_len);
 
-		mdextend(reln, forknum, blocknum, local_blocks_aligned, skipFsync);
+		smgr_extend_internal(reln, forknum, blocknum, local_blocks_aligned, skipFsync, chain_index+1);
 
 		pfree(local_blocks);
 	}
@@ -173,13 +173,13 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 static void
 tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
-			void **buffers, BlockNumber nblocks)
+			void **buffers, BlockNumber nblocks, SmgrChainIndex chain_index)
 {
 	int	out_len = BLCKSZ;
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
 	RelKeyData *rkd = &tdereln->relKey;
 
-	mdreadv(reln, forknum, blocknum, buffers, nblocks);
+	smgr_readv_internal(reln, forknum, blocknum, buffers, nblocks, chain_index+1);
 
 	if (!tde_is_encryption_required(tdereln, forknum))
 		return;
@@ -224,7 +224,7 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 }
 
 static void
-tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool isRedo)
+tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool isRedo, SmgrChainIndex chain_index)
 {
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
 
@@ -234,7 +234,7 @@ tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool 
 	 */
 	/* so we create the key here by loading it */
 
-	mdcreate(relold, reln, forknum, isRedo);
+	smgr_create_internal(relold, reln, forknum, isRedo, chain_index+1);
 
 	/*
 	 * Later calls then decide to encrypt or not based on the existence of the
@@ -257,7 +257,7 @@ tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool 
  * mdopen() -- Initialize newly-opened relation.
  */
 static void
-tde_mdopen(SMgrRelation reln)
+tde_mdopen(SMgrRelation reln, SmgrChainIndex chain_index)
 {
 	TDESMgrRelation tdereln = (TDESMgrRelation) reln;
 	RelKeyData *key = tde_smgr_get_key(reln, NULL, false);
@@ -271,38 +271,35 @@ tde_mdopen(SMgrRelation reln)
 	{
 		tdereln->encrypted_relation = false;
 	}
-	mdopen(reln);
+	smgr_open_internal(reln, chain_index + 1);
 }
 
 static SMgrId tde_smgr_id;
 static const struct f_smgr tde_smgr = {
-	.name = "tde",
-	.smgr_init = mdinit,
+	.name = "pg_tde",
+	.smgr_init = NULL,
 	.smgr_shutdown = NULL,
 	.smgr_open = tde_mdopen,
-	.smgr_close = mdclose,
+	.smgr_close = NULL,
 	.smgr_create = tde_mdcreate,
-	.smgr_exists = mdexists,
-	.smgr_unlink = mdunlink,
+	.smgr_exists = NULL,
+	.smgr_unlink = NULL,
 	.smgr_extend = tde_mdextend,
-	.smgr_zeroextend = mdzeroextend,
+	.smgr_zeroextend = NULL,
 	.smgr_prefetch = mdprefetch,
 	.smgr_readv = tde_mdreadv,
 	.smgr_writev = tde_mdwritev,
-	.smgr_writeback = mdwriteback,
-	.smgr_nblocks = mdnblocks,
-	.smgr_truncate = mdtruncate,
-	.smgr_immedsync = mdimmedsync,
-	.smgr_registersync = mdregistersync,
+	.smgr_writeback = NULL,
+	.smgr_nblocks = NULL,
+	.smgr_truncate = NULL,
+	.smgr_immedsync = NULL,
+	.smgr_registersync = NULL,
 };
 
 void
 RegisterStorageMgr(void)
 {
 	tde_smgr_id = smgr_register(&tde_smgr, sizeof(TDESMgrRelationData));
-
-	/* TODO: figure out how this part should work in a real extension */
-	storage_manager_id = tde_smgr_id;
 }
 
 #else
