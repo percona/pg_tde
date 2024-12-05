@@ -19,7 +19,7 @@ The Beta 2 version introduces the following features and improvements:
 * Added event triggers to identify index creation operations on encrypted tables and store those in a custom storage
 * Exposed Storage Manager API and added the usage of Initialization vector (IV) in it. 
 * Added support for secure transfer of keys using the [OASIS Key Management Interoperability Protocol (KMIP)](https://docs.oasis-open.org/kmip/kmip-spec/v2.0/os/kmip-spec-v2.0-os.html). The KMIP implementation was tested with the PyKMIP server and the HashiCorp Vault Enterprise KMIP Secrets Engine. 
-* Added the `pg_tde_alter_principal_key_keyring('new-provider-name')`function, which copies the principal key to the specified new provider
+* Added the `pg_tde_alter_principal_key_keyring('new-provider-name')`function, which changes the principal key's provider to the specified new one. A user should first add the new provider and 
 
 ### Improvements
 
@@ -40,7 +40,6 @@ The Beta 2 version introduces the following features and improvements:
 * Improved memory usage of `tde_heap_basic `during sequential reads
 * Improved `tde_heap_basic` for select statements
 * Added encryption support for (some) command line utilities
-* JSON data is now handled with internal postgres JSON parser instead of jsonc
 
 ### Bugs fixed
 
