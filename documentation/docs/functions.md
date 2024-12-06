@@ -72,12 +72,26 @@ SELECT pg_tde_rotate_principal_key('name-of-the-new-principal-key', NULL);
 SELECT pg_tde_rotate_principal_key(NULL, 'name-of-the-new-provider');
 ```
 
+## pg_tde_alter_principal_key_keyring
+
+Copies the current principal key to the specified keyring provider.
+
+```
+pg_tde_alter_principal_key_keyring('new-provider-name');
+```
+
 ## pg_tde_is_encrypted
 
-Tells if a table is using the `pg_tde` access method or not.
+Tells if a table is encrypted using the `tde_heap` access method or not.
+
+To verify a table encryption, run the following statement:
 
 ```
 SELECT pg_tde_is_encrypted('table_name');
 ```
 
+You can also verify if the table in a custom schema is encrypted. Pass teh schema name for the function as follows:
 
+```
+SELECT pg_tde_is_encrypted('schema.table_name');
+```
