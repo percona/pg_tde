@@ -24,6 +24,7 @@ Users can configure encryption differently for each database, encrypting specifi
 
 * Keys in the local keyfile are stored unencrypted.
 * System tables are currently not encrypted.
+* If a key management store (KMS) configuration changed (e.g. the KMS has a new URL), ensure both PostgreSQL and the key management store are up and running when you update it. If PostgreSQL is offline during changes, it won't be able to start.  
 
 <i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead for most situations. However, in some specific applications such as those using JSONB operations, performance degradation might be higher.
 
