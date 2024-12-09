@@ -72,13 +72,6 @@ SELECT pg_tde_rotate_principal_key('name-of-the-new-principal-key', NULL);
 SELECT pg_tde_rotate_principal_key(NULL, 'name-of-the-new-provider');
 ```
 
-## pg_tde_alter_principal_key_keyring
-
-Copies the current principal key to the specified keyring provider.
-
-```
-pg_tde_alter_principal_key_keyring('new-provider-name');
-```
 
 ## pg_tde_is_encrypted
 
