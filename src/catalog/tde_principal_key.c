@@ -75,17 +75,18 @@ static void shared_memory_shutdown(int code, Datum arg);
 static void principal_key_startup_cleanup(int tde_tbl_count, XLogExtensionInstall *ext_info, bool redo, void *arg);
 static void clear_principal_key_cache(Oid databaseId);
 static inline dshash_table *get_principal_key_Hash(void);
-static TDEPrincipalKey *get_principal_key_from_keyring(Oid dbOid, Oid spcOid);
+static TDEPrincipalKey *get_principal_key_from_keyring(Oid dbOid);
 static TDEPrincipalKey *get_principal_key_from_cache(Oid dbOid);
 static void push_principal_key_to_cache(TDEPrincipalKey *principalKey);
-static Datum pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid);
+static Datum pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid);
 static keyInfo *load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info,
 											   GenericKeyring *keyring,
 											   bool ensure_new_key);
 static TDEPrincipalKey *set_principal_key_with_keyring(const char *key_name,
 													   GenericKeyring *keyring,
-													   Oid dbOid, Oid spcOid,
+													   Oid dbOid,
 													   bool ensure_new_key);
+static TDEPrincipalKey *alter_keyprovider_for_principal_key(GenericKeyring *newKeyring,Oid dbOid);
 
 static const TDEShmemSetupRoutine principal_key_info_shmem_routine = {
 	.init_shared_state = initialize_shared_state,
@@ -213,7 +214,14 @@ save_principal_key_info(TDEPrincipalKeyInfo *principal_key_info)
 {
 	Assert(principal_key_info != NULL);
 
-	return pg_tde_save_principal_key(principal_key_info);
+	return pg_tde_save_principal_key(principal_key_info, true, true);
+}
+
+bool
+update_principal_key_info(TDEPrincipalKeyInfo *principal_key_info)
+{
+	Assert(principal_key_info != NULL);
+	return pg_tde_save_principal_key(principal_key_info, false, true);
 }
 
 /*
@@ -222,7 +230,7 @@ save_principal_key_info(TDEPrincipalKeyInfo *principal_key_info)
  */
 TDEPrincipalKey *
 set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
-							   Oid dbOid, Oid spcOid, bool ensure_new_key)
+							   Oid dbOid, bool ensure_new_key)
 {
 	TDEPrincipalKey *principalKey = NULL;
 	LWLock	   *lock_files = tde_lwlock_enc_keys();
@@ -238,7 +246,7 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
 
 	/* TODO: Add the key in the cache? */
 	if (!is_dup_key)
-		is_dup_key = (pg_tde_get_principal_key_info(dbOid, spcOid) != NULL);
+		is_dup_key = (pg_tde_get_principal_key_info(dbOid) != NULL);
 
 	if (!is_dup_key)
 	{
@@ -246,7 +254,6 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
 
 		principalKey = palloc(sizeof(TDEPrincipalKey));
 		principalKey->keyInfo.databaseId = dbOid;
-		principalKey->keyInfo.tablespaceId = spcOid;
 		principalKey->keyInfo.keyId.version = DEFAULT_PRINCIPAL_KEY_VERSION;
 		principalKey->keyInfo.keyringId = keyring->key_id;
 		strncpy(principalKey->keyInfo.keyId.name, key_name, TDE_KEY_NAME_LEN);
@@ -297,15 +304,78 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
 	return principalKey;
 }
 
+/*
+ * alter_keyprovider_for_principal_key:
+ */
+TDEPrincipalKey *
+alter_keyprovider_for_principal_key(GenericKeyring *newKeyring, Oid dbOid)
+{
+    TDEPrincipalKeyInfo *principalKeyInfo = NULL;
+	TDEPrincipalKey *principal_key = NULL;
+
+	LWLock *lock_files = tde_lwlock_enc_keys();
+
+	Assert(newKeyring != NULL);
+	LWLockAcquire(lock_files, LW_EXCLUSIVE);
+
+	principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
+
+	if (principalKeyInfo == NULL)
+	{
+        LWLockRelease(lock_files);
+        ereport(ERROR,
+			(errmsg("Principal key not set for the database"),
+				errhint("Use set_principal_key interface to set the principal key")));
+	}
+
+	if (newKeyring->key_id == principalKeyInfo->keyringId)
+	{
+        LWLockRelease(lock_files);
+        ereport(ERROR,
+                (errmsg("New key provider is same as the current key provider")));
+    }
+    /* update the key provider in principal key info */
+
+	ereport(DEBUG2,
+			(errmsg("Changing keyprovider ID from :%d to %d", principalKeyInfo->keyringId, newKeyring->key_id)));
+
+	principalKeyInfo->keyringId = newKeyring->key_id;
+
+	update_principal_key_info(principalKeyInfo);
+
+	/* XLog the new key*/
+	XLogBeginInsert();
+	XLogRegisterData((char *)principalKeyInfo, sizeof(TDEPrincipalKeyInfo));
+	XLogInsert(RM_TDERMGR_ID, XLOG_TDE_UPDATE_PRINCIPAL_KEY);
+
+	/* clear the cache as well */
+	clear_principal_key_cache(dbOid);
+
+	principal_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
+
+	LWLockRelease(lock_files);
+
+	return principal_key;
+}
+
 bool
 SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new_key)
 {
 	TDEPrincipalKey *principal_key = set_principal_key_with_keyring(key_name,
-																	GetKeyProviderByName(provider_name, MyDatabaseId, MyDatabaseTableSpace),
-																	MyDatabaseId, MyDatabaseTableSpace,
+																	GetKeyProviderByName(provider_name, MyDatabaseId),
+																	MyDatabaseId,
 																	ensure_new_key);
 
 	return (principal_key != NULL);
+}
+
+bool
+AlterPrincipalKeyKeyring(const char *provider_name)
+{
+    TDEPrincipalKey *principal_key = alter_keyprovider_for_principal_key(GetKeyProviderByName(provider_name, MyDatabaseId),
+                                                                    MyDatabaseId);
+
+    return (principal_key != NULL);
 }
 
 bool
@@ -343,15 +413,13 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
 		if (new_provider_name != NULL)
 		{
 			new_principal_key.keyInfo.keyringId = GetKeyProviderByName(new_provider_name,
-																	   new_principal_key.keyInfo.databaseId,
-																	   new_principal_key.keyInfo.tablespaceId)->key_id;
+																	   new_principal_key.keyInfo.databaseId)->key_id;
 		}
 	}
 
 	/* We need a valid keyring structure */
 	keyring = GetKeyProviderByID(new_principal_key.keyInfo.keyringId,
-								 new_principal_key.keyInfo.databaseId,
-								 new_principal_key.keyInfo.tablespaceId);
+								 new_principal_key.keyInfo.databaseId);
 
 	keyInfo = load_latest_versioned_key_name(&new_principal_key.keyInfo, keyring, ensure_new_key);
 
@@ -368,7 +436,7 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
 
 	memcpy(new_principal_key.keyData, keyInfo->data.data, keyInfo->data.len);
 	is_rotated = pg_tde_perform_rotate_key(current_key, &new_principal_key);
-	if (is_rotated && current_key->keyInfo.tablespaceId != GLOBALTABLESPACE_OID)
+	if (is_rotated && !TDEisInGlobalSpace(current_key->keyInfo.databaseId))
 	{
 		clear_principal_key_cache(current_key->keyInfo.databaseId);
 		push_principal_key_to_cache(&new_principal_key);
@@ -493,7 +561,7 @@ GetPrincipalKeyProviderId(void)
 		 * Principal key not present in cache. Try Loading it from the info
 		 * file
 		 */
-		principalKeyInfo = pg_tde_get_principal_key_info(dbOid, MyDatabaseTableSpace);
+		principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
 		if (principalKeyInfo)
 		{
 			keyringId = principalKeyInfo->keyringId;
@@ -582,11 +650,11 @@ principal_key_startup_cleanup(int tde_tbl_count, XLogExtensionInstall *ext_info,
 		return;
 	}
 
-	cleanup_principal_key_info(ext_info->database_id, ext_info->tablespace_id);
+	cleanup_principal_key_info(ext_info->database_id);
 }
 
 void
-cleanup_principal_key_info(Oid databaseId, Oid tablespaceId)
+cleanup_principal_key_info(Oid databaseId)
 {
 	clear_principal_key_cache(databaseId);
 
@@ -596,7 +664,7 @@ cleanup_principal_key_info(Oid databaseId, Oid tablespaceId)
 	 */
 
 	/* Remove the tde files */
-	pg_tde_delete_tde_files(databaseId, tablespaceId);
+	pg_tde_delete_tde_files(databaseId);
 }
 
 static void
@@ -632,6 +700,19 @@ pg_tde_set_principal_key(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(ret);
 }
 
+PG_FUNCTION_INFO_V1(pg_tde_alter_principal_key_keyring);
+Datum pg_tde_alter_principal_key_keyring(PG_FUNCTION_ARGS);
+
+Datum pg_tde_alter_principal_key_keyring(PG_FUNCTION_ARGS)
+{
+	char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	bool ret;
+
+	ereport(LOG, (errmsg("Altering principal key provider to \"%s\" for the database", provider_name)));
+	ret = AlterPrincipalKeyKeyring(provider_name);
+	PG_RETURN_BOOL(ret);
+}
+
 /*
  * SQL interface for key rotation
  */
@@ -646,7 +727,6 @@ pg_tde_rotate_principal_key_internal(PG_FUNCTION_ARGS)
 	bool ret;
 	TDEPrincipalKey *current_key;
 	Oid	dbOid = MyDatabaseId;
-	Oid	spcOid = MyDatabaseTableSpace;
 
 	if (!PG_ARGISNULL(0))
 		new_principal_key_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
@@ -659,7 +739,6 @@ pg_tde_rotate_principal_key_internal(PG_FUNCTION_ARGS)
 	if (is_global)
 	{
 		dbOid = GLOBAL_DATA_TDE_OID;
-		spcOid = GLOBALTABLESPACE_OID;
 	}
 #endif
 
@@ -669,7 +748,7 @@ pg_tde_rotate_principal_key_internal(PG_FUNCTION_ARGS)
 						 is_global ? "cluster" : "database")));
 
 	LWLockAcquire(tde_lwlock_enc_keys(), LW_EXCLUSIVE);
-	current_key = GetPrincipalKey(dbOid, spcOid, LW_EXCLUSIVE);
+	current_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
 	ret = RotatePrincipalKey(current_key, new_principal_key_name, new_provider_name, ensure_new_key);
 	LWLockRelease(tde_lwlock_enc_keys());
 
@@ -681,20 +760,18 @@ Datum
 pg_tde_principal_key_info_internal(PG_FUNCTION_ARGS)
 {
 	Oid	dbOid = MyDatabaseId;
-	Oid	spcOid = MyDatabaseTableSpace;
 	bool is_global = PG_GETARG_BOOL(0);
 
 	if (is_global)
 	{
 		dbOid = GLOBAL_DATA_TDE_OID;
-		spcOid = GLOBALTABLESPACE_OID;
 	}
 
-	return pg_tde_get_key_info(fcinfo, dbOid, spcOid);
+	return pg_tde_get_key_info(fcinfo, dbOid);
 }
 
 static Datum
-pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
+pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid)
 {
 	TupleDesc tupdesc;
 	Datum values[6];
@@ -712,7 +789,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
 				 errmsg("function returning record called in context that cannot accept type record")));
 
 	LWLockAcquire(tde_lwlock_enc_keys(), LW_SHARED);
-	principal_key = GetPrincipalKey(dbOid, spcOid, LW_SHARED);
+	principal_key = GetPrincipalKey(dbOid, LW_SHARED);
 	LWLockRelease(tde_lwlock_enc_keys());
 	if (principal_key == NULL)
 	{
@@ -722,7 +799,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
 		PG_RETURN_NULL();
 	}
 
-	keyring = GetKeyProviderByID(principal_key->keyInfo.keyringId, dbOid, spcOid);
+	keyring = GetKeyProviderByID(principal_key->keyInfo.keyringId, dbOid);
 
 	/* Initialize the values and null flags */
 
@@ -768,8 +845,8 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid, Oid spcOid)
  * Gets principal key form the keyring and pops it into cache if key exists
  * Caller should hold an exclusive tde_lwlock_enc_keys lock
  */
-TDEPrincipalKey *
-get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
+static TDEPrincipalKey *
+get_principal_key_from_keyring(Oid dbOid)
 {
 	GenericKeyring *keyring;
 	TDEPrincipalKey *principalKey = NULL;
@@ -779,13 +856,13 @@ get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
-	principalKeyInfo = pg_tde_get_principal_key_info(dbOid, spcOid);
+	principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
 	if (principalKeyInfo == NULL)
 	{
 		return NULL;
 	}
 
-	keyring = GetKeyProviderByID(principalKeyInfo->keyringId, dbOid, spcOid);
+	keyring = GetKeyProviderByID(principalKeyInfo->keyringId, dbOid);
 	if (keyring == NULL)
 	{
 		return NULL;
@@ -808,7 +885,7 @@ get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
 
 #ifndef FRONTEND
     /* We don't store global space key in cache */
-    if (spcOid != GLOBALTABLESPACE_OID)
+    if (!TDEisInGlobalSpace(dbOid))
     {
         push_principal_key_to_cache(principalKey);
 
@@ -842,14 +919,14 @@ get_principal_key_from_keyring(Oid dbOid, Oid spcOid)
  * cache.
  */
 TDEPrincipalKey *
-GetPrincipalKey(Oid dbOid, Oid spcOid, LWLockMode lockMode)
+GetPrincipalKey(Oid dbOid, LWLockMode lockMode)
 {
 #ifndef FRONTEND
 	TDEPrincipalKey *principalKey = NULL;
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), lockMode));
 	/* We don't store global space key in cache */
-	if (spcOid != GLOBALTABLESPACE_OID)
+	if (!TDEisInGlobalSpace(dbOid))
 	{
 		principalKey = get_principal_key_from_cache(dbOid);
 	}
@@ -866,5 +943,5 @@ GetPrincipalKey(Oid dbOid, Oid spcOid, LWLockMode lockMode)
 	}
 #endif
 
-	return get_principal_key_from_keyring(dbOid, spcOid);
+	return get_principal_key_from_keyring(dbOid);
 }

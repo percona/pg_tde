@@ -31,6 +31,7 @@
 #include "catalog/tde_principal_key.h"
 #include "keyring/keyring_file.h"
 #include "keyring/keyring_vault.h"
+#include "keyring/keyring_kmip.h"
 #include "utils/builtins.h"
 #include "pg_tde_defs.h"
 #include "smgr/pg_tde_smgr.h"
@@ -38,6 +39,8 @@
 #include "catalog/tde_global_space.h"
 #include "utils/percona.h"
 #endif
+
+#include <sys/stat.h>
 
 #define MAX_ON_INSTALLS 5
 
@@ -100,7 +103,8 @@ _PG_init(void)
 {
 	if (!process_shared_preload_libraries_in_progress)
 	{
-		elog(WARNING, "pg_tde can only be loaded at server startup. Restart required.");
+		elog(ERROR, "pg_tde can only be loaded at server startup. Restart required.");
+		return;
 	}
 
 #ifdef PERCONA_EXT
@@ -122,6 +126,7 @@ _PG_init(void)
 	SetupTdeDDLHooks();
 	InstallFileKeyring();
 	InstallVaultV2Keyring();
+	InstallKmipKeyring();
 	RegisterCustomRmgr(RM_TDERMGR_ID, &tdeheap_rmgr);
 
 	RegisterStorageMgr();
@@ -133,8 +138,9 @@ pg_tde_extension_initialize(PG_FUNCTION_ARGS)
 	/* Initialize the TDE map */
 	XLogExtensionInstall xlrec;
 
+	pg_tde_init_data_dir();
+
 	xlrec.database_id = MyDatabaseId;
-	xlrec.tablespace_id = MyDatabaseTableSpace;
 	run_extension_install_callbacks(&xlrec, false);
 
 	/*
@@ -172,6 +178,22 @@ on_ext_install(pg_tde_on_ext_install_callback function, void *arg)
 	on_ext_install_list[on_ext_install_index].arg = arg;
 
 	++on_ext_install_index;
+}
+
+/* Creates a tde directory for internal files if not exists */
+void
+pg_tde_init_data_dir(void)
+{
+	struct stat st;
+
+	if (stat(PG_TDE_DATA_DIR, &st) < 0)
+	{
+		if (MakePGDirectory(PG_TDE_DATA_DIR) < 0)
+			ereport(ERROR,
+					(errcode_for_file_access(),
+						errmsg("could not create tde directory \"%s\": %m",
+							PG_TDE_DATA_DIR)));
+	}
 }
 
 /* ------------------

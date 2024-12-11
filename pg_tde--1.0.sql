@@ -75,6 +75,41 @@ AS $$
 $$
 LANGUAGE SQL;
 
+CREATE OR REPLACE FUNCTION pg_tde_add_key_provider_kmip(provider_name VARCHAR(128),
+                                                        kmip_host TEXT,
+                                                        kmip_port INT,
+                                                        kmip_ca_path TEXT,
+                                                        kmip_cert_path TEXT)
+RETURNS INT
+AS $$
+-- JSON keys in the options must be matched to the keys in
+-- load_kmip_keyring_provider_options function.
+    SELECT pg_tde_add_key_provider('kmip', provider_name,
+                            json_object('type' VALUE 'kmip',
+                            'host' VALUE COALESCE(kmip_host,''),
+                            'port' VALUE kmip_port,
+                            'caPath' VALUE COALESCE(kmip_ca_path,''),
+                            'certPath' VALUE COALESCE(kmip_cert_path,'')));
+$$
+LANGUAGE SQL;
+CREATE OR REPLACE FUNCTION pg_tde_add_key_provider_kmip(provider_name VARCHAR(128),
+                                                        kmip_host JSON,
+                                                        kmip_port JSON,
+                                                        kmip_ca_path JSON,
+                                                        kmip_cert_path JSON)
+RETURNS INT
+AS $$
+-- JSON keys in the options must be matched to the keys in
+-- load_kmip_keyring_provider_options function.
+    SELECT pg_tde_add_key_provider('kmip', provider_name,
+                            json_object('type' VALUE 'kmip',
+                            'host' VALUE kmip_host,
+                            'port' VALUE kmip_port,
+                            'caPath' VALUE kmip_ca_path,
+                            'certPath' VALUE kmip_cert_path));
+$$
+LANGUAGE SQL;
+
 CREATE FUNCTION pg_tde_list_all_key_providers
     (OUT id INT,
     OUT provider_name VARCHAR(128),
@@ -152,9 +187,51 @@ AS $$
 $$
 LANGUAGE SQL;
 
+CREATE OR REPLACE FUNCTION pg_tde_add_key_provider_kmip(PG_TDE_GLOBAL, 
+                                                        provider_name VARCHAR(128),
+                                                        kmip_host TEXT,
+                                                        kmip_port INT,
+                                                        kmip_ca_path TEXT,
+                                                        kmip_cert_path TEXT)
+RETURNS INT
+AS $$
+-- JSON keys in the options must be matched to the keys in
+-- load_kmip_keyring_provider_options function.
+    SELECT pg_tde_add_key_provider('PG_TDE_GLOBAL', 'kmip', provider_name,
+                            json_object('type' VALUE 'kmip',
+                            'host' VALUE COALESCE(kmip_host,''),
+                            'port' VALUE kmip_port,
+                            'caPath' VALUE COALESCE(kmip_ca_path,''),
+                            'certPath' VALUE COALESCE(vault_cert_path,'')));
+$$
+LANGUAGE SQL;
+CREATE OR REPLACE FUNCTION pg_tde_add_key_provider_kmip(PG_TDE_GLOBAL, 
+                                                        provider_name VARCHAR(128),
+                                                        kmip_host JSON,
+                                                        kmip_port JSON,
+                                                        kmip_ca_path JSON,
+                                                        kmip_cert_path JSON)
+RETURNS INT
+AS $$
+-- JSON keys in the options must be matched to the keys in
+-- load_kmip_keyring_provider_options function.
+    SELECT pg_tde_add_key_provider('PG_TDE_GLOBAL', 'vault-v2', provider_name,
+                            json_object('type' VALUE 'vault-v2',
+                            'host' VALUE kmip_host,
+                            'port' VALUE kmip_port,
+                            'caPath' VALUE kmip_ca_path,
+                            'certPath' VALUE kmip_cert_path));
+$$
+LANGUAGE SQL;
+
 -- Table access method
 CREATE FUNCTION pg_tdeam_basic_handler(internal)
 RETURNS table_am_handler
+AS 'MODULE_PATHNAME'
+LANGUAGE C;
+
+CREATE FUNCTION pg_tde_internal_has_key(oid OID)
+RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
@@ -164,9 +241,10 @@ AS $$
 SELECT EXISTS (
     SELECT 1
     FROM   pg_catalog.pg_class
-    WHERE  relname = table_name
+    WHERE  oid = table_name::regclass::oid
     AND    (relam = (SELECT oid FROM pg_catalog.pg_am WHERE amname = 'tde_heap_basic')
-        OR relam = (SELECT oid FROM pg_catalog.pg_am WHERE amname = 'tde_heap'))
+        OR (relam = (SELECT oid FROM pg_catalog.pg_am WHERE amname = 'tde_heap'))
+            AND pg_tde_internal_has_key(table_name::regclass::oid))
     )$$
 LANGUAGE SQL;
 
@@ -190,6 +268,11 @@ $$
 LANGUAGE SQL;
 
 CREATE FUNCTION pg_tde_set_principal_key(principal_key_name VARCHAR(255), provider_name VARCHAR(255), ensure_new_key BOOLEAN DEFAULT FALSE)
+RETURNS boolean
+AS 'MODULE_PATHNAME'
+LANGUAGE C;
+
+CREATE FUNCTION pg_tde_alter_principal_key_keyring(new_provider_name VARCHAR(255))
 RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
@@ -342,6 +425,7 @@ BEGIN
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_add_key_provider_vault_v2', 'varchar, JSON, JSON,JSON,JSON');
 
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_set_principal_key', 'varchar, varchar, BOOLEAN');
+    PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_alter_principal_key_keyring', 'varchar');
 
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_rotate_principal_key', 'pg_tde_global, varchar, varchar');
     PERFORM pg_tde_grant_execute_privilege_on_function(target_user_or_role, 'pg_tde_rotate_principal_key', 'varchar, varchar');
@@ -410,6 +494,7 @@ BEGIN
     PERFORM pg_tde_revoke_execute_privilege_on_function(target_user_or_role, 'pg_tde_add_key_provider_vault_v2', 'varchar, JSON, JSON,JSON,JSON');
 
     PERFORM pg_tde_revoke_execute_privilege_on_function(target_user_or_role, 'pg_tde_set_principal_key', 'varchar, varchar, BOOLEAN');
+    PERFORM pg_tde_revoke_execute_privilege_on_function(target_user_or_role, 'pg_tde_alter_principal_key_keyring', 'varchar');
 
     PERFORM pg_tde_revoke_execute_privilege_on_function(target_user_or_role, 'pg_tde_rotate_principal_key', 'pg_tde_global, varchar, varchar');
     PERFORM pg_tde_revoke_execute_privilege_on_function(target_user_or_role, 'pg_tde_rotate_principal_key', 'varchar, varchar');

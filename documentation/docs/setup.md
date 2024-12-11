@@ -6,7 +6,7 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
 1. Use the [ALTER SYSTEM](https://www.postgresql.org/docs/current/sql-altersystem.html) command from `psql` terminal to modify the `shared_preload_libraries` parameter.
 
-    ```sql
+    ```
     ALTER SYSTEM SET shared_preload_libraries = 'pg_tde';
     ```
 
@@ -14,19 +14,19 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
     * On Debian and Ubuntu:    
 
-       ```sh
-       sudo systemctl restart postgresql.service
+       ```{.bash data-prompt="$"}
+       $ sudo systemctl restart postgresql.service
        ```
     
     * On RHEL and derivatives
 
-       ```sh
-       sudo systemctl restart postgresql-17
+       ```{.bash data-prompt="$"}
+       $ sudo systemctl restart postgresql-17
        ```
 
 3. Create the extension using the [CREATE EXTENSION](https://www.postgresql.org/docs/current/sql-createextension.html) command. You must have the privileges of a superuser or a database owner to use this command. Connect to `psql` as a superuser for a database and run the following command:
 
-    ```sql
+    ```
     CREATE EXTENSION pg_tde;
     ```
     
@@ -48,7 +48,7 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
         The Vault server setup is out of scope of this document.
 
-        ```sql
+        ```
         SELECT pg_tde_add_key_provider_vault_v2('provider-name',:'secret_token','url','mount','ca_path');
         ``` 
 
@@ -64,26 +64,26 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
         This setup is intended for development and stores the keys unencrypted in the specified data file.    
 
-        ```sql
+        ```
         SELECT pg_tde_add_key_provider_file('provider-name','/path/to/the/keyring/data.file');
         ```
 
 	<i warning>:material-information: Warning:</i> This example is for testing purposes only:
 
-	```sql
+	```
 	SELECT pg_tde_add_key_provider_file('file-vault','/tmp/pg_tde_test_local_keyring.per');
 	```
        
        
 2. Add a principal key
 
-    ```sql
+    ```
     SELECT pg_tde_set_principal_key('name-of-the-principal-key', 'provider-name');
     ```
 
     <i warning>:material-information: Warning:</i> This example is for testing purposes only:
 
-    ```sql
+    ```
     SELECT pg_tde_set_principal_key('test-db-master-key','file-vault');
     ```
 
@@ -94,11 +94,15 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
 ## WAL encryption configuration (tech preview)
 
-After you [enabled `pg_tde`](#enable-extension) and started the Percona Server for PostgreSQL, a principal key and a keyring for WAL are created. Now you need to instruct `pg_tde ` to encrypt WAL files by configuring WAL encryption. Here's how to do it:
+After you [enabled `pg_tde`](#enable-extension) and started the Percona Server for PostgreSQL, a principal key and internal keys for WAL encryption are created. They are stored in the data directory so that after WAL encryption is enabled, any process that requires access to WAL (a recovery or a checkpointer) can use them for decryption.
 
-1. Enable WAL level encryption using the `ALTER SYSTEM SET` command. You need the privileges of the superuser to run this command:
+Now you need to instruct `pg_tde ` to encrypt WAL files by configuring WAL encryption. Here's how to do it:
 
-    ```sql
+### Enable WAL level encryption
+
+1.  Use the `ALTER SYSTEM SET` command. You need the privileges of the superuser to run this command:
+
+    ```
     ALTER SYSTEM set pg_tde.wal_encrypt = on;
     ```
 
@@ -106,23 +110,29 @@ After you [enabled `pg_tde`](#enable-extension) and started the Percona Server f
 
     * On Debian and Ubuntu:    
 
-       ```sh
-       sudo systemctl restart postgresql.service
+       ```{.bash data-prompt="$"}
+       $ sudo systemctl restart postgresql.service
        ```
     
     * On RHEL and derivatives
 
-       ```sh
-       sudo systemctl restart postgresql-17
+       ```{.bash data-prompt="$"}
+       $ sudo systemctl restart postgresql-17
        ```
 
-3. We highly recommend you to create your own keyring and rotate the principal key. This is because the default principal key is created from the local keyfile and is stored unencrypted. 
+On the server start 
 
-    Set up the key provider for WAL encryption
+### Rotate the principal key
+
+We highly recommend you to create your own keyring and rotate the principal key. This is because the default principal key is created from the local keyfile and is stored unencrypted. 
+
+Rotating the principal key means re-encrypting internal keys used for WAL encryption with the new principal key. This process doesn't stop the database operation meaning that reads and writes can take place as usual during key rotation. 
+
+1. Set up the key provider for WAL encryption
 
     === "With HashiCorp Vault"
     
-        ```sql
+        ```
         SELECT pg_tde_add_key_provider_vault_v2('PG_TDE_GLOBAL','provider-name',:'secret_token','url','mount','ca_path');
         ``` 
 
@@ -140,17 +150,32 @@ After you [enabled `pg_tde`](#enable-extension) and started the Percona Server f
 
         This setup is intended for development and stores the keys unencrypted in the specified data file.    
 
-        ```sql
+        ```
         SELECT pg_tde_add_key_provider_file('provider-name','/path/to/the/keyring/data.file');
         ```
 
-4. Rotate the principal key. Don't forget to specify the `PG_TDE_GLOBAL` constant to rotate only the principal key for WAL.
+2. Rotate the principal key. Don't forget to specify the `PG_TDE_GLOBAL` constant to rotate only the principal key for WAL.
 
-    ```sql
+    ```
     SELECT pg_tde_rotate_principal_key('PG_TDE_GLOBAL', 'new-principal-key', 'provider-name');
     ```
 
-Now all WAL files are encrypted for both encrypted and unencrypted tables.
+    Now all WAL files are encrypted for both encrypted and unencrypted tables. 
+   
+3. Verify the encryption by checking the `pg_tde.wal_encrypt` GUC (Grand Unified Configuration) parameter as follows: 
+
+    ```
+    SELECT name, setting FROM pg_settings WHERE name = 'pg_tde.wal_encrypt';
+    ```
+
+    ??? example "Sample output"
+
+        ```{.text .no-copy}
+
+                name        | setting
+        --------------------+---------
+         pg_tde.wal_encrypt | on
+        ```
 
 ## Next steps
 

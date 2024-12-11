@@ -1,18 +1,6 @@
 
 curldep = dependency('libcurl')
 
-pg_tde_version = '1.0.0-beta2'
-
-conf_data = configuration_data()
-conf_data.set_quoted('PACKAGE_NAME', 'pg_tde')
-conf_data.set_quoted('PACKAGE_BUGREPORT', 'https://github.com/percona/pg_tde/issues')
-conf_data.set_quoted('PACKAGE_VERSION', pg_tde_version)
-conf_data.set_quoted('PACKAGE_STRING', 'pg_tde ' + pg_tde_version)
-conf_data.set_quoted('PACKAGE_TARNAME', 'pg_tde')
-
-configure_file(output : 'config.h',
-               configuration : conf_data)
-
 pg_version = meson.project_version().substring(0,2)
 src_version = 'src' + pg_version
 
@@ -40,6 +28,8 @@ pg_tde_sources = files(
         'src/keyring/keyring_curl.c',
         'src/keyring/keyring_file.c',
         'src/keyring/keyring_vault.c',
+        'src/keyring/keyring_kmip.c',
+        'src/keyring/keyring_kmip_ereport.c',
         'src/keyring/keyring_api.c',
 
         'src/smgr/pg_tde_smgr.c',
@@ -55,7 +45,19 @@ pg_tde_sources = files(
         'src/pg_tde_event_capture.c',
 )
 
-incdir = include_directories(src_version / 'include', 'src/include', '.')
+incdir = include_directories(src_version / 'include', 'src/include', '.', 'src/libkmip/libkmip/include/')
+
+kmip = static_library(
+  'kmip',
+  files( 
+        'src/libkmip/libkmip/src/kmip.c',
+        'src/libkmip/libkmip/src/kmip_bio.c',
+        'src/libkmip/libkmip/src/kmip_locate.c',
+        'src/libkmip/libkmip/src/kmip_memset.c'
+        ),
+  c_args: [ '-w' ], # This is a 3rd party, disable warnings completely
+  include_directories: incdir
+)
 
 deps_update = {'dependencies': contrib_mod_args.get('dependencies') + [curldep]}
 
@@ -66,6 +68,7 @@ pg_tde = shared_module('pg_tde',
   c_pch: pch_postgres_h,
   kwargs: mod_args,
   include_directories: incdir,
+  link_whole: [kmip]
 )
 contrib_targets += pg_tde
 
@@ -98,6 +101,7 @@ sql_tests = [
       'insert_update_delete_basic',
       'tablespace_basic',
       'vault_v2_test_basic',
+      'kmip_test_basic',
       'alter_index_basic',
       'merge_join_basic',
 ]
@@ -110,6 +114,7 @@ tap_tests = [
       't/005_multiple_extensions.pl',
       't/006_remote_vault_config.pl',
       't/007_access_control.pl',
+      't/009_key_rotate_tablespace.pl',
     ]
 
 if get_variable('percona_ext', false)
@@ -129,6 +134,7 @@ if get_variable('percona_ext', false)
       'insert_update_delete',
       'tablespace',
       'vault_v2_test',
+      'kmip_test',
       'alter_index',
       'merge_join',
   ]
@@ -137,8 +143,6 @@ if get_variable('percona_ext', false)
       't/008_tde_heap.pl',
   ]
 endif
-
-
 
 tests += {
   'name': 'pg_tde',
@@ -152,3 +156,33 @@ tests += {
   'tap': {
     'tests': tap_tests  },
 }
+
+# TODO: do not duplicate
+tde_decrypt_sources = files(
+   'src/access/pg_tde_tdemap.c',
+   'src/access/pg_tde_xlog_encrypt.c',
+   'src/catalog/tde_global_space.c',
+   'src/catalog/tde_keyring.c',
+   'src/catalog/tde_keyring_parse_opts.c',
+   'src/catalog/tde_principal_key.c',
+   'src/common/pg_tde_utils.c',
+   'src/encryption/enc_aes.c',
+   'src/encryption/enc_tde.c',
+   'src/keyring/keyring_api.c',
+   'src/keyring/keyring_curl.c',
+   'src/keyring/keyring_file.c',
+   'src/keyring/keyring_vault.c',
+   'src/keyring/keyring_kmip.c',
+   'src/keyring/keyring_kmip_ereport.c',
+ )
+
+pg_tde_inc = incdir
+
+pg_tde_frontend = static_library('pg_tde_frontend',
+  tde_decrypt_sources,
+  c_pch: pch_postgres_h,
+  c_args: ['-DFRONTEND'],
+  kwargs: mod_args,
+  include_directories: incdir,
+  link_whole: [kmip]
+)

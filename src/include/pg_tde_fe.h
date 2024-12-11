@@ -54,6 +54,7 @@
 			exit(1);				\
 	} while(0)
 
+#undef elog
 #define elog(elevel, fmt, ...) \
 	do {							\
 		tde_fe_error_level = elevel;	\
@@ -61,6 +62,7 @@
 		tde_error_handle_exit(elevel);	\
 	} while(0)
 
+#undef ereport
 #define ereport(elevel,...)		\
 	do {							\
 		tde_fe_error_level = elevel;	\
@@ -76,7 +78,7 @@ static int	tde_fe_error_level = 0;
 
 #define LWLockAcquire(lock, mode) NULL
 #define LWLockRelease(lock_files) NULL
-#define LWLockHeldByMeInMode(lock, mode) NULL
+#define LWLockHeldByMeInMode(lock, mode) true
 #define LWLock void
 #define LWLockMode void*
 #define LW_SHARED NULL

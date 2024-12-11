@@ -33,7 +33,6 @@ typedef struct TDEPrincipalKeyId
 typedef struct TDEPrincipalKeyInfo
 {
 	Oid	databaseId;
-	Oid	tablespaceId;
 	Oid	userId;
 	Oid	keyringId;
 	struct timeval creationTime;
@@ -58,19 +57,21 @@ typedef struct XLogPrincipalKeyRotate
 #define SizeoOfXLogPrincipalKeyRotate	offsetof(XLogPrincipalKeyRotate, buff)
 
 extern void InitializePrincipalKeyInfo(void);
-extern void cleanup_principal_key_info(Oid databaseId, Oid tablespaceId);
+extern void cleanup_principal_key_info(Oid databaseId);
 
 #ifndef FRONTEND
 extern LWLock *tde_lwlock_enc_keys(void);
-extern TDEPrincipalKey *GetPrincipalKey(Oid dbOid, Oid spcOid, LWLockMode lockMode);
+extern TDEPrincipalKey *GetPrincipalKey(Oid dbOid, LWLockMode lockMode);
 #else
-extern TDEPrincipalKey *GetPrincipalKey(Oid dbOid, Oid spcOid, void *lockMode);
+extern TDEPrincipalKey *GetPrincipalKey(Oid dbOid, void *lockMode);
 #endif
 
 extern bool save_principal_key_info(TDEPrincipalKeyInfo *principalKeyInfo);
+extern bool update_principal_key_info(TDEPrincipalKeyInfo *principal_key_info);
 
 extern Oid	GetPrincipalKeyProviderId(void);
 extern bool SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new_key);
+extern bool AlterPrincipalKeyKeyring(const char *provider_name);
 extern bool RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const char *new_provider_name, bool ensure_new_key);
 extern bool xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec);
 
