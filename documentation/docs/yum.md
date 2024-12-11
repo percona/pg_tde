@@ -18,10 +18,12 @@ You need the `percona-release` repository management tool that enables the desir
     sudo yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm 
     ```
 
-2. Enable the repository
+2. Enable the repository.
+
+    Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates. Since the extension is in the {{release}} stage, enable the testing repository.
 
     ```bash
-    sudo percona-release enable-only ppg-{{pgversion17}} 
+    sudo percona-release enable-only ppg-{{pgversion17}} testing
     ```
 
 ## Install `pg_tde`

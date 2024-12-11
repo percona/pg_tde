@@ -40,10 +40,10 @@ This tutorial shows how to install `pg_tde` with [Percona Distribution for Postg
 
 4. Enable the Percona Distribution for PostgreSQL repository
 
-    Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates.
+    Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates. Since the extension is in the {{release}} stage, enable the testing repository.
 
     ```{.bash data-prompt="$"}
-    $ sudo percona-release enable ppg-{{pgversion17}} 
+    $ sudo percona-release enable ppg-{{pgversion17}} testing
     ```
 
 6. Update the local cache
