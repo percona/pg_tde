@@ -31,6 +31,7 @@
 #include "catalog/tde_principal_key.h"
 #include "keyring/keyring_file.h"
 #include "keyring/keyring_vault.h"
+#include "keyring/keyring_kmip.h"
 #include "utils/builtins.h"
 #include "pg_tde_defs.h"
 #include "smgr/pg_tde_smgr.h"
@@ -102,7 +103,8 @@ _PG_init(void)
 {
 	if (!process_shared_preload_libraries_in_progress)
 	{
-		elog(WARNING, "pg_tde can only be loaded at server startup. Restart required.");
+		elog(ERROR, "pg_tde can only be loaded at server startup. Restart required.");
+		return;
 	}
 
 #ifdef PERCONA_EXT
@@ -124,6 +126,7 @@ _PG_init(void)
 	SetupTdeDDLHooks();
 	InstallFileKeyring();
 	InstallVaultV2Keyring();
+	InstallKmipKeyring();
 	RegisterCustomRmgr(RM_TDERMGR_ID, &tdeheap_rmgr);
 
 	RegisterStorageMgr();
@@ -132,10 +135,10 @@ _PG_init(void)
 Datum
 pg_tde_extension_initialize(PG_FUNCTION_ARGS)
 {
-	pg_tde_init_data_dir();
-	
 	/* Initialize the TDE map */
 	XLogExtensionInstall xlrec;
+
+	pg_tde_init_data_dir();
 
 	xlrec.database_id = MyDatabaseId;
 	run_extension_install_callbacks(&xlrec, false);
