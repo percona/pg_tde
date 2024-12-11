@@ -7,7 +7,7 @@ Transparent Data Encryption is a technology to protect data at rest. The encrypt
 To encrypt the data, two types of keys are used:
 
 * Table encryption keys (TEK) to encrypt user data. These keys are stored internally, near the data that they encrypt.
-* The principal key to encrypt database keys. It is kept separately from the database keys and is managed externally. 
+* The principal key to encrypt table keys. It is kept separately from the table keys and is managed externally. 
 
 `pg_tde` is integrated with HashiCorp Vault server to store and manage principal keys. Only the back end KV Secrets Engine - Version 2 (API) is supported.
 
