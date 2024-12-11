@@ -8,7 +8,10 @@ This tutorial shows how to install `pg_tde` with [Percona Distribution for Postg
 
 ## Preconditions
 
-You need the `percona-release` repository management tool that enables the desired Percona repository for you.
+1. Debian and other systems that use the `apt` package manager include the upstream PostgreSQL server package (`postgresql-{{pgversion17}}`) by default. You need to uninstall this package before you install Percona Server for PostgreSQL and `pg_tde` to avoid conflicts.
+2. You need the `percona-release` repository management tool that enables the desired Percona repository for you.
+
+## Install `percona-release`
 
 1. You need the following dependencies to install `percona-release`:
     
@@ -37,10 +40,10 @@ You need the `percona-release` repository management tool that enables the desir
 
 4. Enable the Percona Distribution for PostgreSQL repository
 
-    Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates. Since the `tde_heap` access method is still in the experimental stage, the `pg_tde` package is currently available from the experimental repository.
+    Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates.
 
     ```{.bash data-prompt="$"}
-    $ sudo percona-release enable ppg-{{pgversion17}} experimental
+    $ sudo percona-release enable ppg-{{pgversion17}} 
     ```
 
 6. Update the local cache
@@ -51,21 +54,14 @@ You need the `percona-release` repository management tool that enables the desir
 
 ## Install `pg_tde`
 
-After all [preconditions](#preconditions) are met, install the extension.
+The `pg_tde` extension is a part of the `percona-postgresql-{{pgversion17}} package`. So you only need to install this package.
 
-1. Install Percona Distribution for PostgreSQL. 
-    
-    Run the following command to install Percona Distribution for PostgreSQL and the required packages:
+After all [preconditions](#preconditions) are met, run the following command:
 
-    ```bash
-    sudo apt-get install -y percona-postgresql-17 percona-postgresql-contrib percona-postgresql-server-dev-all
-    ```
 
-2. Install `pg_tde` packages
-        
-    ```bash
-    sudo apt-get install percona-postgresql-17-pg-tde
-    ```
+```bash
+sudo apt-get install -y percona-postgresql-17 
+```
 
 
 ## Next step 
