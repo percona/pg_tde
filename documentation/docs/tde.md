@@ -32,7 +32,7 @@ Using TDE has the following benefits:
 
 * For DBAs:
    
-    - Granular encryption of specific tablespaces and reducing the performance overhead that encryption brings
+    - Granular encryption of specific tables and reducing the performance overhead that encryption brings
     - Additional layer of security to existing security measures like storage-level encryption, data encryption in transit using TLS, access control and more.
 
 !!! admonition "See also"
