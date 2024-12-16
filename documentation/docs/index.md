@@ -24,8 +24,9 @@ Users can configure encryption differently for each database, encrypting specifi
 
 * Keys in the local keyfile are stored unencrypted.
 * System tables are currently not encrypted.
-* When updating the Key Management Store (KMS) configuration, ensure that both PostgreSQL and the KMS are up and running. For example, if you update the URL for the KMS and PostgreSQL is offline during these changes, it will not be able to start. [Talk to our experts](https://www.percona.com/about/contact) to outline the best update path for you.
+* Currently you cannot update the configuration of an existing Key Management Store (KMS). If its configuration changes (e.g. your Vault server has a new URL), you must set up a new key provider in `pg_tde` and create new keys there. Both the KMS and PostgreSQL servers must be up and running during these changes. [Reach out to our experts](https://www.percona.com/about/contact) for assistance and to outline the best update path for you.
 
+   We plan to introduce the way to update the configuration of an existing KMS in future releases. 
 
 <i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead for most situations. However, in some specific applications such as those using JSONB operations, performance degradation might be higher.
 
