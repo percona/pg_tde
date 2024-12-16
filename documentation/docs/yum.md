@@ -20,10 +20,10 @@ You need the `percona-release` repository management tool that enables the desir
 
 2. Enable the repository.
 
-    Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates. Since the extension is in the {{release}} stage, enable the testing repository.
+    Percona provides [two repositories](repo-overview.md) for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates.
 
     ```bash
-    sudo percona-release enable-only ppg-{{pgversion17}} testing
+    sudo percona-release enable-only ppg-{{pgversion17}} 
     ```
 
 ## Install `pg_tde`
