@@ -28,7 +28,20 @@ You need the `percona-release` repository management tool that enables the desir
 
 ## Install `pg_tde`
 
-The `pg_tde` extension is a part of the `percona-postgresql{{pgversion17}} package`. So you only need to install this package.
+!!! important
+
+    The `pg_tde` {{release}} extension is a part of the `percona-postgresql17` package. If you installed a previous version of `pg_tde` from the `percona-pg_tde_17` package, do the following:
+
+    * Drop the extension using the `DROP EXTENSION` with `CASCADE` command.
+
+       <i warning>:material-alert: Warning:</i> The use of the `CASCADE` parameter deletes all tables that were created in the database with `pg_tde` enabled and also all dependencies upon the encrypted table (e.g. foreign keys in a non-encrypted table used in the encrypted one).    
+
+       ```sql
+       DROP EXTENSION pg_tde CASCADE
+       ```
+
+    * Uninstall the `percona-pg_tde_17` package.  
+    
 
 ```bash
 sudo yum -y install percona-postgresql17 

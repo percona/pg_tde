@@ -54,9 +54,21 @@ This tutorial shows how to install `pg_tde` with [Percona Distribution for Postg
 
 ## Install `pg_tde`
 
-The `pg_tde` extension is a part of the `percona-postgresql-{{pgversion17}} package`. So you only need to install this package.
+!!! important
 
-After all [preconditions](#preconditions) are met, run the following command:
+    The `pg_tde` {{release}} extension is a part of the `percona-postgresql-17` package. If you installed a previous version of `pg_tde` from the `percona-postgresql-17-pg-tde` package, do the following:
+
+    * Drop the extension using the `DROP EXTENSION` with `CASCADE` command.
+
+       <i warning>:material-alert: Warning:</i> The use of the `CASCADE` parameter deletes all tables that were created in the database with `pg_tde` enabled and also all dependencies upon the encrypted table (e.g. foreign keys in a non-encrypted table used in the encrypted one).    
+
+       ```sql
+       DROP EXTENSION pg_tde CASCADE
+       ```
+
+    * Uninstall the `percona-postgresql-17-pg-tde` package.  
+
+After all [preconditions](#preconditions) are met, run the following command to install `pg_tde`:
 
 
 ```bash
