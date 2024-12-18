@@ -58,7 +58,7 @@ Load the `pg_tde` at the start time. The extension requires additional shared me
 
         * `provider-name` is the name of the provider. You can specify any name, it's for you to identify the provider.
         * `kmip-IP` is the IP address of a domain name of the KMIP server
-        * The port to communicate with the KMIP server. The default port is `5696`.
+        * `5696` is the port to communicate with the KMIP server. 
         * `server-certificate` is the path to the certificate file for the KMIP server.
         * `client key` is the path to the client key.
 
