@@ -115,7 +115,7 @@ static int pg_tde_open_file_basic(char *tde_filename, int fileFlags, bool ignore
 static int pg_tde_file_header_read(char *tde_filename, int fd, TDEFileHeader *fheader, bool *is_new_file, off_t *bytes_read);
 static bool pg_tde_read_one_map_entry(int fd, const RelFileLocator *rlocator, int flags, TDEMapEntry *map_entry, off_t *offset);
 static RelKeyData *pg_tde_read_one_keydata(int keydata_fd, int32 key_index, TDEPrincipalKey *principal_key);
-static int pg_tde_open_file(char *tde_filename, TDEPrincipalKeyInfo *principal_key_info, bool should_fill_info, int fileFlags, bool *is_new_file, off_t *offset);
+static int pg_tde_open_file(char *tde_filename, TDEPrincipalKeyInfo *principal_key_info, bool update_header, int fileFlags, bool *is_new_file, off_t *curr_pos);
 static RelKeyData *pg_tde_get_key_from_cache(RelFileNumber rel_number, uint32 key_type);
 
 #ifndef FRONTEND
@@ -177,7 +177,7 @@ pg_tde_create_key_map_entry(const RelFileLocator *newrlocator, uint32 entry_type
 	if (!RAND_bytes(int_key.key, INTERNAL_KEY_LEN))
 	{
 		LWLockRelease(lock_pk);
-		ereport(FATAL,
+		ereport(ERROR,
 				(errcode(ERRCODE_INTERNAL_ERROR),
 				 errmsg("could not generate internal key for relation \"%s\": %s",
 						"TODO", ERR_error_string(ERR_get_error(), NULL))));
@@ -279,7 +279,7 @@ pg_tde_delete_tde_files(Oid dbOid)
  * The caller must have an EXCLUSIVE LOCK on the files before calling this function.
  */
 bool
-pg_tde_save_principal_key(TDEPrincipalKeyInfo *principal_key_info)
+pg_tde_save_principal_key(TDEPrincipalKeyInfo *principal_key_info, bool truncate_existing, bool update_header)
 {
 	int map_fd = -1;
 	int keydata_fd = -1;
@@ -288,16 +288,23 @@ pg_tde_save_principal_key(TDEPrincipalKeyInfo *principal_key_info)
 	bool is_new_key_data = false;
 	char db_map_path[MAXPGPATH] = {0};
 	char db_keydata_path[MAXPGPATH] = {0};
+	int file_flags = O_RDWR | O_CREAT;
 
 	/* Set the file paths */
 	pg_tde_set_db_file_paths(principal_key_info->databaseId,
 							 db_map_path, db_keydata_path);
 
-	ereport(LOG, (errmsg("pg_tde_save_principal_key")));
+	ereport(DEBUG2,
+		(errmsg("pg_tde_save_principal_key"),
+			errdetail("truncate_existing:%s update_header:%s", truncate_existing?"YES":"NO", update_header?"YES":"NO")));
+	/*
+	 * Create or truncate these map and keydata files.
+	 */
+	if (truncate_existing)
+		file_flags |= O_TRUNC;
 
-	/* Create or truncate these map and keydata files. */
-	map_fd = pg_tde_open_file(db_map_path, principal_key_info, false, O_RDWR | O_CREAT | O_TRUNC, &is_new_map, &curr_pos);
-	keydata_fd = pg_tde_open_file(db_keydata_path, principal_key_info, false, O_RDWR | O_CREAT | O_TRUNC, &is_new_key_data, &curr_pos);
+	map_fd = pg_tde_open_file(db_map_path, principal_key_info, update_header, file_flags, &is_new_map, &curr_pos);
+	keydata_fd = pg_tde_open_file(db_keydata_path, principal_key_info, update_header, file_flags, &is_new_key_data, &curr_pos);
 
 	/* Closing files. */
 	close(map_fd);
@@ -341,6 +348,8 @@ pg_tde_file_header_write(char *tde_filename, int fd, TDEPrincipalKeyInfo *princi
 				(errcode_for_file_access(),
 				 errmsg("could not fsync file \"%s\": %m", tde_filename)));
 	}
+	ereport(DEBUG2,
+			(errmsg("Wrote the header to %s", tde_filename)));
 
 	return fd;
 }
@@ -430,8 +439,9 @@ pg_tde_write_one_map_entry(int fd, const RelFileLocator *rlocator, uint32 flags,
 	{
 		char db_map_path[MAXPGPATH] = {0};
 
+		// TODO: this seems like a bad idea?
 		pg_tde_set_db_file_paths(rlocator->dbOid, db_map_path, NULL);
-		ereport(FATAL,
+		ereport(ERROR,
 				(errcode_for_file_access(),
 				 errmsg("could not write tde map file \"%s\": %m",
 						db_map_path)));
@@ -440,6 +450,7 @@ pg_tde_write_one_map_entry(int fd, const RelFileLocator *rlocator, uint32 flags,
 	{
 		char db_map_path[MAXPGPATH] = {0};
 
+		// TODO: this seems like a bad idea?
 		pg_tde_set_db_file_paths(rlocator->dbOid, db_map_path, NULL);
 		ereport(data_sync_elevel(ERROR),
 				(errcode_for_file_access(),
@@ -491,7 +502,8 @@ pg_tde_write_one_keydata(int fd, int32 key_index, RelKeyData *enc_rel_key_data)
 	/* TODO: pgstat_report_wait_start / pgstat_report_wait_end */
 	if (pg_pwrite(fd, &enc_rel_key_data->internal_key, INTERNAL_KEY_DAT_LEN, curr_pos) != INTERNAL_KEY_DAT_LEN)
 	{
-		ereport(FATAL,
+		// TODO: what now? File is corrupted
+		ereport(ERROR,
 				(errcode_for_file_access(),
 				 errmsg("could not write tde key data file: %m")));
 	}
@@ -587,7 +599,6 @@ pg_tde_free_key_map_entry(const RelFileLocator *rlocator, uint32 key_type, off_t
 {
 	int32	key_index = 0;
 	char	db_map_path[MAXPGPATH] = {0};
-	off_t	start = 0;
 
 	Assert(rlocator);
 
@@ -671,6 +682,7 @@ pg_tde_perform_rotate_key(TDEPrincipalKey *principal_key, TDEPrincipalKey *new_p
 	off_t xlrec_size;
 	char db_map_path[MAXPGPATH] = {0};
 	char db_keydata_path[MAXPGPATH] = {0};
+	bool success = true;
 
 	/* Set the file paths */
 	pg_tde_set_db_file_paths(principal_key->keyInfo.databaseId,
@@ -748,8 +760,8 @@ pg_tde_perform_rotate_key(TDEPrincipalKey *principal_key, TDEPrincipalKey *new_p
 
 	/* TODO: pgstat_report_wait_start / pgstat_report_wait_end */
 	/* TODO: error handling */
-	pg_pread(m_fd[NEW_PRINCIPAL_KEY], xlrec->buff, xlrec->map_size, 0);
-	pg_pread(k_fd[NEW_PRINCIPAL_KEY], &xlrec->buff[xlrec->map_size], xlrec->keydata_size, 0);
+	if(pg_pread(m_fd[NEW_PRINCIPAL_KEY], xlrec->buff, xlrec->map_size, 0) == -1) success = false;
+	if(pg_pread(k_fd[NEW_PRINCIPAL_KEY], &xlrec->buff[xlrec->map_size], xlrec->keydata_size, 0) == -1) success = false;
 
 	/* Close the files */
 	close(m_fd[NEW_PRINCIPAL_KEY]);
@@ -767,7 +779,7 @@ pg_tde_perform_rotate_key(TDEPrincipalKey *principal_key, TDEPrincipalKey *new_p
 	/* Free up the palloc'ed data */
 	pfree(xlrec);
 
-	return true;
+	return success;
 
 #undef OLD_PRINCIPAL_KEY
 #undef NEW_PRINCIPAL_KEY
@@ -855,14 +867,12 @@ FINALIZE:
  * Saves the relation key with the new relfilenode.
  * Needed by ALTER TABLE SET TABLESPACE for example.
  */
-bool
+void
 pg_tde_move_rel_key(const RelFileLocator *newrlocator, const RelFileLocator *oldrlocator)
 {
 	RelKeyData 	*rel_key;
 	RelKeyData 	*enc_key;
 	TDEPrincipalKey *principal_key;
-	KeyringProvideRecord provider_rec;
-    GenericKeyring *keyring;
 	XLogRelKey	xlrec;
 	char		db_map_path[MAXPGPATH] = {0};
 	char		db_keydata_path[MAXPGPATH] = {0};
@@ -1015,10 +1025,11 @@ pg_tde_process_map_entry(const RelFileLocator *rlocator, uint32 key_type, char *
 
 		if (curr_pos == -1)
 		{
-			ereport(FATAL,
+			ereport(ERROR,
 					(errcode_for_file_access(),
 					 errmsg("could not seek in tde map file \"%s\": %m",
 							db_map_path)));
+			return curr_pos;
 		}
 	}
 	else
@@ -1110,7 +1121,7 @@ tde_decrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *enc_rel_key_data
  * Open and Validate File Header [pg_tde.*]:
  * 		header: {Format Version, Principal Key Name}
  *
- * Returns the file descriptor in case of a success. Otherwise, fatal error
+ * Returns the file descriptor in case of a success. Otherwise, error
  * is raised.
  *
  * Also, it sets the is_new_file to true if the file is just created. This is
@@ -1124,7 +1135,7 @@ tde_decrypt_rel_key(TDEPrincipalKey *principal_key, RelKeyData *enc_rel_key_data
  * or an error is thrown if the file does not exist.
  */
 static int
-pg_tde_open_file(char *tde_filename, TDEPrincipalKeyInfo *principal_key_info, bool should_fill_info, int fileFlags, bool *is_new_file, off_t *curr_pos)
+pg_tde_open_file(char *tde_filename, TDEPrincipalKeyInfo *principal_key_info, bool update_header, int fileFlags, bool *is_new_file, off_t *curr_pos)
 {
 	int fd = -1;
 	TDEFileHeader fheader;
@@ -1141,7 +1152,7 @@ pg_tde_open_file(char *tde_filename, TDEPrincipalKeyInfo *principal_key_info, bo
 
 #ifndef FRONTEND
 	/* In case it's a new file, let's add the header now. */
-	if (*is_new_file && principal_key_info)
+	if ((*is_new_file || update_header) && principal_key_info)
 		pg_tde_file_header_write(tde_filename, fd, principal_key_info, &bytes_written);
 #endif							/* FRONTEND */
 
@@ -1153,7 +1164,7 @@ pg_tde_open_file(char *tde_filename, TDEPrincipalKeyInfo *principal_key_info, bo
 /*
  * Open a TDE file [pg_tde.*]:
  *
- * Returns the file descriptor in case of a success. Otherwise, fatal error
+ * Returns the file descriptor in case of a success. Otherwise, error
  * is raised except when ignore_missing is true and the file does not exit.
  */
 static int
@@ -1449,40 +1460,49 @@ pg_tde_put_key_into_cache(RelFileNumber rel_num, RelKeyData *key)
 			elog(ERROR, "could not mlock internal key initial cache page: %m");
 
 		tde_rel_key_cache->len = 0;
-		tde_rel_key_cache->cap = pageSize / sizeof(RelKeyCacheRec);
+		tde_rel_key_cache->cap = (pageSize - 1) / sizeof(RelKeyCacheRec);
 	}
 
 	/*
 	 * Add another mem page if there is no more room left for another key. We
 	 * allocate `current_memory_size` + 1 page and copy data there.
 	 */
-	if (tde_rel_key_cache->len + 1 >
-		(tde_rel_key_cache->cap * sizeof(RelKeyCacheRec)) / sizeof(RelKeyCacheRec))
+	if (tde_rel_key_cache->len == tde_rel_key_cache->cap)
 	{
 		size_t size;
 		size_t old_size;
-		RelKeyCacheRec *chachePage;
+		RelKeyCacheRec *cachePage;
 
-		size = TYPEALIGN(pageSize, (tde_rel_key_cache->cap + 1) * sizeof(RelKeyCacheRec));
 		old_size = TYPEALIGN(pageSize, (tde_rel_key_cache->cap) * sizeof(RelKeyCacheRec));
+
+		/* TODO: consider some formula for less allocations when  caching a lot
+		 * of objects. But on the other, hand it'll use more memory...
+		 * E.g.:
+		 *	if (old_size < 0x8000)
+		 *		size = old_size * 2;
+		 *	else
+		 *		size = TYPEALIGN(pageSize, old_size + ((old_size + 3*256) >> 2));
+		 *		
+		 */
+		size = old_size + pageSize;
 
 #ifndef FRONTEND
 		oldCtx = MemoryContextSwitchTo(TopMemoryContext);
-		chachePage = palloc_aligned(size, pageSize, MCXT_ALLOC_ZERO);
+		cachePage = palloc_aligned(size, pageSize, MCXT_ALLOC_ZERO);
 		MemoryContextSwitchTo(oldCtx);
 #else
-		chachePage = aligned_alloc(pageSize, size);
-		memset(chachePage, 0, size);
+		cachePage = aligned_alloc(pageSize, size);
+		memset(cachePage, 0, size);
 #endif
 
-		memcpy(chachePage, tde_rel_key_cache->data, old_size);
+		memcpy(cachePage, tde_rel_key_cache->data, old_size);
 		pfree(tde_rel_key_cache->data);
-		tde_rel_key_cache->data = chachePage;
+		tde_rel_key_cache->data = cachePage;
 
-		if (mlock(tde_rel_key_cache->data, pageSize) == -1)
-			elog(ERROR, "could not mlock internal key cache page: %m");
+		if (mlock(tde_rel_key_cache->data, size) == -1)
+			elog(WARNING, "could not mlock internal key cache pages: %m");
 
-		tde_rel_key_cache->cap = size / sizeof(RelKeyCacheRec);
+		tde_rel_key_cache->cap = (size - 1) / sizeof(RelKeyCacheRec);
 	}
 
 	rec = tde_rel_key_cache->data + tde_rel_key_cache->len;

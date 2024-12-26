@@ -1,24 +1,18 @@
 # Test Transparent Data Encryption
 
-To check if the data is encrypted, do the following:
+Enabling `pg_tde` extension for a database creates the table access method `tde_heap` . This access method enables you to encrypt the data.
 
-=== "pg_tde Tech preview"
+Here's how to do it:
 
-    !!! warning
+1. Create a table in the database for which you have [enabled `pg_tde`](setup.md) using the `tde_heap` access method as follows:
 
-        This is the tech preview functionality. Its scope is not yet finalized and can change anytime.** Use it only for testing purposes.**
-
-To check if the data is encrypted, do the following:
-
-1. Create a table in the database for which you have [enabled `pg_tde`](setup.md). Enabling `pg_tde`    extension creates the table access method `tde_heap`. To enable data encryption, create the table using this access method as follows:
-
-    ```sql
+    ```
     CREATE TABLE <table_name> (<field> <datatype>) USING tde_heap;
     ```
 
     <i warning>:material-information: Warning:</i> Example for testing purposes only:
 
-    ```sql
+    ```
     CREATE TABLE albums (
     album_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     artist_id INTEGER,
@@ -26,10 +20,12 @@ To check if the data is encrypted, do the following:
     released DATE NOT NULL
     ) USING tde_heap;
     ```
+    
+    Learn more about table access methods and how you can enable data encryption by default in the [Table access methods](table-access-method.md) section.
 
-2. Run the following function:
+2. To check if the data is encrypted, run the following function:
 
-    ```sql
+    ```
     SELECT pg_tde_is_encrypted('table_name');
     ```
 
@@ -37,7 +33,7 @@ To check if the data is encrypted, do the following:
 
 3. Rotate the principal key when needed:
 
-    ```sql
+    ```
     SELECT pg_tde_rotate_principal_key(); -- uses automatic key versionin
     -- or
     SELECT pg_tde_rotate_principal_key('new-principal-key', NULL); -- specify new key name
@@ -45,9 +41,9 @@ To check if the data is encrypted, do the following:
     SELECT pg_tde_rotate_principal_key('new-principal-key', 'new-provider'); -- changeprovider
     ```
 
-4. You can encrypt existing table. It requires rewriting the table, so for large tables, it might take a considerable amount of time.
+4. You can encrypt an existing table. It requires rewriting the table, so for large tables, it might take a considerable amount of time.
 
-    ```sql
+    ```
     ALTER TABLE table_name SET access method  tde_heap;
     ```
 

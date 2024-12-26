@@ -156,7 +156,6 @@ extra:
 
 nav:
   - Home: index.md
-  - tde.md
   - features.md
   - Get started:
     - "Install": "install.md"
@@ -165,9 +164,13 @@ nav:
     - "Set up": "setup.md"
     - "Test TDE": "test.md"
   - functions.md
+  - Concepts:
+    - "What is TDE": tde.md
+    - table-access-method.md
   - How to:
     - Use reference to external parameters: external-parameters.md
     - Decrypt an encrypted table: decrypt.md
+  - faq.md
   - Release notes:
     - "pg_tde release notes": release-notes/release-notes.md
   - uninstall.md

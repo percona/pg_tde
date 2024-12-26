@@ -86,6 +86,7 @@ static TDEPrincipalKey *set_principal_key_with_keyring(const char *key_name,
 													   GenericKeyring *keyring,
 													   Oid dbOid,
 													   bool ensure_new_key);
+static TDEPrincipalKey *alter_keyprovider_for_principal_key(GenericKeyring *newKeyring,Oid dbOid);
 
 static const TDEShmemSetupRoutine principal_key_info_shmem_routine = {
 	.init_shared_state = initialize_shared_state,
@@ -213,7 +214,14 @@ save_principal_key_info(TDEPrincipalKeyInfo *principal_key_info)
 {
 	Assert(principal_key_info != NULL);
 
-	return pg_tde_save_principal_key(principal_key_info);
+	return pg_tde_save_principal_key(principal_key_info, true, true);
+}
+
+bool
+update_principal_key_info(TDEPrincipalKeyInfo *principal_key_info)
+{
+	Assert(principal_key_info != NULL);
+	return pg_tde_save_principal_key(principal_key_info, false, true);
 }
 
 /*
@@ -254,7 +262,7 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
 		keyInfo = load_latest_versioned_key_name(&principalKey->keyInfo, keyring, ensure_new_key);
 
 		if (keyInfo == NULL)
-			keyInfo = KeyringGenerateNewKeyAndStore(keyring, principalKey->keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, false);
+			keyInfo = KeyringGenerateNewKeyAndStore(keyring, principalKey->keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, true);
 
 		if (keyInfo == NULL)
 		{
@@ -296,6 +304,60 @@ set_principal_key_with_keyring(const char *key_name, GenericKeyring *keyring,
 	return principalKey;
 }
 
+/*
+ * alter_keyprovider_for_principal_key:
+ */
+TDEPrincipalKey *
+alter_keyprovider_for_principal_key(GenericKeyring *newKeyring, Oid dbOid)
+{
+    TDEPrincipalKeyInfo *principalKeyInfo = NULL;
+	TDEPrincipalKey *principal_key = NULL;
+
+	LWLock *lock_files = tde_lwlock_enc_keys();
+
+	Assert(newKeyring != NULL);
+	LWLockAcquire(lock_files, LW_EXCLUSIVE);
+
+	principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
+
+	if (principalKeyInfo == NULL)
+	{
+        LWLockRelease(lock_files);
+        ereport(ERROR,
+			(errmsg("Principal key not set for the database"),
+				errhint("Use set_principal_key interface to set the principal key")));
+	}
+
+	if (newKeyring->key_id == principalKeyInfo->keyringId)
+	{
+        LWLockRelease(lock_files);
+        ereport(ERROR,
+                (errmsg("New key provider is same as the current key provider")));
+    }
+    /* update the key provider in principal key info */
+
+	ereport(DEBUG2,
+			(errmsg("Changing keyprovider ID from :%d to %d", principalKeyInfo->keyringId, newKeyring->key_id)));
+
+	principalKeyInfo->keyringId = newKeyring->key_id;
+
+	update_principal_key_info(principalKeyInfo);
+
+	/* XLog the new key*/
+	XLogBeginInsert();
+	XLogRegisterData((char *)principalKeyInfo, sizeof(TDEPrincipalKeyInfo));
+	XLogInsert(RM_TDERMGR_ID, XLOG_TDE_UPDATE_PRINCIPAL_KEY);
+
+	/* clear the cache as well */
+	clear_principal_key_cache(dbOid);
+
+	principal_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
+
+	LWLockRelease(lock_files);
+
+	return principal_key;
+}
+
 bool
 SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new_key)
 {
@@ -305,6 +367,15 @@ SetPrincipalKey(const char *key_name, const char *provider_name, bool ensure_new
 																	ensure_new_key);
 
 	return (principal_key != NULL);
+}
+
+bool
+AlterPrincipalKeyKeyring(const char *provider_name)
+{
+    TDEPrincipalKey *principal_key = alter_keyprovider_for_principal_key(GetKeyProviderByName(provider_name, MyDatabaseId),
+                                                                    MyDatabaseId);
+
+    return (principal_key != NULL);
 }
 
 bool
@@ -353,7 +424,7 @@ RotatePrincipalKey(TDEPrincipalKey *current_key, const char *new_key_name, const
 	keyInfo = load_latest_versioned_key_name(&new_principal_key.keyInfo, keyring, ensure_new_key);
 
 	if (keyInfo == NULL)
-		keyInfo = KeyringGenerateNewKeyAndStore(keyring, new_principal_key.keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, false);
+		keyInfo = KeyringGenerateNewKeyAndStore(keyring, new_principal_key.keyInfo.keyId.versioned_name, INTERNAL_KEY_LEN, true);
 
 	if (keyInfo == NULL)
 	{
@@ -425,9 +496,10 @@ load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info, GenericK
 		 */
 		if (kr_ret != KEYRING_CODE_SUCCESS && kr_ret != KEYRING_CODE_RESOURCE_NOT_AVAILABLE)
 		{
-			ereport(FATAL,
+			ereport(ERROR,
 					(errmsg("failed to retrieve principal key from keyring provider :\"%s\"", keyring->provider_name),
 					 errdetail("Error code: %d", kr_ret)));
+			return NULL;
 		}
 		if (keyInfo == NULL)
 		{
@@ -460,6 +532,7 @@ load_latest_versioned_key_name(TDEPrincipalKeyInfo *principal_key_info, GenericK
 		{
 			ereport(ERROR,
 					(errmsg("failed to retrieve principal key. %d versions already exist", MAX_PRINCIPAL_KEY_VERSION_NUM)));
+			return NULL;
 		}
 	}
 	return NULL;				/* Just to keep compiler quite */
@@ -629,6 +702,19 @@ pg_tde_set_principal_key(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(ret);
 }
 
+PG_FUNCTION_INFO_V1(pg_tde_alter_principal_key_keyring);
+Datum pg_tde_alter_principal_key_keyring(PG_FUNCTION_ARGS);
+
+Datum pg_tde_alter_principal_key_keyring(PG_FUNCTION_ARGS)
+{
+	char *provider_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	bool ret;
+
+	ereport(LOG, (errmsg("Altering principal key provider to \"%s\" for the database", provider_name)));
+	ret = AlterPrincipalKeyKeyring(provider_name);
+	PG_RETURN_BOOL(ret);
+}
+
 /*
  * SQL interface for key rotation
  */
@@ -761,7 +847,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid)
  * Gets principal key form the keyring and pops it into cache if key exists
  * Caller should hold an exclusive tde_lwlock_enc_keys lock
  */
-TDEPrincipalKey *
+static TDEPrincipalKey *
 get_principal_key_from_keyring(Oid dbOid)
 {
 	GenericKeyring *keyring;

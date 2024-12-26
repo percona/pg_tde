@@ -29,7 +29,7 @@ jobs:
         run: |
           sudo apt-get install -y libreadline6-dev systemtap-sdt-dev wget \
             zlib1g-dev libssl-dev libpam0g-dev bison flex libipc-run-perl \
-            libcurl4-openssl-dev  libhttp-server-simple-perl
+            libcurl4-openssl-dev  libhttp-server-simple-perl python3-pykmip
           sudo /usr/bin/perl -MCPAN -e 'install IPC::Run'
           sudo /usr/bin/perl -MCPAN -e 'install Text::Trim'
           wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -64,6 +64,11 @@ jobs:
         with:
           path: 'src/pg_tde'
 
+      - name: Checkout libkmip submodule
+        run: |
+          git submodule update --init --recursive
+        working-directory: src/pg_tde
+
       - name: Change src owner to postgres
         run: |
           sudo chmod o+rx ~
@@ -71,15 +76,22 @@ jobs:
 
       - name: Build pg_tde
         run: |
-          sudo -u postgres bash -c './configure'
           sudo -u postgres bash -c 'make USE_PGXS=1'
           sudo make USE_PGXS=1 install
         working-directory: src/pg_tde
+
+      - name: Setup kmip 1
+        run: |
+          wget https://raw.githubusercontent.com/OpenKMIP/PyKMIP/refs/heads/master/bin/create_certificates.py
+          python3 create_certificates.py
+          cat client_certificate_jane_doe.pem >> client_key_jane_doe.pem
+        working-directory: /tmp
 
       - name: Start pg_tde tests
         run: |
           TV=$(mktemp)
           { exec >$TV; vault server -dev; } &
+          pykmip-server -f `pwd`/../contrib/pg_tde/pykmip-server.conf -l /tmp/kmip-server.log &
           sleep 10
           export ROOT_TOKEN=$(cat $TV | grep "Root Token" | cut -d ":" -f 2 | xargs echo -n)
           echo "Root token: $ROOT_TOKEN"
@@ -95,7 +107,7 @@ jobs:
         working-directory: src/pg_tde
 
       - name: Report on test fail
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         if: ${{ failure() }}
         with:
           name: Regressions diff and postgresql log
@@ -118,7 +130,7 @@ jobs:
           sudo cp /usr/lib/postgresql/16/lib/pg_tde* pgtde-ppg16/usr/lib/postgresql/16/lib/
 
       - name: Upload tgz
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         with:
           name: pg_tde_ppg16_binary
           path: pgtde-ppg16
@@ -140,7 +152,7 @@ jobs:
           sudo dpkg -i --debug=7777 pgtde-ppg16.deb
 
       - name: Upload deb
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         with:
           name: pg_tde_deb
           path: pgtde-ppg16.deb
