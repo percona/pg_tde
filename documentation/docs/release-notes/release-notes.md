@@ -35,7 +35,7 @@ The Beta 2 version introduces the following features and improvements:
     * Keyring configuration now uses common JSON API. This simplifies code handling and enables frontend tools like `pg_waldump` to read the code thus improving debugging.
 
 * The `pg_tde_is_encrypted` function now supports custom schemas in the format of `pg_tde_is_encrypted('schema.table');`
-* Changed the location of internal TDE files: instead of the database directory, now all files are stored in `$PGDATA/tde`
+* Changed the location of internal TDE files: instead of the database directory, now all files are stored in ` $PGDATA/pg_tde`
 * Improved error reporting when `pg_tde` is not added to the `shared_preload_libraries`
 * Improved memory usage of `tde_heap_basic `during sequential reads
 * Improved `tde_heap_basic` for select statements
