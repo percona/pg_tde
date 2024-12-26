@@ -81,7 +81,7 @@ endif
 
 install_data(
   'pg_tde.control',
-  'pg_tde--1.0.sql',
+  'pg_tde--1.0-beta2.sql',
   kwargs: contrib_data_args,
 )
 
@@ -104,6 +104,7 @@ sql_tests = [
       'kmip_test_basic',
       'alter_index_basic',
       'merge_join_basic',
+      'cache_alloc',
 ]
 
 tap_tests = [

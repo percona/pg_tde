@@ -3,7 +3,7 @@
 PGFILEDESC = "pg_tde access method"
 MODULE_big = pg_tde
 EXTENSION = pg_tde
-DATA = pg_tde--1.0.sql
+DATA = pg_tde--1.0-beta2.sql
 
 REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_tde/pg_tde.conf
 REGRESS = toast_decrypt_basic \
@@ -67,12 +67,12 @@ src/libkmip/libkmip/src/kmip_memset.o
 ifdef USE_PGXS
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
-override PG_CPPFLAGS += -I$(CURDIR)/src/include -I$(CURDIR)/src/libkmip/libkmip/include -I$(CURDIR)/src$(MAJORVERSION)/include -fPIC
+override PG_CPPFLAGS += -I$(CURDIR)/src/include -I$(CURDIR)/src/libkmip/libkmip/include -I$(CURDIR)/src$(MAJORVERSION)/include
 include $(PGXS)
 else
 subdir = contrib/pg_tde
 top_builddir = ../..
-override PG_CPPFLAGS += -I$(top_srcdir)/$(subdir)/src/include  -I$(top_srcdir)/$(subdir)/src/libkmip/libkmip/include -I$(top_srcdir)/$(subdir)/src$(MAJORVERSION)/include -fPIC
+override PG_CPPFLAGS += -I$(top_srcdir)/$(subdir)/src/include  -I$(top_srcdir)/$(subdir)/src/libkmip/libkmip/include -I$(top_srcdir)/$(subdir)/src$(MAJORVERSION)/include
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
