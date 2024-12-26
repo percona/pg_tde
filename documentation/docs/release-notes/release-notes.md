@@ -16,8 +16,7 @@ The Beta 2 version introduces the following features and improvements:
 ### New Features
 
 * Added the `tde_heap` access method with which you can now enable index encryption for encrypted tables and global WAL data encryption. To use this access method, you must install Percona Server for PostgreSQL. Check the [installation guide](../install.md)
-* Added event triggers to identify index creation operations on encrypted tables and store those in a custom storage
-* Exposed Storage Manager API and added the usage of Initialization vector (IV) in it. 
+* Added event triggers to identify index creation operations on encrypted tables and store those in a custom storage. 
 * Added support for secure transfer of keys using the [OASIS Key Management Interoperability Protocol (KMIP)](https://docs.oasis-open.org/kmip/kmip-spec/v2.0/os/kmip-spec-v2.0-os.html). The KMIP implementation was tested with the PyKMIP server and the HashiCorp Vault Enterprise KMIP Secrets Engine. 
 
 
