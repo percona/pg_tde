@@ -536,6 +536,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#install-percona-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install percona-release
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#install-pg_tde" class="md-nav__link">
     <span class="md-ellipsis">
       Install pg_tde
@@ -988,6 +997,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#install-percona-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install percona-release
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#install-pg_tde" class="md-nav__link">
     <span class="md-ellipsis">
       Install pg_tde
@@ -1050,7 +1068,11 @@
 <p>Check the <a href="install.html#__tabbed_1_2">list of supported platforms</a>.</p>
 <p>This tutorial shows how to install <code>pg_tde</code> with <a href="https://docs.percona.com/postgresql/latest/index.html">Percona Distribution for PostgreSQL</a>.</p>
 <h2 id="preconditions">Preconditions<a class="headerlink" href="#preconditions" title="Permanent link">&para;</a></h2>
-<p>You need the <code>percona-release</code> repository management tool that enables the desired Percona repository for you.</p>
+<ol>
+<li>Debian and other systems that use the <code>apt</code> package manager include the upstream PostgreSQL server package (<code>postgresql-17.0</code>) by default. You need to uninstall this package before you install Percona Server for PostgreSQL and <code>pg_tde</code> to avoid conflicts.</li>
+<li>You need the <code>percona-release</code> repository management tool that enables the desired Percona repository for you.</li>
+</ol>
+<h2 id="install-percona-release">Install <code>percona-release</code><a class="headerlink" href="#install-percona-release" title="Permanent link">&para;</a></h2>
 <ol>
 <li>
 <p>You need the following dependencies to install <code>percona-release</code>:</p>
@@ -1076,8 +1098,8 @@
 </li>
 <li>
 <p>Enable the Percona Distribution for PostgreSQL repository</p>
-<p>Percona provides <a href="repo-overview.md">two repositories</a> for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates. Since the <code>tde_heap</code> access method is still in the experimental stage, the <code>pg_tde</code> package is currently available from the experimental repository.</p>
-<div class="highlight" data-prompt="$"><pre><span></span><code>$<span class="w"> </span>sudo<span class="w"> </span>percona-release<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>ppg-17.0<span class="w"> </span>experimental
+<p>Percona provides <a href="repo-overview.md">two repositories</a> for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates. </p>
+<div class="highlight" data-prompt="$"><pre><span></span><code>$<span class="w"> </span>sudo<span class="w"> </span>percona-release<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>ppg-17.0<span class="w"> </span>
 </code></pre></div>
 </li>
 <li>
@@ -1087,20 +1109,22 @@
 </li>
 </ol>
 <h2 id="install-pg_tde">Install <code>pg_tde</code><a class="headerlink" href="#install-pg_tde" title="Permanent link">&para;</a></h2>
-<p>After all <a href="#preconditions">preconditions</a> are met, install the extension.</p>
-<ol>
-<li>
-<p>Install Percona Distribution for PostgreSQL. </p>
-<p>Run the following command to install Percona Distribution for PostgreSQL and the required packages:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>percona-postgresql-17<span class="w"> </span>percona-postgresql-contrib<span class="w"> </span>percona-postgresql-server-dev-all
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The <code>pg_tde</code> Beta extension is a part of the <code>percona-postgresql-17</code> package. If you installed a previous version of <code>pg_tde</code> from the <code>percona-postgresql-17-pg-tde</code> package, do the following:</p>
+<ul>
+<li>Drop the extension using the <code>DROP EXTENSION</code> with <code>CASCADE</code> command.</li>
+</ul>
+<p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2z"/></svg></span> Warning:</i> The use of the <code>CASCADE</code> parameter deletes all tables that were created in the database with <code>pg_tde</code> enabled and also all dependencies upon the encrypted table (e.g. foreign keys in a non-encrypted table used in the encrypted one).    </p>
+<div class="highlight"><pre><span></span><code><span class="k">DROP</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="n">pg_tde</span><span class="w"> </span><span class="k">CASCADE</span>
 </code></pre></div>
-</li>
-<li>
-<p>Install <code>pg_tde</code> packages</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>percona-postgresql-17-pg-tde
+<ul>
+<li>Uninstall the <code>percona-postgresql-17-pg-tde</code> package.  </li>
+</ul>
+</div>
+<p>After all <a href="#preconditions">preconditions</a> are met, run the following command to install <code>pg_tde</code>:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>percona-postgresql-17<span class="w"> </span>
 </code></pre></div>
-</li>
-</ol>
 <h2 id="next-step">Next step<a class="headerlink" href="#next-step" title="Permanent link">&para;</a></h2>
 <p><a class="md-button" href="setup.html">Setup</a></p>
 <div data-banner="data-banner">
@@ -1136,7 +1160,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 13, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 26, 2024</span>
   </span>
 
     

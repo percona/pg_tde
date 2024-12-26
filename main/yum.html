@@ -558,27 +558,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#enable-disable-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Enable / disable modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#install-percona-release" class="md-nav__link">
     <span class="md-ellipsis">
       Install percona-release
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-percona-postgresql-pgversion-devel-package" class="md-nav__link">
-    <span class="md-ellipsis">
-      For percona-postgresql{{ pgversion }}-devel package
     </span>
   </a>
   
@@ -1022,27 +1004,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#enable-disable-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Enable / disable modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#install-percona-release" class="md-nav__link">
     <span class="md-ellipsis">
       Install percona-release
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-percona-postgresql-pgversion-devel-package" class="md-nav__link">
-    <span class="md-ellipsis">
-      For percona-postgresql{{ pgversion }}-devel package
     </span>
   </a>
   
@@ -1116,10 +1080,6 @@
 <p>Check the <a href="install.html#__tabbed_1_2">list of supported platforms</a>.</p>
 <p>This tutorial shows how to install <code>pg_tde</code> with <a href="https://docs.percona.com/postgresql/latest/index.html">Percona Distribution for PostgreSQL</a>.</p>
 <h2 id="preconditions">Preconditions<a class="headerlink" href="#preconditions" title="Permanent link">&para;</a></h2>
-<h3 id="enable-disable-modules">Enable / disable modules<a class="headerlink" href="#enable-disable-modules" title="Permanent link">&para;</a></h3>
-<p>For RHEL8/Oracle Linux 8/Rocky Linux 8, disable the <code>postgresql</code>  and <code>llvm-toolset</code>modules:    </p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>dnf<span class="w"> </span>module<span class="w"> </span>disable<span class="w"> </span>postgresql<span class="w"> </span>llvm-toolset
-</code></pre></div>
 <h3 id="install-percona-release">Install <code>percona-release</code><a class="headerlink" href="#install-percona-release" title="Permanent link">&para;</a></h3>
 <p>You need the <code>percona-release</code> repository management tool that enables the desired Percona repository for you.</p>
 <ol>
@@ -1129,32 +1089,28 @@
 </code></pre></div>
 </li>
 <li>
-<p>Enable the repository</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>percona-release<span class="w"> </span>enable-only<span class="w"> </span>ppg-17.0<span class="w"> </span>experimental
+<p>Enable the repository.</p>
+<p>Percona provides <a href="repo-overview.md">two repositories</a> for Percona Distribution for PostgreSQL. We recommend enabling the Major release repository to timely receive the latest updates.</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>percona-release<span class="w"> </span>enable-only<span class="w"> </span>ppg-17.0<span class="w"> </span>
 </code></pre></div>
-</li>
-<li>
-<h3 id="for-percona-postgresql-pgversion-devel-package">For <code>percona-postgresql{{ pgversion }}-devel</code> package<a class="headerlink" href="#for-percona-postgresql-pgversion-devel-package" title="Permanent link">&para;</a></h3>
 </li>
 </ol>
-<p>You need to install the <code>percona-postgresql{{ pgversion }}-devel</code> package when working with pg_tde. This package requires dependencies that are not part of the Distribution, but can be installed from the specific repositories:</p>
-<div class="highlight"><pre><span></span><code>```
-$ sudo dnf config-manager --set-enabled ol9_codeready_builder
-```
-</code></pre></div>
 <h2 id="install-pg_tde">Install <code>pg_tde</code><a class="headerlink" href="#install-pg_tde" title="Permanent link">&para;</a></h2>
-<ol>
-<li>
-<p>Install Percona Distribution for PostgreSQL 17 and the required packages, run the following command:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>percona-postgresql-client-common<span class="w"> </span>percona-postgresql-common<span class="w"> </span>percona-postgresql-server-dev-all<span class="w"> </span>percona-postgresql17<span class="w"> </span>percona-postgresql17-contrib<span class="w"> </span>percona-postgresql17-devel<span class="w"> </span>percona-postgresql17-libs
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The <code>pg_tde</code> Beta extension is a part of the <code>percona-postgresql17</code> package. If you installed a previous version of <code>pg_tde</code> from the <code>percona-pg_tde_17</code> package, do the following:</p>
+<ul>
+<li>Drop the extension using the <code>DROP EXTENSION</code> with <code>CASCADE</code> command.</li>
+</ul>
+<p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14h-2V9h2m0 9h-2v-2h2M1 21h22L12 2z"/></svg></span> Warning:</i> The use of the <code>CASCADE</code> parameter deletes all tables that were created in the database with <code>pg_tde</code> enabled and also all dependencies upon the encrypted table (e.g. foreign keys in a non-encrypted table used in the encrypted one).    </p>
+<div class="highlight"><pre><span></span><code><span class="k">DROP</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="n">pg_tde</span><span class="w"> </span><span class="k">CASCADE</span>
 </code></pre></div>
-</li>
-<li>
-<p>Install <code>pg_tde</code> packages</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>percona-pg_tde_17
+<ul>
+<li>Uninstall the <code>percona-pg_tde_17</code> package.  </li>
+</ul>
+</div>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>yum<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>percona-postgresql17<span class="w"> </span>
 </code></pre></div>
-</li>
-</ol>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <p><a class="md-button" href="setup.html">Setup</a></p>
 <div data-banner="data-banner">
@@ -1190,7 +1146,7 @@ $ sudo dnf config-manager --set-enabled ol9_codeready_builder
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 18, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 26, 2024</span>
   </span>
 
     
