@@ -6,7 +6,7 @@ Transparent Data Encryption is a technology to protect data at rest. The encrypt
 
 To encrypt the data, two types of keys are used:
 
-* Database encryption keys to encrypt user data. These keys are stored internally, near the data that they encrypt.
+* Internal encryption keys to encrypt user data. They are stored internally, near the data that they encrypt.
 * The principal key to encrypt database keys. It is kept separately from the database keys and is managed externally in the key management store. 
 
 You have the following options to store and manage principal keys externally:
