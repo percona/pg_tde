@@ -1032,14 +1032,18 @@
 <h2 id="how-does-it-work">How does it work?<a class="headerlink" href="#how-does-it-work" title="Permanent link">&para;</a></h2>
 <p>To encrypt the data, two types of keys are used:</p>
 <ul>
-<li>Table encryption keys (TEK) to encrypt user data. These keys are stored internally, near the data that they encrypt.</li>
-<li>The principal key to encrypt table keys. It is kept separately from the table keys and is managed externally. </li>
+<li>Internal encryption keys to encrypt user data. They are stored internally, near the data that they encrypt.</li>
+<li>The principal key to encrypt database keys. It is kept separately from the database keys and is managed externally in the key management store. </li>
 </ul>
-<p><code>pg_tde</code> is integrated with HashiCorp Vault server to store and manage principal keys. Only the back end KV Secrets Engine - Version 2 (API) is supported.</p>
+<p>You have the following options to store and manage principal keys externally:</p>
+<ul>
+<li>Use the HashiCorp Vault server. Only the back end KV Secrets Engine - Version 2 (API) is supported.</li>
+<li>Use the KMIP-compatible server. <code>pg_tde</code> has been tested with the <a href="https://pykmip.readthedocs.io/en/latest/server.html">PyKMIP</a> server and <a href="https://www.vaultproject.io/docs/secrets/kmip">the HashiCorp Vault Enterprise KMIP Secrets Engine</a>.</li>
+</ul>
 <p>The encryption process is the following:</p>
 <p><a class="glightbox" href="_images/tde-flow.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="image" src="_images/tde-flow.png" /></a></p>
 <p>When a user creates an encrypted table using <code>pg_tde</code>, a new random key is generated for that table using the AES128 (AES-ECB) cipher algorithm. This key is used to encrypt all data the user inserts in that table. Eventually the encrypted data gets stored in the underlying storage. </p>
-<p>The table itself is encrypted using the principal key. The principal key is stored externally in the Vault key management store. </p>
+<p>The table itself is encrypted using the principal key. The principal key is stored externally in the key management store. </p>
 <p>Similarly when the user queries the encrypted table, the principal key is retrieved from the key store to decrypt the table. Then the same unique internal key for that table is used to decrypt the data, and unencrypted data gets returned to the user. So, effectively, every TDE table has a unique key, and each table key is encrypted using the principal key.</p>
 <h2 id="why-do-you-need-tde">Why do you need TDE?<a class="headerlink" href="#why-do-you-need-tde" title="Permanent link">&para;</a></h2>
 <p>Using TDE has the following benefits:</p>
@@ -1096,7 +1100,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 11, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 26, 2024</span>
   </span>
 
     

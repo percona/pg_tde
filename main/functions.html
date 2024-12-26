@@ -634,6 +634,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pg_tde_add_key_provider_kmip" class="md-nav__link">
+    <span class="md-ellipsis">
+      pg_tde_add_key_provider_kmip
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pg_tde_set_principal_key" class="md-nav__link">
     <span class="md-ellipsis">
       pg_tde_set_principal_key
@@ -1013,6 +1022,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pg_tde_add_key_provider_kmip" class="md-nav__link">
+    <span class="md-ellipsis">
+      pg_tde_add_key_provider_kmip
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pg_tde_set_principal_key" class="md-nav__link">
     <span class="md-ellipsis">
       pg_tde_set_principal_key
@@ -1090,7 +1108,7 @@
 <h2 id="pg_tde_add_key_provider_vault_v2">pg_tde_add_key_provider_vault_v2<a class="headerlink" href="#pg_tde_add_key_provider_vault_v2" title="Permanent link">&para;</a></h2>
 <p>Creates a new key provider for the database using a remote HashiCorp Vault server.</p>
 <p>The specified access parameters require permission to read and write keys at the location.</p>
-<div class="highlight"><pre><span></span><code>SELECT pg_tde_add_key_provider_vault_v2(&#39;provider-name&#39;,:&#39;secret_token&#39;,&#39;url&#39;,&#39;mount&#39;,&#39;ca_path&#39;);
+<div class="highlight"><pre><span></span><code>SELECT pg_tde_add_key_provider_vault_v2(&#39;provider-name&#39;,&#39;secret_token&#39;,&#39;url&#39;,&#39;mount&#39;,&#39;ca_path&#39;);
 </code></pre></div>
 <p>where:</p>
 <ul>
@@ -1100,6 +1118,19 @@
 <li>[optional] <code>ca_path</code> is the path of the CA file used for SSL verification</li>
 </ul>
 <p>All parameters can be either strings, or JSON objects <a href="external-parameters.html">referencing remote parameters</a>.</p>
+<h2 id="pg_tde_add_key_provider_kmip">pg_tde_add_key_provider_kmip<a class="headerlink" href="#pg_tde_add_key_provider_kmip" title="Permanent link">&para;</a></h2>
+<p>Creates a new key provider for the database using a remote KMIP server.</p>
+<p>The specified access parameters require permission to read and write keys at the server.</p>
+<div class="highlight"><pre><span></span><code>SELECT pg_tde_add_key_provider_kmip(&#39;provider-name&#39;,&#39;kmip-IP&#39;, 5696, &#39;/path_to/server_certificate.pem&#39;, &#39;/path_to/client_key.pem&#39;);
+</code></pre></div>
+<p>where:</p>
+<ul>
+<li><code>provider-name</code> is the name of the provider. You can specify any name, it&rsquo;s for you to identify the provider.</li>
+<li><code>kmip-IP</code> is the IP address of a domain name of the KMIP server</li>
+<li>The port to communicate with the KMIP server. The default port is <code>5696</code>.</li>
+<li><code>server-certificate</code> is the path to the certificate file for the KMIP server.</li>
+<li><code>client key</code> is the path to the client key.</li>
+</ul>
 <h2 id="pg_tde_set_principal_key">pg_tde_set_principal_key<a class="headerlink" href="#pg_tde_set_principal_key" title="Permanent link">&para;</a></h2>
 <p>Sets the principal key for the database using the specified key provider.</p>
 <p>The principal key name is also used for constructing the name in the provider, for example on the remote Vault server.</p>
@@ -1163,7 +1194,7 @@ SELECT pg_tde_rotate_principal_key(NULL, &#39;name-of-the-new-provider&#39;);
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 18, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 26, 2024</span>
   </span>
 
     
