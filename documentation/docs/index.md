@@ -8,13 +8,12 @@ Lear more [what is Transparent Data Encryption](tde.md#how-does-it-work) and [wh
 
 !!! important 
 
-    This extension is in the experimental phase and is under active development. It is not meant for production use yet. 
+    This is the {{release}} version of the extension and it is not meant for production use yet. We encourage you to use it in testing environments and [provide your feedback](https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82). 
     
-[What's new ](release-notes/release-notes.md){.md-button}
+[Get started](install.md){.md-button}
+[What's new in pg_tde {{release}}](release-notes/release-notes.md){.md-button}
 
 ## What's encrypted:
-
-`pg_tde` encrypts the following:
 
 * User data in tables, including TOAST tables, that are created using the extension. Metadata of those tables is not encrypted. 
 * Temporary tables created during the database operation for data tables created using the extension
@@ -22,10 +21,18 @@ Lear more [what is Transparent Data Encryption](tde.md#how-does-it-work) and [wh
 * Indexes on encrypted tables 
 * Logical replication on encrypted tables
 
+[Check the full feature list](features.md){.md-button}
+
 ## Known limitations
 
 * Keys in the local keyfile are stored unencrypted. For better security we recommend using the Key management storage. 
 * System tables are currently not encrypted.
+* Currently you cannot update the configuration of an existing Key Management Store (KMS). If its configuration changes (e.g. your Vault server has a new URL), you must set up a new key provider in `pg_tde` and create new keys there. Both the KMS and PostgreSQL servers must be up and running during these changes. [Reach out to our experts](https://www.percona.com/about/contact) for assistance and to outline the best update path for you.
+
+   We plan to introduce the way to update the configuration of an existing KMS in future releases. 
+   
+* `pg_rewind` doesn't work with encrypted WAL for now. We plan to fix it in future releases.
+
 
 <i warning>:material-alert: Warning:</i> Note that introducing encryption/decryption affects performance. Our benchmark tests show less than 10% performance overhead for most situations. However, in some specific applications such as those using JSONB operations, performance degradation might be higher.
 
@@ -35,7 +42,7 @@ The `pg_tde` extension comes in two distinct versions with specific access metho
 
 * **Version for Percona Server for PostgreSQL**
 
-    This `pg_tde` version is based on and supported for [Percona Server for PostgreSQL 17.x :octicons-link-external-16:](https://docs.percona.com/postgresql/17/postgresql-server.html) - an open source binary drop-in replacement for PostgreSQL Community. It provides the `tde_heap` access method and offers [full encryption capabilities](#whats-encrypted). 
+    This `pg_tde` version is based on and supported for [Percona Server for PostgreSQL 17.x :octicons-link-external-16:](https://docs.percona.com/postgresql/17/postgresql-server.html) - an open source binary drop-in replacement for PostgreSQL Community. It provides the `tde_heap` access method and offers [full encryption capabilities](features.md). 
 
 * **Community version**
 
@@ -49,11 +56,3 @@ Otherwise, enjoy full encryption with the Percona Server for PostgreSQL version 
 
 Still not sure? [Contact our experts](https://www.percona.com/about/contact) to find the best solution for you.
 
-[Get started](install.md){.md-button}
-
-## Future releases
-
-The following is planned for future releases of `pg_tde`:
-
-* KMIP integration for key management
-* Global principal key management
