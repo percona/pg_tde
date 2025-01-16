@@ -9,7 +9,7 @@ ALTER TABLE mytable SET access method heap;
 ```
 
 !!! hint
-                                                                                                                                                                                                ALTER TABLE <tablename> SET access method removes the hint bits and as such this can lead to heavy writes to the database table, even if you're just reading. A plain SELECT, count(*), or VACUUM on the entire table will check every tuple for visibility and set its hint bits. So we recommend you do a simple "count(*)" on your tables, after the ALTER.
+                                                                                                                                                                                                ALTER TABLE <tablename> SET access method removes the [hint bits](https://wiki.postgresql.org/wiki/Hint_Bits) and as such this can lead to heavy writes to the database table, even if you're just reading. A plain SELECT, count(*), or VACUUM on the entire table will check every tuple for visibility and set its hint bits. So we recommend you do a simple "count(*)" on your tables, after the ALTER.
 
 Check that the table is not encrypted:
 
@@ -30,7 +30,7 @@ The output returns `f` meaning that the table is no longer encrypted.
     Note that the indexes and WAL files will no longer be encrypted.
     
     !!! hint
-                                                                                                                                                                                                ALTER TABLE <tablename> SET access method removes the hint bits and as such this can lead to heavy writes to the database table, even if you're just reading. A plain SELECT, count(*), or VACUUM on the entire table will check every tuple for visibility and set its hint bits. So we recommend you do a simple "count(*)" on your tables, after the ALTER.    
+                                                                                                                                                                                                ALTER TABLE <tablename> SET access method removes the [hint bits](https://wiki.postgresql.org/wiki/Hint_Bits) and as such this can lead to heavy writes to the database table, even if you're just reading. A plain SELECT, count(*), or VACUUM on the entire table will check every tuple for visibility and set its hint bits. So we recommend you do a simple "count(*)" on your tables, after the ALTER.    
 
 ## Method 2. Create a new unencrypted table on the base of the encrypted one
 
