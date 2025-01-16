@@ -49,4 +49,8 @@ Here's how to do it:
 
 !!! hint
 
+    ALTER TABLE <tablename> SET access method removes the hint bits and as such this can lead to heavy writes to the database table, even if you're just reading. A plain SELECT, count(*), or VACUUM on the entire table will check every tuple for visibility and set its hint bits. So we recommend you do a simple "count(*)" on your tables, after the ALTER. 
+
+!!! hint
+
     If you no longer wish to use `pg_tde` or wish to switch to using the `tde_heap_basic` access method, see how you can [decrypt your data](decrypt.md).
