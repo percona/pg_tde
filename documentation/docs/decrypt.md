@@ -33,7 +33,10 @@ The output returns `f` meaning that the table is no longer encrypted.
     Note that the indexes and WAL files will no longer be encrypted.
     
     !!! hint
-                                                                                                                                                                                                ALTER TABLE <tablename> SET access method removes the [hint bits](https://wiki.postgresql.org/wiki/Hint_Bits) and as such this can lead to heavy writes to the database table, even if you're just reading. A plain SELECT, count(*), or VACUUM on the entire table will check every tuple for visibility and set its hint bits. So we recommend you do a simple "count(*)" on your tables, after the ALTER.    
+                                                                                                                                                                                                Running a plain `SELECT, count(*)`, or `VACUUM` commands on the entire table will check every tuple for visibility and set its hint bits. Therefore, after executing the ALTER command, run a simple "count(*)" on your tables:
+                                                                                                                                                                                                
+                                                                                                                                                                                                ```
+SELECT COUNT(*) FROM mytable;
 
 ## Method 2. Create a new unencrypted table on the base of the encrypted one
 
