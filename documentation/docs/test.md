@@ -49,4 +49,11 @@ Here's how to do it:
 
 !!! hint
 
+    Running a plain `SELECT, count(*)`, or `VACUUM` commands on the entire table will check every tuple for visibility and set its hint bits. Therefore, after executing the ALTER command, run a simple "count(*)" on your tables:
+                                                                                                                                                                                                
+                                                                                                                                                                                                ```
+SELECT COUNT(*) FROM mytable;
+
+!!! hint
+
     If you no longer wish to use `pg_tde` or wish to switch to using the `tde_heap_basic` access method, see how you can [decrypt your data](decrypt.md).
