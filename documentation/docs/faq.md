@@ -25,12 +25,14 @@ Using TDE helps you avoid the following risks:
 
 If to translate sensitive data to files stored in your database, these are user data in tables, temporary files, WAL files. TDE has you covered encrypting all these files.
 
+`pg_tde` does not encrypt system catalogs yet. This is planned for future releases. 
+
 
 ## I use disk-level encryption. Why should I care about TDE?
 
 Encrypting a hard drive encrypts all data, including system, application, and temporary files.
 
-Full disk encryption protects your data from people who have physical access to your device and even if it is lost or stolen. However, it doesn't protect the data after system boot-up: the data is automatically decrypted when the system runs or when an authorized user requests it. This means a sophisticated attacker can access the memory and steal the encryption keys through a cold boot attack.
+Full disk encryption protects your data from people who have physical access to your device and even if it is lost or stolen. However, it doesn't protect the data after system boot-up: the data is automatically decrypted when the system runs or when an authorized user requests it. 
 
 Another point to consider is PCI DSS compliance for Personal Account Numbers (PAN) encryption.
 
@@ -40,9 +42,9 @@ Another point to consider is PCI DSS compliance for Personal Account Numbers (PA
 
    * Ensure the decryption key is not linked to user accounts.
 
-* **PCI DSS 4.0** standards consider using only disk and partition-level encryption not enough to ensure PAN protection. It requires an additional layer of security that TDE can provide. 
+* **PCI DSS 4.0** standards consider using only disk and partition-level encryption not enough to ensure PAN protection. It requires an additional layer of security that `pg_tde` can provide. 
 
-TDE focuses specifically on data files and offers more granular control over encrypted data. It also ensures that files are encrypted on disk during runtime and when moved to another system or storage.
+`pg_tde` focuses specifically on data files and offers more granular control over encrypted data. The data remains encrypted on disk during runtime and when you move it to another directory, another system or storage. An example of such data is backups. They remain encrypted when moved to the backup storage.
 
 Thus, to protect your sensitive data, consider using TDE to encrypt it at the table level. Then use disk-level encryption to encrypt a specific volume where this data is stored, or the entire disk.
 
@@ -75,7 +77,7 @@ Here’s how encryption works:
 
 First, data files are encrypted with internal keys. Each file that has a different OID, has an internal key. For example, a table with 4 indexes will have 5 internal keys - one for the table and one for each index.	
 
-The initial decision on what file to encrypt is based on the PostgreSQL triggers. When you run a `CREATE` or `ALTER TABLE` statement with the `USING tde_heap` clause, the newly created data files are marked as encrypted, and then file operations encrypt/decrypt the data. Later, if an initial file is re-created as a result of a `TRUNCATE` or `VACUUM FULL` command, the newly created file inherits the encryption information and is either encrypted or not. 
+The initial decision on what file to encrypt is based on the table access method in PostgreSQL. When you run a `CREATE` or `ALTER TABLE` statement with the `USING tde_heap` clause, the newly created data files are marked as encrypted, and then file operations encrypt/decrypt the data. Later, if an initial file is re-created as a result of a `TRUNCATE` or `VACUUM FULL` command, the newly created file inherits the encryption information and is either encrypted or not. 
 
 The principal key is used to encrypt the internal keys. The principal key is stored in the key management store. When you query the table, the principal key is retrieved from the key store to decrypt the table. Then the internal key for that table is used to decrypt the data.
 
@@ -104,14 +106,19 @@ No, it's not yet supported. In our implementation we reply on OpenSSL libraries 
 Yes, you can encrypt an existing table. Run the ALTER TABLE command as follows:
 
 ```
-ALTER TABLE table_name SET access method tde_heap;
+ALTER TABLE table_name SET ACCESS METHOD tde_heap;
 ```
 
-Since the `ALTER TABLE SET` command drops hint bits and this may affect the performance, we recommend to run the SELECT COUNT(*) command. It checks every tuple for visibility and sets its hint bits. Read more in the [Changing existing table](test.md) section. 
+Since the `ALTER TABLE SET` command drops hint bits and this may affect the performance, we recommend to run the `SELECT COUNT(*)` command. It checks every tuple for visibility and sets its hint bits. Read more in the [Changing existing table](test.md) section. 
 
 ## Do I have to restart the database to encrypt the data?
 
-No, you don't have to restart the database to encrypt the data. When you create or alter the table using the `tde_heap` access method, the files are marked as those that require encryption. The encryption happens at the storage manager level, before a transaction is written to disk. Read more about how `tde_heap` access method works in the [How tde_heap works](table-access-method.md#how-tde_heap-works) section.
+You must restart the database in the following cases to apply the changes:
+
+* after you enabled the `pg_tde` extension
+* to tun on / off the WAL encryption
+
+After that, no database restart is required. When you create or alter the table using the `tde_heap` access method, the files are marked as those that require encryption. The encryption happens at the storage manager level, before a transaction is written to disk. Read more about [how tde_heap works](table-access-method.md#how-tde_heap-works).
 
 ## What happens to my data if I lose a principal key?
 
@@ -124,6 +131,8 @@ Multi-tenancy is the type of architecture where multiple users, or tenants, shar
 In `pg_tde`, multi-tenancy is supported via a separate principal key per database. This means that a database owner can decide what tables to encrypt within a database. The same database can have both encrypted and non-encrypted tables.
 
 To control user access to the databases, you can use role-based access control (RBAC).
+
+WAL files are encrypted globally across the entire PostgreSQL cluster using the same encryption key. Users don't interact with WAL files as these are used by the database management system to ensure data integrity and durability.
 
 ## Are my backups safe? Can I restore from them?
 
