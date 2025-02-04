@@ -41,10 +41,11 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
     - [PostgreSQL coding conventions](https://www.postgresql.org/docs/current/source.html)
     - [C style and Coding rules](https://github.com/MaJerle/c-code-style) 
 
-5. [Build `pg_tde`](https://github.com/percona/pg_tde/wiki/Make-builds-for-developers) and [test your changes locally](#run-local-tests). 
-6. Commit the changes. The [commit message guidelines](https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53) will help you with writing great commit messages
-7. Open a pull request to Percona.
-8. Our team will review your code and if everything is correct, will merge it. 
+6. Write the documentation for your changes. See the [Write the docs] cheat sheet for details.
+7. [Build `pg_tde`](https://github.com/percona/pg_tde/wiki/Make-builds-for-developers) and [test your changes locally](#run-local-tests). 
+8. Commit the changes. The [commit message guidelines](https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53) will help you with writing great commit messages
+9. Open a pull request to Percona.
+10. Our team will review your code and documentation. If everything is correct, will merge it. 
 Otherwise, we will contact you for additional information or with the request to make changes.
 
 ### Run local tests
@@ -62,12 +63,28 @@ You can run tests on your local machine with whatever operating system you have.
 
 ## Contribute to documentation
 
-`pg_tde` documentation is written in Markdown language, so you can 
-[edit it online via GitHub](#edit-documentation-online-vi-github). If you wish to have more control over the doc process, jump to how to [edit documentation locally](#edit-documentation-locally). 
+`pg_tde` documentation is written in Markdown language, so you can [write the docs for your code changes](#write-the-docs) or
+[edit the existing documentation online via GitHub](#edit-documentation-online-vi-github). If you wish to have more control over the doc process, jump to how to [edit documentation locally](#edit-documentation-locally). 
 
-Before you start, learn what [git], [MkDocs] and [Docker] are and what [Markdown] is and how to write it. For your convenience, there's also a cheat sheet to help you with the syntax. 
+Before you start, learn what [Markdown] is and how to write it. For your convenience, there's also a [Markdown cheat sheet] to help you with the syntax. 
 
-The doc files are in the `docs` directory.
+The doc files are in the `documentation/docs` directory.
+
+### Write the docs
+
+When you write code, make sure to write documentation that explains it for users. As the author, you know best how your code works. To explain your feature or improvement, use the following key points:
+
+1. Feature Description: What is the feature about, and why does a user need it?
+
+2. User Tasks: What tasks can a user solve with this feature?
+
+3. Functionality: How does the feature work?
+
+4. Setup Requirements: How do you set it up? Are there any preconditions for it to work, such as existing setups or external configurations (e.g., what should be configured in a new Key Management Service - KMS)?
+
+5. Setup Steps: What are the setup steps? Explain the commands and parameters used in functions. Give examples of using them. Provide sample outputs for commands.
+
+6. Limitations and Breaking Changes: Are there any known limitations or breaking changes this feature introduces?
 
 ### Edit documentation online via GitHub
 
@@ -83,6 +100,8 @@ The doc files are in the `docs` directory.
 ### Edit documentation locally
 
 This option is for users who prefer to work from their computer and / or have the full control over the documentation process.
+
+You will need [git], [MkDocs] and [Docker]. 
 
 The steps are the following:
 
@@ -192,6 +211,7 @@ To build a PDF version of the documentation, do the following:
 
 [MkDocs]: https://www.mkdocs.org/
 [Markdown]: https://daringfireball.net/projects/markdown/
+[Markdown cheat sheet]: https://www.markdownguide.org/cheat-sheet/
 [Git]: https://git-scm.com
 [Python]: https://www.python.org/downloads/
 [Docker]: https://docs.docker.com/get-docker/
