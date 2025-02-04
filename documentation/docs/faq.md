@@ -81,9 +81,9 @@ The initial decision on what file to encrypt is based on the table access method
 
 The principal key is used to encrypt the internal keys. The principal key is stored in the key management store. When you query the table, the principal key is retrieved from the key store to decrypt the table. Then the internal key for that table is used to decrypt the data.
 
-WAL encryption is done globally for the entire using the principal key. When you turn on WAL encryption, `pg_tde` encrypts entire WAL pages except for the header. The header contains a marker if a page is encrypted or not. 
+WAL encryption is done globally for the entire database cluster using the global principal key. When you turn on WAL encryption, `pg_tde` encrypts entire WAL pages except for the header. The header contains a marker if a page is encrypted or not. 
 
-You can turn WAL encryption on and off so WAL can contain both encrypted and unencrypted pages. The encryption influences only writes.
+You can turn WAL encryption on and off so WAL can contain both encrypted and unencrypted pages. The WAL encryption GUC variable influences only writes.
 
 Whenever the WAL is being read (by the recovery process or tools), the decision on what pages should be decrypted is based solely on the encryption flag of each page.
 
