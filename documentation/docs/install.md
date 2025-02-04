@@ -4,13 +4,27 @@
 
 You can use the following options to manage encryption keys:
 
-* Use the HashiCorp Vault server. This is the recommended approach. The Vault server configuration is out of scope of this document. We assume that you have the Vault server up and running. For the  `pg_tde` configuration, you need the following information:
+* Use the Key Management Store (KMS). This is the recommended approach. `pg_tde` supports the following KMS:
 
-    * The secret access token to the Vault server
-    * The URL to access the Vault server
-    * (Optional) The CA file used for SSL verification
+    * HashiCorp Vault as the key/value secrets engine version 2 with secret versioning
+    * HashiCorp Vault as the KMIP server. The KMIP server is part of Vault Enterprise and requires a license
+    * OpenBao as the open-source alternative to HashiCorp Vault KMIP 
+    * A KMIP-compatible server. For testing and development purposes you can use PyKMIP.
 
-* Use the local keyfile. This approach is rather used for development and testing purposes since the keys are stored unencrypted in the specified keyfile.
+    The KMS configuration is out of scope of this document. We assume that you have the KMS up and running. For the `pg_tde` configuration, you need the following information:  
+
+    === "Vault secrets engine"  
+
+        * The secret access token to the Vault server
+        * The URL to access the Vault server
+        * (Optional) The CA file used for SSL verification  
+    
+    === "KMIP server"
+
+        * The hostname or IP address of the KMIP server.
+        * The valid certificates issued by the key management appliance.
+
+* Use the local keyfile. Use the keyfile only development and testing purposes since the keys are stored unencrypted.
 
 ## Procedure 
 
@@ -34,7 +48,7 @@ Install `pg_tde` using one of available installation methods:
 
 === "Build from source"
 
-    To build `pg_tde` from source code, do the following
+    To build `pg_tde` from source code, do the following:
 
     1. On Ubuntu/Debian: Install the following dependencies required for the build:
 

@@ -8,11 +8,11 @@ If you encrypted a table with the `tde_heap` or `tde_heap_basic` access method a
 ALTER TABLE mytable SET access method heap;
 ```
 
-!!! hint
-                                                                                                                                                                                                The ALTER TABLE <tablename> SET access method statement removes the [hint bits :octicons-link-external-16:](https://wiki.postgresql.org/wiki/Hint_Bits). This removal can lead to heavy writes to the database table, even if you're just reading from it. 
-                                                                                                                                                                                                Running a plain `SELECT, count(*)`, or `VACUUM` commands on the entire table will check every tuple for visibility and set its hint bits. Therefore, after executing the ALTER command, run a simple "count(*)" on your tables:
-                                                                                                                                                                                                ```
+Note that the `ALTER TABLE SET` command drops hint bits and this may affect the performance. Running a plain `SELECT, count(*)`, or `VACUUM` commands on the entire table will check every tuple for visibility and set its hint bits. Therefore, after executing the ALTER command, run a simple "count(*)" on your tables:
+
+```
 SELECT COUNT(*) FROM mytable;
+```
 
 Check that the table is not encrypted:
 
@@ -32,11 +32,12 @@ The output returns `f` meaning that the table is no longer encrypted.
     
     Note that the indexes and WAL files will no longer be encrypted.
     
-    !!! hint
-                                                                                                                                                                                                Running a plain `SELECT, count(*)`, or `VACUUM` commands on the entire table will check every tuple for visibility and set its hint bits. Therefore, after executing the ALTER command, run a simple "count(*)" on your tables:
-                                                                                                                                                                                                
-                                                                                                                                                                                                ```
-SELECT COUNT(*) FROM mytable;
+    Run a simple "count(*)" on your table to check every tuple for visibility and set the hint bits:
+
+    ```
+    SELECT COUNT(*) FROM mytable;
+    ```
+
 
 ## Method 2. Create a new unencrypted table on the base of the encrypted one
 
