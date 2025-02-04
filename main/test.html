@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="_images/postgresql-fav.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.50">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.a40c8224.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.d7758b05.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
@@ -408,6 +408,7 @@
   
   <span class="md-ellipsis">
     Home
+    
   </span>
   
 
@@ -428,6 +429,7 @@
   
   <span class="md-ellipsis">
     Features
+    
   </span>
   
 
@@ -460,6 +462,7 @@
   
   <span class="md-ellipsis">
     Get started
+    
   </span>
   
 
@@ -485,6 +488,7 @@
   
   <span class="md-ellipsis">
     Install
+    
   </span>
   
 
@@ -506,6 +510,7 @@
   
   <span class="md-ellipsis">
     Via apt
+    
   </span>
   
 
@@ -527,6 +532,7 @@
   
   <span class="md-ellipsis">
     Via yum
+    
   </span>
   
 
@@ -548,6 +554,7 @@
   
   <span class="md-ellipsis">
     Set up
+    
   </span>
   
 
@@ -578,6 +585,7 @@
   
   <span class="md-ellipsis">
     Test TDE
+    
   </span>
   
 
@@ -589,6 +597,7 @@
   
   <span class="md-ellipsis">
     Test TDE
+    
   </span>
   
 
@@ -608,6 +617,24 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#encrypt-data-in-a-new-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Encrypt data in a new table
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#encrypt-existing-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Encrypt existing table
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#get-expert-help" class="md-nav__link">
@@ -646,6 +673,7 @@
   
   <span class="md-ellipsis">
     Functions
+    
   </span>
   
 
@@ -676,6 +704,7 @@
   
   <span class="md-ellipsis">
     Concepts
+    
   </span>
   
 
@@ -701,6 +730,7 @@
   
   <span class="md-ellipsis">
     What is TDE
+    
   </span>
   
 
@@ -722,6 +752,7 @@
   
   <span class="md-ellipsis">
     Table access method
+    
   </span>
   
 
@@ -760,6 +791,7 @@
   
   <span class="md-ellipsis">
     How to
+    
   </span>
   
 
@@ -785,6 +817,7 @@
   
   <span class="md-ellipsis">
     Use reference to external parameters
+    
   </span>
   
 
@@ -806,6 +839,7 @@
   
   <span class="md-ellipsis">
     Decrypt an encrypted table
+    
   </span>
   
 
@@ -834,6 +868,7 @@
   
   <span class="md-ellipsis">
     FAQ
+    
   </span>
   
 
@@ -864,6 +899,7 @@
   
   <span class="md-ellipsis">
     Release notes
+    
   </span>
   
 
@@ -889,6 +925,7 @@
   
   <span class="md-ellipsis">
     pg_tde release notes
+    
   </span>
   
 
@@ -917,6 +954,7 @@
   
   <span class="md-ellipsis">
     Uninstall pg_tde
+    
   </span>
   
 
@@ -937,6 +975,7 @@
   
   <span class="md-ellipsis">
     Contributing guide
+    
   </span>
   
 
@@ -972,6 +1011,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#encrypt-data-in-a-new-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Encrypt data in a new table
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#encrypt-existing-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Encrypt existing table
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#get-expert-help" class="md-nav__link">
     <span class="md-ellipsis">
       Get expert help
@@ -994,6 +1051,7 @@
                 
                   
 
+
   
     <a href="https://github.com/percona/pg_tde/edit/main/documentation/docs/test.md" title="Edit this page" class="md-content__button md-icon">
       
@@ -1014,6 +1072,7 @@
 <h1 id="test-transparent-data-encryption">Test Transparent Data Encryption<a class="headerlink" href="#test-transparent-data-encryption" title="Permanent link">&para;</a></h1>
 <p>Enabling <code>pg_tde</code> extension for a database creates the table access method <code>tde_heap</code> . This access method enables you to encrypt the data.</p>
 <p>Here&rsquo;s how to do it:</p>
+<h2 id="encrypt-data-in-a-new-table">Encrypt data in a new table<a class="headerlink" href="#encrypt-data-in-a-new-table" title="Permanent link">&para;</a></h2>
 <ol>
 <li>
 <p>Create a table in the database for which you have <a href="setup.html">enabled <code>pg_tde</code></a> using the <code>tde_heap</code> access method as follows:</p>
@@ -1044,19 +1103,15 @@ SELECT pg_tde_rotate_principal_key(&#39;new-principal-key&#39;, NULL); -- specif
 SELECT pg_tde_rotate_principal_key(&#39;new-principal-key&#39;, &#39;new-provider&#39;); -- changeprovider
 </code></pre></div>
 </li>
-<li>
+</ol>
+<h2 id="encrypt-existing-table">Encrypt existing table<a class="headerlink" href="#encrypt-existing-table" title="Permanent link">&para;</a></h2>
 <p>You can encrypt an existing table. It requires rewriting the table, so for large tables, it might take a considerable amount of time.</p>
+<p>Run the following command:</p>
 <div class="highlight"><pre><span></span><code>ALTER TABLE table_name SET access method  tde_heap;
 </code></pre></div>
-</li>
-</ol>
-<div class="admonition hint">
-<p class="admonition-title">Hint</p>
-<p>Running a plain <code>SELECT, count(*)</code>, or <code>VACUUM</code> commands on the entire table will check every tuple for visibility and set its hint bits. Therefore, after executing the ALTER command, run a simple &ldquo;count(*)&rdquo; on your tables:</p>
-<div class="highlight"><pre><span></span><code>                                                                                                                                                                                        ```
+<p>Note that the <code>ALTER TABLE SET</code> command drops hint bits and this may affect the performance. Running a plain <code>SELECT, count(*)</code>, or <code>VACUUM</code> commands on the entire table will check every tuple for visibility and set its hint bits. Therefore, after executing the ALTER command, run a simple &ldquo;count(*)&rdquo; on your tables:</p>
+<div class="highlight"><pre><span></span><code>SELECT COUNT(*) FROM table_name;
 </code></pre></div>
-</div>
-<p>SELECT COUNT(*) FROM mytable;</p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>If you no longer wish to use <code>pg_tde</code> or wish to switch to using the <code>tde_heap_basic</code> access method, see how you can <a href="decrypt.html">decrypt your data</a>.</p>
@@ -1094,7 +1149,7 @@ SELECT pg_tde_rotate_principal_key(&#39;new-principal-key&#39;, &#39;new-provide
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">January 20, 2025</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">February 4, 2025</span>
   </span>
 
     
@@ -1207,7 +1262,7 @@ SELECT pg_tde_rotate_principal_key(&#39;new-principal-key&#39;, &#39;new-provide
     
 <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 
-      <script src="assets/javascripts/bundle.60a45f97.min.js"></script>
+      <script src="assets/javascripts/bundle.f13b1293.min.js"></script>
       
         <script src="js/version-select.js"></script>
       

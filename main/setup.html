@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="_images/postgresql-fav.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.50">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.a40c8224.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.d7758b05.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
@@ -408,6 +408,7 @@
   
   <span class="md-ellipsis">
     Home
+    
   </span>
   
 
@@ -428,6 +429,7 @@
   
   <span class="md-ellipsis">
     Features
+    
   </span>
   
 
@@ -460,6 +462,7 @@
   
   <span class="md-ellipsis">
     Get started
+    
   </span>
   
 
@@ -485,6 +488,7 @@
   
   <span class="md-ellipsis">
     Install
+    
   </span>
   
 
@@ -506,6 +510,7 @@
   
   <span class="md-ellipsis">
     Via apt
+    
   </span>
   
 
@@ -527,6 +532,7 @@
   
   <span class="md-ellipsis">
     Via yum
+    
   </span>
   
 
@@ -557,6 +563,7 @@
   
   <span class="md-ellipsis">
     Set up
+    
   </span>
   
 
@@ -568,6 +575,7 @@
   
   <span class="md-ellipsis">
     Set up
+    
   </span>
   
 
@@ -607,9 +615,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#wal-encryption-configuration" class="md-nav__link">
+  <a href="#wal-encryption-configuration-tech-preview" class="md-nav__link">
     <span class="md-ellipsis">
-      WAL encryption configuration
+      WAL encryption configuration (tech preview)
     </span>
   </a>
   
@@ -654,6 +662,7 @@
   
   <span class="md-ellipsis">
     Test TDE
+    
   </span>
   
 
@@ -682,6 +691,7 @@
   
   <span class="md-ellipsis">
     Functions
+    
   </span>
   
 
@@ -712,6 +722,7 @@
   
   <span class="md-ellipsis">
     Concepts
+    
   </span>
   
 
@@ -737,6 +748,7 @@
   
   <span class="md-ellipsis">
     What is TDE
+    
   </span>
   
 
@@ -758,6 +770,7 @@
   
   <span class="md-ellipsis">
     Table access method
+    
   </span>
   
 
@@ -796,6 +809,7 @@
   
   <span class="md-ellipsis">
     How to
+    
   </span>
   
 
@@ -821,6 +835,7 @@
   
   <span class="md-ellipsis">
     Use reference to external parameters
+    
   </span>
   
 
@@ -842,6 +857,7 @@
   
   <span class="md-ellipsis">
     Decrypt an encrypted table
+    
   </span>
   
 
@@ -870,6 +886,7 @@
   
   <span class="md-ellipsis">
     FAQ
+    
   </span>
   
 
@@ -900,6 +917,7 @@
   
   <span class="md-ellipsis">
     Release notes
+    
   </span>
   
 
@@ -925,6 +943,7 @@
   
   <span class="md-ellipsis">
     pg_tde release notes
+    
   </span>
   
 
@@ -953,6 +972,7 @@
   
   <span class="md-ellipsis">
     Uninstall pg_tde
+    
   </span>
   
 
@@ -973,6 +993,7 @@
   
   <span class="md-ellipsis">
     Contributing guide
+    
   </span>
   
 
@@ -1026,9 +1047,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#wal-encryption-configuration" class="md-nav__link">
+  <a href="#wal-encryption-configuration-tech-preview" class="md-nav__link">
     <span class="md-ellipsis">
-      WAL encryption configuration
+      WAL encryption configuration (tech preview)
     </span>
   </a>
   
@@ -1065,6 +1086,7 @@
               <article class="md-content__inner md-typeset">
                 
                   
+
 
   
     <a href="https://github.com/percona/pg_tde/edit/main/documentation/docs/setup.md" title="Edit this page" class="md-content__button md-icon">
@@ -1138,7 +1160,6 @@
 <li><code>client key</code> is the path to the client key.</li>
 </ul>
 <p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Warning:</i> This example is for testing purposes only:</p>
-<p>The Vault server setup is out of scope of this document.</p>
 <div class="highlight"><pre><span></span><code>SELECT pg_tde_add_key_provider_kmip(&#39;kmip&#39;,&#39;127.0.0.1&#39;, 5696, &#39;/tmp/server_certificate.pem&#39;, &#39;/tmp/client_key_jane_doe.pem&#39;);
 </code></pre></div>
 </div>
@@ -1154,7 +1175,7 @@
 <li>[optional] <code>ca_path</code> is the path of the CA file used for SSL verification</li>
 </ul>
 <p><i warning><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Warning:</i> This example is for testing purposes only:</p>
-<div class="highlight"><pre><span></span><code>SELECT pg_tde_add_key_provider_file_vault_v2(&#39;my-vault&#39;,&#39;https://vault.example.com&#39;,&#39;secret/data&#39;,&#39;hvs.zPuyktykA...example...ewUEnIRVaKoBzs2&#39;, NULL);
+<div class="highlight"><pre><span></span><code>SELECT pg_tde_add_key_provider_file_vault_v2(&#39;my-vault&#39;,&#39;http://vault.vault.svc.cluster.local:8200,&#39;secret/data&#39;,&#39;hvs.zPuyktykA...example...ewUEnIRVaKoBzs2&#39;, NULL);
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -1179,7 +1200,7 @@
 </li>
 </ol>
 <p><i info><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h-2V7h2m0 10h-2v-6h2m-1-9A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Info:</i> The key provider configuration is stored in the database catalog in an unencrypted table. See <a href="external-parameters.html">how to use external reference to parameters</a> to add an extra security layer to your setup.</p>
-<h2 id="wal-encryption-configuration">WAL encryption configuration<a class="headerlink" href="#wal-encryption-configuration" title="Permanent link">&para;</a></h2>
+<h2 id="wal-encryption-configuration-tech-preview">WAL encryption configuration (tech preview)<a class="headerlink" href="#wal-encryption-configuration-tech-preview" title="Permanent link">&para;</a></h2>
 <p>After you <a href="#enable-extension">enabled <code>pg_tde</code></a> and started the Percona Server for PostgreSQL, a principal key and a keyring for WAL are created. Now you need to instruct <code>pg_tde</code> to encrypt WAL files by configuring WAL encryption. </p>
 <p>Here&rsquo;s how to do it:</p>
 <ol>
@@ -1269,7 +1290,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 26, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">February 4, 2025</span>
   </span>
 
     
@@ -1382,7 +1403,7 @@
     
 <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 
-      <script src="assets/javascripts/bundle.60a45f97.min.js"></script>
+      <script src="assets/javascripts/bundle.f13b1293.min.js"></script>
       
         <script src="js/version-select.js"></script>
       
