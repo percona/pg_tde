@@ -6,17 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A table access method is the way how PostgreSQL stores the data in a table. The default table access method is heap. PostgreSQL organizes data in a heap structure, meaning there is no particular order to the rows in the table. Each row is stored independently and identified by its unique row identifier (TID).">
+        <meta name="description" content="Our documentation guides are packed with information, but they can’t cover everything you need to know about pg_tde. They also won’t cover every scenario you might come across. Don’t be afraid to try things out and ask questions when you get stuck.">
       
       
         <meta name="author" content="Percona LLC">
       
       
       
-        <link rel="prev" href="tde.html">
-      
-      
-        <link rel="next" href="external-parameters.html">
       
       
       <link rel="icon" href="_images/postgresql-fav.svg">
@@ -24,7 +20,7 @@
     
     
       
-        <title>Table access method - pg_tde documentation</title>
+        <title>Get help from Percona - pg_tde documentation</title>
       
     
     
@@ -87,7 +83,7 @@
                  
                  
                  <meta property="og:type" content="website" />
-                 <meta property="og:title" content="pg_tde documentation - Table access method" />
+                 <meta property="og:title" content="pg_tde documentation - Get help from Percona" />
                  <meta property="og:image" content="https://percona.github.io/pg_tde/main/documentation/_images/pg_tde.png">
                  <meta property="og:url" content="https://percona.github.io/pg_tde/main/">
      
@@ -119,7 +115,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#table-access-method" class="md-skip">
+        <a href="#get-help-from-percona" class="md-skip">
           Skip to content
         </a>
       
@@ -228,7 +224,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Table access method
+              Get help from Percona
             
           </span>
         </div>
@@ -612,19 +608,17 @@
       
   
   
-    
   
   
-  
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -639,7 +633,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Concepts
@@ -672,31 +666,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Table access method
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="table-access-method.html" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="table-access-method.html" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -706,68 +679,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#how-the-heap-access-method-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      How the heap access method works
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#custom-access-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      Custom access method
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Custom access method">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#how-tde_heap-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      How tde_heap works
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changing-the-default-table-access-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      Changing the default table access method
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1025,42 +936,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-the-heap-access-method-works" class="md-nav__link">
+  <a href="#perconas-community-forum" class="md-nav__link">
     <span class="md-ellipsis">
-      How the heap access method works
+      Percona&rsquo;s Community Forum
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#custom-access-method" class="md-nav__link">
+  <a href="#percona-experts" class="md-nav__link">
     <span class="md-ellipsis">
-      Custom access method
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Custom access method">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#how-tde_heap-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      How tde_heap works
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changing-the-default-table-access-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      Changing the default table access method
+      Percona experts
     </span>
   </a>
   
@@ -1097,7 +984,7 @@
 
 
   
-    <a href="https://github.com/percona/pg_tde/edit/main/documentation/docs/table-access-method.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/percona/pg_tde/edit/main/documentation/docs/get-help.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1106,78 +993,48 @@
     
       
     
-    <a href="https://github.com/percona/pg_tde/raw/main/documentation/docs/table-access-method.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/percona/pg_tde/raw/main/documentation/docs/get-help.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="table-access-method">Table access method<a class="headerlink" href="#table-access-method" title="Permanent link">&para;</a></h1>
-<p>A table access method is the way how PostgreSQL stores the data in a table. The default table access method is <code>heap</code>. PostgreSQL organizes data in a heap structure, meaning there is no particular order to the rows in the table. Each row is stored independently and identified by its unique row identifier (TID).</p>
-<h2 id="how-the-heap-access-method-works">How the <code>heap</code> access method works<a class="headerlink" href="#how-the-heap-access-method-works" title="Permanent link">&para;</a></h2>
-<p><strong>Insertion</strong>: When a new row is inserted, PostgreSQL finds a free space in the tablespace and stores the row there.</p>
-<p><strong>Deletion</strong>: When a row is deleted, PostgreSQL marks the space occupied by the row as free, but the data remains until it is overwritten by a new insertion.</p>
-<p><strong>Updates</strong>: PostgreSQL handles updates by deleting the old row and inserting a new row with the updated values.</p>
-<h2 id="custom-access-method">Custom access method<a class="headerlink" href="#custom-access-method" title="Permanent link">&para;</a></h2>
-<p>Custom access methods allow you to implement and define your own way of organizing data in PostgreSQL. This is useful if the default table access method doesn&rsquo;t meet your needs.</p>
-<p>Custom access methods are typically available with PostgreSQL extensions. When you install an extension and enable it in PostgreSQL, a custom access method is created.</p>
-<p>An example of such an approach is the <code>tde_heap</code> access method. It is automatically created <strong>only</strong> for the databases where you <a href="setup.html">enabled the <code>pg_tde</code> extension</a> and configured the key provider, enabling you to encrypt the data.</p>
-<p>To use a custom access method, specify the <code>USING</code> clause for the <code>CREATE TABLE</code> command:</p>
-<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">table_name</span><span class="w"> </span><span class="p">(</span>
-<span class="w">    </span><span class="n">column1</span><span class="w"> </span><span class="n">data_type</span><span class="p">,</span>
-<span class="w">    </span><span class="n">column2</span><span class="w"> </span><span class="n">data_type</span><span class="p">,</span>
-<span class="w">    </span><span class="p">...</span>
-<span class="p">)</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">tde_heap</span><span class="p">;</span>
-</code></pre></div>
-<h3 id="how-tde_heap-works">How <code>tde_heap</code> works<a class="headerlink" href="#how-tde_heap-works" title="Permanent link">&para;</a></h3>
-<p>The <code>tde_heap</code> access method works on top of the default <code>heap</code> access method and is a marker to point which tables require encryption. It uses the custom storage manager TDE SMGR, which becomes active only after you installed the <code>pg_tde</code> extension. </p>
-<p>Every data modification operation is first sent to the Buffer Manager, which updates the buffer cache. Then, it is passed to the storage manager, which then writes it to disk. When a table requires encryption, the data is sent to the TDE storage manager, where it is encrypted before written to disk. </p>
-<p>Similarly, when a client queries the database, the PostgreSQL core sends the request to the Buffer Manager which checks if the requested data is already in the buffer cache. If it’s not there, the Buffer Manager requests the data from the storage manager. The TDE storage manager  reads the encrypted data from disk, decrypts it and loads it to the buffer cache. The Buffer Manager sends the requested data to the PostgreSQL core and then to the client. </p>
-<p>Thus, the encryption is done at the storage manager level. </p>
-<h2 id="changing-the-default-table-access-method">Changing the default table access method<a class="headerlink" href="#changing-the-default-table-access-method" title="Permanent link">&para;</a></h2>
-<p>You can change the default table access method so that every table in the entire database cluster is created using the custom access method. For example, you can enable data encryption by default by defining the <code>tde_heap</code> as the default table access method. </p>
-<p>However, consider the following before making this change:</p>
-<ul>
-<li>This is a global setting and applies across the entire database cluster and not just a single database. 
-We recommend setting it with caution because all tables and materialized views created without an explicit access method in their <code>CREATE</code> statement will default to the specified table access method. </li>
-<li>You must create the <code>pg_tde</code> extension and configure the key provider for all databases before you modify the configuration. Otherwise PostgreSQL won&rsquo;t find the specified access method and will throw an error.</li>
-</ul>
-<p>Here&rsquo;s how you can set the new default table access method:</p>
-<ol>
-<li>
-<p>Add the access method to the <code>default_table_access_method</code> parameter.        </p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">via the SQL statement</label><label for="__tabbed_1_2">via the configuration file</label><label for="__tabbed_1_3">via the SET command</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Use the <code>ALTER SYSTEM SET</code> command. This requires superuser or ALTER SYSTEM privileges.</p>
-<p>This example shows how to set the <code>tde_heap</code> access method. Replace it with the <code>tde_heap_basic</code> if needed. </p>
-<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">SYSTEM</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">default_table_access_method</span><span class="o">=</span><span class="n">tde_heap</span><span class="p">;</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Edit the <code>postgresql.conf</code> configuration file and add the value for the <code>default_table_access_method</code> parameter.</p>
-<p>This example shows how to set the <code>tde_heap</code> access method. Replace it with the <code>tde_heap_basic</code> if needed.</p>
-<div class="highlight"><pre><span></span><code><span class="na">default_table_access_method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&#39;tde_heap&#39;</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>You can use the SET command to change the default table access method temporarily, for the current session. </p>
-<p>Unlike modifying the <code>postgresql.conf</code> file or using the ALTER SYSTEM SET command, the changes you make via the SET command don&rsquo;t persist after the session ends.</p>
-<p>You also don&rsquo;t need to have the superuser privileges to run the SET command.</p>
-<p>You can run the SET command anytime during the session. This example shows how to set the <code>tde_heap</code> access method. Replace it with the <code>tde_heap_basic</code> if needed.</p>
-<div class="highlight"><pre><span></span><code><span class="k">SET</span><span class="w"> </span><span class="n">default_table_access_method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tde_heap</span><span class="p">;</span>
-</code></pre></div>
-</div>
-</div>
-</div>
-</li>
-<li>
-<p>Reload the configuration to apply the changes:</p>
-<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pg_reload_conf</span><span class="p">();</span>
-</code></pre></div>
-</li>
-</ol>
+<h1 id="get-help-from-percona">Get help from Percona<a class="headerlink" href="#get-help-from-percona" title="Permanent link">&para;</a></h1>
+<p>Our documentation guides are packed with information, but they can&rsquo;t cover everything you need to know about <code>pg_tde</code>. They also won&rsquo;t cover every scenario you might come across. Don&rsquo;t be afraid to try things out and ask questions when you get stuck.</p>
+<h2 id="perconas-community-forum">Percona&rsquo;s Community Forum<a class="headerlink" href="#perconas-community-forum" title="Permanent link">&para;</a></h2>
+<p>Be a part of a space where you can tap into a wealth of knowledge from other database enthusiasts and experts who work with Percona&rsquo;s software every day. While our service is entirely free, keep in mind that response times can vary depending on the complexity of the question. You are engaging with people who genuinely love solving database challenges.</p>
+<p>We recommend visiting our <a href="https://forums.percona.com/t/welcome-to-perconas-community-forum/7" target="_blank">Community Forum</a>. It&rsquo;s an excellent place for discussions, technical insights, and support around Percona database software. If you’re new and feeling a bit unsure, our <a href="https://forums.percona.com/faq" target="_blank">FAQ</a> and <a href="https://forums.percona.com/t/faq-guide-for-new-users/8562" target="_blank">Guide for New Users</a> ease you in.</p>
+<p>If you have thoughts, feedback, or ideas, the community team would like to hear from you at <a href="https://forums.percona.com/t/any-ideas-on-how-to-make-the-forum-better/11522" target="blank">Any ideas on how to make the forum better?</a>. We’re always excited to connect and improve everyone&rsquo;s experience.</p>
+<h2 id="percona-experts">Percona experts<a class="headerlink" href="#percona-experts" title="Permanent link">&para;</a></h2>
+<p><a href="https://www.percona.com/services/consulting" target="_blank">Percona experts</a> bring years of experience in tackling tough database performance issues and design challenges. We understand your challenges when managing complex database environments. That&rsquo;s why we offer various services to help you simplify your operations and achieve your goals.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>24/7 Expert Support</td>
+<td>Our dedicated team of database experts is available 24/7 to assist you with any database issues. We provide flexible support plans tailored to your specific needs.</td>
+</tr>
+<tr>
+<td>Hands-On Database Management</td>
+<td>Our managed services team can take over the day-to-day management of your database infrastructure, freeing up your time to focus on other priorities.</td>
+</tr>
+<tr>
+<td>Expert Consulting</td>
+<td>Our experienced consultants provide guidance on database topics like architecture design, migration planning, performance optimization, and security best practices.</td>
+</tr>
+<tr>
+<td>Comprehensive Training</td>
+<td>Our training programs help your team develop skills to manage databases effectively, offering virtual and in-person courses.</td>
+</tr>
+</tbody>
+</table>
+<p>We&rsquo;re here to help you every step of the way. Whether you need a quick fix or a long-term partnership, we&rsquo;re ready to provide your expertise and support.</p>
 
 
 
@@ -1200,7 +1057,7 @@ We recommend setting it with caution because all tables and materialized views c
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 26, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">February 5, 2025</span>
   </span>
 
     
@@ -1210,7 +1067,7 @@ We recommend setting it with caution because all tables and materialized views c
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">November 13, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">February 5, 2025</span>
   </span>
 
     
