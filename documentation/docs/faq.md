@@ -62,8 +62,8 @@ No. TDE is an additional layer to ensure data security. It protects data at rest
 
 `pg_tde` uses two keys to encrypt data:
 
-* Internal encryption keys to encrypt the data. These keys are stored internally, in a single `$PGDATA/pg_tde` directory.
-* Principal keys to encrypt table encryption keys. These keys are stored externally, in the Key Management System (KMS). 
+* Internal encryption keys to encrypt the data. These keys are stored internally in an encrypted format, in a single `$PGDATA/pg_tde` directory.
+* Principal keys to encrypt internal encryption keys. These keys are stored externally, in the Key Management System (KMS). 
 
 You can use the following KMSs:
 
@@ -81,7 +81,7 @@ The initial decision on what file to encrypt is based on the table access method
 
 The principal key is used to encrypt the internal keys. The principal key is stored in the key management store. When you query the table, the principal key is retrieved from the key store to decrypt the table. Then the internal key for that table is used to decrypt the data.
 
-WAL encryption is done globally for the entire database cluster using the global principal key. When you turn on WAL encryption, `pg_tde` encrypts entire WAL pages except for the header. The header contains a marker if a page is encrypted or not. 
+WAL encryption is done globally for the entire database cluster using the global internal and principal keys. When you turn on WAL encryption, `pg_tde` encrypts entire WAL pages except for the header. The header contains a marker if a page is encrypted or not. 
 
 You can turn WAL encryption on and off so WAL can contain both encrypted and unencrypted pages. The WAL encryption GUC variable influences only writes.
 
@@ -123,7 +123,7 @@ Since the `ALTER TABLE SET` command drops hint bits and this may affect the perf
 You must restart the database in the following cases to apply the changes:
 
 * after you enabled the `pg_tde` extension
-* to tun on / off the WAL encryption
+* to turn on / off the WAL encryption
 
 After that, no database restart is required. When you create or alter the table using the `tde_heap` access method, the files are marked as those that require encryption. The encryption happens at the storage manager level, before a transaction is written to disk. Read more about [how tde_heap works](table-access-method.md#how-tde_heap-works).
 
