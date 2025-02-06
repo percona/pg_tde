@@ -25,7 +25,7 @@ Using TDE helps you avoid the following risks:
 
 If to translate sensitive data to files stored in your database, these are user data in tables, temporary files, WAL files. TDE has you covered encrypting all these files.
 
-`pg_tde` does not encrypt system catalogs yet. This is planned for future releases. 
+`pg_tde` does not encrypt system catalogs yet. This means that statistics data and database metadata are not encrypted. The encryption of system catalogs is planned for future releases. 
 
 
 ## I use disk-level encryption. Why should I care about TDE?
@@ -41,6 +41,8 @@ Another point to consider is PCI DSS compliance for Personal Account Numbers (PA
    * Separate the logical data access from the operating system authentication.
 
    * Ensure the decryption key is not linked to user accounts.
+
+   Note that PCI DSS 3.4.1 is retiring on March 31, 2025. Therefore, consider switching to PCI DSS 4.0.
 
 * **PCI DSS 4.0** standards consider using only disk and partition-level encryption not enough to ensure PAN protection. It requires an additional layer of security that `pg_tde` can provide. 
 
@@ -81,7 +83,11 @@ The initial decision on what file to encrypt is based on the table access method
 
 The principal key is used to encrypt the internal keys. The principal key is stored in the key management store. When you query the table, the principal key is retrieved from the key store to decrypt the table. Then the internal key for that table is used to decrypt the data.
 
-WAL encryption is done globally for the entire database cluster using the global internal and principal keys. When you turn on WAL encryption, `pg_tde` encrypts entire WAL pages except for the header. The header contains a marker if a page is encrypted or not. 
+WAL encryption is done globally for the entire database cluster. All modifications to any database within a PostgreSQL cluster are written to the same WAL to maintain data consistency and integrity and ensure that PostgreSQL cluster can be restored to a consistent state. Therefore, WAL is encrypted globally. 
+
+When you turn on WAL encryption, `pg_tde` encrypts entire WAL pages except for the header. The header contains a marker if a page is encrypted or not. 
+
+The same 2-tier approach is used with WAL as with the table data: WAL pages are first encrypted with the internal key. Then the internal key is encrypted with the global principal key.
 
 You can turn WAL encryption on and off so WAL can contain both encrypted and unencrypted pages. The WAL encryption GUC variable influences only writes.
 
