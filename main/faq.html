@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="_images/postgresql-fav.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.3">
     
     
       
@@ -846,6 +846,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#when-and-how-should-i-use-tde" class="md-nav__link">
+    <span class="md-ellipsis">
+      When and how should I use TDE?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#i-use-disk-level-encryption-why-should-i-care-about-tde" class="md-nav__link">
     <span class="md-ellipsis">
       I use disk-level encryption. Why should I care about TDE?
@@ -864,9 +873,90 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#how-does-pg_tde-make-my-data-safe" class="md-nav__link">
+    <span class="md-ellipsis">
+      How does pg_tde make my data safe?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#should-i-encrypt-all-my-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Should I encrypt all my data?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-cipher-mechanisms-are-used-by-pg_tde" class="md-nav__link">
+    <span class="md-ellipsis">
+      What cipher mechanisms are used by pg_tde?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#is-post-quantum-encryption-supported" class="md-nav__link">
+    <span class="md-ellipsis">
+      Is post-quantum encryption supported?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#can-i-encrypt-an-existing-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Can I encrypt an existing table?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#do-i-have-to-restart-the-database-to-encrypt-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do I have to restart the database to encrypt the data?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-happens-to-my-data-if-i-lose-a-principal-key" class="md-nav__link">
     <span class="md-ellipsis">
       What happens to my data if I lose a principal key?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#can-i-use-pg_tde-in-a-multi-tenant-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Can I use pg_tde in a multi-tenant setup?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#are-my-backups-safe-can-i-restore-from-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      Are my backups safe? Can I restore from them?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#im-using-openssl-in-fips-mode-and-need-to-use-pg_tde-does-pg_tde-comply-with-fips-requirements-can-i-use-my-own-fips-mode-openssl-library-with-pg_tde" class="md-nav__link">
+    <span class="md-ellipsis">
+      I&rsquo;m using OpenSSL in FIPS mode and need to use pg_tde. Does pg_tde comply with FIPS requirements? Can I use my own FIPS-mode OpenSSL library with pg_tde?
     </span>
   </a>
   
@@ -1026,6 +1116,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#when-and-how-should-i-use-tde" class="md-nav__link">
+    <span class="md-ellipsis">
+      When and how should I use TDE?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#i-use-disk-level-encryption-why-should-i-care-about-tde" class="md-nav__link">
     <span class="md-ellipsis">
       I use disk-level encryption. Why should I care about TDE?
@@ -1044,9 +1143,90 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#how-does-pg_tde-make-my-data-safe" class="md-nav__link">
+    <span class="md-ellipsis">
+      How does pg_tde make my data safe?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#should-i-encrypt-all-my-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Should I encrypt all my data?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-cipher-mechanisms-are-used-by-pg_tde" class="md-nav__link">
+    <span class="md-ellipsis">
+      What cipher mechanisms are used by pg_tde?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#is-post-quantum-encryption-supported" class="md-nav__link">
+    <span class="md-ellipsis">
+      Is post-quantum encryption supported?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#can-i-encrypt-an-existing-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Can I encrypt an existing table?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#do-i-have-to-restart-the-database-to-encrypt-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do I have to restart the database to encrypt the data?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-happens-to-my-data-if-i-lose-a-principal-key" class="md-nav__link">
     <span class="md-ellipsis">
       What happens to my data if I lose a principal key?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#can-i-use-pg_tde-in-a-multi-tenant-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Can I use pg_tde in a multi-tenant setup?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#are-my-backups-safe-can-i-restore-from-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      Are my backups safe? Can I restore from them?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#im-using-openssl-in-fips-mode-and-need-to-use-pg_tde-does-pg_tde-comply-with-fips-requirements-can-i-use-my-own-fips-mode-openssl-library-with-pg_tde" class="md-nav__link">
+    <span class="md-ellipsis">
+      I&rsquo;m using OpenSSL in FIPS mode and need to use pg_tde. Does pg_tde comply with FIPS requirements? Can I use my own FIPS-mode OpenSSL library with pg_tde?
     </span>
   </a>
   
@@ -1102,15 +1282,49 @@
 <h1 id="faq">FAQ<a class="headerlink" href="#faq" title="Permanent link">&para;</a></h1>
 <h2 id="why-do-i-need-tde">Why do I need TDE?<a class="headerlink" href="#why-do-i-need-tde" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Compliance to security and legal regulations like GDPR, PCI DSS and others</li>
-<li>Encryption of backups</li>
-<li>Granular encryption of specific data sets and reducing the performance overhead that encryption brings</li>
+<li>Compliance to security and legal regulations like General Data Protection Regulation (GDPR), Payment Card Industry Data Security Standard (PCI DSS), California Consumer Privacy Act (CCPA), Data Protection Act 2018 (DPA 2018) and others</li>
+<li>Encryption of backups. Even when an authorized person gets physical access to a backup, encryption ensures that the data remains unreadable and secure.</li>
+<li>Granular encryption of specific data sets and reducing the performance overhead that encryption brings. </li>
 <li>Additional layer of security to existing security measures</li>
 </ul>
+<h2 id="when-and-how-should-i-use-tde">When and how should I use TDE?<a class="headerlink" href="#when-and-how-should-i-use-tde" title="Permanent link">&para;</a></h2>
+<p>If you are dealing with Personally Identifiable Information (PII), data encryption is crucial. Especially if you are involved in areas with strict regulations like:</p>
+<ul>
+<li>financial services where TDE helps to comply with PCI DSS </li>
+<li>healthcare and insurance - compliance with HIPAA, HITECH, CCPA</li>
+<li>telecommunications, government and education to ensure data confidentiality.</li>
+</ul>
+<p>Using TDE helps you avoid the following risks:</p>
+<ul>
+<li>Data breaches</li>
+<li>Identity theft that may lead to financial fraud and other crimes</li>
+<li>Reputation damage leading to loss of customer trust and business</li>
+<li>Legal consequences and financial losses for non-compliance with data protection regulations</li>
+<li>Internal threats by misusing unencrypted sensitive data </li>
+</ul>
+<p>If to translate sensitive data to files stored in your database, these are user data in tables, temporary files, WAL files. TDE has you covered encrypting all these files.</p>
+<p><code>pg_tde</code> does not encrypt system catalogs yet. This means that statistics data and database metadata are not encrypted. The encryption of system catalogs is planned for future releases. </p>
 <h2 id="i-use-disk-level-encryption-why-should-i-care-about-tde">I use disk-level encryption. Why should I care about TDE?<a class="headerlink" href="#i-use-disk-level-encryption-why-should-i-care-about-tde" title="Permanent link">&para;</a></h2>
-<p>Encrypting a hard drive encrypts all data including system and application files that are there. However, disk encryption doesn’t protect your data after the boot-up of your system. During runtime, the files are decrypted with disk-encryption.</p>
-<p>TDE focuses specifically on data files and offers a more granular control over encrypted data. It also ensures that files are encrypted on disk during runtime and when moved to another system or storage.</p>
-<p>Consider using TDE and storage-level encryption together to add another layer of data security</p>
+<p>Encrypting a hard drive encrypts all data, including system, application, and temporary files.</p>
+<p>Full disk encryption protects your data from people who have physical access to your device and even if it is lost or stolen. However, it doesn&rsquo;t protect the data after system boot-up: the data is automatically decrypted when the system runs or when an authorized user requests it. </p>
+<p>Another point to consider is PCI DSS compliance for Personal Account Numbers (PAN) encryption.</p>
+<ul>
+<li>
+<p><strong>PCI DSS 3.4.1</strong> standards might consider disk encryption sufficient for compliance if you meet these requirements:</p>
+</li>
+<li>
+<p>Separate the logical data access from the operating system authentication.</p>
+</li>
+<li>
+<p>Ensure the decryption key is not linked to user accounts.</p>
+</li>
+</ul>
+<p>Note that PCI DSS 3.4.1 is retiring on March 31, 2025. Therefore, consider switching to PCI DSS 4.0.</p>
+<ul>
+<li><strong>PCI DSS 4.0</strong> standards consider using only disk and partition-level encryption not enough to ensure PAN protection. It requires an additional layer of security that <code>pg_tde</code> can provide. </li>
+</ul>
+<p><code>pg_tde</code> focuses specifically on data files and offers more granular control over encrypted data. The data remains encrypted on disk during runtime and when you move it to another directory, another system or storage. An example of such data is backups. They remain encrypted when moved to the backup storage.</p>
+<p>Thus, to protect your sensitive data, consider using TDE to encrypt it at the table level. Then use disk-level encryption to encrypt a specific volume where this data is stored, or the entire disk.</p>
 <h2 id="is-tde-enough-to-ensure-data-security">Is TDE enough to ensure data security?<a class="headerlink" href="#is-tde-enough-to-ensure-data-security" title="Permanent link">&para;</a></h2>
 <p>No. TDE is an additional layer to ensure data security. It protects data at rest. Consider introducing also these measures:</p>
 <ul>
@@ -1120,8 +1334,63 @@
 <li>Regular monitoring and auditing</li>
 <li>Additional data protection for sensitive fields (e.g., application-layer encryption)</li>
 </ul>
+<h2 id="how-does-pg_tde-make-my-data-safe">How does <code>pg_tde</code> make my data safe?<a class="headerlink" href="#how-does-pg_tde-make-my-data-safe" title="Permanent link">&para;</a></h2>
+<p><code>pg_tde</code> uses two keys to encrypt data:</p>
+<ul>
+<li>Internal encryption keys to encrypt the data. These keys are stored internally in an encrypted format, in a single <code>$PGDATA/pg_tde</code> directory.</li>
+<li>Principal keys to encrypt internal encryption keys. These keys are stored externally, in the Key Management System (KMS). </li>
+</ul>
+<p>You can use the following KMSs:</p>
+<ul>
+<li><a href="https://developer.hashicorp.com/vault/docs/what-is-vault">HashiCorp Vault</a>. <code>pg_tde</code> supports the KV secrets engine v2 of Vault. </li>
+<li><a href="https://openbao.org/">OpenBao</a> implementation of Vault</li>
+<li>KMIP-compatible server. KMIP is a standardized protocol for handling cryptographic workloads and secrets management</li>
+</ul>
+<p>HashiCorp Vault can also act as the KMIP server, managing cryptographic keys for clients that use the KMIP protocol. </p>
+<p>Here’s how encryption of data files works:</p>
+<p>First, data files are encrypted with internal keys. Each file that has a different OID, has an internal key. For example, a table with 4 indexes will have 5 internal keys - one for the table and one for each index.  </p>
+<p>The initial decision on what file to encrypt is based on the table access method in PostgreSQL. When you run a <code>CREATE</code> or <code>ALTER TABLE</code> statement with the <code>USING tde_heap</code> clause, the newly created data files are marked as encrypted, and then file operations encrypt/decrypt the data. Later, if an initial file is re-created as a result of a <code>TRUNCATE</code> or <code>VACUUM FULL</code> command, the newly created file inherits the encryption information and is either encrypted or not. </p>
+<p>The principal key is used to encrypt the internal keys. The principal key is stored in the key management store. When you query the table, the principal key is retrieved from the key store to decrypt the table. Then the internal key for that table is used to decrypt the data.</p>
+<p>WAL encryption is done globally for the entire database cluster. All modifications to any database within a PostgreSQL cluster are written to the same WAL to maintain data consistency and integrity and ensure that PostgreSQL cluster can be restored to a consistent state. Therefore, WAL is encrypted globally. </p>
+<p>When you turn on WAL encryption, <code>pg_tde</code> encrypts entire WAL pages except for the header. The header contains a marker if a page is encrypted or not. </p>
+<p>The same 2-tier approach is used with WAL as with the table data: WAL pages are first encrypted with the internal key. Then the internal key is encrypted with the global principal key.</p>
+<p>You can turn WAL encryption on and off so WAL can contain both encrypted and unencrypted pages. The WAL encryption GUC variable influences only writes.</p>
+<p>Whenever the WAL is being read (by the recovery process or tools), the decision on what pages should be decrypted is based solely on the encryption flag of each page.</p>
+<h2 id="should-i-encrypt-all-my-data">Should I encrypt all my data?<a class="headerlink" href="#should-i-encrypt-all-my-data" title="Permanent link">&para;</a></h2>
+<p>It depends on your business requirements and the sensitivity of your data. Encrypting all data is a good practice but it can have a performance impact. </p>
+<p>Consider encrypting only tables that store sensitive data. You can decide what tables to encrypt and with what key. The <a href="setup.html">Setup</a> section in documentation focuses on this approach.</p>
+<p>We advise encrypting the whole database only if all your data is sensitive, like PII, or if there is no other way to comply with data safety requirements. See <a href="global-encryption.md">How to configure global encryption</a>.</p>
+<h2 id="what-cipher-mechanisms-are-used-by-pg_tde">What cipher mechanisms are used by <code>pg_tde</code>?<a class="headerlink" href="#what-cipher-mechanisms-are-used-by-pg_tde" title="Permanent link">&para;</a></h2>
+<p><code>pg_tde</code> currently uses a AES-CBC-128 algorithm. First the internal keys in the datafile are encrypted using the principal key with AES-CBC-128, then the file data itself is again encrypted using AES-CBC-128 with the internal key.</p>
+<p>For WAL encryption, AES-CTR-128 is used.</p>
+<p>The support of other encryption mechanisms such as AES256 is planned for future releases. Reach out to us with your requirements and usage scenarios of other encryption methods are needed.</p>
+<h2 id="is-post-quantum-encryption-supported">Is post-quantum encryption supported?<a class="headerlink" href="#is-post-quantum-encryption-supported" title="Permanent link">&para;</a></h2>
+<p>No, it&rsquo;s not yet supported. In our implementation we reply on OpenSSL libraries that don&rsquo;t yet support post-quantum encryption.</p>
+<h2 id="can-i-encrypt-an-existing-table">Can I encrypt an existing table?<a class="headerlink" href="#can-i-encrypt-an-existing-table" title="Permanent link">&para;</a></h2>
+<p>Yes, you can encrypt an existing table. Run the ALTER TABLE command as follows:</p>
+<div class="highlight"><pre><span></span><code>ALTER TABLE table_name SET ACCESS METHOD tde_heap;
+</code></pre></div>
+<p>Since the <code>ALTER TABLE SET</code> command drops hint bits and this may affect the performance, we recommend to run the <code>SELECT COUNT(*)</code> command. It checks every tuple for visibility and sets its hint bits. Read more in the <a href="test.html">Changing existing table</a> section. </p>
+<h2 id="do-i-have-to-restart-the-database-to-encrypt-the-data">Do I have to restart the database to encrypt the data?<a class="headerlink" href="#do-i-have-to-restart-the-database-to-encrypt-the-data" title="Permanent link">&para;</a></h2>
+<p>You must restart the database in the following cases to apply the changes:</p>
+<ul>
+<li>after you enabled the <code>pg_tde</code> extension</li>
+<li>to turn on / off the WAL encryption</li>
+</ul>
+<p>After that, no database restart is required. When you create or alter the table using the <code>tde_heap</code> access method, the files are marked as those that require encryption. The encryption happens at the storage manager level, before a transaction is written to disk. Read more about <a href="table-access-method.html#how-tde_heap-works">how tde_heap works</a>.</p>
 <h2 id="what-happens-to-my-data-if-i-lose-a-principal-key">What happens to my data if I lose a principal key?<a class="headerlink" href="#what-happens-to-my-data-if-i-lose-a-principal-key" title="Permanent link">&para;</a></h2>
-<p>If you lose encryption keys, especially, the principal key, the data is lost. That&rsquo;s why it&rsquo;s critical to back up your encryption keys securely.</p>
+<p>If you lose encryption keys, especially, the principal key, the data is lost. That&rsquo;s why it&rsquo;s critical to back up your encryption keys securely and use the Key Management service for key management.</p>
+<h2 id="can-i-use-pg_tde-in-a-multi-tenant-setup">Can I use <code>pg_tde</code> in a multi-tenant setup?<a class="headerlink" href="#can-i-use-pg_tde-in-a-multi-tenant-setup" title="Permanent link">&para;</a></h2>
+<p>Multi-tenancy is the type of architecture where multiple users, or tenants, share the same resource. It can be a database, a schema or an entire cluster. </p>
+<p>In <code>pg_tde</code>, multi-tenancy is supported via a separate principal key per database. This means that a database owner can decide what tables to encrypt within a database. The same database can have both encrypted and non-encrypted tables.</p>
+<p>To control user access to the databases, you can use role-based access control (RBAC).</p>
+<p>WAL files are encrypted globally across the entire PostgreSQL cluster using the same encryption key. Users don&rsquo;t interact with WAL files as these are used by the database management system to ensure data integrity and durability.</p>
+<h2 id="are-my-backups-safe-can-i-restore-from-them">Are my backups safe? Can I restore from them?<a class="headerlink" href="#are-my-backups-safe-can-i-restore-from-them" title="Permanent link">&para;</a></h2>
+<p><code>pg_tde</code> encrypts data at rest. This means that data is stored on disk in an encrypted form. During a backup, already encrypted data files are copied from disk onto the storage. This ensures the data safety in backups.</p>
+<p>Since the encryption happens on the database level, it makes no difference for your tools and applications. They work with the data in the same way.</p>
+<p>To restore from an encrypted backup, you must have the same principal encryption key, which was used to encrypt files in your backup.  </p>
+<h2 id="im-using-openssl-in-fips-mode-and-need-to-use-pg_tde-does-pg_tde-comply-with-fips-requirements-can-i-use-my-own-fips-mode-openssl-library-with-pg_tde">I&rsquo;m using OpenSSL in FIPS mode and need to use <code>pg_tde</code>. Does <code>pg_tde</code> comply with FIPS requirements? Can I use my own FIPS-mode OpenSSL library with <code>pg_tde</code>?<a class="headerlink" href="#im-using-openssl-in-fips-mode-and-need-to-use-pg_tde-does-pg_tde-comply-with-fips-requirements-can-i-use-my-own-fips-mode-openssl-library-with-pg_tde" title="Permanent link">&para;</a></h2>
+<p>Yes. <code>pg_tde</code> works with the FIPS-compliant version of OpenSSL, whether it is provided by your operating system or if you use your own OpenSSL libraries. If you use your own libraries, make sure they are FIPS certified.</p>
 
 
 
@@ -1144,7 +1413,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">December 11, 2024</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">February 7, 2025</span>
   </span>
 
     
@@ -1257,7 +1526,7 @@
     
 <script src="https://cmp.osano.com/Azqe5vTyLOSbN3OuT/49ad85b5-0418-4794-ab81-7599dddd534c/osano.js"></script>
 
-      <script src="assets/javascripts/bundle.f13b1293.min.js"></script>
+      <script src="assets/javascripts/bundle.f1b6f286.min.js"></script>
       
         <script src="js/version-select.js"></script>
       
