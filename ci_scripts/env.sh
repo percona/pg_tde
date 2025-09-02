@@ -1,3 +1,3 @@
 #!/bin/bash
 
-export PERCONA_SERVER_VERSION=17.5.3
+export PERCONA_SERVER_VERSION=17.6.1
