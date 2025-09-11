@@ -1,21 +1,16 @@
-*.so
-*.o
 *.frontend
 __pycache__
-.vscode
 
-/autom4te.cache
-/config.cache
-/config.log
-/config.status
-/configure~
-/log
-/results
+# Generated subdirectories
+/log/
+/results/
+/t/results/
+/tmp_check/
+
+# Binaries
 /src/bin/pg_tde_archive_decrypt
 /src/bin/pg_tde_change_key_provider
 /src/bin/pg_tde_restore_encrypt
-/t/results
-/tmp_check
 
 # Tool files
 /typedefs-full.list
