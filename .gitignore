@@ -32,12 +32,10 @@ win32ver.rc
 lib*dll.def
 lib*.pc
 .vscode
+*.frontend
+__pycache__
 
 # Local excludes in root directory
-/GNUmakefile
-/config.cache
-/config.log
-/config.status
 /pgsql.sln
 /pgsql.sln.cache
 /Debug/
@@ -45,11 +43,8 @@ lib*.pc
 /tmp_install/
 /portlock/
 /*.typedefs
-/contrib/*/regression.diffs
-/contrib/*/regression.out
-
-*.frontend
-__pycache__
+/regression.diffs
+/regression.out
 
 # Generated subdirectories
 /log/
