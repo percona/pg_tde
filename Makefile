@@ -27,6 +27,12 @@ version
 TAP_TESTS = 1
 endif
 
+KMIP_OBJS = \
+src/libkmip/libkmip/src/kmip.o \
+src/libkmip/libkmip/src/kmip_bio.o \
+src/libkmip/libkmip/src/kmip_locate.o \
+src/libkmip/libkmip/src/kmip_memset.o
+
 OBJS = src/encryption/enc_tde.o \
 src/encryption/enc_aes.o \
 src/access/pg_tde_tdemap.o \
@@ -47,10 +53,7 @@ src/smgr/pg_tde_smgr.o \
 src/pg_tde_event_capture.o \
 src/pg_tde_guc.o \
 src/pg_tde.o \
-src/libkmip/libkmip/src/kmip.o \
-src/libkmip/libkmip/src/kmip_bio.o \
-src/libkmip/libkmip/src/kmip_locate.o \
-src/libkmip/libkmip/src/kmip_memset.o
+$(KMIP_OBJS)
 
 SCRIPTS_built = src/bin/pg_tde_archive_decrypt \
 src/bin/pg_tde_change_key_provider \
@@ -77,6 +80,8 @@ include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
 override SHLIB_LINK += -lcurl -lcrypto -lssl
+
+$(KMIP_OBJS): CFLAGS += '-w' # This is a 3rd party, disable warnings completely
 
 src/bin/pg_tde_change_key_provider: src/bin/pg_tde_change_key_provider.o $(top_srcdir)/src/fe_utils/simple_list.o $(top_builddir)/src/libtde/libtde.a
 	$(CC) -DFRONTEND $(CFLAGS) $^ $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
