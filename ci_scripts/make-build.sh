@@ -44,4 +44,4 @@ case "$1" in
 esac
 
 ./configure --prefix="$INSTALL_DIR" --enable-debug --enable-tap-tests $ARGS 
-make install-world -j
+make install-world -j -s
