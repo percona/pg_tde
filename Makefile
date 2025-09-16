@@ -59,8 +59,8 @@ SCRIPTS_built = src/bin/pg_tde_archive_decrypt \
 src/bin/pg_tde_change_key_provider \
 src/bin/pg_tde_restore_encrypt
 
-EXTRA_INSTALL += contrib/pg_buffercache contrib/test_decoding
-EXTRA_CLEAN += src/bin/pg_tde_archive_decrypt.o \
+EXTRA_INSTALL = contrib/pg_buffercache contrib/test_decoding
+EXTRA_CLEAN = src/bin/pg_tde_archive_decrypt.o \
 src/bin/pg_tde_change_key_provider.o \
 src/bin/pg_tde_restore_encrypt.o \
 xlogreader.c \
@@ -69,17 +69,17 @@ xlogreader.o
 ifdef USE_PGXS
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
-override PG_CPPFLAGS += -I$(CURDIR)/src/include -I$(CURDIR)/src/libkmip/libkmip/include
+PG_CPPFLAGS = -I$(CURDIR)/src/include -I$(CURDIR)/src/libkmip/libkmip/include
 include $(PGXS)
 else
 subdir = contrib/pg_tde
 top_builddir = ../..
-override PG_CPPFLAGS += -I$(top_srcdir)/$(subdir)/src/include  -I$(top_srcdir)/$(subdir)/src/libkmip/libkmip/include
+PG_CPPFLAGS = -I$(top_srcdir)/$(subdir)/src/include -I$(top_srcdir)/$(subdir)/src/libkmip/libkmip/include
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
-override SHLIB_LINK += -lcurl -lcrypto -lssl
+SHLIB_LINK = -lcurl -lcrypto -lssl
 
 $(KMIP_OBJS): CFLAGS += '-w' # This is a 3rd party, disable warnings completely
 
