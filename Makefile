@@ -86,13 +86,13 @@ PG_LIBS = -lcurl -lcrypto -lssl -lpgfeutils
 $(KMIP_OBJS): CFLAGS += '-w' # This is a 3rd party, disable warnings completely
 
 src/bin/pg_tde_change_key_provider: src/bin/pg_tde_change_key_provider.o $(top_builddir)/src/libtde/libtde.a | submake-libpgfeutils
-	$(CC) -DFRONTEND $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
+	$(CC) $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
 
 src/bin/pg_tde_archive_decrypt: src/bin/pg_tde_archive_decrypt.o xlogreader.o $(top_builddir)/src/libtde/libtdexlog.a $(top_builddir)/src/libtde/libtde.a | submake-libpgfeutils
-	$(CC) -DFRONTEND $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
+	$(CC) $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
 
 src/bin/pg_tde_restore_encrypt: src/bin/pg_tde_restore_encrypt.o xlogreader.o $(top_builddir)/src/libtde/libtdexlog.a $(top_builddir)/src/libtde/libtde.a | submake-libpgfeutils
-	$(CC) -DFRONTEND $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
+	$(CC) $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
 
 xlogreader.c: % : $(top_srcdir)/src/backend/access/transam/%
 	rm -f $@ && $(LN_S) $< .
