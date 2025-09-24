@@ -84,8 +84,7 @@ include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
 SHLIB_LINK = -lcurl -lcrypto -lssl
-LDFLAGS_EX = -L$(top_builddir)/src/fe_utils
-PG_LIBS = -lcurl -lcrypto -lssl -lpgfeutils
+LDFLAGS_EX = -L$(top_builddir)/src/fe_utils -lcurl -lcrypto -lssl -lpgfeutils
 
 $(KMIP_OBJS): CFLAGS += -w # This is a 3rd party, disable warnings completely
 
