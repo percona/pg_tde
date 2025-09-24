@@ -6,65 +6,69 @@ DATA = pg_tde--1.0--2.0.sql pg_tde--1.0.sql
 # Since meson supports skipping test suites this is a make only feature
 ifndef TDE_MODE
 REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_tde/pg_tde.conf
-REGRESS = access_control \
-alter_index \
-cache_alloc \
-change_access_method \
-create_database \
-default_principal_key \
-delete_principal_key \
-insert_update_delete \
-key_provider \
-kmip_test \
-partition_table \
-pg_tde_is_encrypted \
-recreate_storage \
-relocate \
-tablespace \
-toast_decrypt \
-vault_v2_test \
-version
+REGRESS = \
+	access_control \
+	alter_index \
+	cache_alloc \
+	change_access_method \
+	create_database \
+	default_principal_key \
+	delete_principal_key \
+	insert_update_delete \
+	key_provider \
+	kmip_test \
+	partition_table \
+	pg_tde_is_encrypted \
+	recreate_storage \
+	relocate \
+	tablespace \
+	toast_decrypt \
+	vault_v2_test \
+	version
 TAP_TESTS = 1
 endif
 
 KMIP_OBJS = \
-src/libkmip/libkmip/src/kmip.o \
-src/libkmip/libkmip/src/kmip_bio.o \
-src/libkmip/libkmip/src/kmip_locate.o \
-src/libkmip/libkmip/src/kmip_memset.o
+	src/libkmip/libkmip/src/kmip.o \
+	src/libkmip/libkmip/src/kmip_bio.o \
+	src/libkmip/libkmip/src/kmip_locate.o \
+	src/libkmip/libkmip/src/kmip_memset.o
 
-OBJS = src/encryption/enc_tde.o \
-src/encryption/enc_aes.o \
-src/access/pg_tde_tdemap.o \
-src/access/pg_tde_xlog.o \
-src/access/pg_tde_xlog_keys.o \
-src/access/pg_tde_xlog_smgr.o \
-src/keyring/keyring_curl.o \
-src/keyring/keyring_file.o \
-src/keyring/keyring_vault.o \
-src/keyring/keyring_kmip.o \
-src/keyring/keyring_kmip_impl.o \
-src/keyring/keyring_api.o \
-src/catalog/tde_keyring.o \
-src/catalog/tde_keyring_parse_opts.o \
-src/catalog/tde_principal_key.o \
-src/common/pg_tde_utils.o \
-src/smgr/pg_tde_smgr.o \
-src/pg_tde_event_capture.o \
-src/pg_tde_guc.o \
-src/pg_tde.o \
-$(KMIP_OBJS)
+OBJS = \
+	src/encryption/enc_tde.o \
+	src/encryption/enc_aes.o \
+	src/access/pg_tde_tdemap.o \
+	src/access/pg_tde_xlog.o \
+	src/access/pg_tde_xlog_keys.o \
+	src/access/pg_tde_xlog_smgr.o \
+	src/keyring/keyring_curl.o \
+	src/keyring/keyring_file.o \
+	src/keyring/keyring_vault.o \
+	src/keyring/keyring_kmip.o \
+	src/keyring/keyring_kmip_impl.o \
+	src/keyring/keyring_api.o \
+	src/catalog/tde_keyring.o \
+	src/catalog/tde_keyring_parse_opts.o \
+	src/catalog/tde_principal_key.o \
+	src/common/pg_tde_utils.o \
+	src/smgr/pg_tde_smgr.o \
+	src/pg_tde_event_capture.o \
+	src/pg_tde_guc.o \
+	src/pg_tde.o \
+	$(KMIP_OBJS)
 
-SCRIPTS_built = src/bin/pg_tde_archive_decrypt \
-src/bin/pg_tde_change_key_provider \
-src/bin/pg_tde_restore_encrypt
+SCRIPTS_built = \
+	src/bin/pg_tde_archive_decrypt \
+	src/bin/pg_tde_change_key_provider \
+	src/bin/pg_tde_restore_encrypt
 
 EXTRA_INSTALL = contrib/pg_buffercache contrib/test_decoding
-EXTRA_CLEAN = src/bin/pg_tde_archive_decrypt.o \
-src/bin/pg_tde_change_key_provider.o \
-src/bin/pg_tde_restore_encrypt.o \
-xlogreader.c \
-xlogreader.o
+EXTRA_CLEAN = \
+	src/bin/pg_tde_archive_decrypt.o \
+	src/bin/pg_tde_change_key_provider.o \
+	src/bin/pg_tde_restore_encrypt.o \
+	xlogreader.c \
+	xlogreader.o
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
