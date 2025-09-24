@@ -56,6 +56,11 @@ __pycache__
 /src/bin/pg_tde_archive_decrypt
 /src/bin/pg_tde_change_key_provider
 /src/bin/pg_tde_restore_encrypt
+/fetools/*/pg_tde_basebackup
+/fetools/*/pg_tde_checksums
+/fetools/*/pg_tde_resetwal
+/fetools/*/pg_tde_rewind
+/fetools/*/pg_tde_waldump
 
 # Tool files
 /typedefs-full.list
