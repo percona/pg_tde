@@ -101,8 +101,7 @@ src/bin/pg_tde_restore_encrypt: src/bin/pg_tde_restore_encrypt.o xlogreader.o $(
 xlogreader.c: % : $(top_srcdir)/src/backend/access/transam/%
 	rm -f $@ && $(LN_S) $< .
 
-xlogreader.o: xlogreader.c
-	$(CC) $(CPPFLAGS) -DFRONTEND -c $< -o $@
+xlogreader.o: CFLAGS += -DFRONTEND
 
 # Fetches typedefs list for PostgreSQL core and merges it with typedefs defined in this project.
 # https://wiki.postgresql.org/wiki/Running_pgindent_on_non-core_code_or_development_code
