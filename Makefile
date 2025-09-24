@@ -87,7 +87,7 @@ SHLIB_LINK = -lcurl -lcrypto -lssl
 LDFLAGS_EX = -L$(top_builddir)/src/fe_utils
 PG_LIBS = -lcurl -lcrypto -lssl -lpgfeutils
 
-$(KMIP_OBJS): CFLAGS += '-w' # This is a 3rd party, disable warnings completely
+$(KMIP_OBJS): CFLAGS += -w # This is a 3rd party, disable warnings completely
 
 src/bin/pg_tde_change_key_provider: src/bin/pg_tde_change_key_provider.o $(top_builddir)/src/libtde/libtde.a | submake-libpgfeutils
 	$(CC) $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
