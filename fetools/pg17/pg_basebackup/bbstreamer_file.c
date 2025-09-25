@@ -18,6 +18,10 @@
 #include "common/logging.h"
 #include "common/string.h"
 
+#ifdef PERCONA_EXT
+#include "pg_tde.h"
+#endif
+
 typedef struct bbstreamer_plain_writer
 {
 	bbstreamer	base;
@@ -34,6 +38,7 @@ typedef struct bbstreamer_extractor
 	void		(*report_output_file) (const char *);
 	char		filename[MAXPGPATH];
 	FILE	   *file;
+	bool		encryped_wal;
 } bbstreamer_extractor;
 
 static void bbstreamer_plain_writer_content(bbstreamer *streamer,
@@ -182,7 +187,8 @@ bbstreamer_plain_writer_free(bbstreamer *streamer)
 bbstreamer *
 bbstreamer_extractor_new(const char *basepath,
 						 const char *(*link_map) (const char *),
-						 void (*report_output_file) (const char *))
+						 void (*report_output_file) (const char *),
+						 bool encrypted_wal)
 {
 	bbstreamer_extractor *streamer;
 
@@ -192,6 +198,7 @@ bbstreamer_extractor_new(const char *basepath,
 	streamer->basepath = pstrdup(basepath);
 	streamer->link_map = link_map;
 	streamer->report_output_file = report_output_file;
+	streamer->encryped_wal = encrypted_wal;
 
 	return &streamer->base;
 }
@@ -236,9 +243,28 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 				extract_link(mystreamer->filename, linktarget);
 			}
 			else
+			{
+#ifdef PERCONA_EXT
+				/* 
+				 * A streamed WAL is encrypted with the newly generated WAL key,
+				 * hence we have to prevent wal_keys from rewriting.
+				 */
+				if (strcmp(member->pathname, "pg_tde/wal_keys") == 0)
+				{
+					if (mystreamer->encryped_wal)
+							break;
+					else
+					{
+						pg_log_warning("the source has WAL keys, but no WAL encryption configured for the target backups");
+						pg_log_warning_detail("This may lead to exposed data and broken backup.");
+						pg_log_warning_hint("Run pg_basebackup with -E to encrypt streamed WAL.");
+					} 
+				}
+#endif
 				mystreamer->file =
 					create_file_for_extract(mystreamer->filename,
 											member->mode);
+			}
 
 			/* Report output file change. */
 			if (mystreamer->report_output_file)
@@ -297,7 +323,8 @@ should_allow_existing_directory(const char *pathname)
 		strcmp(filename, "pg_xlog") == 0 ||
 		strcmp(filename, "archive_status") == 0 ||
 		strcmp(filename, "summaries") == 0 ||
-		strcmp(filename, "pg_tblspc") == 0)
+		strcmp(filename, "pg_tblspc") == 0 ||
+		strcmp(filename, PG_TDE_DATA_DIR) == 0) 
 		return true;
 
 	if (strspn(filename, "0123456789") == strlen(filename))
