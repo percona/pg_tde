@@ -62,7 +62,7 @@ typedef struct
  */
 static HTAB *TempRelKeys = NULL;
 
-static SMgrId OurSMgrId = MaxSMgrId;
+static SMgrId OurSMgrId = UINT8_MAX;
 
 static void tde_smgr_save_temp_key(const RelFileLocator *newrlocator, const InternalKey *key);
 static InternalKey *tde_smgr_get_temp_key(const RelFileLocator *rel);
