@@ -62,7 +62,7 @@ jobs:
     
     steps: 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.artifact_name }}
           path: .
@@ -112,7 +112,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.artifact_name }}
           path: .
