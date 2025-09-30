@@ -38,7 +38,6 @@
 #include "receivelog.h"
 #include "streamutil.h"
 
-#ifdef PERCONA_EXT
 #include "access/pg_tde_fe_init.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/pg_tde_xlog_keys.h"
@@ -47,7 +46,6 @@
 #include "pg_tde.h"
 
 #define GLOBAL_DATA_TDE_OID 1664
-#endif
 
 #define ERRCODE_DATA_CORRUPTED_BCP	"XX001"
 
@@ -421,9 +419,7 @@ usage(void)
 	printf(_("      --waldir=WALDIR    location for the write-ahead log directory\n"));
 	printf(_("  -X, --wal-method=none|fetch|stream\n"
 			 "                         include required WAL files with specified method\n"));
-#ifdef PERCONA_EXT
 	printf(_("  -E, --encrypt-wal      encrypt streamed WAL\n"));
-#endif
 	printf(_("  -z, --gzip             compress tar output\n"));
 	printf(_("  -Z, --compress=[{client|server}-]METHOD[:DETAIL]\n"
 			 "                         compress on client or server as specified\n"));
@@ -670,7 +666,6 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 			 PQserverVersion(conn) < MINIMUM_VERSION_FOR_PG_WAL ?
 			 "pg_xlog" : "pg_wal");
 
-#ifdef PERCONA_EXT
 	if (encrypt_wal)
 	{
 		char tdedir[MAXPGPATH];
@@ -690,7 +685,6 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 		pg_tde_save_server_key(principalKey, false);
 		TDEXLogSmgrInitWrite(true);
 	}
-#endif
 
 	/* Temporary replication slots are only supported in 10 and newer */
 	if (PQserverVersion(conn) < MINIMUM_VERSION_FOR_TEMP_SLOTS)
@@ -808,14 +802,13 @@ verify_dir_is_empty_or_create(char *dirname, bool *created, bool *found)
 		case 3:
 		case 4:
 
-#ifdef PERCONA_EXT
 			/*
 			 * pg_tde may exists and contain keys and providers for the WAL
 			 * encryption
 			 */
 			if (strcmp(dirname, PG_TDE_DATA_DIR))
 				return;
-#endif
+
 			/*
 			 * Exists, not empty
 			 */
@@ -2415,9 +2408,7 @@ main(int argc, char **argv)
 		{"target", required_argument, NULL, 't'},
 		{"tablespace-mapping", required_argument, NULL, 'T'},
 		{"wal-method", required_argument, NULL, 'X'},
-#ifdef PERCONA_EXT
 		{"encrypt-wal", no_argument, NULL, 'E'},
-#endif
 		{"gzip", no_argument, NULL, 'z'},
 		{"compress", required_argument, NULL, 'Z'},
 		{"label", required_argument, NULL, 'l'},
@@ -2585,11 +2576,9 @@ main(int argc, char **argv)
 					pg_fatal("invalid wal-method option \"%s\", must be \"fetch\", \"stream\", or \"none\"",
 							 optarg);
 				break;
-#ifdef PERCONA_EXT
 			case 'E':
 				encrypt_wal = true;
 				break;
-#endif
 			case 'z':
 				compression_algorithm = "gzip";
 				compression_detail = NULL;

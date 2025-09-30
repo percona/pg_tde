@@ -33,11 +33,9 @@
 #include "storage/checksum.h"
 #include "storage/checksum_impl.h"
 
-#ifdef PERCONA_EXT
 #include "pg_tde.h"
 #include "access/pg_tde_fe_init.h"
 #include "access/pg_tde_tdemap.h"
-#endif
 
 static int64 files_scanned = 0;
 static int64 files_written = 0;
@@ -123,7 +121,6 @@ static const struct exclude_list_item skip[] = {
 };
 
 /* Support for skipping encrypted files */
-#ifdef PERCONA_EXT
 static void
 pg_tde_init(const char *datadir)
 {
@@ -141,7 +138,6 @@ is_pg_tde_encypted(Oid spcOid, Oid dbOid, RelFileNumber relNumber)
 
 	return pg_tde_has_smgr_key(locator);
 }
-#endif
 
 /*
  * Report current progress status.  Parts borrowed from
@@ -402,14 +398,12 @@ scan_directory(const char *basedir, const char *subdir, Oid tablespace, bool siz
 
 			dirsize += st.st_size;
 
-#ifdef PERCONA_EXT
 			if (is_pg_tde_encypted(tablespace, atooid(subdir), atooid(fnonly)))
 			{
 				if (!sizeonly)
 					pg_log_info("skipped pg_tde encrypted file \"%s\"", fn);
 				continue;
 			}
-#endif
 
 			/*
 			 * No need to work on the file when calculating only the size of
@@ -620,9 +614,7 @@ main(int argc, char *argv[])
 		mode == PG_MODE_ENABLE)
 		pg_fatal("data checksums are already enabled in cluster");
 
-#ifdef PERCONA_EXT
 	pg_tde_init(DataDir);
-#endif
 
 	/* Operate on all files if checking or enabling checksums */
 	if (mode == PG_MODE_CHECK || mode == PG_MODE_ENABLE)
