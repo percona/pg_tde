@@ -518,7 +518,7 @@ main(int argc, char *argv[])
 	 * "unencrypted" it will be reused. On the startup server may create a new key
 	 * with appropriate type according to encryption settings.
 	 *
-	 * We are doing a write initialization only here and not at the startup because we 
+	 * We are doing a write initialization only here and not at the startup because we
 	 * want to be sure that everything is checked and ready for writing at this point.
 	 */
 	TDEXLogSmgrInitWrite(false);
