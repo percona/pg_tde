@@ -33,7 +33,7 @@ jobs:
 
       # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707 
       - name: Downgrade python to 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
@@ -71,7 +71,7 @@ jobs:
         run: tar -xzf artifacts.tar
 
       - name: Downgrade python to 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
@@ -122,7 +122,7 @@ jobs:
 
       # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
       - name: Downgrade python to 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
