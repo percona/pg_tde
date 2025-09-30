@@ -59,12 +59,10 @@
 #include "pg_getopt.h"
 #include "storage/large_object.h"
 
-#ifdef PERCONA_EXT
 #include "pg_tde.h"
 #include "access/pg_tde_fe_init.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/xlog_smgr.h"
-#endif
 
 static ControlFileData ControlFile; /* pg_control values */
 static XLogSegNo newXlogSegNo;	/* new XLOG segment # */
@@ -351,14 +349,12 @@ main(int argc, char *argv[])
 	}
 #endif
 
-#ifdef PERCONA_EXT
 	{
 		char tde_path[MAXPGPATH];
 		snprintf(tde_path, sizeof(tde_path), "%s/%s", DataDir, PG_TDE_DATA_DIR);
 		pg_tde_fe_init(tde_path);
 		TDEXLogSmgrInit();
 	}
-#endif
 
 	get_restricted_token();
 
@@ -508,7 +504,6 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-#ifdef PERCONA_EXT
 	/*
 	 * The only thing that WAL will contain after reset is a checkpoint, so we can
 	 * write it in unencrypted form. There is no sensitive data in it. But we still
@@ -522,7 +517,6 @@ main(int argc, char *argv[])
 	 * want to be sure that everything is checked and ready for writing at this point.
 	 */
 	TDEXLogSmgrInitWrite(false);
-#endif
 
 	/*
 	 * Else, do the dirty deed.
@@ -1174,13 +1168,9 @@ WriteEmptyXLOG(void)
 		pg_fatal("could not open file \"%s\": %m", path);
 
 	errno = 0;
-#ifdef PERCONA_EXT
 	if (xlog_smgr->seg_write(fd, buffer.data, XLOG_BLCKSZ, 0,
 						 ControlFile.checkPointCopy.ThisTimeLineID,
 						 newXlogSegNo, WalSegSz) != XLOG_BLCKSZ)
-#else
-	if (write(fd, buffer.data, XLOG_BLCKSZ) != XLOG_BLCKSZ)
-#endif
 	{
 		/* if write didn't set errno, assume problem is no disk space */
 		if (errno == 0)
@@ -1188,10 +1178,8 @@ WriteEmptyXLOG(void)
 		pg_fatal("could not write file \"%s\": %m", path);
 	}
 
-#ifdef PERCONA_EXT
 	/* If we used xlog smgr, we need to update the file offset */
 	lseek(fd, XLOG_BLCKSZ, SEEK_CUR);
-#endif
 
 	/* Fill the rest of the file with zeroes */
 	memset(buffer.data, 0, XLOG_BLCKSZ);
