@@ -39,7 +39,6 @@
 #include "access/pg_tde_tdemap.h"
 #endif
 
-
 static int64 files_scanned = 0;
 static int64 files_written = 0;
 static int64 blocks_scanned = 0;

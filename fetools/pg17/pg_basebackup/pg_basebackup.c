@@ -671,7 +671,8 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 			 "pg_xlog" : "pg_wal");
 
 #ifdef PERCONA_EXT
-	if (encrypt_wal) {
+	if (encrypt_wal)
+	{
 		char tdedir[MAXPGPATH];
 		TDEPrincipalKey *principalKey;
 
@@ -808,8 +809,8 @@ verify_dir_is_empty_or_create(char *dirname, bool *created, bool *found)
 		case 4:
 
 #ifdef PERCONA_EXT
-			/* 
-			 * `pg_tde` may exists and contain keys and providers for the WAL
+			/*
+			 * pg_tde may exists and contain keys and providers for the WAL
 			 * encryption
 			 */
 			if (strcmp(dirname, PG_TDE_DATA_DIR))
