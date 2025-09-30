@@ -25,12 +25,10 @@
 #include "receivelog.h"
 #include "streamutil.h"
 
-#ifdef PERCONA_EXT
 #include "access/pg_tde_fe_init.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/xlog_smgr.h"
 #include "catalog/tde_global_space.h"
-#endif
 
 /* currently open WAL file */
 static Walfile *walfile = NULL;
@@ -1131,7 +1129,6 @@ ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 			}
 		}
 
-#ifdef PERCONA_EXT
 		if (stream->encrypt)
 		{
 			void* enc_buf = copybuf + hdr_len + bytes_written;
@@ -1142,7 +1139,6 @@ ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 			TDEXLogCryptBuffer(enc_buf, enc_buf, bytes_to_write,
 							   xlogoff, stream->timeline, segno, WalSegSz);
 		}
-#endif
 
 		if (stream->walmethod->ops->write(walfile,
 										  copybuf + hdr_len + bytes_written,

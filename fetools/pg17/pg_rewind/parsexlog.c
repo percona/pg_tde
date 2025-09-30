@@ -23,10 +23,9 @@
 #include "fe_utils/archive.h"
 #include "filemap.h"
 #include "pg_rewind.h"
-#ifdef PERCONA_EXT
+
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/xlog_smgr.h"
-#endif
 
 /*
  * RmgrNames is an array of the built-in resource manager names, to make error
@@ -361,20 +360,10 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 	Assert(xlogreadfd != -1);
 
 	/* Read the requested page */
-#ifdef PERCONA_EXT
 	r = xlog_smgr->seg_read(xlogreadfd, readBuf, XLOG_BLCKSZ, (off_t) targetPageOff,
 							targetHistory[private->tliIndex].tli,
 							xlogreadsegno, WalSegSz);
-#else
-	if (lseek(xlogreadfd, (off_t) targetPageOff, SEEK_SET) < 0)
-	{
-		pg_log_error("could not seek in file \"%s\": %m", xlogfpath);
-		return -1;
-	}
 
-
-	r = read(xlogreadfd, readBuf, XLOG_BLCKSZ);
-#endif
 	if (r != XLOG_BLCKSZ)
 	{
 		if (r < 0)

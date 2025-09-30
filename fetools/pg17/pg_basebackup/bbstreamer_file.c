@@ -18,9 +18,7 @@
 #include "common/logging.h"
 #include "common/string.h"
 
-#ifdef PERCONA_EXT
 #include "pg_tde.h"
-#endif
 
 typedef struct bbstreamer_plain_writer
 {
@@ -244,7 +242,6 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 			}
 			else
 			{
-#ifdef PERCONA_EXT
 				/*
 				 * A streamed WAL is encrypted with the newly generated WAL key,
 				 * hence we have to prevent wal_keys from rewriting.
@@ -260,7 +257,6 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 						pg_log_warning_hint("Run pg_basebackup with -E to encrypt streamed WAL.");
 					}
 				}
-#endif
 				mystreamer->file =
 					create_file_for_extract(mystreamer->filename,
 											member->mode);
