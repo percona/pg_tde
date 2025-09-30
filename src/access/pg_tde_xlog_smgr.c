@@ -9,7 +9,6 @@
 #include "access/xlog_smgr.h"
 #include "access/xloginsert.h"
 #include "storage/bufmgr.h"
-#include "storage/shmem.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
 
@@ -24,6 +23,7 @@
 #include "pg_tde_fe.h"
 #else
 #include "port/atomics.h"
+#include "storage/shmem.h"
 #endif
 
 static void CalcXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, const unsigned char *base_iv, char *iv_prefix);
