@@ -197,7 +197,11 @@ set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 	 * string, we build it by hand
 	 */
 	/* Simpler than using the limited pg json api */
+#if PG_VERSION_NUM >= 180000
+	keyLen = pg_b64_encode(key->data.data, key->data.len, keyData, 64);
+#else
 	keyLen = pg_b64_encode((char *) key->data.data, key->data.len, keyData, 64);
+#endif
 	keyData[keyLen] = 0;
 
 	snprintf(jsonText, 512, "{\"data\":{\"key\":\"%s\"}}", keyData);
@@ -295,7 +299,11 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 	key = palloc_object(KeyInfo);
 	memset(key->name, 0, sizeof(key->name));
 	memcpy(key->name, key_name, strnlen(key_name, sizeof(key->name) - 1));
+#if PG_VERSION_NUM >= 180000
+	key->data.len = pg_b64_decode(responseKey, strlen(responseKey), key->data.data, MAX_KEY_DATA_SIZE);
+#else
 	key->data.len = pg_b64_decode(responseKey, strlen(responseKey), (char *) key->data.data, MAX_KEY_DATA_SIZE);
+#endif
 
 	if (key->data.len > MAX_KEY_DATA_SIZE)
 	{
