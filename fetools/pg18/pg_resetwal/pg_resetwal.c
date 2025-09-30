@@ -59,6 +59,11 @@
 #include "pg_getopt.h"
 #include "storage/large_object.h"
 
+#include "pg_tde.h"
+#include "access/pg_tde_fe_init.h"
+#include "access/pg_tde_xlog_smgr.h"
+#include "access/xlog_smgr.h"
+
 static ControlFileData ControlFile; /* pg_control values */
 static XLogSegNo newXlogSegNo;	/* new XLOG segment # */
 static bool guessed = false;	/* T if we had to guess at any values */
@@ -363,6 +368,14 @@ main(int argc, char *argv[])
 	}
 #endif
 
+	{
+		char		tde_path[MAXPGPATH];
+
+		snprintf(tde_path, sizeof(tde_path), "%s/%s", DataDir, PG_TDE_DATA_DIR);
+		pg_tde_fe_init(tde_path);
+		TDEXLogSmgrInit();
+	}
+
 	get_restricted_token();
 
 	/* Set mask based on PGDATA permissions */
@@ -411,7 +424,11 @@ main(int argc, char *argv[])
 		WalSegSz = ControlFile.xlog_seg_size;
 
 	if (log_fname != NULL)
+	{
 		XLogFromFileName(log_fname, &minXlogTli, &minXlogSegNo, WalSegSz);
+		free(log_fname);
+	}
+
 
 	/*
 	 * Also look at existing segment files to set up newXlogSegNo
@@ -509,6 +526,22 @@ main(int argc, char *argv[])
 		pg_log_error_hint("If you want to proceed anyway, use -f to force reset.");
 		exit(1);
 	}
+
+	/*
+	 * The only thing that WAL will contain after reset is a checkpoint, so we
+	 * can write it in unencrypted form. There is no sensitive data in it. But
+	 * we still need to use TDE smgr because WAL key change may be needed. If
+	 * the last WAL key had type "encrypted" new key will be created with type
+	 * "unencrypted" to mark the beginning of a new unencrypted WAL record. If
+	 * the last WAL key had type "unencrypted" it will be reused. On the
+	 * startup server may create a new key with appropriate type according to
+	 * encryption settings.
+	 *
+	 * We are doing a write initialization only here and not at the startup
+	 * because we want to be sure that everything is checked and ready for
+	 * writing at this point.
+	 */
+	TDEXLogSmgrInitWrite(false);
 
 	/*
 	 * Else, do the dirty deed.
@@ -629,6 +662,8 @@ read_controlfile(void)
 
 		memcpy(&ControlFile, buffer, sizeof(ControlFile));
 
+		free(buffer);
+
 		/* return false if WAL segment size is not valid */
 		if (!IsValidWalSegSize(ControlFile.xlog_seg_size))
 		{
@@ -641,6 +676,8 @@ read_controlfile(void)
 
 		return true;
 	}
+
+	free(buffer);
 
 	/* Looks like it's a mess. */
 	pg_log_warning("pg_control exists but is broken or wrong version; ignoring it");
@@ -1158,13 +1195,18 @@ WriteEmptyXLOG(void)
 		pg_fatal("could not open file \"%s\": %m", path);
 
 	errno = 0;
-	if (write(fd, buffer.data, XLOG_BLCKSZ) != XLOG_BLCKSZ)
+	if (xlog_smgr->seg_write(fd, buffer.data, XLOG_BLCKSZ, 0,
+							 ControlFile.checkPointCopy.ThisTimeLineID,
+							 newXlogSegNo, WalSegSz) != XLOG_BLCKSZ)
 	{
 		/* if write didn't set errno, assume problem is no disk space */
 		if (errno == 0)
 			errno = ENOSPC;
 		pg_fatal("could not write file \"%s\": %m", path);
 	}
+
+	/* If we used xlog smgr, we need to update the file offset */
+	lseek(fd, XLOG_BLCKSZ, SEEK_CUR);
 
 	/* Fill the rest of the file with zeroes */
 	memset(buffer.data, 0, XLOG_BLCKSZ);
