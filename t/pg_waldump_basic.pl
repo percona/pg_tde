@@ -133,12 +133,12 @@ $node->stop;
 
 # various ways of specifying WAL range
 command_fails_like(
-	[ 'pg_waldump', 'foo', 'bar' ],
+	[ 'pg_tde_waldump', 'foo', 'bar' ],
 	qr/error: could not locate WAL file "foo"/,
 	'start file not found');
 command_like(
 	[
-		'pg_waldump', '-k',
+		'pg_tde_waldump', '-k',
 		$node->data_dir . '/pg_tde',
 		$node->data_dir . '/pg_wal/' . $start_walfile
 	],
@@ -146,7 +146,7 @@ command_like(
 	'runs with start segment specified');
 command_fails_like(
 	[
-		'pg_waldump', '-k',
+		'pg_tde_waldump', '-k',
 		$node->data_dir . '/pg_tde',
 		$node->data_dir . '/pg_wal/' . $start_walfile, 'bar'
 	],
@@ -154,7 +154,7 @@ command_fails_like(
 	'end file not found');
 command_like(
 	[
-		'pg_waldump',
+		'pg_tde_waldump',
 		'-k',
 		$node->data_dir . '/pg_tde',
 		$node->data_dir . '/pg_wal/' . $start_walfile,
@@ -164,14 +164,15 @@ command_like(
 	'runs with start and end segment specified');
 command_fails_like(
 	[
-		'pg_waldump', '-p', $node->data_dir, '-k',
+		'pg_tde_waldump', '-p',
+		$node->data_dir, '-k',
 		$node->data_dir . '/pg_tde'
 	],
 	qr/error: no start WAL location given/,
 	'path option requires start location');
 command_like(
 	[
-		'pg_waldump', '-p',
+		'pg_tde_waldump', '-p',
 		$node->data_dir, '--start',
 		$start_lsn, '--end',
 		$end_lsn, '-k',
@@ -181,7 +182,7 @@ command_like(
 	'runs with path option and start and end locations');
 command_fails_like(
 	[
-		'pg_waldump', '-k',
+		'pg_tde_waldump', '-k',
 		$node->data_dir . '/pg_tde', '-p',
 		$node->data_dir, '--start',
 		$start_lsn
@@ -191,7 +192,7 @@ command_fails_like(
 
 command_like(
 	[
-		'pg_waldump', '--quiet', '-k',
+		'pg_tde_waldump', '--quiet', '-k',
 		$node->data_dir . '/pg_tde',
 		$node->data_dir . '/pg_wal/' . $start_walfile
 	],
@@ -199,10 +200,8 @@ command_like(
 	'no output with --quiet option');
 command_fails_like(
 	[
-		'pg_waldump', '--quiet',
-		'-k', $node->data_dir . '/pg_tde',
-		'-p', $node->data_dir,
-		'--start', $start_lsn
+		'pg_tde_waldump', '--quiet', '-k', $node->data_dir . '/pg_tde',
+		'-p', $node->data_dir, '--start', $start_lsn
 	],
 	qr/error: error in WAL record at/,
 	'errors are shown with --quiet');
@@ -221,7 +220,7 @@ command_fails_like(
 	my (@cmd, $stdout, $stderr, $result);
 
 	@cmd = (
-		'pg_waldump', '-k', $node->data_dir . '/pg_tde',
+		'pg_tde_waldump', '-k', $node->data_dir . '/pg_tde',
 		'--start', $new_start, $node->data_dir . '/pg_wal/' . $start_walfile);
 	$result = IPC::Run::run \@cmd, '>', \$stdout, '2>', \$stderr;
 	ok($result, "runs with start segment and start LSN specified");
@@ -239,7 +238,7 @@ sub test_pg_waldump
 	my (@cmd, $stdout, $stderr, $result, @lines);
 
 	@cmd = (
-		'pg_waldump', '-k',
+		'pg_tde_waldump', '-k',
 		$node->data_dir . '/pg_tde', '-p',
 		$node->data_dir, '--start',
 		$start_lsn, '--end',
