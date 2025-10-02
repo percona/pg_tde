@@ -668,7 +668,7 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 
 	if (encrypt_wal)
 	{
-		char tdedir[MAXPGPATH];
+		char		tdedir[MAXPGPATH];
 		TDEPrincipalKey *principalKey;
 
 		snprintf(tdedir, sizeof(tdedir), "%s/%s", basedir, PG_TDE_DATA_DIR);

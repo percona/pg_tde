@@ -24,7 +24,7 @@ shared_preload_libraries = 'pg_tde'
 $node->start;
 $node->safe_psql('postgres', "CREATE EXTENSION pg_tde;");
 $node->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('file-keyring-wal', '/tmp/pg_waldump_corrupted.per');"
+	"SELECT pg_tde_add_global_key_provider_file('file-keyring-wal', '/tmp/pg_resetwal_corrupted.per');"
 );
 $node->safe_psql('postgres',
 	"SELECT pg_tde_create_key_using_global_key_provider('server-key', 'file-keyring-wal');"
@@ -57,11 +57,11 @@ print $fh pack("x[$size]");
 close $fh;
 
 command_checks_all(
-	[ 'pg_resetwal', '-n', $node->data_dir ],
+	[ 'pg_tde_resetwal', '-n', $node->data_dir ],
 	0,
 	[qr/pg_control version number/],
 	[
-		qr/pg_resetwal: warning: pg_control exists but is broken or wrong version; ignoring it/
+		qr/pg_tde_resetwal: warning: pg_control exists but is broken or wrong version; ignoring it/
 	],
 	'processes corrupted pg_control all zeroes');
 
@@ -73,20 +73,21 @@ print $fh $data, pack("x[" . ($size - 16) . "]");
 close $fh;
 
 command_checks_all(
-	[ 'pg_resetwal', '-n', $node->data_dir ],
+	[ 'pg_tde_resetwal', '-n', $node->data_dir ],
 	0,
 	[qr/pg_control version number/],
 	[
-		qr/\Qpg_resetwal: warning: pg_control specifies invalid WAL segment size (0 bytes); proceed with caution\E/
+		qr/\Qpg_tde_resetwal: warning: pg_control specifies invalid WAL segment size (0 bytes); proceed with caution\E/
 	],
 	'processes zero WAL segment size');
 
 # now try to run it
 command_fails_like(
-	[ 'pg_resetwal', $node->data_dir ],
+	[ 'pg_tde_resetwal', $node->data_dir ],
 	qr/not proceeding because control file values were guessed/,
 	'does not run when control file values were guessed');
-command_ok([ 'pg_resetwal', '-f', $node->data_dir ],
+command_ok(
+	[ 'pg_tde_resetwal', '-f', $node->data_dir ],
 	'runs with force when control file values were guessed');
 
 done_testing();

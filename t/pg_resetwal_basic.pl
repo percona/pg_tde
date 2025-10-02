@@ -39,8 +39,8 @@ pg_tde.wal_encrypt = on
 $node->stop;
 
 
-command_like([ 'pg_resetwal', '-n', $node->data_dir ],
-	qr/checkpoint/, 'pg_resetwal -n produces output');
+command_like([ 'pg_tde_resetwal', '-n', $node->data_dir ],
+	qr/checkpoint/, 'pg_tde_resetwal -n produces output');
 
 
 # Permissions on PGDATA should be default
@@ -53,23 +53,24 @@ SKIP:
 		'check PGDATA permissions');
 }
 
-command_ok([ 'pg_resetwal', '-D', $node->data_dir ], 'pg_resetwal runs');
+command_ok([ 'pg_tde_resetwal', '-D', $node->data_dir ],
+	'pg_tde_resetwal runs');
 $node->start;
 is($node->safe_psql("postgres", "SELECT 1;"),
 	1, 'server running and working after reset');
 
 command_fails_like(
-	[ 'pg_resetwal', $node->data_dir ],
+	[ 'pg_tde_resetwal', $node->data_dir ],
 	qr/lock file .* exists/,
 	'fails if server running');
 
 $node->stop('immediate');
 command_fails_like(
-	[ 'pg_resetwal', $node->data_dir ],
+	[ 'pg_tde_resetwal', $node->data_dir ],
 	qr/database server was not shut down cleanly/,
 	'does not run after immediate shutdown');
 command_ok(
-	[ 'pg_resetwal', '-f', $node->data_dir ],
+	[ 'pg_tde_resetwal', '-f', $node->data_dir ],
 	'runs after immediate shutdown with force');
 $node->start;
 is($node->safe_psql("postgres", "SELECT 1;"),
@@ -88,11 +89,11 @@ $node->stop;
 
 # run with control override options
 
-my $out = (run_command([ 'pg_resetwal', '-n', $node->data_dir ]))[0];
+my $out = (run_command([ 'pg_tde_resetwal', '-n', $node->data_dir ]))[0];
 $out =~ /^Database block size: *(\d+)$/m or die;
 my $blcksz = $1;
 
-my @cmd = ('pg_resetwal', '-D', $node->data_dir);
+my @cmd = ('pg_tde_resetwal', '-D', $node->data_dir);
 
 # some not-so-critical hardcoded values
 push @cmd, '-e', 1;
@@ -140,7 +141,7 @@ push @cmd,
 command_ok([ @cmd, '-n' ], 'runs with control override options, dry run');
 command_ok(\@cmd, 'runs with control override options');
 command_like(
-	[ 'pg_resetwal', '-n', $node->data_dir ],
+	[ 'pg_tde_resetwal', '-n', $node->data_dir ],
 	qr/^Latest checkpoint's NextOID: *100000$/m,
 	'spot check that control changes were applied');
 

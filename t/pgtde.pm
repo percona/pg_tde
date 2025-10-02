@@ -113,15 +113,25 @@ sub backup
 {
 	my ($node, $backup_name, %params) = @_;
 	my $backup_dir = $node->backup_dir . '/' . $backup_name;
+	my $name = $node->name;
+
+	local %ENV = $node->_get_env();
 
 	mkdir $backup_dir or die "mkdir($backup_dir) failed: $!";
 
 	PostgreSQL::Test::RecursiveCopy::copypath($node->data_dir . '/pg_tde',
 		$backup_dir . '/pg_tde');
 
-	push @{ $params{backup_options} }, "-E";
-
-	$node->backup($backup_name, %params);
+	print "# Taking pg_basebackup $backup_name from node \"$name\"\n";
+	PostgreSQL::Test::Utils::system_or_bail(
+		'pg_tde_basebackup', '-D',
+		$backup_dir, '-h',
+		$node->host, '-p',
+		$node->port, '--checkpoint',
+		'fast', '--no-sync',
+		'-E', @{ $params{backup_options} });
+	print "# Backup finished\n";
+	return;
 }
 
 1;

@@ -1,33 +1,18 @@
 #!/bin/bash
 
 set -e
-
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
-source "$SCRIPT_DIR/env.sh"
 
+cd $SCRIPT_DIR/..
 
-case "$1" in
-    server)
-        echo "Run server regression tests"
-        cd "$SCRIPT_DIR/.."
-        make -s check
-        ;;
+../pginst/bin/pg_ctl -D regress_install -l regress_install.log init -o '--set shared_preload_libraries=pg_tde'
 
-    tde)
-        echo "Run tde tests"
-        cd "$SCRIPT_DIR/../contrib/pg_tde"
-        make -s check
-        ;;
+if [ "$1" = "sanitize" ]; then
+	echo 'max_stack_depth=8MB' >> regress_install/postgresql.conf
+fi
 
-    all)
-        echo "Run all tests"
-        cd "$SCRIPT_DIR/.."
-        make -s check-world
-        ;;
+../pginst/bin/pg_ctl -D regress_install -l regress_install.log start
 
-    *)
-        echo "Unknown test suite: $1"
-        echo "Please use one of the following: server, tde, all"
-        exit 1
-        ;;
-esac
+make PG_CONFIG="../pginst/bin/pg_config" installcheck
+
+../pginst/bin/pg_ctl -D regress_install stop

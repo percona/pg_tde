@@ -2,40 +2,29 @@
 
 set -e
 
-ENABLE_COVERAGE=
-
-for arg in "$@"
-do
-    case "$arg" in
-        --enable-coverage)
-            ENABLE_COVERAGE="-Db_coverage=true"
-            shift;;
-    esac
-done
+ARGS=
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 INSTALL_DIR="$SCRIPT_DIR/../../pginst"
-source "$SCRIPT_DIR/env.sh"
+PSP_DIR="$SCRIPT_DIR/../../postgres"
 
-cd "$SCRIPT_DIR/.."
-
-BUILD_TYPE=
+cd "$PSP_DIR"
 
 case "$1" in
     debug)
         echo "Building with debug option"
-        BUILD_TYPE=$1
+        ARGS+=" --enable-cassert"
         ;;
 
     debugoptimized)
         echo "Building with debugoptimized option"
-        BUILD_TYPE=$1
+        export CFLAGS="-O2"
+        ARGS+=" --enable-cassert"
         ;;
 
     sanitize)
         echo "Building with sanitize option"
         export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-inline-functions"
-        BUILD_TYPE=debug
         ;;
 
     *)
@@ -45,5 +34,6 @@ case "$1" in
         ;;
 esac
 
-meson setup build --prefix "$INSTALL_DIR" --buildtype="$BUILD_TYPE" -Dcassert=true -Dtap_tests=enabled $ENABLE_COVERAGE
-cd build && ninja && ninja install
+
+./configure --prefix="$INSTALL_DIR" --enable-debug --enable-tap-tests $ARGS 
+make install-world -j -s

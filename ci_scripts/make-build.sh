@@ -14,8 +14,7 @@ do
 done
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
-INSTALL_DIR="$SCRIPT_DIR/../../pginst"
-source "$SCRIPT_DIR/env.sh"
+PG_CONFIG="$SCRIPT_DIR/../../pginst/bin/pg_config"
 
 cd "$SCRIPT_DIR/.."
 
@@ -43,5 +42,4 @@ case "$1" in
         ;;
 esac
 
-./configure --prefix="$INSTALL_DIR" --enable-debug --enable-tap-tests $ARGS 
-make install-world -j -s
+make PG_CONFIG="$PG_CONFIG" install -j
