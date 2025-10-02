@@ -19,13 +19,11 @@ jobs:
         os: [ubuntu-24.04]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
-        build_script: [make, meson]
     uses: ./.github/workflows/build-and-test.yml
     with:
         os: ${{ matrix.os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
-        build_script: ${{ matrix.build_script }}
     secrets: inherit
 
   arm:
@@ -36,13 +34,11 @@ jobs:
         os: [ubuntu-24.04-arm]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
-        build_script: [make, meson]
     uses: ./.github/workflows/build-and-test.yml
     with:
         os: ${{ matrix.os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
-        build_script: ${{ matrix.build_script }}
     secrets: inherit
 
   slack-notification:

@@ -11,12 +11,9 @@ on:
       build_type:
         type: string
         required: true
-      build_script:
-        type: string
-        required: true
 
 env:
-  artifact_name: build-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_script }}-${{ inputs.build_type }}
+  artifact_name: build-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
   CC: ${{ inputs.compiler }}
 
 jobs:
@@ -41,10 +38,10 @@ jobs:
         run: src/ci_scripts/ubuntu-deps.sh
 
       - name: Build postgres
-        run: src/ci_scripts/${{ inputs.build_script }}-build.sh ${{ inputs.build_type }}
 
       - name: Archive pginst to artifact tar file
         run: tar -czf artifacts.tar src pginst
+        run: src/ci_scripts/make-build.sh ${{ inputs.build_type }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -82,15 +79,14 @@ jobs:
         run: src/ci_scripts/setup-keyring-servers.sh
 
       - name: Test postgres
-        run: src/ci_scripts/${{ inputs.build_script }}-test.sh all
+        run: src/ci_scripts/make-test.sh
 
       - name: Report on test fail
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: log-test-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_script }}-${{ inputs.build_type }}
+          name: log-test-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
-            src/build/testrun
             src/contrib/*/log
             src/contrib/*/regression.diffs
             src/contrib/*/regression.out
@@ -107,7 +103,6 @@ jobs:
   test-default-tde:
     name: Test with TDE as default access method
     runs-on: ${{ inputs.os }}
-    if: inputs.build_script == 'make'
     needs: build
 
     steps:
@@ -133,15 +128,14 @@ jobs:
         run: src/ci_scripts/setup-keyring-servers.sh
 
       - name: Test postgres with TDE as default access method
-        run: src/ci_scripts/${{ inputs.build_script }}-test-global-tde.sh --continue
+        run: src/ci_scripts/make-test-global-tde.sh --continue
 
       - name: Report on test fail
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: log-test-global-tde-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_script }}-${{ inputs.build_type }}
+          name: log-test-global-tde-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
-            src/build/testrun
             src/contrib/*/log
             src/contrib/*/regression.diffs
             src/contrib/*/regression.out
