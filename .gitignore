@@ -51,6 +51,8 @@ __pycache__
 /results/
 /t/results/
 /tmp_check/
+/regress_install/
+/regress_install.log
 
 # Binaries
 /src/bin/pg_tde_archive_decrypt
