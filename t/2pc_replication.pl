@@ -8,6 +8,8 @@ use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
+use lib 't';
+use pgtde;
 
 my $psql_out = '';
 my $psql_rc = '';
@@ -83,12 +85,7 @@ $node_london->restart;
 # $node_london->safe_psql('postgres', 'ALTER SYSTEM SET pg_tde.wal_encrypt = on;');
 $node_london->restart;
 
-my $backup_dir = $node_london->backup_dir . '/london_backup';
-mkdir $backup_dir or die "mkdir($backup_dir) failed: $!";
-PostgreSQL::Test::RecursiveCopy::copypath($node_london->data_dir . '/pg_tde',
-	$backup_dir . '/pg_tde');
-
-$node_london->backup('london_backup');
+PGTDE::backup($node_london, 'london_backup');
 
 # Setup paris node
 my $node_paris = PostgreSQL::Test::Cluster->new('paris');

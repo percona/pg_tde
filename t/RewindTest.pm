@@ -287,7 +287,7 @@ sub run_pg_rewind
 		$node_standby->stop;
 		command_ok(
 			[
-				'pg_rewind',
+				'pg_tde_rewind',
 				"--debug",
 				"--source-pgdata=$standby_pgdata",
 				"--target-pgdata=$primary_pgdata",
@@ -303,7 +303,7 @@ sub run_pg_rewind
 		# recovery configuration automatically.
 		command_ok(
 			[
-				'pg_rewind', "--debug",
+				'pg_tde_rewind', "--debug",
 				"--source-server", $standby_connstr,
 				"--target-pgdata=$primary_pgdata", "--no-sync",
 				"--write-recovery-conf", "--config-file",
@@ -359,7 +359,7 @@ sub run_pg_rewind
 		# postgresql.conf as restore_command has been enabled above.
 		command_ok(
 			[
-				'pg_rewind',
+				'pg_tde_rewind',
 				"--debug",
 				"--source-pgdata=$standby_pgdata",
 				"--target-pgdata=$primary_pgdata",
