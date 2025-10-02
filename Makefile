@@ -81,18 +81,6 @@ TDE_OBJS = \
 	src/keyring/keyring_kmip.frontend \
 	src/keyring/keyring_kmip_impl.frontend
 
-BBOBJS = \
-	$(FETOOLS)/pg_basebackup/receivelog.o \
-	$(FETOOLS)/pg_basebackup/streamutil.o \
-	$(FETOOLS)/pg_basebackup/walmethods.o \
-	$(FETOOLS)/pg_basebackup/pg_basebackup.o \
-	$(FETOOLS)/pg_basebackup/bbstreamer_file.o \
-	$(FETOOLS)/pg_basebackup/bbstreamer_gzip.o \
-	$(FETOOLS)/pg_basebackup/bbstreamer_inject.o \
-	$(FETOOLS)/pg_basebackup/bbstreamer_lz4.o \
-	$(FETOOLS)/pg_basebackup/bbstreamer_tar.o \
-	$(FETOOLS)/pg_basebackup/bbstreamer_zstd.o
-
 RWOBJS = \
 	$(FETOOLS)/pg_rewind/datapagemap.o \
 	$(FETOOLS)/pg_rewind/file_ops.o \
@@ -146,6 +134,27 @@ include $(PGXS)
 
 SHLIB_LINK = -lcurl -lcrypto -lssl
 LDFLAGS_EX = -Lsrc/fe_utils -lcurl -lcrypto -lssl -lz -lzstd -llz4 -lpgfeutils $(libpq_pgport)
+
+ifeq ($(MAJORVERSION),18)
+BBOBJS = \
+	$(FETOOLS)/pg_basebackup/receivelog.o \
+	$(FETOOLS)/pg_basebackup/streamutil.o \
+	$(FETOOLS)/pg_basebackup/walmethods.o \
+	$(FETOOLS)/pg_basebackup/pg_basebackup.o \
+	$(FETOOLS)/pg_basebackup/astreamer_inject.o
+else
+BBOBJS = \
+	$(FETOOLS)/pg_basebackup/receivelog.o \
+	$(FETOOLS)/pg_basebackup/streamutil.o \
+	$(FETOOLS)/pg_basebackup/walmethods.o \
+	$(FETOOLS)/pg_basebackup/pg_basebackup.o \
+	$(FETOOLS)/pg_basebackup/bbstreamer_file.o \
+	$(FETOOLS)/pg_basebackup/bbstreamer_gzip.o \
+	$(FETOOLS)/pg_basebackup/bbstreamer_inject.o \
+	$(FETOOLS)/pg_basebackup/bbstreamer_lz4.o \
+	$(FETOOLS)/pg_basebackup/bbstreamer_tar.o \
+	$(FETOOLS)/pg_basebackup/bbstreamer_zstd.o
+endif
 
 $(KMIP_OBJS): CFLAGS += -w # This is a 3rd party, disable warnings completely
 
