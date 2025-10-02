@@ -2,21 +2,20 @@ name: Sanitizers
 on:
   pull_request:
     paths-ignore:
-      - contrib/pg_tde/documentation/**
+      - documentation/**
   push:
     branches:
-      - TDE_REL_17_STABLE
+      - main
     paths-ignore:
-      - contrib/pg_tde/documentation/**
+      - documentation/**
 
 env:
   CC: clang
   LD: clang
   UBSAN_OPTIONS: log_path=${{ github.workspace }}/sanitize.log print_suppressions=0 print_stacktrace=1 print_summary=1 halt_on_error=1
   ASAN_OPTIONS: log_path=${{ github.workspace }}/sanitize.log print_suppressions=0 abort_on_error=1
-  LSAN_OPTIONS: log_path=${{ github.workspace }}/sanitize.log print_suppressions=0 suppressions=${{ github.workspace }}/ci_scripts/suppressions/lsan.supp
+  LSAN_OPTIONS: log_path=${{ github.workspace }}/sanitize.log print_suppressions=0 suppressions=${{ github.workspace }}/src/ci_scripts/suppressions/lsan.supp
   ASAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-14
-  EXTRA_REGRESS_OPTS: "--temp-config=${{ github.workspace }}/test_postgresql.conf"
   # Avoid failures on slow recovery
   PGCTLTIMEOUT: 120
   PG_TEST_TIMEOUT_DEFAULT: 300
@@ -29,25 +28,30 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@v4
         with:
+          path: src
           submodules: recursive
 
+      - name: Clone postgres repository
+        uses: actions/checkout@v4
+        with:
+          path: 'postgres'
+          repository: 'percona/postgres.git'
+          ref: 'PSP_REL_17_STABLE'
+
       - name: Install dependencies
-        run: ci_scripts/ubuntu-deps.sh
+        run: src/ci_scripts/ubuntu-deps.sh
 
       - name: Build postgres
-        run: ci_scripts/make-build.sh sanitize
+        run: src/ci_scripts/build-and-install-psp.sh sanitize
+
+      - name: Build pg_tde
+        run: src/ci_scripts/make-build.sh sanitize
 
       - name: Setup kmip and vault
-        run: ci_scripts/setup-keyring-servers.sh
+        run: src/ci_scripts/setup-keyring-servers.sh
 
-      - name: Configure test postgres
-        run: echo 'max_stack_depth=8MB' > test_postgresql.conf
-
-      - name: Run tests pg_tde tests
-        run: ci_scripts/make-test.sh tde
-
-      - name: Run PG regression tests
-        run: ci_scripts/make-test.sh server
+      - name: Run pg_tde tests
+        run: src/ci_scripts/make-test.sh sanitize
 
       - name: Print sanitize logs
         if: ${{ !cancelled() }}
@@ -59,17 +63,13 @@ jobs:
         with:
           name: sanitizers-testlog
           path: |
-            build/testrun
-            contrib/**/log
-            contrib/**/regression.diffs
-            contrib/**/regression.out
-            contrib/**/results
-            contrib/**/tmp_check
-            contrib/**/t/results
-            src/test/**/log
-            src/test/**/regression.diffs
-            src/test/**/regression.out
-            src/test/**/results
-            src/test/**/tmp_check
             sanitize.log.*
+            src/log
+            src/regression_install
+            src/regression_install.log
+            src/regression.diffs
+            src/regression.out
+            src/results
+            src/t/results
+            src/tmp_check
           retention-days: 3
