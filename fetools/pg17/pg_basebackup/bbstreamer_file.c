@@ -243,13 +243,13 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 			else
 			{
 				/*
-				 * A streamed WAL is encrypted with the newly generated WAL key,
-				 * hence we have to prevent wal_keys from rewriting.
+				 * A streamed WAL is encrypted with the newly generated WAL
+				 * key, hence we have to prevent wal_keys from rewriting.
 				 */
 				if (strcmp(member->pathname, "pg_tde/wal_keys") == 0)
 				{
 					if (mystreamer->encryped_wal)
-							break;
+						break;
 					else
 					{
 						pg_log_warning("the source has WAL keys, but no WAL encryption configured for the target backups");

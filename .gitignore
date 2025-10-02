@@ -65,4 +65,5 @@ __pycache__
 /fetools/*/pg_tde_waldump
 
 # Tool files
+/typedefs.list
 /typedefs-full.list
