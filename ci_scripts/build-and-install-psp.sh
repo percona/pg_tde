@@ -4,19 +4,11 @@ set -e
 
 ARGS=
 
-for arg in "$@"
-do
-    case "$arg" in
-        --enable-coverage)
-            ARGS+=" --enable-coverage"
-            ;;
-    esac
-done
-
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
-PG_CONFIG="$SCRIPT_DIR/../../pginst/bin/pg_config"
+INSTALL_DIR="$SCRIPT_DIR/../../pginst"
+PSP_DIR="$SCRIPT_DIR/../../postgres"
 
-cd "$SCRIPT_DIR/.."
+cd "$PSP_DIR"
 
 case "$1" in
     debug)
@@ -42,4 +34,5 @@ case "$1" in
         ;;
 esac
 
-make PG_CONFIG="$PG_CONFIG" install -j
+./configure --prefix="$INSTALL_DIR" --enable-debug --enable-tap-tests $ARGS
+make install-world -j -s

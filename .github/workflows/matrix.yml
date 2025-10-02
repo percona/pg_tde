@@ -2,13 +2,13 @@ name: Build and Test
 on:
   pull_request:
     paths-ignore:
-      - contrib/pg_tde/documentation/**
+      - documentation/**
   push:
     branches:
-      - TDE_REL_17_STABLE
+      - main
       - release-[0-9]+.[0-9]+*
     paths-ignore:
-      - contrib/pg_tde/documentation/**
+      - documentation/**
   workflow_dispatch:
 
 jobs:

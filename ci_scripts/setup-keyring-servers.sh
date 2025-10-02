@@ -16,7 +16,7 @@ cd ..
 
 echo $SCRIPT_DIR
 rm -f /tmp/pykmip.db
-pykmip-server -f "$SCRIPT_DIR/../contrib/pg_tde/pykmip-server.conf" -l /tmp/kmip-server.log &
+pykmip-server -f "$SCRIPT_DIR/../pykmip-server.conf" -l /tmp/kmip-server.log &
 
 CLUSTER_INFO=$(mktemp)
 vault server -dev -dev-tls -dev-cluster-json="$CLUSTER_INFO" > /dev/null &
