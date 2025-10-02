@@ -13,6 +13,13 @@ export DATA_DIR=$INSTALL_DIR/data
 export PGDATA="${1:-$DATA_DIR}"
 export PGPORT="${2:-5432}"
 
+# Replace tools so that postgres' testsuite will use the modified ones
+cp "$INSTALL_DIR/bin/pg_tde_basebackup" "$INSTALL_DIR/bin/pg_basebackup"
+cp "$INSTALL_DIR/bin/pg_tde_checksums" "$INSTALL_DIR/bin/pg_checksums"
+cp "$INSTALL_DIR/bin/pg_tde_resetwal" "$INSTALL_DIR/bin/pg_resetwal"
+cp "$INSTALL_DIR/bin/pg_tde_rewind" "$INSTALL_DIR/bin/pg_rewind"
+cp "$INSTALL_DIR/bin/pg_tde_waldump" "$INSTALL_DIR/bin/pg_waldump"
+
 if [ -d "$PGDATA" ]; then
     if pg_ctl -D "$PGDATA" status -o "-p $PGPORT" >/dev/null; then
         pg_ctl -D "$PGDATA" stop -o "-p $PGPORT"
