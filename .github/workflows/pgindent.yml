@@ -2,7 +2,7 @@ name: Format
 on:
   pull_request:
     paths-ignore:
-      - contrib/pg_tde/documentation/**
+      - documentation/**
   workflow_dispatch:
 
 jobs:
@@ -13,19 +13,30 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@v4
         with:
+          path: 'src'
           submodules: recursive
 
+      - name: Clone postgres repository
+        uses: actions/checkout@v4
+        with:
+          path: 'postgres'
+          repository: 'percona/postgres.git'
+          ref: 'PSP_REL_17_STABLE'
+
       - name: Install dependencies
-        run: ci_scripts/ubuntu-deps.sh
+        run: src/ci_scripts/ubuntu-deps.sh
 
       - name: Build postgres
-        run: ci_scripts/make-build.sh debug
+        run: src/ci_scripts/build-and-install-psp.sh debug
+
+      - name: Build pg_tde
+        run: src/ci_scripts/make-build.sh debug
 
       - name: Update typedefs
-        run: ci_scripts/dump-typedefs.sh
+        run: src/ci_scripts/dump-typedefs.sh
 
       - name: Run pgindent
-        run: ci_scripts/run-pgindent.sh --check --diff
+        run: src/ci_scripts/run-pgindent.sh --check --diff
 
       - name: Run pgperltidy
-        run: ci_scripts/run-pgperltidy.sh --assert-tidy --standard-error-output
+        run: src/ci_scripts/run-pgperltidy.sh --assert-tidy --standard-error-output

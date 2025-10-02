@@ -1049,7 +1049,7 @@ ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 	int			bytes_left;
 	int			bytes_written;
 	int			hdr_len;
-	XLogSegNo 	segno;
+	XLogSegNo	segno;
 
 	/*
 	 * Once we've decided we don't want to receive any more, just ignore any
@@ -1131,7 +1131,7 @@ ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 
 		if (stream->encrypt)
 		{
-			void* enc_buf = copybuf + hdr_len + bytes_written;
+			void	   *enc_buf = copybuf + hdr_len + bytes_written;
 			WalLocation loc = {.tli = stream->timeline};
 
 			XLogSegNoOffsetToRecPtr(segno, xlogoff, WalSegSz, loc.lsn);

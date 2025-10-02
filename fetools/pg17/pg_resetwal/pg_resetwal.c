@@ -350,7 +350,8 @@ main(int argc, char *argv[])
 #endif
 
 	{
-		char tde_path[MAXPGPATH];
+		char		tde_path[MAXPGPATH];
+
 		snprintf(tde_path, sizeof(tde_path), "%s/%s", DataDir, PG_TDE_DATA_DIR);
 		pg_tde_fe_init(tde_path);
 		TDEXLogSmgrInit();
@@ -505,16 +506,18 @@ main(int argc, char *argv[])
 	}
 
 	/*
-	 * The only thing that WAL will contain after reset is a checkpoint, so we can
-	 * write it in unencrypted form. There is no sensitive data in it. But we still
-	 * need to use TDE smgr because WAL key change may be needed. If the last WAL key
-	 * had type "encrypted" new key will be created with type "unencrypted" to mark
-	 * the beginning of a new unencrypted WAL record. If the last WAL key had type
-	 * "unencrypted" it will be reused. On the startup server may create a new key
-	 * with appropriate type according to encryption settings.
+	 * The only thing that WAL will contain after reset is a checkpoint, so we
+	 * can write it in unencrypted form. There is no sensitive data in it. But
+	 * we still need to use TDE smgr because WAL key change may be needed. If
+	 * the last WAL key had type "encrypted" new key will be created with type
+	 * "unencrypted" to mark the beginning of a new unencrypted WAL record. If
+	 * the last WAL key had type "unencrypted" it will be reused. On the
+	 * startup server may create a new key with appropriate type according to
+	 * encryption settings.
 	 *
-	 * We are doing a write initialization only here and not at the startup because we
-	 * want to be sure that everything is checked and ready for writing at this point.
+	 * We are doing a write initialization only here and not at the startup
+	 * because we want to be sure that everything is checked and ready for
+	 * writing at this point.
 	 */
 	TDEXLogSmgrInitWrite(false);
 
@@ -1169,8 +1172,8 @@ WriteEmptyXLOG(void)
 
 	errno = 0;
 	if (xlog_smgr->seg_write(fd, buffer.data, XLOG_BLCKSZ, 0,
-						 ControlFile.checkPointCopy.ThisTimeLineID,
-						 newXlogSegNo, WalSegSz) != XLOG_BLCKSZ)
+							 ControlFile.checkPointCopy.ThisTimeLineID,
+							 newXlogSegNo, WalSegSz) != XLOG_BLCKSZ)
 	{
 		/* if write didn't set errno, assume problem is no disk space */
 		if (errno == 0)
