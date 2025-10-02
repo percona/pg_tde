@@ -92,7 +92,7 @@ ok(-f $walfile, "Got a WAL file");
 
 $node->command_ok(
 	[
-		'pg_waldump', '--quiet',
+		'pg_tde_waldump', '--quiet',
 		'-k', $node->data_dir . '/pg_tde',
 		'--save-fullpage', "$tmp_folder/raw",
 		'--relation', $relation,
