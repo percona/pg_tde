@@ -247,3 +247,108 @@ astreamer_inject_file(astreamer *streamer, char *pathname, char *data,
 	astreamer_content(streamer, &member, NULL, 0,
 					  ASTREAMER_MEMBER_TRAILER);
 }
+
+typedef struct astreamer_pg_tde_injector
+{
+	astreamer	base;
+	bool		skip_file;
+	bool		encryped_wal;
+}			astreamer_pg_tde_injector;
+
+static void astreamer_pg_tde_injector_content(astreamer *streamer,
+											  astreamer_member *member,
+											  const char *data, int len,
+											  astreamer_archive_context context);
+static void astreamer_pg_tde_injector_finalize(astreamer *streamer);
+static void astreamer_pg_tde_injector_free(astreamer *streamer);
+
+static const astreamer_ops astreamer_pg_tde_injector_ops = {
+	.content = astreamer_pg_tde_injector_content,
+	.finalize = astreamer_pg_tde_injector_finalize,
+	.free = astreamer_pg_tde_injector_free
+};
+
+astreamer *
+astreamer_pg_tde_injector_new(astreamer *next, bool encryped_wal)
+{
+	astreamer_pg_tde_injector *streamer;
+
+	streamer = palloc0(sizeof(astreamer_pg_tde_injector));
+	*((const astreamer_ops **) &streamer->base.bbs_ops) =
+		&astreamer_pg_tde_injector_ops;
+	streamer->base.bbs_next = next;
+	streamer->encryped_wal = encryped_wal;
+
+	return &streamer->base;
+}
+
+static void
+astreamer_pg_tde_injector_content(astreamer *streamer,
+								  astreamer_member *member,
+								  const char *data, int len,
+								  astreamer_archive_context context)
+{
+	astreamer_pg_tde_injector *mystreamer;
+
+	mystreamer = (astreamer_pg_tde_injector *) streamer;
+
+	switch (context)
+	{
+		case ASTREAMER_MEMBER_HEADER:
+
+			/*
+			 * A streamed WAL is encrypted with the newly generated WAL key,
+			 * hence we have to prevent wal_keys from rewriting.
+			 */
+			if (strcmp(member->pathname, "pg_tde/wal_keys") == 0)
+			{
+				if (mystreamer->encryped_wal)
+				{
+					mystreamer->skip_file = true;
+					return;
+				}
+				else
+				{
+					pg_log_warning("the source has WAL keys, but no WAL encryption configured for the target backups");
+					pg_log_warning_detail("This may lead to exposed data and broken backup.");
+					pg_log_warning_hint("Run pg_basebackup with -E to encrypt streamed WAL.");
+				}
+			}
+			else if ((strcmp(member->pathname, "pg_tde") == 0 ||
+					  strcmp(member->pathname, "pg_tde/") == 0) &&
+					 mystreamer->encryped_wal)
+			{
+				mystreamer->skip_file = true;
+				return;
+			}
+
+			mystreamer->skip_file = false;
+
+			break;
+
+		case ASTREAMER_MEMBER_CONTENTS:
+		case ASTREAMER_MEMBER_TRAILER:
+			if (mystreamer->skip_file)
+				return;
+
+			break;
+
+		default:
+			break;
+	}
+
+	astreamer_content(mystreamer->base.bbs_next, member, data, len, context);
+}
+
+static void
+astreamer_pg_tde_injector_finalize(astreamer *streamer)
+{
+	astreamer_finalize(streamer->bbs_next);
+}
+
+static void
+astreamer_pg_tde_injector_free(astreamer *streamer)
+{
+	astreamer_free(streamer->bbs_next);
+	pfree(streamer);
+}
