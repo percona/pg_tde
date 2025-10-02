@@ -1274,6 +1274,8 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 	if (inject_manifest)
 		manifest_inject_streamer = streamer;
 
+	streamer = astreamer_pg_tde_injector_new(streamer, encrypt_wal);
+
 	/*
 	 * If this is the main tablespace and we're supposed to write recovery
 	 * information, arrange to do that.

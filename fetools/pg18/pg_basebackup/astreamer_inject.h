@@ -18,6 +18,7 @@
 extern astreamer *astreamer_recovery_injector_new(astreamer *next,
 												  bool is_recovery_guc_supported,
 												  PQExpBuffer recoveryconfcontents);
+extern astreamer *astreamer_pg_tde_injector_new(astreamer *next, bool encryped_wal);
 extern void astreamer_inject_file(astreamer *streamer, char *pathname,
 								  char *data, int len);
 
