@@ -31,7 +31,7 @@ jobs:
           submodules: recursive
           ref: ${{ github.ref }}
 
-      # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707 
+      # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
       - name: Downgrade python to 3.11
         uses: actions/setup-python@v5
         with:
@@ -59,8 +59,8 @@ jobs:
     name: Test
     runs-on: ${{ inputs.os }}
     needs: build
-    
-    steps: 
+
+    steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
