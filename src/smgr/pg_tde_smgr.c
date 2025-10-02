@@ -439,13 +439,16 @@ static const struct f_smgr tde_smgr = {
 	.smgr_extend = tde_mdextend,
 	.smgr_zeroextend = mdzeroextend,
 	.smgr_prefetch = mdprefetch,
+	.smgr_maxcombine = mdmaxcombine,
 	.smgr_readv = tde_mdreadv,
+	.smgr_startreadv = mdstartreadv,
 	.smgr_writev = tde_mdwritev,
 	.smgr_writeback = mdwriteback,
 	.smgr_nblocks = mdnblocks,
 	.smgr_truncate = mdtruncate,
 	.smgr_immedsync = mdimmedsync,
 	.smgr_registersync = mdregistersync,
+	.smgr_fd = mdfd,
 };
 
 void
