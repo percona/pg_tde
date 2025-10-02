@@ -37,7 +37,7 @@ leak:parse_psql_options
 # but it looks like it is not a repetitive action and rather happens once per
 # receiving CopyData message from server.
 #
-# bin/pg_basebackup/pg_basebackup.c
+# fetools/pg17/pg_basebackup/pg_basebackup.c
 leak:BaseBackup
 
 # `varname` doesn't get freed in the case of warning and `continue` in the loop
@@ -46,7 +46,7 @@ leak:BaseBackup
 leak:StoreQueryTuple
 
 # does not free a bunch of parsed flags
-leak:bin/pg_waldump/pg_waldump.c
+leak:fetools/pg17/pg_waldump/pg_waldump.c
 
 #pg_dump
 leak:getSchemaData
