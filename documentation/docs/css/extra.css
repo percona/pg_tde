@@ -11,3 +11,21 @@
   font-size: 0.65rem;   /* Font size */
   line-height: 1.6;
 }
+
+.edit-page-link {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 1.2rem;
+  font-weight: normal;
+  color: var(--md-typeset-a-color);
+  text-decoration: underline;
+}
+
+.edit-page-icon svg {
+  width: 1.40em;
+  height: 1.40em;
+  fill: currentColor;
+  vertical-align: middle;
+}
