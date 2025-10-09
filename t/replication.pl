@@ -18,6 +18,10 @@ $primary->append_conf(
 checkpoint_timeout = 1h
 shared_preload_libraries = 'pg_tde'
 });
+if ($primary->pg_version >= 18)
+{
+	$primary->append_conf('postgresql.conf', 'io_method = sync');
+}
 $primary->start;
 
 $primary->backup('backup');

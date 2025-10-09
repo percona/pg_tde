@@ -28,6 +28,10 @@ $node->init;
 $node->append_conf('postgresql.conf',
 	"shared_preload_libraries = 'pg_tde, pg_stat_monitor, pgaudit, set_user, pg_repack'"
 );
+if ($node->pg_version >= 18)
+{
+	$node->append_conf('postgresql.conf', 'io_method = sync');
+}
 $node->append_conf('postgresql.conf',
 	"pg_stat_monitor.pgsm_bucket_time = 360000");
 $node->append_conf('postgresql.conf',
