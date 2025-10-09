@@ -16,11 +16,13 @@ jobs:
     name: Main matrix
     strategy:
       matrix:
+        pg_version: [17]
         os: [ubuntu-24.04]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
+        pg_version: ${{ matrix.pg_version }}
         os: ${{ matrix.os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
@@ -31,11 +33,13 @@ jobs:
     if: github.event_name != 'pull_request'
     strategy:
       matrix:
+        pg_version: [17]
         os: [ubuntu-24.04-arm]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
+        pg_version: ${{ matrix.pg_version }}
         os: ${{ matrix.os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
