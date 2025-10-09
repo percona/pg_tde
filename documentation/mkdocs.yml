@@ -56,6 +56,7 @@ theme:
 extra_css:
   - https://unicons.iconscout.com/release/v3.0.3/css/line.css
   - https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.min.css
+  - css/extra.css
   - css/percona.css
   - css/design.css
   - css/osano.css
