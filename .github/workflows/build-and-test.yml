@@ -22,14 +22,14 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - name: Clone repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: 'src'
           submodules: recursive
           ref: ${{ github.ref }}
 
       - name: Clone postgres repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: 'postgres'
           repository: 'percona/postgres.git'
@@ -37,7 +37,7 @@ jobs:
 
       # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
       - name: Downgrade python to 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
@@ -69,7 +69,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.artifact_name }}
           path: .
@@ -78,7 +78,7 @@ jobs:
         run: tar -xzf artifacts.tar
 
       - name: Downgrade python to 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
@@ -113,7 +113,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.artifact_name }}
           path: .
@@ -123,7 +123,7 @@ jobs:
 
       # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
       - name: Downgrade python to 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
