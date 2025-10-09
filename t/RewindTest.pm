@@ -144,6 +144,10 @@ allow_in_place_tablespaces = on
 
 shared_preload_libraries = 'pg_tde'
 ));
+	if ($node_primary->pg_version >= 18)
+	{
+		$node_primary->append_conf('postgresql.conf', 'io_method = sync');
+	}
 
 	$node_primary->start;
 

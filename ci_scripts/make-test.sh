@@ -6,10 +6,16 @@ SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 
 cd "$SCRIPT_DIR/.."
 
+PG_VERSION=$(../pginst/bin/pg_config --version | sed -n 's/PostgreSQL \([0-9]*\).*/\1/p')
+
 OPTS='--set shared_preload_libraries=pg_tde'
 
 if [ "$1" = sanitize ]; then
     OPTS+=' --set max_stack_depth=8MB'
+fi
+
+if [ "$PG_VERSION" -ge 18 ]; then
+    OPTS+=' --set io_method=sync'
 fi
 
 ../pginst/bin/pg_ctl -D regress_install -l regress_install.log init -o "$OPTS"

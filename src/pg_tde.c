@@ -15,6 +15,9 @@
 #include "storage/shmem.h"
 #include "utils/builtins.h"
 #include "utils/percona.h"
+#if PG_VERSION_NUM >= 180000
+#include "storage/aio.h"
+#endif
 
 #include "access/pg_tde_tdemap.h"
 #include "access/pg_tde_xlog.h"
@@ -91,6 +94,13 @@ _PG_init(void)
 	}
 
 	check_percona_api_version();
+
+#if PG_VERSION_NUM >= 180000
+	if (io_method != IOMETHOD_SYNC)
+	{
+		elog(FATAL, "pg_tde currently doesn't support Postgres 18 AIO. Disable it using 'io_method = sync' and restart the server.");
+	}
+#endif
 
 	pg_tde_init_data_dir();
 	AesInit();
