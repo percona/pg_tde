@@ -446,6 +446,11 @@ static const struct f_smgr tde_smgr = {
 	.smgr_truncate = mdtruncate,
 	.smgr_immedsync = mdimmedsync,
 	.smgr_registersync = mdregistersync,
+#if PG_VERSION_NUM >= 180000
+	.smgr_maxcombine = mdmaxcombine,
+	.smgr_startreadv = mdstartreadv,
+	.smgr_fd = mdfd,
+#endif
 };
 
 void
