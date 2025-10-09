@@ -2,17 +2,6 @@
 
 set -e
 
-ARGS=
-
-for arg in "$@"
-do
-    case "$arg" in
-        --enable-coverage)
-            ARGS+=" --enable-coverage"
-            ;;
-    esac
-done
-
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 PG_CONFIG="$SCRIPT_DIR/../../pginst/bin/pg_config"
 
@@ -21,13 +10,11 @@ cd "$SCRIPT_DIR/.."
 case "$1" in
     debug)
         echo "Building with debug option"
-        ARGS+=" --enable-cassert"
         ;;
 
     debugoptimized)
         echo "Building with debugoptimized option"
         export CFLAGS="-O2"
-        ARGS+=" --enable-cassert"
         ;;
 
     sanitize)
