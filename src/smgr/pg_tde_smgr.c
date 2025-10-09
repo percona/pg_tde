@@ -12,6 +12,10 @@
 #include "encryption/enc_tde.h"
 #include "pg_tde_event_capture.h"
 #include "smgr/pg_tde_smgr.h"
+#if PG_VERSION_NUM >= 180000
+#include "storage/aio.h"
+#include "storage/bufmgr.h"
+#endif
 
 typedef enum TDEMgrRelationEncryptionStatus
 {
@@ -427,6 +431,94 @@ tde_mdopen(SMgrRelation reln)
 	}
 }
 
+#if PG_VERSION_NUM >= 180000
+
+static TDESMgrRelation *aio_tdereln = NULL;
+
+/*
+ * AIO completion callback for tde_mdstartreadv().
+ */
+static PgAioResult
+tde_md_readv_complete(PgAioHandle *ioh, PgAioResult prior_result, uint8 cb_data)
+{
+	PgAioResult mdres = md_readv_complete(ioh, prior_result, cb_data);
+	PgAioTargetData *td = pgaio_io_get_target_data(ioh);
+	uint64	   *io_data;
+	uint8		handle_data_len;
+
+	if (mdres.status != PGAIO_RS_OK)
+		return mdres;
+
+	Assert(aio_tdereln != NULL);
+
+	if (aio_tdereln->encryption_status != RELATION_KEY_AVAILABLE)
+		return mdres;
+
+	io_data = pgaio_io_get_handle_data(ioh, &handle_data_len);
+
+	for (uint8 buf_off = 0; buf_off < handle_data_len; buf_off++)
+	{
+		Buffer		buf = io_data[buf_off];
+		char	   *buf_ptr = BufferGetBlock(buf);
+		bool		allZero = true;
+		BlockNumber bn = td->smgr.blockNum + buf_off;
+		unsigned char iv[16];
+
+		if (prior_result.result <= buf_off)
+			break;
+
+		/*
+		 * Detect unencrypted all-zero pages written by smgrzeroextend() by
+		 * looking at the first 32 bytes of the page.
+		 *
+		 * Not encrypting all-zero pages is safe because they are only written
+		 * at the end of the file when extending a table on disk so they tend
+		 * to be short lived plus they only leak a slightly more accurate
+		 * table size than one can glean from just the file size.
+		 */
+		for (int i = 0; i < 32; i++)
+		{
+			if (buf_ptr[i] != 0)
+			{
+				allZero = false;
+				break;
+			}
+		}
+		if (allZero)
+			continue;
+
+		CalcBlockIv(td->smgr.forkNum, bn, aio_tdereln->relKey.base_iv, iv);
+
+		AesDecrypt(aio_tdereln->relKey.key, iv, ((unsigned char *) buf_ptr), BLCKSZ, ((unsigned char *) buf_ptr));
+	}
+
+	return mdres;
+}
+
+static void
+tde_mdstartreadv(PgAioHandle *ioh,
+				 SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
+				 void **buffers, BlockNumber nblocks)
+{
+	/* Load key early: later we are in a critical section */
+	aio_tdereln = (TDESMgrRelation *) reln;
+
+	if (aio_tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE)
+	{
+		InternalKey *int_key = tde_smgr_get_key(&reln->smgr_rlocator);
+
+		aio_tdereln->relKey = *int_key;
+		aio_tdereln->encryption_status = RELATION_KEY_AVAILABLE;
+		pfree(int_key);
+	}
+
+	mdstartreadv(ioh, reln, forknum, blocknum, buffers, nblocks);
+
+	aio_tdereln = NULL;
+}
+
+#endif
+
 static const struct f_smgr tde_smgr = {
 	.name = "tde",
 	.smgr_init = mdinit,
@@ -448,7 +540,7 @@ static const struct f_smgr tde_smgr = {
 	.smgr_registersync = mdregistersync,
 #if PG_VERSION_NUM >= 180000
 	.smgr_maxcombine = mdmaxcombine,
-	.smgr_startreadv = mdstartreadv,
+	.smgr_startreadv = tde_mdstartreadv,
 	.smgr_fd = mdfd,
 #endif
 };
@@ -460,6 +552,10 @@ RegisterStorageMgr(void)
 		elog(FATAL, "Another storage manager was loaded before pg_tde. Multiple storage managers is unsupported.");
 	OurSMgrId = smgr_register(&tde_smgr, sizeof(TDESMgrRelation));
 	storage_manager_id = OurSMgrId;
+
+#if PG_VERSION_NUM >= 180000
+	aio_md_readv_cb.complete_shared = tde_md_readv_complete;
+#endif
 }
 
 static void
