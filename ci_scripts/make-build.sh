@@ -4,6 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 PG_CONFIG="$SCRIPT_DIR/../../pginst/bin/pg_config"
+CFLAGS=-Werror
 
 cd "$SCRIPT_DIR/.."
 
@@ -14,12 +15,12 @@ case "$1" in
 
     debugoptimized)
         echo "Building with debugoptimized option"
-        export CFLAGS="-O2"
+        CFLAGS+=" -O2"
         ;;
 
     sanitize)
         echo "Building with sanitize option"
-        export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-inline-functions"
+        CFLAGS+=" -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-inline-functions"
         ;;
 
     *)
@@ -29,4 +30,5 @@ case "$1" in
         ;;
 esac
 
+export CFLAGS
 make PG_CONFIG="$PG_CONFIG" install -j
