@@ -2,6 +2,9 @@ name: Reusable build and test
 on:
   workflow_call:
     inputs:
+      pg_version:
+        type: string
+        required: true
       os:
         type: string
         required: true
@@ -13,7 +16,7 @@ on:
         required: true
 
 env:
-  artifact_name: build-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
+  artifact_name: build-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
   CC: ${{ inputs.compiler }}
 
 jobs:
@@ -33,7 +36,7 @@ jobs:
         with:
           path: postgres
           repository: percona/postgres.git
-          ref: PSP_REL_17_STABLE
+          ref: PSP_REL_${{ inputs.pg_version }}_STABLE
 
       # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
       - name: Downgrade python to 3.11
@@ -95,7 +98,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: log-test-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
+          name: log-test-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
             src/regression_install
             src/regression_install.log
@@ -140,7 +143,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: log-test-global-tde-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
+          name: log-test-global-tde-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
             src/src/test/*/log
             src/src/test/*/regression.diffs
