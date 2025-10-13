@@ -20,7 +20,7 @@ static KeyInfo *get_key_by_name(GenericKeyring *keyring, const char *key_name, K
 static void set_key_by_name(GenericKeyring *keyring, KeyInfo *key);
 static void validate(GenericKeyring *keyring);
 
-const TDEKeyringRoutine keyringFileRoutine = {
+static const TDEKeyringRoutine keyringFileRoutine = {
 	.keyring_get_key = get_key_by_name,
 	.keyring_store_key = set_key_by_name,
 	.keyring_validate = validate,
