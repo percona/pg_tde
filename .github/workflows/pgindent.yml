@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  pg_version: 17
+  pg_version: 18
 
 jobs:
   check:

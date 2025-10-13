@@ -16,7 +16,7 @@ jobs:
     name: Main matrix
     strategy:
       matrix:
-        pg_version: [17]
+        pg_version: [17, 18]
         os: [ubuntu-24.04]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
@@ -33,7 +33,7 @@ jobs:
     if: github.event_name != 'pull_request'
     strategy:
       matrix:
-        pg_version: [17]
+        pg_version: [17, 18]
         os: [ubuntu-24.04-arm]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
