@@ -4,12 +4,12 @@ set -e
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 INSTALL_DIR="$SCRIPT_DIR/../../pginst"
+DATA_DIR=$INSTALL_DIR/data
 
 cd "$SCRIPT_DIR/.."
 
 export TDE_MODE=1
 export PATH=$INSTALL_DIR/bin:$PATH
-export DATA_DIR=$INSTALL_DIR/data
 export PGDATA="${1:-$DATA_DIR}"
 export PGPORT="${2:-5432}"
 
