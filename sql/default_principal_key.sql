@@ -82,7 +82,7 @@ SELECT  provider_id, provider_name, key_name
 SELECT  provider_id, provider_name, key_name
 		FROM pg_tde_key_info();
 
-SELECT pg_buffercache_evict(bufferid) FROM pg_buffercache WHERE relfilenode = (SELECT relfilenode FROM pg_class WHERE oid = 'test_enc'::regclass);
+SELECT FROM (SELECT pg_buffercache_evict(bufferid) FROM pg_buffercache WHERE relfilenode = (SELECT relfilenode FROM pg_class WHERE oid = 'test_enc'::regclass));
 
 SELECT * FROM test_enc;
 
@@ -92,7 +92,7 @@ DROP EXTENSION pg_tde CASCADE;
 
 \c :regress_database
 
-SELECT pg_buffercache_evict(bufferid) FROM pg_buffercache WHERE relfilenode = (SELECT relfilenode FROM pg_class WHERE oid = 'test_enc'::regclass);
+SELECT FROM (SELECT pg_buffercache_evict(bufferid) FROM pg_buffercache WHERE relfilenode = (SELECT relfilenode FROM pg_class WHERE oid = 'test_enc'::regclass));
 
 SELECT * FROM test_enc;
 
