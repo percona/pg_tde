@@ -15,6 +15,7 @@ jobs:
   main:
     name: Main matrix
     strategy:
+      fail-fast: false
       matrix:
         pg_version: [17]
         os: [ubuntu-24.04]
@@ -32,6 +33,7 @@ jobs:
     name: ARM matrix
     if: github.event_name != 'pull_request'
     strategy:
+      fail-fast: false
       matrix:
         pg_version: [17]
         os: [ubuntu-24.04-arm]
