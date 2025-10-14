@@ -86,7 +86,8 @@ PGTDE::psql($node, 'postgres', "SHOW pg_tde.wal_encrypt;");
 PGTDE::psql($node, 'postgres', 'INSERT INTO test_wal (k) VALUES (7), (8);');
 
 PGTDE::psql($node, 'postgres',
-	"SELECT data FROM pg_logical_slot_get_changes('tde_slot', NULL, NULL);");
+	"SELECT data FROM pg_logical_slot_get_changes('tde_slot', NULL, NULL, 'include-xids', '0');"
+);
 
 PGTDE::psql($node, 'postgres',
 	"SELECT pg_drop_replication_slot('tde_slot');");
