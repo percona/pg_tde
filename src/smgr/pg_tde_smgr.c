@@ -439,20 +439,17 @@ static TDESMgrRelation *aio_tdereln = NULL;
  * AIO completion callback for tde_mdstartreadv().
  */
 static PgAioResult
-tde_md_readv_complete(PgAioHandle *ioh, PgAioResult prior_result, uint8 cb_data)
+tde_readv_complete(PgAioHandle *ioh, PgAioResult prior_result, uint8 cb_data)
 {
-	PgAioResult mdres = md_readv_complete(ioh, prior_result, cb_data);
 	PgAioTargetData *td = pgaio_io_get_target_data(ioh);
 	uint64	   *io_data;
 	uint8		handle_data_len;
 
-	if (mdres.status != PGAIO_RS_OK)
-		return mdres;
-
 	Assert(aio_tdereln != NULL);
+	Assert(aio_tdereln->encryption_status == RELATION_KEY_AVAILABLE);
 
-	if (aio_tdereln->encryption_status != RELATION_KEY_AVAILABLE)
-		return mdres;
+	if (prior_result.status != PGAIO_RS_OK)
+		return prior_result;
 
 	io_data = pgaio_io_get_handle_data(ioh, &handle_data_len);
 
@@ -492,9 +489,18 @@ tde_md_readv_complete(PgAioHandle *ioh, PgAioResult prior_result, uint8 cb_data)
 		AesDecrypt(aio_tdereln->relKey.key, iv, ((unsigned char *) buf_ptr), BLCKSZ, ((unsigned char *) buf_ptr));
 	}
 
-	return mdres;
+	return prior_result;
 }
 
+static PgAioHandleCallbackID PGAIO_HCB_TDE_READV = PGAIO_HCB_INVALID;
+
+/*
+ * Adds a callback which decrypts the pages and is executed after the md.c's
+ * AIO callback but before the callback's in the buffer manager.
+ *
+ * This function does not work in real AIO due its reliance on a global
+ * variable to pass relation the key.
+ */
 static void
 tde_mdstartreadv(PgAioHandle *ioh,
 				 SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
@@ -512,10 +518,17 @@ tde_mdstartreadv(PgAioHandle *ioh,
 		pfree(int_key);
 	}
 
+	if (aio_tdereln->encryption_status == RELATION_KEY_AVAILABLE)
+		pgaio_io_register_callbacks(ioh, PGAIO_HCB_TDE_READV, 0);
+
 	mdstartreadv(ioh, reln, forknum, blocknum, buffers, nblocks);
 
 	aio_tdereln = NULL;
 }
+
+const static PgAioHandleCallbacks aio_tde_readv_cb = {
+	.complete_shared = tde_readv_complete,
+};
 
 #endif
 
@@ -554,7 +567,7 @@ RegisterStorageMgr(void)
 	storage_manager_id = OurSMgrId;
 
 #if PG_VERSION_NUM >= 180000
-	aio_md_readv_cb.complete_shared = tde_md_readv_complete;
+	PGAIO_HCB_TDE_READV = pgaio_io_register_callback_entry(&aio_tde_readv_cb, "aio_tde_readv_cb");
 #endif
 }
 
