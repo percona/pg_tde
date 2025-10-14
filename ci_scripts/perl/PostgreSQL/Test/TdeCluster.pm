@@ -83,15 +83,15 @@ sub backup
 
 	if ($tde_mode_wal)
 	{
-		PostgreSQL::Test::Utils::system_log('cp', '-R', '-P', '-p',
-			$self->pg_tde_dir, $backup_dir . '/pg_tde',);
-
 		# TODO: More thorough checking for options incompatible with --encrypt-wal
 		$params{backup_options} = [] unless defined $params{backup_options};
 		unless (
 			List::Util::any { $_ eq '-Ft' or $_ eq '-Xnone' }
 			@{ $params{backup_options} })
 		{
+			PostgreSQL::Test::Utils::system_log('cp', '-R', '-P', '-p',
+				$self->pg_tde_dir, $backup_dir . '/pg_tde',);
+
 			push @{ $params{backup_options} }, '--encrypt-wal';
 		}
 	}
