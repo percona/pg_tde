@@ -524,11 +524,6 @@ pg_tde_create_principal_key_internal(Oid providerOid,
 
 	key_info = KeyringGetKey(provider, key_name, &return_code);
 
-	if (return_code != KEYRING_CODE_SUCCESS)
-		ereport(ERROR,
-				errmsg("failed to retrieve principal key \"%s\" from key provider \"%s\"", key_name, provider_name),
-				errdetail("%s", KeyringErrorCodeToString(return_code)));
-
 	if (key_info != NULL)
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
