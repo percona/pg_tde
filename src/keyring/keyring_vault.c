@@ -277,7 +277,11 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 		goto cleanup;
 	}
 
+#if PG_VERSION_NUM >= 170000
 	jlex = makeJsonLexContextCstringLen(NULL, str.ptr, str.len, PG_UTF8, true);
+#else
+	jlex = makeJsonLexContextCstringLen(str.ptr, str.len, PG_UTF8, true);
+#endif
 	json_error = parse_json_response(&parse, jlex);
 
 	if (json_error != JSON_SUCCESS)
@@ -328,8 +332,10 @@ cleanup:
 	if (str.ptr != NULL)
 		pfree(str.ptr);
 
+#if PG_VERSION_NUM >= 170000
 	if (jlex != NULL)
 		freeJsonLexContext(jlex);
+#endif
 
 	return key;
 }
@@ -369,7 +375,11 @@ validate(GenericKeyring *keyring)
 	}
 	else
 	{
+#if PG_VERSION_NUM >= 170000
 		jlex = makeJsonLexContextCstringLen(NULL, str.ptr, str.len, PG_UTF8, true);
+#else
+		jlex = makeJsonLexContextCstringLen(str.ptr, str.len, PG_UTF8, true);
+#endif
 		json_error = parse_vault_mount_info(&parse, jlex);
 
 		if (json_error != JSON_SUCCESS)
@@ -404,8 +414,10 @@ validate(GenericKeyring *keyring)
 						   vault_keyring->vault_mount_path, parse.version),
 					errhint("The only supported vault engine type is Key/Value version \"2\""));
 
+#if PG_VERSION_NUM >= 170000
 		if (jlex != NULL)
 			freeJsonLexContext(jlex);
+#endif
 	}
 
 	/*

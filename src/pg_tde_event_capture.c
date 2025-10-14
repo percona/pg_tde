@@ -4,6 +4,7 @@
 
 #include "postgres.h"
 
+#include "access/genam.h"
 #include "access/heapam.h"
 #include "access/relation.h"
 #include "access/table.h"
@@ -50,6 +51,28 @@ static Oid	get_tde_table_am_oid(void);
 
 PG_FUNCTION_INFO_V1(pg_tde_ddl_command_start_capture);
 PG_FUNCTION_INFO_V1(pg_tde_ddl_command_end_capture);
+
+#if PG_VERSION_NUM < 170000
+
+/* Backported from src/backend/utils/cache/lsyscache.c to support PostgreSQL 16 */
+static Oid
+get_rel_relam(Oid relid)
+{
+	HeapTuple	tp;
+	Form_pg_class reltup;
+	Oid			result;
+
+	tp = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(tp))
+		elog(ERROR, "cache lookup failed for relation %u", relid);
+	reltup = (Form_pg_class) GETSTRUCT(tp);
+	result = reltup->relam;
+	ReleaseSysCache(tp);
+
+	return result;
+}
+
+#endif
 
 static TDEEncryptMode
 currentTdeEncryptMode(void)

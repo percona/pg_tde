@@ -240,6 +240,8 @@ tde_smgr_rel_is_encrypted(SMgrRelation reln)
 	return tdereln->encryption_status == RELATION_ENCRYPTED;
 }
 
+#if PG_VERSION_NUM >= 170000
+
 static void
 tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 			 const void **buffers, BlockNumber nblocks, bool skipFsync)
@@ -273,6 +275,34 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 		pfree(local_buffers);
 	}
 }
+
+#else
+
+static void
+tde_mdwrite(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
+			const void *buffer, bool skipFsync)
+{
+	TDESMgrRelation *tdereln = (TDESMgrRelation *) reln;
+
+	tde_smgr_resolve_encryption_status(tdereln);
+
+	if (tdereln->encryption_status == RELATION_NOT_ENCRYPTED)
+	{
+		mdwrite(reln, forknum, blocknum, buffer, skipFsync);
+	}
+	else
+	{
+		unsigned char *local_buffer = palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, 0);
+
+		tde_encrypt_smgr_block(&tdereln->relKey, forknum, blocknum, buffer, local_buffer);
+
+		mdwrite(reln, forknum, blocknum, local_buffer, skipFsync);
+
+		pfree(local_buffer);
+	}
+}
+
+#endif
 
 /*
  * The current transaction might already be commited when this function is
@@ -325,6 +355,8 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 	}
 }
 
+#if PG_VERSION_NUM >= 170000
+
 static void
 tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 			void **buffers, BlockNumber nblocks)
@@ -346,6 +378,26 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 		tde_decrypt_smgr_block(&tdereln->relKey, forknum, bn, buf, buf);
 	}
 }
+
+#else
+
+static void
+tde_mdread(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
+		   void *buffer)
+{
+	TDESMgrRelation *tdereln = (TDESMgrRelation *) reln;
+
+	mdread(reln, forknum, blocknum, buffer);
+
+	tde_smgr_resolve_encryption_status(tdereln);
+
+	if (tdereln->encryption_status == RELATION_NOT_ENCRYPTED)
+		return;
+
+	tde_decrypt_smgr_block(&tdereln->relKey, forknum, blocknum, buffer, buffer);
+}
+
+#endif
 
 static void
 tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool isRedo)
@@ -556,13 +608,18 @@ static const struct f_smgr tde_smgr = {
 	.smgr_extend = tde_mdextend,
 	.smgr_zeroextend = mdzeroextend,
 	.smgr_prefetch = mdprefetch,
-	.smgr_readv = tde_mdreadv,
-	.smgr_writev = tde_mdwritev,
 	.smgr_writeback = mdwriteback,
 	.smgr_nblocks = mdnblocks,
 	.smgr_truncate = mdtruncate,
 	.smgr_immedsync = mdimmedsync,
+#if PG_VERSION_NUM >= 170000
+	.smgr_readv = tde_mdreadv,
+	.smgr_writev = tde_mdwritev,
 	.smgr_registersync = mdregistersync,
+#else
+	.smgr_read = tde_mdread,
+	.smgr_write = tde_mdwrite,
+#endif
 #if PG_VERSION_NUM >= 180000
 	.smgr_maxcombine = mdmaxcombine,
 	.smgr_startreadv = tde_mdstartreadv,

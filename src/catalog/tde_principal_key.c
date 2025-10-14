@@ -68,7 +68,9 @@ static dshash_parameters principal_key_dsh_params = {
 	.entry_size = sizeof(TDEPrincipalKey),
 	.compare_function = dshash_memcmp,
 	.hash_function = dshash_memhash,
+#if PG_VERSION_NUM >= 170000
 	.copy_function = dshash_memcpy,
+#endif
 };
 
 static TdePrincipalKeylocalState principalKeyLocalState;
@@ -749,6 +751,26 @@ pg_tde_delete_key(PG_FUNCTION_ARGS)
 	LWLockRelease(tde_lwlock_enc_keys());
 	PG_RETURN_VOID();
 }
+
+#if PG_VERSION_NUM < 170000
+
+/* Backported from src/include/nodes/pg_list.h to support PostgreSQL 16 */
+#define foreach_ptr(type, var, lst) foreach_internal(type, *, var, lst, lfirst)
+#define foreach_int(var, lst)	foreach_internal(int, , var, lst, lfirst_int)
+#define foreach_oid(var, lst)	foreach_internal(Oid, , var, lst, lfirst_oid)
+#define foreach_xid(var, lst)	foreach_internal(TransactionId, , var, lst, lfirst_xid)
+
+#define foreach_internal(type, pointer, var, lst, func) \
+	for (type pointer var = 0, pointer var##__outerloop = (type pointer) 1; \
+		 var##__outerloop; \
+		 var##__outerloop = 0) \
+		for (ForEachState var##__state = {(lst), 0}; \
+			(var##__state.l != NIL && \
+			 var##__state.i < var##__state.l->length && \
+			(var = func(&var##__state.l->elements[var##__state.i]), true)); \
+			var##__state.i++)
+
+#endif
 
 /*
  * SQL interface to delete default principal key.
