@@ -65,7 +65,6 @@ jobs:
           name: sanitizers-testlog
           path: |
             sanitize.log.*
-            src/log
             src/regression_install
             src/regression_install.log
             src/regression.diffs
