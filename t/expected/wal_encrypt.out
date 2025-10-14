@@ -79,27 +79,27 @@ SHOW pg_tde.wal_encrypt;
 (1 row)
 
 INSERT INTO test_wal (k) VALUES (7), (8);
-SELECT data FROM pg_logical_slot_get_changes('tde_slot', NULL, NULL);
+SELECT data FROM pg_logical_slot_get_changes('tde_slot', NULL, NULL, 'include-xids', '0');
                            data                            
 -----------------------------------------------------------
- BEGIN 739
- COMMIT 739
- BEGIN 740
+ BEGIN
+ COMMIT
+ BEGIN
  table public.test_wal: INSERT: id[integer]:1 k[integer]:1
  table public.test_wal: INSERT: id[integer]:2 k[integer]:2
- COMMIT 740
- BEGIN 741
+ COMMIT
+ BEGIN
  table public.test_wal: INSERT: id[integer]:3 k[integer]:3
  table public.test_wal: INSERT: id[integer]:4 k[integer]:4
- COMMIT 741
- BEGIN 742
+ COMMIT
+ BEGIN
  table public.test_wal: INSERT: id[integer]:5 k[integer]:5
  table public.test_wal: INSERT: id[integer]:6 k[integer]:6
- COMMIT 742
- BEGIN 743
+ COMMIT
+ BEGIN
  table public.test_wal: INSERT: id[integer]:7 k[integer]:7
  table public.test_wal: INSERT: id[integer]:8 k[integer]:8
- COMMIT 743
+ COMMIT
 (18 rows)
 
 SELECT pg_drop_replication_slot('tde_slot');
