@@ -8,25 +8,27 @@ SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 INSTALL_DIR="$SCRIPT_DIR/../../pginst"
 PSP_DIR="$SCRIPT_DIR/../../postgres"
 
+PG_VERSION=$(sed -n "s/PACKAGE_VERSION='\\([0-9]*\\).*/\1/p" "$PSP_DIR/configure")
+
 INSTALL_INJECTION_POINTS=0
 
 case "$1" in
     debug)
         echo "Building with debug option"
-        ARGS+=" --enable-cassert --enable-injection-points"
+        ARGS+=" --enable-cassert"
         INSTALL_INJECTION_POINTS=1
         ;;
 
     debugoptimized)
         echo "Building with debugoptimized option"
         export CFLAGS="-O2"
-        ARGS+=" --enable-cassert --enable-injection-points"
+        ARGS+=" --enable-cassert"
         INSTALL_INJECTION_POINTS=1
         ;;
 
     coverage)
         echo "Building with coverage option"
-        ARGS+=" --enable-injection-points --enable-coverage"
+        ARGS+=" --enable-coverage"
         INSTALL_INJECTION_POINTS=1
         ;;
 
@@ -42,8 +44,18 @@ case "$1" in
         ;;
 esac
 
+if [ "$PG_VERSION" -lt 17 ]; then
+    INSTALL_INJECTION_POINTS=0
+fi
+
+if [ "$INSTALL_INJECTION_POINTS" = 1 ]; then
+     ARGS+=" --enable-injection-points"
+fi
+
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    ARGS+=" --with-liburing"
+    if [ "$PG_VERSION" -ge 17 ]; then
+        ARGS+=" --with-liburing"
+    fi
     NCPU=$(nproc)
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     NCPU=$(sysctl -n hw.ncpu)
