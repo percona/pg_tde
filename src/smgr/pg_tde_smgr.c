@@ -506,9 +506,10 @@ tde_mdstartreadv(PgAioHandle *ioh,
 				 SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 				 void **buffers, BlockNumber nblocks)
 {
-	/* Load key early: later we are in a critical section */
+	/* Uses a global variable to pass the relation key and IV */
 	aio_tdereln = (TDESMgrRelation *) reln;
 
+	/* Load key early: later we are in a critical section */
 	if (aio_tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE)
 	{
 		InternalKey *int_key = tde_smgr_get_key(&reln->smgr_rlocator);
