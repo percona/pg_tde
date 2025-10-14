@@ -22,6 +22,11 @@ case "$1" in
         ARGS+=" --enable-cassert"
         ;;
 
+    coverage)
+        echo "Building with coverage option"
+        ARGS+=" --enable-cassert --enable-coverage"
+        ;;
+
     sanitize)
         echo "Building with sanitize option"
         export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-inline-functions"
