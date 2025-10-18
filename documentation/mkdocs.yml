@@ -167,7 +167,6 @@ nav:
       - "How pg_tde works": index/how-does-tde-work.md
       - "Encrypted data scope": index/tde-encrypts.md
       - "Table access methods and pg_tde": index/table-access-method.md
-    - "Limitations of pg_tde": index/tde-limitations.md
     - "Versions and supported PostgreSQL deployments": index/supported-versions.md
   - "Get started":
     - "1. Install pg_tde": install.md
