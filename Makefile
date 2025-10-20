@@ -127,7 +127,7 @@ EXTRA_CLEAN = \
 	libtde.a \
 	libtdexlog.a
 
-PG_CONFIG = pg_config
+PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 PG_CPPFLAGS = -Isrc/include -Isrc/libkmip/libkmip/include -I$(FETOOLS)/include -I$(includedir)
 include $(PGXS)
