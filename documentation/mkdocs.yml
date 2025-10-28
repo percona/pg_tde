@@ -180,7 +180,7 @@ nav:
       - "Fortanix configuration": global-key-provider-configuration/kmip-fortanix.md  
       - "Vault configuration": global-key-provider-configuration/vault.md
       - "Thales configuration": global-key-provider-configuration/kmip-thales.md
-      - "Using OpenBao as a key provider": global-key-provider-configuration/kmip-openbao.md
+      - "Using OpenBao as a key provider": global-key-provider-configuration/openbao.md
       - "Keyring file configuration": global-key-provider-configuration/keyring.md
     - "2.2 Global Principal Key configuration": global-key-provider-configuration/set-principal-key.md
     - "3. Validate encryption with pg_tde": test.md
