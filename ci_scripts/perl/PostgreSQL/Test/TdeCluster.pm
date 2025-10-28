@@ -5,6 +5,7 @@ use parent 'PostgreSQL::Test::Cluster';
 use strict;
 use warnings FATAL => 'all';
 
+use Cwd 'abs_path';
 use List::Util                      ();
 use PostgreSQL::Test::RecursiveCopy ();
 use PostgreSQL::Test::Utils         ();
@@ -16,7 +17,91 @@ my $tde_mode_smgr =
   defined($ENV{TDE_MODE_SMGR}) ? $ENV{TDE_MODE_SMGR} + 0 : 1;
 my $tde_mode_wal = defined($ENV{TDE_MODE_WAL}) ? $ENV{TDE_MODE_WAL} + 0 : 1;
 
+my %smgr_skip = (
+	'contrib/amcheck/t/001_verify_heapam.pl' =>
+	  'hacks relation files directly for scaffolding',
+	'contrib/amcheck/t/006_verify_gin.pl' =>
+	  'hacks relation files directly for scaffolding',
+	'src/bin/pg_amcheck/t/003_check.pl' =>
+	  'hacks relation files directly for scaffolding',
+	'src/bin/pg_amcheck/t/005_opclass_damage.pl' =>
+	  'investigate why this fails',
+	'src/bin/pg_basebackup/t/010_pg_basebackup.pl' =>
+	  'uses corrupt_page_checksum to directly hack relation files',
+	'src/bin/pg_checksums/t/002_actions.pl' =>
+	  'uses corrupt_page_checksum to directly hack relation files',
+	'src/bin/pg_dump/t/004_pg_dump_parallel.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_dump/t/010_dump_connstr.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/002_pg_upgrade.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/003_logical_slots.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/004_subscription.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/005_char_signedness.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/006_transfer_modes.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/scripts/t/020_createdb.pl' =>
+	  'tries to use FILE_COPY strategy for database creation with encrypted objects in the template',
+	'src/test/recovery/t/014_unlogged_reinit.pl' => 'invalid page in block',
+	'src/test/recovery/t/016_min_consistency.pl' =>
+	  'reads LSN directly from relation files',
+	'src/test/recovery/t/018_wal_optimize.pl' => 'invalid page in block',
+	'src/test/recovery/t/032_relfilenode_reuse.pl' => 'invalid page in block',
+	'src/test/recovery/t/043_no_contrecord_switch.pl' =>
+	  'uses write_wal to hack wal directly');
+
+my %wal_skip = (
+	'src/bin/pg_basebackup/t/010_pg_basebackup.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_combinebackup/t/003_timeline.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_combinebackup/t/008_promote.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_combinebackup/t/006_db_file_copy.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_rewind/t/001_basic.pl' =>
+	  'copies WAL directly to archive without using archive_command',
+	'src/bin/pg_verifybackup/t/009_extract.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_waldump/t/001_basic.pl' =>
+	  'pg_waldump needs extra options for encrypted WAL',
+	'src/bin/pg_waldump/t/002_save_fullpage.pl' =>
+	  'pg_waldump needs extra options for encrypted WAL',
+	'src/test/recovery/t/039_end_of_wal.pl' =>
+	  'uses write_wal to hack wal directly',
+	'src/test/recovery/t/042_low_level_backup.pl' =>
+	  'directly copies archived data without using restore_command');
+
 {
+	# Skip tests which do not pass in either TDE_MODE
+	my $bin_path = abs_path($0);
+
+	if ($tde_mode_smgr && !$tde_mode_noskip)
+	{
+		while (my ($test, $msg) = each(%smgr_skip))
+		{
+			if ($bin_path =~ m/\/\Q$test\E$/)
+			{
+				plan skip_all => $msg;
+			}
+		}
+	}
+
+	if ($tde_mode_wal && !$tde_mode_noskip)
+	{
+		while (my ($test, $msg) = each(%wal_skip))
+		{
+			if ($bin_path =~ m/\/\Q$test\E$/)
+			{
+				plan skip_all => $msg;
+			}
+		}
+	}
+
 	# Replace Cluster::new with sub which returns a TdeCluster
 	my $old_new = *PostgreSQL::Test::Cluster::new{CODE};
 
@@ -252,18 +337,6 @@ sub _tde_init_sql_command
 		],
 		'<',
 		\$sql);
-}
-
-sub skip_if_tde_mode_wal
-{
-	my ($msg) = @_;
-	plan(skip_all => $msg) if ($tde_mode_wal && !$tde_mode_noskip);
-}
-
-sub skip_if_tde_mode_smgr
-{
-	my ($msg) = @_;
-	plan(skip_all => $msg) if ($tde_mode_smgr && !$tde_mode_noskip);
 }
 
 1;
