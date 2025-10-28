@@ -10,7 +10,7 @@ on:
       - documentation/**
 
 env:
-  pg_version: 17
+  pg_version: 18
   CC: clang
   LD: clang
   UBSAN_OPTIONS: log_path=${{ github.workspace }}/sanitize.log print_suppressions=0 print_stacktrace=1 print_summary=1 halt_on_error=1
