@@ -52,7 +52,6 @@ sudo apt-get install -y ${DEPS[@]}
 sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 pip3 install meson pykmip cryptography setuptools wheel
 
-# Vault
-wget -O - https://apt.releases.hashicorp.com/gpg | sudo tee /etc/apt/keyrings/hashicorp-archive-keyring.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.asc] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt-get update && sudo apt-get install -y vault
+# OpenBao
+wget https://github.com/openbao/openbao/releases/download/v2.4.3/bao_2.4.3_linux_amd64.deb
+sudo dpkg -i bao_2.4.3_linux_amd64.deb
