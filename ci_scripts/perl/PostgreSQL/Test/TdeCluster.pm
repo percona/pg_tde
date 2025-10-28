@@ -10,13 +10,23 @@ use PostgreSQL::Test::RecursiveCopy ();
 use PostgreSQL::Test::Utils         ();
 use Test::More;
 
-our $tde_mode = defined($ENV{TDE_MODE}) ? $ENV{TDE_MODE} + 0 : 0;
 my $tde_mode_noskip =
   defined($ENV{TDE_MODE_NOSKIP}) ? $ENV{TDE_MODE_NOSKIP} + 0 : 0;
 my $tde_mode_smgr =
-  defined($ENV{TDE_MODE_SMGR}) ? $ENV{TDE_MODE_SMGR} + 0 : $tde_mode;
-my $tde_mode_wal =
-  defined($ENV{TDE_MODE_WAL}) ? $ENV{TDE_MODE_WAL} + 0 : $tde_mode;
+  defined($ENV{TDE_MODE_SMGR}) ? $ENV{TDE_MODE_SMGR} + 0 : 1;
+my $tde_mode_wal = defined($ENV{TDE_MODE_WAL}) ? $ENV{TDE_MODE_WAL} + 0 : 1;
+
+{
+	# Replace Cluster::new with sub which returns a TdeCluster
+	my $old_new = *PostgreSQL::Test::Cluster::new{CODE};
+
+	no warnings 'redefine';
+	*PostgreSQL::Test::Cluster::new = sub {
+		my $node = $old_new->(@_);
+		bless $node, 'PostgreSQL::Test::TdeCluster';
+		return $node;
+	};
+}
 
 sub init
 {
