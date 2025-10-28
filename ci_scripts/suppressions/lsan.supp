@@ -37,7 +37,7 @@ leak:parse_psql_options
 # but it looks like it is not a repetitive action and rather happens once per
 # receiving CopyData message from server.
 #
-# fetools/pg17/pg_basebackup/pg_basebackup.c
+# fetools/pg*/pg_basebackup/pg_basebackup.c
 leak:BaseBackup
 
 # `varname` doesn't get freed in the case of warning and `continue` in the loop
@@ -47,6 +47,7 @@ leak:StoreQueryTuple
 
 # does not free a bunch of parsed flags
 leak:fetools/pg17/pg_waldump/pg_waldump.c
+leak:fetools/pg18/pg_waldump/pg_waldump.c
 
 #pg_dump
 leak:getSchemaData
@@ -64,3 +65,6 @@ leak:get_progname
 # malloced `threads` ("Thread state") never gets released (allocated in main(),
 # once, and not in loop).
 leak:bin/pgbench/pgbench.c
+
+# Frontend utilities leak the return of this function in PostgreSQL 18
+leak:GetDbnameFromConnectionOptions
