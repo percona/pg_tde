@@ -15,7 +15,8 @@ SELECT pg_tde_add_global_key_provider_vault_v2(
     'url',
     'mount',
     'secret_token_path',
-    'ca_path'
+    'ca_path',
+    'namespace'
 );
 ```
 
@@ -26,6 +27,7 @@ SELECT pg_tde_add_global_key_provider_vault_v2(
 * `url` is the URL of the Vault server
 * `mount` is the mount point where the keyring should store the keys
 * [optional] `ca_path` is the path of the CA file used for SSL verification
+* [optional] `namespace` is the namespace within the OpenBao server. Read more about the [namespace support in OpenBao](https://openbao.org/blog/namespaces-announcement/)` (NOTE: You can use a namespace without ca_path. In this case, specify NULL as the ca_path value)
 
 The following example is for testing purposes only. Use secure tokens and proper SSL validation in production environments:
 

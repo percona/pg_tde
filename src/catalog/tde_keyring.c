@@ -579,6 +579,8 @@ free_keyring(GenericKeyring *keyring)
 		case VAULT_V2_KEY_PROVIDER:
 			if (vault->vault_ca_path)
 				pfree(vault->vault_ca_path);
+			if (vault->vault_namespace)
+				pfree(vault->vault_namespace);
 			if (vault->vault_mount_path)
 				pfree(vault->vault_mount_path);
 			if (vault->vault_token)
@@ -984,6 +986,10 @@ debug_print_kerying(GenericKeyring *keyring)
 			elog(DEBUG2, "Vault Keyring URL: %s", ((VaultV2Keyring *) keyring)->vault_url);
 			elog(DEBUG2, "Vault Keyring Mount Path: %s", ((VaultV2Keyring *) keyring)->vault_mount_path);
 			elog(DEBUG2, "Vault Keyring CA Path: %s", ((VaultV2Keyring *) keyring)->vault_ca_path);
+			if (((VaultV2Keyring *) keyring)->vault_namespace != NULL)
+			{
+				elog(DEBUG2, "Vault Keyring Namespace: %s", ((VaultV2Keyring *) keyring)->vault_namespace);
+			}
 			break;
 		case KMIP_KEY_PROVIDER:
 			elog(DEBUG2, "KMIP Keyring Host: %s", ((KmipKeyring *) keyring)->kmip_host);
