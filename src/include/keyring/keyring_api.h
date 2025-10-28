@@ -71,6 +71,7 @@ typedef struct VaultV2Keyring
 	char	   *vault_url;
 	char	   *vault_ca_path;
 	char	   *vault_mount_path;
+	char	   *vault_namespace;
 } VaultV2Keyring;
 
 typedef struct KmipKeyring

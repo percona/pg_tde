@@ -127,6 +127,12 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 	pg_snprintf(tokenHeader, sizeof(tokenHeader),
 				"X-Vault-Token: %s", keyring->vault_token);
 	curlList = curl_slist_append(curlList, tokenHeader);
+	if (keyring->vault_namespace != NULL)
+	{
+		pg_snprintf(tokenHeader, sizeof(tokenHeader),
+					"X-Vault-Namespace: %s", keyring->vault_namespace);
+		curlList = curl_slist_append(curlList, tokenHeader);
+	}
 	if (curlList == NULL)
 		return 0;
 

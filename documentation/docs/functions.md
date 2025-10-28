@@ -72,6 +72,24 @@ SELECT pg_tde_add_global_key_provider_vault_v2(
   'secret_token_path',
   'ca_path'
 );
+
+SELECT pg_tde_add_database_key_provider_vault_v2(
+  'provider-name',
+  'url',
+  'mount',
+  'secret_token_path',
+  'ca_path',
+  'namespace'
+);
+
+SELECT pg_tde_add_global_key_provider_vault_v2(
+  'provider-name',
+  'url',
+  'mount',
+  'secret_token_path',
+  'ca_path',
+  'namespace'
+);
 ```
 
 These functions change the Vault provider:
@@ -92,6 +110,23 @@ SELECT pg_tde_change_global_key_provider_vault_v2(
   'secret_token_path',
   'ca_path'
 );
+SELECT pg_tde_change_database_key_provider_vault_v2(
+  'provider-name',
+  'url',
+  'mount',
+  'secret_token_path',
+  'ca_path',
+  'namespace'
+);
+
+SELECT pg_tde_change_global_key_provider_vault_v2(
+  'provider-name',
+  'url',
+  'mount',
+  'secret_token_path',
+  'ca_path',
+  'namespace'
+);
 ```
 
 where:
@@ -101,6 +136,7 @@ where:
 * `mount` is the mount point on the Vault server where the key provider should store the keys
 * `secret_token_path` is a path to the file that contains an access token with read and write access to the above mount point
 * **[optional]** `ca_path` is the path of the CA file used for SSL verification
+* **[namespace]** `namespace` is the path of the namespace when using [Vault with namespaes](https://developer.hashicorp.com/vault/docs/enterprise/namespaces)
 
 #### Add or modify KMIP providers
 

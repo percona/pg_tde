@@ -36,6 +36,7 @@ typedef enum JsonKeyringField
 	JK_VAULT_URL,
 	JK_VAULT_MOUNT_PATH,
 	JK_VAULT_CA_PATH,
+	JK_VAULT_NAMESPACE,
 
 	JK_KMIP_HOST,
 	JK_KMIP_PORT,
@@ -61,6 +62,7 @@ static const char *JK_FIELD_NAMES[JK_FIELDS_TOTAL] = {
 	[JK_VAULT_URL] = "url",
 	[JK_VAULT_MOUNT_PATH] = "mountPath",
 	[JK_VAULT_CA_PATH] = "caPath",
+	[JK_VAULT_NAMESPACE] = "namespace",
 
 	[JK_KMIP_HOST] = "host",
 	[JK_KMIP_PORT] = "port",
@@ -229,6 +231,8 @@ json_kring_object_field_start(void *state, char *fname, bool isnull)
 						parse->current_field = JK_VAULT_MOUNT_PATH;
 					else if (strcmp(fname, JK_FIELD_NAMES[JK_VAULT_CA_PATH]) == 0)
 						parse->current_field = JK_VAULT_CA_PATH;
+					else if (strcmp(fname, JK_FIELD_NAMES[JK_VAULT_NAMESPACE]) == 0)
+						parse->current_field = JK_VAULT_NAMESPACE;
 					else
 					{
 						parse->current_field = JK_FIELD_UNKNOWN;
@@ -338,6 +342,9 @@ json_kring_assign_scalar(JsonKeyringState *parse, JsonKeyringField field, char *
 			break;
 		case JK_VAULT_CA_PATH:
 			vault->vault_ca_path = value;
+			break;
+		case JK_VAULT_NAMESPACE:
+			vault->vault_namespace = value;
 			break;
 
 		case JK_KMIP_HOST:
