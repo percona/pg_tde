@@ -44,4 +44,26 @@ SELECT pg_tde_change_database_key_provider_vault_v2('vault-v2', 'https://127.0.0
 -- HTTP against HTTPS server fails
 SELECT pg_tde_change_database_key_provider_vault_v2('vault-v2', 'http://127.0.0.1:8200', 'secret', :'root_token_file', NULL);
 
+
+-- Namespaces are supported, try using keys in a namespace. This test expect that the 'pgns' namespace exists, and it has a kv2 engine named 'secret'
+SELECT pg_tde_add_database_key_provider_vault_v2('vault-v2ns', 'https://127.0.0.1:8200', 'secret', :'root_token_file', :'cacert_file', 'pgns');
+SELECT pg_tde_create_key_using_database_key_provider('vault-v2-key-in-ns', 'vault-v2ns');
+SELECT pg_tde_set_key_using_database_key_provider('vault-v2-key-in-ns', 'vault-v2ns');
+
+CREATE TABLE test_enc(
+	  id SERIAL,
+	  k INTEGER DEFAULT '0' NOT NULL,
+	  PRIMARY KEY (id)
+	) USING tde_heap;
+
+INSERT INTO test_enc (k) VALUES (1);
+INSERT INTO test_enc (k) VALUES (2);
+INSERT INTO test_enc (k) VALUES (3);
+
+SELECT * from test_enc;
+
+SELECT pg_tde_verify_key();
+
+DROP TABLE test_enc;
+
 DROP EXTENSION pg_tde;
