@@ -165,6 +165,7 @@ nav:
     - "About pg_tde": 
       - "Benefits of pg_tde": index/how-tde-helps.md
       - "How pg_tde works": index/how-does-tde-work.md
+      - "Impact of pg_tde on database operations": index/what-tde-impacts.md
       - "Encrypted data scope": index/tde-encrypts.md
       - "Table access methods and pg_tde": index/table-access-method.md
     - "Limitations of pg_tde": index/tde-limitations.md
@@ -180,7 +181,7 @@ nav:
       - "Fortanix configuration": global-key-provider-configuration/kmip-fortanix.md  
       - "Vault configuration": global-key-provider-configuration/vault.md
       - "Thales configuration": global-key-provider-configuration/kmip-thales.md
-      - "Using OpenBao as a key provider": global-key-provider-configuration/openbao.md
+      - "Using OpenBao as a key provider": global-key-provider-configuration/kmip-openbao.md
       - "Keyring file configuration": global-key-provider-configuration/keyring.md
     - "2.2 Global Principal Key configuration": global-key-provider-configuration/set-principal-key.md
     - "3. Validate encryption with pg_tde": test.md
