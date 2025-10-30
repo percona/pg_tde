@@ -49,5 +49,4 @@ body:
   - type: markdown
     id: coc
     attributes:
-      label: Code of Conduct
       value: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md)
