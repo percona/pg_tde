@@ -1,9 +1,6 @@
 name: Bug Report
 description: File a bug report
-labels: ["bug"]
-assignees: 
-  - dutow
-  - dAdAbird
+labels: [bug]
 body:
   - type: markdown
     attributes:
@@ -34,8 +31,8 @@ body:
     id: version
     attributes:
       label: Version
-      description: What version of Percona Server PostgreSQL and pg_tde are you running?
-      placeholder: Percona Server for PostgreSQL 17.0, pg_tde v1.0.0
+      description: What version of pg_tde and Percona Server PostgreSQL are you running?
+      placeholder: pg_tde 2.1, Percona Server for PostgreSQL 18.0
     validations:
       required: true
   - type: textarea
@@ -49,11 +46,8 @@ body:
       label: Relevant logs
       description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
       render: Shell
-  - type: checkboxes
-    id: terms
+  - type: markdown
+    id: coc
     attributes:
       label: Code of Conduct
-      description: By submitting this issue, you agree to follow [Percona Community Code of Conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md)
-      options:
-        - label: I agree to follow Percona Community Code of Conduct
-          required: true
+      value: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md)

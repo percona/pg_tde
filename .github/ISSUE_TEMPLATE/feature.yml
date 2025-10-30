@@ -1,14 +1,11 @@
 name: Feature Request
 description: Suggest an idea for this project
-labels: ["feature"]
-assignees: 
-  - dutow
-  - dAdAbird
+labels: [feature]
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for suggesting an idea to make Percona Server for PostgreSQL better! Please complete the below form to ensure we have all the details to get things started.
+        Thank you for suggesting an idea to make pg_tde better! Please complete the below form to ensure we have all the details to get things started.
   - type: textarea
     id: description
     attributes:
@@ -26,11 +23,8 @@ body:
     attributes:
       label: Additional context
       description: Any information that may help.
-  - type: checkboxes
-    id: terms
+  - type: markdown
+    id: coc
     attributes:
       label: Code of Conduct
-      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md)
-      options:
-        - label: I agree to follow this project's Code of Conduct
-          required: true
+      value: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md)
