@@ -1,0 +1,342 @@
+package PostgreSQL::Test::TdeCluster;
+
+use parent 'PostgreSQL::Test::Cluster';
+
+use strict;
+use warnings FATAL => 'all';
+
+use Cwd 'abs_path';
+use List::Util                      ();
+use PostgreSQL::Test::RecursiveCopy ();
+use PostgreSQL::Test::Utils         ();
+use Test::More;
+
+my $tde_mode_noskip =
+  defined($ENV{TDE_MODE_NOSKIP}) ? $ENV{TDE_MODE_NOSKIP} + 0 : 0;
+my $tde_mode_smgr =
+  defined($ENV{TDE_MODE_SMGR}) ? $ENV{TDE_MODE_SMGR} + 0 : 1;
+my $tde_mode_wal = defined($ENV{TDE_MODE_WAL}) ? $ENV{TDE_MODE_WAL} + 0 : 1;
+
+my %smgr_skip = (
+	'contrib/amcheck/t/001_verify_heapam.pl' =>
+	  'hacks relation files directly for scaffolding',
+	'contrib/amcheck/t/006_verify_gin.pl' =>
+	  'hacks relation files directly for scaffolding',
+	'src/bin/pg_amcheck/t/003_check.pl' =>
+	  'hacks relation files directly for scaffolding',
+	'src/bin/pg_amcheck/t/005_opclass_damage.pl' =>
+	  'investigate why this fails',
+	'src/bin/pg_basebackup/t/010_pg_basebackup.pl' =>
+	  'uses corrupt_page_checksum to directly hack relation files',
+	'src/bin/pg_checksums/t/002_actions.pl' =>
+	  'uses corrupt_page_checksum to directly hack relation files',
+	'src/bin/pg_dump/t/004_pg_dump_parallel.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_dump/t/010_dump_connstr.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/002_pg_upgrade.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/003_logical_slots.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/004_subscription.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/005_char_signedness.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/006_transfer_modes.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/scripts/t/020_createdb.pl' =>
+	  'tries to use FILE_COPY strategy for database creation with encrypted objects in the template',
+	'src/test/recovery/t/014_unlogged_reinit.pl' => 'invalid page in block',
+	'src/test/recovery/t/016_min_consistency.pl' =>
+	  'reads LSN directly from relation files',
+	'src/test/recovery/t/018_wal_optimize.pl' => 'invalid page in block',
+	'src/test/recovery/t/032_relfilenode_reuse.pl' => 'invalid page in block',
+	'src/test/recovery/t/043_no_contrecord_switch.pl' =>
+	  'uses write_wal to hack wal directly');
+
+my %wal_skip = (
+	'src/bin/pg_basebackup/t/010_pg_basebackup.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_combinebackup/t/003_timeline.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_combinebackup/t/008_promote.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_combinebackup/t/006_db_file_copy.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_rewind/t/001_basic.pl' =>
+	  'copies WAL directly to archive without using archive_command',
+	'src/bin/pg_verifybackup/t/009_extract.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_waldump/t/001_basic.pl' =>
+	  'pg_waldump needs extra options for encrypted WAL',
+	'src/bin/pg_waldump/t/002_save_fullpage.pl' =>
+	  'pg_waldump needs extra options for encrypted WAL',
+	'src/test/recovery/t/039_end_of_wal.pl' =>
+	  'uses write_wal to hack wal directly',
+	'src/test/recovery/t/042_low_level_backup.pl' =>
+	  'directly copies archived data without using restore_command');
+
+{
+	# Skip tests which do not pass in either TDE_MODE
+	my $bin_path = abs_path($0);
+
+	if ($tde_mode_smgr && !$tde_mode_noskip)
+	{
+		while (my ($test, $msg) = each(%smgr_skip))
+		{
+			if ($bin_path =~ m/\/\Q$test\E$/)
+			{
+				plan skip_all => $msg;
+			}
+		}
+	}
+
+	if ($tde_mode_wal && !$tde_mode_noskip)
+	{
+		while (my ($test, $msg) = each(%wal_skip))
+		{
+			if ($bin_path =~ m/\/\Q$test\E$/)
+			{
+				plan skip_all => $msg;
+			}
+		}
+	}
+
+	# Replace Cluster::new with sub which returns a TdeCluster
+	my $old_new = *PostgreSQL::Test::Cluster::new{CODE};
+
+	no warnings 'redefine';
+	*PostgreSQL::Test::Cluster::new = sub {
+		my $node = $old_new->(@_);
+		bless $node, 'PostgreSQL::Test::TdeCluster';
+		return $node;
+	};
+}
+
+sub init
+{
+	my ($self, %params) = @_;
+
+	$self->SUPER::init(%params);
+
+	$self->SUPER::append_conf('postgresql.conf',
+		'shared_preload_libraries = pg_tde');
+
+	if ($self->pg_version >= 18)
+	{
+		$self->SUPER::append_conf('postgresql.conf', 'io_method = sync');
+	}
+
+	$self->_tde_init_pg_tde_dir($params{extra});
+
+	if ($tde_mode_smgr)
+	{
+		# Enable the TDE extension in all databases created by initdb, this is
+		# necessary for the tde_heap access method to be available everywhere.
+		foreach ('postgres', 'template0', 'template1')
+		{
+			_tde_init_sql_command(
+				$self->data_dir, $_, q(
+				CREATE SCHEMA _pg_tde;
+				CREATE EXTENSION pg_tde WITH SCHEMA _pg_tde;
+			));
+		}
+		$self->SUPER::append_conf('postgresql.conf',
+			'default_table_access_method = tde_heap');
+	}
+
+	if ($tde_mode_wal)
+	{
+		$self->SUPER::append_conf('postgresql.conf',
+			'pg_tde.wal_encrypt = on');
+	}
+
+	return;
+}
+
+sub append_conf
+{
+	my ($self, $filename, $str) = @_;
+
+	if ($filename eq 'postgresql.conf' or $filename eq 'postgresql.auto.conf')
+	{
+		# TODO: Will not work with shared_preload_libraries= without any
+		#       libraries, but no TAP test currently do that.
+		$str =~
+		  s/shared_preload_libraries *= *'?([^'\n]+)'?/shared_preload_libraries = 'pg_tde,$1'/;
+	}
+
+	$self->SUPER::append_conf($filename, $str);
+}
+
+sub backup
+{
+	my ($self, $backup_name, %params) = @_;
+	my $backup_dir = $self->backup_dir . '/' . $backup_name;
+
+	mkdir $backup_dir or die "mkdir($backup_dir) failed: $!";
+
+	if ($tde_mode_wal)
+	{
+		# TODO: More thorough checking for options incompatible with --encrypt-wal
+		$params{backup_options} = [] unless defined $params{backup_options};
+		unless (
+			List::Util::any { $_ eq '-Ft' or $_ eq '-Xnone' }
+			@{ $params{backup_options} })
+		{
+			PostgreSQL::Test::Utils::system_log('cp', '-R', '-P', '-p',
+				$self->pg_tde_dir, $backup_dir . '/pg_tde',);
+
+			push @{ $params{backup_options} }, '--encrypt-wal';
+		}
+	}
+
+	$self->SUPER::backup($backup_name, %params);
+}
+
+sub enable_archiving
+{
+	my ($self) = @_;
+	my $path = $self->archive_dir;
+
+	$self->SUPER::enable_archiving;
+	if ($tde_mode_wal)
+	{
+		$self->adjust_conf('postgresql.conf', 'archive_command',
+			qq('pg_tde_archive_decrypt %f %p "cp \\"%%p\\" \\"$path/%%f\\""')
+		);
+	}
+
+	return;
+}
+
+sub enable_restoring
+{
+	my ($self, $root_node, $standby) = @_;
+	my $path = $root_node->archive_dir;
+
+	$self->SUPER::enable_restoring($root_node, $standby);
+	if ($tde_mode_wal)
+	{
+		$self->adjust_conf('postgresql.conf', 'restore_command',
+			qq('pg_tde_restore_encrypt %f %p "cp \\"$path/%%f\\" \\"%%p\\""')
+		);
+	}
+
+	return;
+}
+
+sub pg_tde_dir
+{
+	my ($self) = @_;
+	return $self->data_dir . '/pg_tde';
+}
+
+sub _tde_init_pg_tde_dir
+{
+	my ($self, $extra) = @_;
+	my $tde_source_dir;
+
+	if (defined($extra))
+	{
+		$tde_source_dir = $self->_tde_generate_pg_tde_dir($extra);
+	}
+	else
+	{
+		$tde_source_dir = $self->_tde_init_pg_tde_dir_template;
+	}
+
+	PostgreSQL::Test::Utils::system_log('cp', '-R', '-P', '-p',
+		$tde_source_dir . '/pg_tde',
+		$self->pg_tde_dir);
+
+	# We don't want clusters sharing the KMS file as any concurrent writes will
+	# mess it up.
+	PostgreSQL::Test::Utils::system_log(
+		'cp', '-R', '-P', '-p',
+		$tde_source_dir . '/pg_tde_test_keys',
+		$self->basedir . '/pg_tde_test_keys');
+
+	PostgreSQL::Test::Utils::system_log(
+		'pg_tde_change_key_provider',
+		'-D' => $self->data_dir,
+		'1664',
+		'global_test_provider',
+		'file',
+		$self->basedir . '/pg_tde_test_keys');
+}
+
+sub _tde_init_pg_tde_dir_template
+{
+	my ($self) = @_;
+	my $tde_template_dir;
+
+	if (defined($ENV{TDE_TEMPLATE_DIR}))
+	{
+		$tde_template_dir = $ENV{TDE_TEMPLATE_DIR};
+	}
+	else
+	{
+		$tde_template_dir =
+		  $PostgreSQL::Test::Utils::tmp_check . '/pg_tde_template';
+	}
+
+	unless (-e $tde_template_dir)
+	{
+		my $temp_dir = $self->_tde_generate_pg_tde_dir;
+		mkdir $tde_template_dir;
+
+		PostgreSQL::Test::Utils::system_log('cp', '-R', '-P', '-p',
+			$temp_dir . '/pg_tde',
+			$tde_template_dir);
+
+		PostgreSQL::Test::Utils::system_log(
+			'cp', '-R', '-P', '-p',
+			$temp_dir . '/pg_tde_test_keys',
+			$tde_template_dir . '/pg_tde_test_keys');
+	}
+
+	return $tde_template_dir;
+}
+
+sub _tde_generate_pg_tde_dir
+{
+	my ($self, $extra) = @_;
+	my $temp_dir = PostgreSQL::Test::Utils::tempdir();
+
+	PostgreSQL::Test::Utils::system_log(
+		'initdb',
+		'-D' => $temp_dir,
+		'--set' => 'shared_preload_libraries=pg_tde',
+		$self->pg_version >= 18 ? ('--set' => 'io_method=sync') : (),
+		@{$extra});
+
+	_tde_init_sql_command(
+		$temp_dir, 'postgres', qq(
+		CREATE EXTENSION pg_tde;
+		SELECT pg_tde_add_global_key_provider_file('global_test_provider', '$temp_dir/pg_tde_test_keys');
+		SELECT pg_tde_create_key_using_global_key_provider('default_test_key', 'global_test_provider');
+		SELECT pg_tde_set_default_key_using_global_key_provider('default_test_key', 'global_test_provider');
+	));
+
+	return $temp_dir;
+}
+
+sub _tde_init_sql_command
+{
+	my ($datadir, $database, $sql) = @_;
+	PostgreSQL::Test::Utils::run_log(
+		[
+			'postgres',
+			'--single', '-j', '-F',
+			'-D' => $datadir,
+			'-c' => 'exit_on_error=true',
+			'-c' => 'log_checkpoints=false',
+			'-c' => 'archive_mode=off',
+			$database,
+		],
+		'<',
+		\$sql);
+}
+
+1;
