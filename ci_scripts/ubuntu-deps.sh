@@ -53,5 +53,5 @@ sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 pip3 install meson pykmip cryptography setuptools wheel
 
 # OpenBao
-wget https://github.com/openbao/openbao/releases/download/v2.4.3/bao_2.4.3_linux_amd64.deb
-sudo dpkg -i bao_2.4.3_linux_amd64.deb
+wget https://github.com/openbao/openbao/releases/download/v2.4.3/bao_2.4.3_linux_$(dpkg --print-architecture).deb
+sudo dpkg -i bao_2.4.3_linux_$(dpkg --print-architecture).deb
