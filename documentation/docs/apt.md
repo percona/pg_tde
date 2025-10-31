@@ -2,7 +2,8 @@
 
 This page explains how to install `pg_tde` with [Percona Distribution for PostgreSQL :octicons-link-external-16:](https://docs.percona.com/postgresql/latest/index.html).
 
-Check the [list of supported platforms](install.md#__tabbed_1_1) before continuing.
+!!! tip
+    Check the [list of supported platforms :octicons-link-external-16:](https://www.percona.com/services/policies/percona-software-support-lifecycle) before continuing.
 
 ## Preconditions
 
