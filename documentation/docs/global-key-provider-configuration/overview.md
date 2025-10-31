@@ -22,5 +22,5 @@ To use an external KMS with `pg_tde`, follow these two steps:
 | **Vault**          | HashiCorp Vault integration (KV v2 API, KMIP engine). | [Configure Vault →](vault.md) |
 | **Fortanix**       | Fortanix DSM key management.                          | [Configure Fortanix →](kmip-fortanix.md) |
 | **Thales**         | Thales CipherTrust Manager and DSM.                   | [Configure Thales →](kmip-thales.md) |
-| **OpenBao**        | Community fork of Vault, supporting KV v2.            | [Configure OpenBao →](kmip-openbao.md) |
+| **OpenBao**        | Community fork of Vault, supporting KV v2.            | [Configure OpenBao →](openbao.md) |
 | **Keyring file** *(not recommended)* | Local key file for dev/test only.                  | [Configure keyring file →](keyring.md) |
