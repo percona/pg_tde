@@ -124,17 +124,8 @@ jobs:
       - name: Extract artifact file
         run: tar -xzf artifacts.tar
 
-      # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
-      - name: Downgrade python to 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.11
-
       - name: Install dependencies
         run: src/ci_scripts/ubuntu-deps.sh
-
-      - name: Setup kmip and vault
-        run: src/ci_scripts/setup-keyring-servers.sh
 
       - name: Test postgres with TDE as default access method
         run: src/ci_scripts/make-test-global-tde.sh --continue
