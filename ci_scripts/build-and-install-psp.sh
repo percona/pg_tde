@@ -8,23 +8,26 @@ SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 INSTALL_DIR="$SCRIPT_DIR/../../pginst"
 PSP_DIR="$SCRIPT_DIR/../../postgres"
 
-cd "$PSP_DIR"
+INSTALL_INJECTION_POINTS=0
 
 case "$1" in
     debug)
         echo "Building with debug option"
-        ARGS+=" --enable-cassert"
+        ARGS+=" --enable-cassert --enable-injection-points"
+        INSTALL_INJECTION_POINTS=1
         ;;
 
     debugoptimized)
         echo "Building with debugoptimized option"
         export CFLAGS="-O2"
-        ARGS+=" --enable-cassert"
+        ARGS+=" --enable-cassert --enable-injection-points"
+        INSTALL_INJECTION_POINTS=1
         ;;
 
     coverage)
         echo "Building with coverage option"
-        ARGS+=" --enable-cassert --enable-coverage"
+        ARGS+=" --enable-cassert --enable-injection-points --enable-coverage"
+        INSTALL_INJECTION_POINTS=1
         ;;
 
     sanitize)
@@ -39,5 +42,10 @@ case "$1" in
         ;;
 esac
 
+cd "$PSP_DIR"
 ./configure --prefix="$INSTALL_DIR" --enable-debug --enable-tap-tests $ARGS
 make install-world -j -s
+if [ "$INSTALL_INJECTION_POINTS" = 1 ]; then
+    # Injection points extension is not built by default
+    make install -j -s -C src/test/modules/injection_points
+fi
