@@ -3,7 +3,6 @@ on:
   pull_request:
     paths-ignore:
       - documentation/**
-  workflow_dispatch:
 
 env:
   pg_version: 18
