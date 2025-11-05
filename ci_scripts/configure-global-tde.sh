@@ -8,7 +8,6 @@ DATA_DIR=$INSTALL_DIR/data
 
 cd "$SCRIPT_DIR/.."
 
-export TDE_MODE=1
 export PATH=$INSTALL_DIR/bin:$PATH
 export PGDATA="${1:-$DATA_DIR}"
 export PGPORT="${2:-5432}"
