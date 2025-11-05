@@ -10,4 +10,3 @@ This page summarizes how `pg_tde` interacts with core PostgreSQL operations.
 | **Logical replication** | ✅ No | Not affected. |
 | **Monitoring and statistics** | ✅ No | Not affected, including `pg_stat_monitor`. |
 | **Performance** | ⚠️ Slight | Minor CPU overhead due to enabling encryption, most noticeable on random write workloads. |
-| **Configuration management** | ❌ Yes | `pg_tde.conf` parameters affect key handling and WAL encryption. |
