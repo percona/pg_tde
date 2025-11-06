@@ -683,7 +683,7 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 			exit(1);
 		}
 		pg_tde_save_server_key(principalKey, false);
-		TDEXLogSmgrInitWrite(true);
+		TDEXLogSmgrInitWrite(16);
 	}
 
 	/* Temporary replication slots are only supported in 10 and newer */

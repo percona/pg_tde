@@ -182,6 +182,7 @@ To get started with `pg_tde`, follow these steps:
 * Execute `CREATE EXTENSION pg_tde` in the databases where they want to use encryption
 * Optionally, enable `pg_tde.wal_encrypt` in `postgresql.conf`
 * Optionally, disable `pg_tde.inherit_global_providers` in `postgresql.conf` (it is enabled by default)
+* Optionally, set an encryption algorithm with `pg_tde.cipher`. Options are `aes_128` (default) and `aes_256`
 
 ### Add providers
 

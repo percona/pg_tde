@@ -199,7 +199,7 @@ pg_tde_create_wal_range(WalEncryptionRange *range, WalEncryptionRangeType type)
 	range->end.lsn = MaxXLogRecPtr;
 	range->end.tli = MaxTimeLineID;
 
-	pg_tde_generate_internal_key(&range->key);
+	pg_tde_generate_internal_key(&range->key, 16);
 
 	pg_tde_write_wal_key_file_entry(range, principal_key);
 
@@ -617,10 +617,10 @@ pg_tde_wal_range_from_entry(const TDEPrincipalKey *principal_key, WalKeyFileEntr
 	range->end.lsn = MaxXLogRecPtr;
 
 	memcpy(range->key.base_iv, entry->key_base_iv, INTERNAL_KEY_IV_LEN);
-	if (!AesGcmDecrypt(principal_key->keyData,
+	if (!AesGcmDecrypt(principal_key->keyData, 16,
 					   entry->entry_iv, MAP_ENTRY_IV_SIZE,
 					   (unsigned char *) entry, offsetof(WalKeyFileEntry, encrypted_key_data),
-					   entry->encrypted_key_data, INTERNAL_KEY_LEN,
+					   entry->encrypted_key_data, 16,
 					   range->key.key,
 					   entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE))
 		ereport(ERROR,
@@ -680,10 +680,10 @@ pg_tde_initialize_wal_key_file_entry(WalKeyFileEntry *entry,
 				errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("could not generate iv for wal key file entry: %s", ERR_error_string(ERR_get_error(), NULL)));
 
-	AesGcmEncrypt(principal_key->keyData,
+	AesGcmEncrypt(principal_key->keyData, 16,
 				  entry->entry_iv, MAP_ENTRY_IV_SIZE,
 				  (unsigned char *) entry, offsetof(WalKeyFileEntry, encrypted_key_data),
-				  range->key.key, INTERNAL_KEY_LEN,
+				  range->key.key, 16,
 				  entry->encrypted_key_data,
 				  entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }

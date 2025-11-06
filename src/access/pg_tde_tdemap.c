@@ -70,7 +70,7 @@ typedef struct TDEMapEntry
 	uint32		type;			/* Part of AAD */
 	uint32		_unused3;		/* Part of AAD */
 
-	uint8		encrypted_key_data[INTERNAL_KEY_LEN];
+	uint8		encrypted_key_data[16];
 	uint8		key_base_iv[INTERNAL_KEY_IV_LEN];
 
 	uint32		_unused1;		/* Will be 1 in existing files entries. */
@@ -377,7 +377,7 @@ pg_tde_sign_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, const
 				errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("could not generate iv for key map: %s", ERR_error_string(ERR_get_error(), NULL)));
 
-	AesGcmEncrypt(principal_key->keyData,
+	AesGcmEncrypt(principal_key->keyData, principal_key->keyLength,
 				  signed_key_info->sign_iv, MAP_ENTRY_IV_SIZE,
 				  (unsigned char *) &signed_key_info->data, sizeof(signed_key_info->data),
 				  NULL, 0,
@@ -406,7 +406,7 @@ pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *princ
 				errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("could not generate iv for key map: %s", ERR_error_string(ERR_get_error(), NULL)));
 
-	AesGcmEncrypt(principal_key->keyData,
+	AesGcmEncrypt(principal_key->keyData, principal_key->keyLength,
 				  map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
 				  (unsigned char *) map_entry, offsetof(TDEMapEntry, encrypted_key_data),
 				  rel_key_data->key, INTERNAL_KEY_LEN,
@@ -570,7 +570,7 @@ pg_tde_count_encryption_keys(Oid dbOid)
 bool
 pg_tde_verify_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, const KeyData *principal_key_data)
 {
-	return AesGcmDecrypt(principal_key_data->data,
+	return AesGcmDecrypt(principal_key_data->data, principal_key_data->len,
 						 signed_key_info->sign_iv, MAP_ENTRY_IV_SIZE,
 						 (unsigned char *) &signed_key_info->data, sizeof(signed_key_info->data),
 						 NULL, 0,
@@ -585,7 +585,7 @@ tde_decrypt_rel_key(const TDEPrincipalKey *principal_key, TDEMapEntry *map_entry
 
 	Assert(principal_key);
 
-	if (!AesGcmDecrypt(principal_key->keyData,
+	if (!AesGcmDecrypt(principal_key->keyData, principal_key->keyLength,
 					   map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
 					   (unsigned char *) map_entry, offsetof(TDEMapEntry, encrypted_key_data),
 					   map_entry->encrypted_key_data, INTERNAL_KEY_LEN,

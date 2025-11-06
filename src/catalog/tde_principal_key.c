@@ -62,9 +62,6 @@ typedef struct TdePrincipalKeylocalState
 	dshash_table *sharedHash;
 } TdePrincipalKeylocalState;
 
-/* Length of newly generated principal keys */
-#define PRINCIPAL_KEY_LEN 16
-
 /* Parameters for the principal key info shared hash */
 static dshash_parameters principal_key_dsh_params = {
 	.key_size = sizeof(Oid),
@@ -529,7 +526,7 @@ pg_tde_create_principal_key_internal(Oid providerOid,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("cannot create key \"%s\" because it already exists", key_name));
 
-	key_info = KeyringGenerateNewKeyAndStore(provider, key_name, PRINCIPAL_KEY_LEN);
+	key_info = KeyringGenerateNewKeyAndStore(provider, key_name, KeyLength);
 
 	pfree(key_info);
 	pfree(provider);
