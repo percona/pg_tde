@@ -142,8 +142,8 @@ ValidateKey(KeyInfo *key)
 		return false;
 	}
 
-	/* For now we only support 128-bit keys */
-	if (key->data.len != KEY_DATA_SIZE_128)
+	/* For now we only support 128 and 256-bit keys */
+	if (key->data.len != KEY_DATA_SIZE_128 && key->data.len != KEY_DATA_SIZE_256)
 	{
 		ereport(WARNING,
 				errmsg("invalid key: unsupported key length \"%u\"", key->data.len));
