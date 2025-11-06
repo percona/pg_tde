@@ -10,6 +10,7 @@
 #include "access/pg_tde_xlog.h"
 #include "encryption/enc_aes.h"
 #include "encryption/enc_tde.h"
+#include "pg_tde_guc.h"
 #include "pg_tde_event_capture.h"
 #include "smgr/pg_tde_smgr.h"
 #if PG_VERSION_NUM >= 180000
@@ -103,7 +104,7 @@ tde_smgr_create_key(const RelFileLocatorBackend *smgr_rlocator)
 {
 	InternalKey *key = palloc_object(InternalKey);
 
-	pg_tde_generate_internal_key(key);
+	pg_tde_generate_internal_key(key, 16);
 
 	if (RelFileLocatorBackendIsTemp(*smgr_rlocator))
 		tde_smgr_save_temp_key(&smgr_rlocator->locator, key);
@@ -121,7 +122,7 @@ tde_smgr_create_key_redo(const RelFileLocator *rlocator)
 {
 	InternalKey key;
 
-	pg_tde_generate_internal_key(&key);
+	pg_tde_generate_internal_key(&key, 16);
 
 	pg_tde_save_smgr_key(*rlocator, &key);
 }
@@ -242,7 +243,7 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 			CalcBlockIv(forknum, bn, tdereln->relKey.base_iv, iv);
 
-			AesEncrypt(tdereln->relKey.key, iv, ((unsigned char **) buffers)[i], BLCKSZ, local_buffers[i]);
+			AesEncrypt(tdereln->relKey.key, 16, iv, ((unsigned char **) buffers)[i], BLCKSZ, local_buffers[i]);
 		}
 
 		mdwritev(reln, forknum, blocknum,
@@ -306,7 +307,7 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 		CalcBlockIv(forknum, blocknum, tdereln->relKey.base_iv, iv);
 
-		AesEncrypt(tdereln->relKey.key, iv, ((unsigned char *) buffer), BLCKSZ, local_blocks);
+		AesEncrypt(tdereln->relKey.key, 16, iv, ((unsigned char *) buffer), BLCKSZ, local_blocks);
 
 		mdextend(reln, forknum, blocknum, local_blocks, skipFsync);
 
@@ -361,7 +362,7 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 		CalcBlockIv(forknum, bn, tdereln->relKey.base_iv, iv);
 
-		AesDecrypt(tdereln->relKey.key, iv, ((unsigned char **) buffers)[i], BLCKSZ, ((unsigned char **) buffers)[i]);
+		AesDecrypt(tdereln->relKey.key, 16, iv, ((unsigned char **) buffers)[i], BLCKSZ, ((unsigned char **) buffers)[i]);
 	}
 }
 
@@ -525,7 +526,7 @@ tde_readv_complete(PgAioHandle *ioh, PgAioResult prior_result, uint8 cb_data)
 
 		CalcBlockIv(td->smgr.forkNum, bn, int_key->base_iv, iv);
 
-		AesDecrypt(int_key->key, iv, ((unsigned char *) buf_ptr), BLCKSZ, ((unsigned char *) buf_ptr));
+		AesDecrypt(int_key->key, 16, iv, ((unsigned char *) buf_ptr), BLCKSZ, ((unsigned char *) buf_ptr));
 	}
 
 	return prior_result;

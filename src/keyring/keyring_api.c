@@ -7,6 +7,7 @@
 #include "utils/memutils.h"
 
 #include "keyring/keyring_api.h"
+#include "pg_tde_guc.h"
 
 #ifdef FRONTEND
 #include "fe_utils/simple_list.h"
@@ -142,13 +143,27 @@ ValidateKey(KeyInfo *key)
 		return false;
 	}
 
-	/* For now we only support 128-bit keys */
-	if (key->data.len != KEY_DATA_SIZE_128)
+	/* For now we only support 128 and 256-bit keys */
+	if (key->data.len != KEY_DATA_SIZE_128 && key->data.len != KEY_DATA_SIZE_256)
 	{
 		ereport(WARNING,
 				errmsg("invalid key: unsupported key length \"%u\"", key->data.len));
 		return false;
 	}
+
+/*
+ * This check doesn't quite work for frontend tools as they don't have GUCs
+ *
+ * TODO: Avoid the global state here
+ */
+#ifndef FRONTEND
+	if (key->data.len != KeyLength)
+	{
+		ereport(WARNING,
+				errmsg("length \"%u\" of key \"%s\" does not match the length \"%d\" of the current cipher setting", key->data.len, key->name, KeyLength),
+				errhint("Create a new principal key and set it instead of the current one."));
+	}
+#endif
 
 	return true;
 }
