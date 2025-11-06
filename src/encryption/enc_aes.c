@@ -39,8 +39,7 @@ static const EVP_CIPHER *cipher_ctr_ecb = NULL;
 void
 AesInit(void)
 {
-	OpenSSL_add_all_algorithms();
-	ERR_load_crypto_strings();
+	OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
 
 	cipher_cbc = EVP_aes_128_cbc();
 	cipher_gcm = EVP_aes_128_gcm();
@@ -57,7 +56,6 @@ AesEcbEncrypt(EVP_CIPHER_CTX **ctxPtr, const unsigned char *key, const unsigned 
 		Assert(cipher_ctr_ecb != NULL);
 
 		*ctxPtr = EVP_CIPHER_CTX_new();
-		EVP_CIPHER_CTX_init(*ctxPtr);
 
 		if (EVP_CipherInit_ex(*ctxPtr, cipher_ctr_ecb, NULL, key, NULL, 1) == 0)
 			ereport(ERROR,
@@ -84,7 +82,6 @@ AesRunCbc(int enc, const unsigned char *key, const unsigned char *iv, const unsi
 	Assert(in_len % EVP_CIPHER_block_size(cipher_cbc) == 0);
 
 	ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
 
 	if (EVP_CipherInit_ex(ctx, cipher_cbc, NULL, key, iv, enc) == 0)
 		ereport(ERROR,
@@ -107,7 +104,6 @@ AesRunCbc(int enc, const unsigned char *key, const unsigned char *iv, const unsi
 	out_len += out_len_final;
 	Assert(in_len == out_len);
 
-	EVP_CIPHER_CTX_cleanup(ctx);
 	EVP_CIPHER_CTX_free(ctx);
 }
 
@@ -134,7 +130,6 @@ AesGcmEncrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
 	Assert(in_len % EVP_CIPHER_block_size(cipher_gcm) == 0);
 
 	ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
 
 	if (EVP_EncryptInit_ex(ctx, cipher_gcm, NULL, NULL, NULL) == 0)
 		ereport(ERROR,
@@ -175,7 +170,6 @@ AesGcmEncrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
 	out_len += out_len_final;
 	Assert(in_len == out_len);
 
-	EVP_CIPHER_CTX_cleanup(ctx);
 	EVP_CIPHER_CTX_free(ctx);
 }
 
@@ -189,7 +183,6 @@ AesGcmDecrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
 	Assert(in_len % EVP_CIPHER_block_size(cipher_gcm) == 0);
 
 	ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
 
 	if (EVP_DecryptInit_ex(ctx, cipher_gcm, NULL, NULL, NULL) == 0)
 		ereport(ERROR,
@@ -221,7 +214,6 @@ AesGcmDecrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
 
 	if (EVP_DecryptFinal_ex(ctx, out + out_len, &out_len_final) == 0)
 	{
-		EVP_CIPHER_CTX_cleanup(ctx);
 		EVP_CIPHER_CTX_free(ctx);
 		return false;
 	}
@@ -233,7 +225,6 @@ AesGcmDecrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
 	out_len += out_len_final;
 	Assert(in_len == out_len);
 
-	EVP_CIPHER_CTX_cleanup(ctx);
 	EVP_CIPHER_CTX_free(ctx);
 
 	return true;
