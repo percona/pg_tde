@@ -29,13 +29,7 @@ if [ -d "$PGDATA" ]; then
     rm -rf "$PGDATA"
 fi
 
-OPTS='--set shared_preload_libraries=pg_tde'
-
-if [ "$PG_VERSION" -ge 18 ]; then
-    OPTS+=' --set io_method=sync'
-fi
-
-initdb -D "$PGDATA" $OPTS
+initdb -D "$PGDATA" --set shared_preload_libraries=pg_tde
 
 pg_ctl -D "$PGDATA" start -o "-p $PGPORT" -l "$INSTALL_DIR/postgresql.log"
 
