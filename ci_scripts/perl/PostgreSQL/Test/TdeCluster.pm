@@ -122,11 +122,6 @@ sub init
 	$self->SUPER::append_conf('postgresql.conf',
 		'shared_preload_libraries = pg_tde');
 
-	if ($self->pg_version >= 18)
-	{
-		$self->SUPER::append_conf('postgresql.conf', 'io_method = sync');
-	}
-
 	$self->_tde_init_pg_tde_dir($params{extra});
 
 	if ($tde_mode_smgr)
@@ -308,7 +303,6 @@ sub _tde_generate_pg_tde_dir
 		'initdb',
 		'-D' => $temp_dir,
 		'--set' => 'shared_preload_libraries=pg_tde',
-		$self->pg_version >= 18 ? ('--set' => 'io_method=sync') : (),
 		@{$extra});
 
 	_tde_init_sql_command(

@@ -20,10 +20,6 @@ $node_primary->append_conf('postgresql.conf',
 	"shared_preload_libraries = 'pg_tde'");
 $node_primary->append_conf('postgresql.conf',
 	"default_table_access_method = 'tde_heap'");
-if ($node_primary->pg_version >= 18)
-{
-	$node_primary->append_conf('postgresql.conf', 'io_method = sync');
-}
 $node_primary->start;
 my $backup_name = 'my_backup';
 
@@ -59,10 +55,6 @@ if ($WAL_ENCRYPTION eq 'on')
 		'postgresql.conf', qq(
 		pg_tde.wal_encrypt = on
 	));
-	if ($node_primary->pg_version >= 18)
-	{
-		$node_primary->append_conf('postgresql.conf', 'io_method = sync');
-	}
 }
 
 $node_primary->restart;

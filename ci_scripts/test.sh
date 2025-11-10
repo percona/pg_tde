@@ -14,10 +14,6 @@ if [ "$1" = sanitize ]; then
     OPTS+=' --set max_stack_depth=8MB'
 fi
 
-if [ "$PG_VERSION" -ge 18 ]; then
-    OPTS+=' --set io_method=sync'
-fi
-
 ../pginst/bin/pg_ctl -D regress_install -l regress_install.log init -o "$OPTS"
 
 ../pginst/bin/pg_ctl -D regress_install -l regress_install.log start

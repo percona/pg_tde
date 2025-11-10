@@ -14,10 +14,6 @@ unlink('/tmp/wal_encrypt.per');
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
 $node->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
-if ($node->pg_version >= 18)
-{
-	$node->append_conf('postgresql.conf', 'io_method = sync');
-}
 $node->append_conf('postgresql.conf', "wal_level = 'logical'");
 # We don't test that it can't start: the test framework doesn't have an easy way to do this
 #$node->append_conf('postgresql.conf', "pg_tde.wal_encrypt = 1");
