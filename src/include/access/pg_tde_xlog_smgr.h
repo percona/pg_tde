@@ -9,8 +9,8 @@
 
 #include "access/pg_tde_xlog_keys.h"
 
-extern Size TDEXLogEncryptStateSize(void);
-extern void TDEXLogShmemInit(void);
+extern Size TDEXLogSmgrShmemSize(void);
+extern void TDEXLogSmgrShmemInit(void);
 extern void TDEXLogSmgrInit(void);
 extern void TDEXLogSmgrInitWrite(bool encrypt_xlog);
 extern void TDEXLogSmgrInitWriteOldKeys(void);
