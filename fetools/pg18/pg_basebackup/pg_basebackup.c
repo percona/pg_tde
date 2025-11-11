@@ -49,6 +49,8 @@
 
 #define ERRCODE_DATA_CORRUPTED	"XX001"
 
+#define KEY_DATA_SIZE_DEFAULT 1
+
 typedef struct TablespaceListCell
 {
 	struct TablespaceListCell *next;
@@ -147,7 +149,7 @@ static bool showprogress = false;
 static bool estimatesize = true;
 static int	verbose = 0;
 static IncludeWal includewal = STREAM_WAL;
-static bool encrypt_wal = false;
+static int	encrypt_wal_key_len = 0;
 static bool fastcheckpoint = false;
 static bool writerecoveryconf = false;
 static bool do_sync = true;
@@ -419,7 +421,9 @@ usage(void)
 	printf(_("      --waldir=WALDIR    location for the write-ahead log directory\n"));
 	printf(_("  -X, --wal-method=none|fetch|stream\n"
 			 "                         include required WAL files with specified method\n"));
-	printf(_("  -E, --encrypt-wal      encrypt streamed WAL\n"));
+	printf(_("  -E, --encrypt-wal[=aes_128|aes_256]\n"
+			 "                         encrypt streamed WAL (optionally, encryption algorithm)\n"
+			 "                         if not set, will use algorithm of server key\n"));
 	printf(_("  -z, --gzip             compress tar output\n"));
 	printf(_("  -Z, --compress=[{client|server}-]METHOD[:DETAIL]\n"
 			 "                         compress on client or server as specified\n"));
@@ -572,7 +576,7 @@ LogStreamerMain(logstreamer_param *param)
 	stream.synchronous = false;
 	/* fsync happens at the end of pg_basebackup for all data */
 	stream.do_sync = false;
-	stream.encrypt = encrypt_wal;
+	stream.encrypt = encrypt_wal_key_len;
 	stream.mark_done = true;
 	stream.partial_suffix = NULL;
 	stream.replication_slot = replication_slot;
@@ -666,10 +670,11 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 			 PQserverVersion(conn) < MINIMUM_VERSION_FOR_PG_WAL ?
 			 "pg_xlog" : "pg_wal");
 
-	if (encrypt_wal)
+	if (encrypt_wal_key_len)
 	{
 		char		tdedir[MAXPGPATH];
 		TDEPrincipalKey *principalKey;
+		int			keyLength = KEY_DATA_SIZE_128;
 
 		snprintf(tdedir, sizeof(tdedir), "%s/%s", basedir, PG_TDE_DATA_DIR);
 		pg_tde_fe_init(tdedir);
@@ -683,7 +688,22 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 			exit(1);
 		}
 		pg_tde_save_server_key(principalKey, false);
-		TDEXLogSmgrInitWrite(16);
+
+		/*
+		 * If no cipher was specified then we try to get the key length from
+		 * the principal key. And keep 128 bit if no luck with that.
+		 */
+		if (encrypt_wal_key_len != KEY_DATA_SIZE_DEFAULT)
+		{
+			keyLength = encrypt_wal_key_len;
+		}
+		else if (principalKey->keyLength == KEY_DATA_SIZE_128 ||
+				 principalKey->keyLength == KEY_DATA_SIZE_256)
+		{
+			keyLength = principalKey->keyLength;
+		}
+
+		TDEXLogSmgrInitWrite(true, keyLength);
 	}
 
 	/* Temporary replication slots are only supported in 10 and newer */
@@ -1274,7 +1294,7 @@ CreateBackupStreamer(char *archive_name, char *spclocation,
 	if (inject_manifest)
 		manifest_inject_streamer = streamer;
 
-	streamer = astreamer_pg_tde_injector_new(streamer, encrypt_wal);
+	streamer = astreamer_pg_tde_injector_new(streamer, encrypt_wal_key_len);
 
 	/*
 	 * If this is the main tablespace and we're supposed to write recovery
@@ -2410,7 +2430,7 @@ main(int argc, char **argv)
 		{"target", required_argument, NULL, 't'},
 		{"tablespace-mapping", required_argument, NULL, 'T'},
 		{"wal-method", required_argument, NULL, 'X'},
-		{"encrypt-wal", no_argument, NULL, 'E'},
+		{"encrypt-wal", optional_argument, NULL, 'E'},
 		{"gzip", no_argument, NULL, 'z'},
 		{"compress", required_argument, NULL, 'Z'},
 		{"label", required_argument, NULL, 'l'},
@@ -2579,7 +2599,22 @@ main(int argc, char **argv)
 							 optarg);
 				break;
 			case 'E':
-				encrypt_wal = true;
+				encrypt_wal_key_len = KEY_DATA_SIZE_DEFAULT;
+
+				if (optarg)
+				{
+					if (strcmp(optarg, "aes_128") == 0)
+					{
+						encrypt_wal_key_len = KEY_DATA_SIZE_128;
+					}
+					else if (strcmp(optarg, "aes_256") == 0)
+					{
+						encrypt_wal_key_len = KEY_DATA_SIZE_256;
+					}
+					else
+						pg_fatal("invalid encryption option \"%s\", must be \"aes_128\" or \"aes_256\"",
+								 optarg);
+				}
 				break;
 			case 'z':
 				compression_algorithm = "gzip";
@@ -2762,7 +2797,7 @@ main(int argc, char **argv)
 	/*
 	 * Sanity checks for WAL encryption.
 	 */
-	if (encrypt_wal)
+	if (encrypt_wal_key_len)
 	{
 		if (includewal != STREAM_WAL)
 		{
