@@ -5,6 +5,13 @@
 #ifndef ENC_TDE_H
 #define ENC_TDE_H
 
+typedef enum CipherType
+{
+	TDE_CIPHER_AES,
+} CipherType;
+
+#define INTERNAL_KEY_OLD_LEN 16
+
 #define INTERNAL_KEY_MAX_LEN 32 /* Max size of an Internal Key */
 #define INTERNAL_KEY_IV_LEN 16
 
