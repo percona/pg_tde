@@ -243,7 +243,7 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 			CalcBlockIv(forknum, bn, tdereln->relKey.base_iv, iv);
 
-			AesEncrypt(tdereln->relKey.key, 16, iv, ((unsigned char **) buffers)[i], BLCKSZ, local_buffers[i]);
+			AesEncrypt(tdereln->relKey.key, tdereln->relKey.key_len, iv, ((unsigned char **) buffers)[i], BLCKSZ, local_buffers[i]);
 		}
 
 		mdwritev(reln, forknum, blocknum,
@@ -307,7 +307,7 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 		CalcBlockIv(forknum, blocknum, tdereln->relKey.base_iv, iv);
 
-		AesEncrypt(tdereln->relKey.key, 16, iv, ((unsigned char *) buffer), BLCKSZ, local_blocks);
+		AesEncrypt(tdereln->relKey.key, tdereln->relKey.key_len, iv, ((unsigned char *) buffer), BLCKSZ, local_blocks);
 
 		mdextend(reln, forknum, blocknum, local_blocks, skipFsync);
 
@@ -362,7 +362,7 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 		CalcBlockIv(forknum, bn, tdereln->relKey.base_iv, iv);
 
-		AesDecrypt(tdereln->relKey.key, 16, iv, ((unsigned char **) buffers)[i], BLCKSZ, ((unsigned char **) buffers)[i]);
+		AesDecrypt(tdereln->relKey.key, tdereln->relKey.key_len, iv, ((unsigned char **) buffers)[i], BLCKSZ, ((unsigned char **) buffers)[i]);
 	}
 }
 
