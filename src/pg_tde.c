@@ -51,7 +51,7 @@ tde_shmem_request(void)
 	Size		sz = 0;
 
 	sz = add_size(sz, PrincipalKeyShmemSize());
-	sz = add_size(sz, TDEXLogEncryptStateSize());
+	sz = add_size(sz, TDEXLogSmgrShmemSize());
 
 	if (prev_shmem_request_hook)
 		prev_shmem_request_hook();
@@ -71,7 +71,8 @@ tde_shmem_startup(void)
 
 	KeyProviderShmemInit();
 	PrincipalKeyShmemInit();
-	TDEXLogShmemInit();
+	TDEXLogSmgrShmemInit();
+
 	TDEXLogSmgrInit();
 	TDEXLogSmgrInitWrite(EncryptXLog);
 
