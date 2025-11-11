@@ -21,6 +21,7 @@ DEPS=(
     libselinux1-dev
     libssl-dev
     libsystemd-dev
+    liburing-dev
     libxml2-dev
     libxml2-utils
     libxslt1-dev
