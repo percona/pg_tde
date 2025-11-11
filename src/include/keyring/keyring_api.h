@@ -1,6 +1,8 @@
 #ifndef KEYRING_API_H
 #define KEYRING_API_H
 
+#include "encryption/enc_tde.h"
+
 #define MAX_PROVIDER_NAME_LEN 128	/* pg_tde_key_provider's provider_name
 									 * size */
 #define MAX_KEYRING_OPTION_LEN 1024
@@ -12,11 +14,6 @@ typedef enum ProviderType
 	VAULT_V2_KEY_PROVIDER,
 	KMIP_KEY_PROVIDER,
 } ProviderType;
-
-#define TDE_KEY_NAME_LEN 256
-#define KEY_DATA_SIZE_128 16	/* 128 bit encryption */
-#define KEY_DATA_SIZE_256 32	/* 256 bit encryption, not yet supported */
-#define MAX_KEY_DATA_SIZE KEY_DATA_SIZE_256 /* maximum 256 bit encryption */
 
 typedef struct KeyData
 {

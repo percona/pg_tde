@@ -73,7 +73,7 @@ tde_shmem_startup(void)
 	TDEXLogSmgrShmemInit();
 
 	TDEXLogSmgrInit();
-	TDEXLogSmgrInitWrite(EncryptXLog);
+	TDEXLogSmgrInitWrite(EncryptXLog, KeyLength);
 
 	LWLockRelease(AddinShmemInitLock);
 }

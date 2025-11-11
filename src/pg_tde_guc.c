@@ -6,6 +6,7 @@
 
 #include "utils/guc.h"
 
+#include "encryption/enc_tde.h"
 #include "keyring/keyring_api.h"
 #include "pg_tde_guc.h"
 
@@ -25,17 +26,7 @@ static const struct config_enum_entry cipher_options[] = {
 static void
 assign_keys_size(int newval, void *extra)
 {
-	switch (newval)
-	{
-		case CIPHER_AES_128:
-			KeyLength = KEY_DATA_SIZE_128;
-			break;
-		case CIPHER_AES_256:
-			KeyLength = KEY_DATA_SIZE_256;
-			break;
-		default:
-			Assert(false);
-	}
+	KeyLength = pg_tde_cipher_key_length(newval);
 }
 
 void

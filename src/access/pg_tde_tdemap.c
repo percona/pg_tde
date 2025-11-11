@@ -409,7 +409,7 @@ pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *princ
 	AesGcmEncrypt(principal_key->keyData, principal_key->keyLength,
 				  map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
 				  (unsigned char *) map_entry, offsetof(TDEMapEntry, encrypted_key_data),
-				  rel_key_data->key, INTERNAL_KEY_LEN,
+				  rel_key_data->key, INTERNAL_KEY_OLD_LEN,
 				  map_entry->encrypted_key_data,
 				  map_entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }
@@ -588,7 +588,7 @@ tde_decrypt_rel_key(const TDEPrincipalKey *principal_key, TDEMapEntry *map_entry
 	if (!AesGcmDecrypt(principal_key->keyData, principal_key->keyLength,
 					   map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
 					   (unsigned char *) map_entry, offsetof(TDEMapEntry, encrypted_key_data),
-					   map_entry->encrypted_key_data, INTERNAL_KEY_LEN,
+					   map_entry->encrypted_key_data, INTERNAL_KEY_OLD_LEN,
 					   key->key,
 					   map_entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE))
 		ereport(ERROR,
