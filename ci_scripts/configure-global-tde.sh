@@ -37,8 +37,8 @@ fi
 
 initdb -D "$PGDATA" $OPTS
 
-pg_ctl -D "$PGDATA" start -o "-p $PGPORT"
+pg_ctl -D "$PGDATA" start -o "-p $PGPORT" -l "$INSTALL_DIR/postgresql.log"
 
 psql postgres -f "$SCRIPT_DIR/tde_setup_global.sql" -v ON_ERROR_STOP=on
 
-pg_ctl -D "$PGDATA" restart -o "-p $PGPORT"
+pg_ctl -D "$PGDATA" restart -o "-p $PGPORT" -l "$INSTALL_DIR/postgresql.log"
