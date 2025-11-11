@@ -39,7 +39,10 @@
 }
 #endif
 
-#define PG_TDE_FILEMAGIC			0x03454454	/* version ID value = TDE 03 */
+#define PG_TDE_FILEMAGIC_OLD			0x03454454	/* version ID value = TDE
+													 * 03 */
+
+#define PG_TDE_FILEMAGIC		  0x04454454	/* version ID value = TDE 04 */
 #define PG_TDE_MAP_FILENAME			"%d_keys"
 
 typedef enum
@@ -63,14 +66,14 @@ typedef struct TDEFileHeader
  * encrypting/decrypting existing keys from the key files, so any changes here
  * might break existing clusters.
  */
-typedef struct TDEMapEntry
+typedef struct TDEMapEntryOld
 {
 	Oid			spcOid;			/* Part of AAD */
 	RelFileNumber relNumber;	/* Part of AAD */
 	uint32		type;			/* Part of AAD */
 	uint32		_unused3;		/* Part of AAD */
 
-	uint8		encrypted_key_data[16];
+	uint8		encrypted_key_data[INTERNAL_KEY_OLD_LEN];
 	uint8		key_base_iv[INTERNAL_KEY_IV_LEN];
 
 	uint32		_unused1;		/* Will be 1 in existing files entries. */
@@ -80,6 +83,27 @@ typedef struct TDEMapEntry
 	/* IV and tag used when encrypting the key itself */
 	unsigned char entry_iv[MAP_ENTRY_IV_SIZE];
 	unsigned char aead_tag[MAP_ENTRY_AEAD_TAG_SIZE];
+} TDEMapEntryOld;
+
+typedef struct TDEMapEntry
+{
+	uint32		cipher;			/* Part of AAD. Cipher type. We support only
+								 * AES_128 and AES_256 for now. */
+	Oid			spcOid;			/* Part of AAD */
+	RelFileNumber relNumber;	/* Part of AAD */
+	uint32		type;			/* Part of AAD */
+
+	/*
+	 * IV and tag used when encrypting the key itself
+	 *
+	 * TODO: should we extend MAP_ENTRY_IV_SIZE to 192(?) bit and add an
+	 * iv_size filed?
+	 */
+	unsigned char entry_iv[MAP_ENTRY_IV_SIZE];
+	unsigned char aead_tag[MAP_ENTRY_AEAD_TAG_SIZE];
+
+	uint8		key_base_iv[INTERNAL_KEY_IV_LEN];
+	uint8		encrypted_key_data[INTERNAL_KEY_MAX_LEN];
 } TDEMapEntry;
 
 static void pg_tde_set_db_file_path(Oid dbOid, char *path);
@@ -394,12 +418,9 @@ pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *princ
 	map_entry->type = MAP_ENTRY_TYPE_KEY;
 	memcpy(map_entry->key_base_iv, rel_key_data->base_iv, INTERNAL_KEY_IV_LEN);
 
-	/*
-	 * We set these fields here so that existing file entries will be
-	 * consistent and future use of these fields easier.
-	 */
-	map_entry->_unused1 = 1;
-	map_entry->_unused2 = 0;
+	Assert(rel_key_data->key_len == 16 || rel_key_data->key_len == 32);
+	map_entry->cipher = rel_key_data->key_len == 32 ? CIPHER_AES_256 : CIPHER_AES_128;	/* We support only those
+																						 * for now */
 
 	if (!RAND_bytes(map_entry->entry_iv, MAP_ENTRY_IV_SIZE))
 		ereport(ERROR,
@@ -408,8 +429,8 @@ pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *princ
 
 	AesGcmEncrypt(principal_key->keyData, principal_key->keyLength,
 				  map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
-				  (unsigned char *) map_entry, offsetof(TDEMapEntry, encrypted_key_data),
-				  rel_key_data->key, INTERNAL_KEY_OLD_LEN,
+				  (unsigned char *) map_entry, offsetof(TDEMapEntry, entry_iv),
+				  rel_key_data->key, rel_key_data->key_len,
 				  map_entry->encrypted_key_data,
 				  map_entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }
@@ -582,19 +603,21 @@ static InternalKey *
 tde_decrypt_rel_key(const TDEPrincipalKey *principal_key, TDEMapEntry *map_entry)
 {
 	InternalKey *key = palloc_object(InternalKey);
+	uint32		key_len = pg_tde_cipher_key_lenght(map_entry->cipher);
 
 	Assert(principal_key);
 
 	if (!AesGcmDecrypt(principal_key->keyData, principal_key->keyLength,
 					   map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
-					   (unsigned char *) map_entry, offsetof(TDEMapEntry, encrypted_key_data),
-					   map_entry->encrypted_key_data, INTERNAL_KEY_OLD_LEN,
+					   (unsigned char *) map_entry, offsetof(TDEMapEntry, entry_iv),
+					   map_entry->encrypted_key_data, key_len,
 					   key->key,
 					   map_entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE))
 		ereport(ERROR,
 				errmsg("Failed to decrypt key, incorrect principal key or corrupted key file"));
 
 	memcpy(key->base_iv, map_entry->key_base_iv, INTERNAL_KEY_IV_LEN);
+	key->key_len = key_len;
 
 	return key;
 }
@@ -875,6 +898,13 @@ pg_tde_get_smgr_key(RelFileLocator rel)
 	rel_key = tde_decrypt_rel_key(principal_key, &map_entry);
 
 	LWLockRelease(lock_pk);
+
+	if (principal_key->keyLength != rel_key->key_len)
+	{
+		ereport(LOG,
+				errmsg("length \"%u\" of principal key \"%s\" does not match the length \"%d\" of the internal key", principal_key->keyLength, principal_key->keyInfo.name, rel_key->key_len),
+				errhint("Create a new principal key and set it instead of the current one."));
+	}
 
 	return rel_key;
 }
