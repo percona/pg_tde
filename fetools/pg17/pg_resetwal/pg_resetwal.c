@@ -518,8 +518,10 @@ main(int argc, char *argv[])
 	 * We are doing a write initialization only here and not at the startup
 	 * because we want to be sure that everything is checked and ready for
 	 * writing at this point.
+	 *
+	 * Key size does not matter as we write unencrypted WAL here.
 	 */
-	TDEXLogSmgrInitWrite(false);
+	TDEXLogSmgrInitWrite(false, KEY_DATA_SIZE_128);
 
 	/*
 	 * Else, do the dirty deed.

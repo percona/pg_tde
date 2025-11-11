@@ -5,6 +5,35 @@
 #ifndef ENC_TDE_H
 #define ENC_TDE_H
 
+#define TDE_KEY_NAME_LEN 256
+#define KEY_DATA_SIZE_128 16	/* 128 bit encryption */
+#define KEY_DATA_SIZE_256 32	/* 256 bit encryption */
+#define MAX_KEY_DATA_SIZE KEY_DATA_SIZE_256 /* maximum 256 bit encryption */
+
+typedef enum CipherType
+{
+	CIPHER_AES_128,
+	CIPHER_AES_256,
+} CipherType;
+
+static inline uint32
+pg_tde_cipher_key_lenght(CipherType cipher)
+{
+	switch (cipher)
+	{
+		case CIPHER_AES_128:
+			return KEY_DATA_SIZE_128;
+		case CIPHER_AES_256:
+			return KEY_DATA_SIZE_256;
+
+		default:
+			Assert(false);
+			return 0;
+	}
+}
+
+#define INTERNAL_KEY_OLD_LEN 16
+
 #define INTERNAL_KEY_MAX_LEN 32 /* Max size of an Internal Key */
 #define INTERNAL_KEY_IV_LEN 16
 
