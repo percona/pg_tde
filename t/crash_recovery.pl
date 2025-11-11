@@ -112,6 +112,21 @@ PGTDE::append_to_result_file(
 );
 PGTDE::poll_start($node);
 
+PGTDE::psql($node, 'postgres', "INSERT INTO test_enc (x) VALUES (7), (8);");
+PGTDE::append_to_result_file("-- kill -9");
+$node->kill9;
+PGTDE::append_to_result_file("-- change cipher to aes_256");
+$node->append_conf(
+	'postgresql.conf', q{
+pg_tde.cipher = 'aes_256'
+});
+PGTDE::append_to_result_file("-- server start");
+PGTDE::append_to_result_file(
+	"-- check redo when cipher was changed after the server crash");
+PGTDE::poll_start($node);
+
+PGTDE::psql($node, 'postgres', "TABLE test_enc;");
+
 $node->stop;
 
 # Compare the expected and out file
