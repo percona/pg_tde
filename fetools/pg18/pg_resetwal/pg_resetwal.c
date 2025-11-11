@@ -541,7 +541,7 @@ main(int argc, char *argv[])
 	 * because we want to be sure that everything is checked and ready for
 	 * writing at this point.
 	 */
-	TDEXLogSmgrInitWrite(false);
+	TDEXLogSmgrInitUnencryptedWrite();
 
 	/*
 	 * Else, do the dirty deed.

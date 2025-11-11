@@ -51,6 +51,16 @@ wal_location_valid(WalLocation loc)
 #define MaxXLogRecPtr UINT64_MAX
 #define MaxTimeLineID UINT32_MAX
 
+/*
+ * The encryption rules for WAL records in the given time (TLI+LSN) range.
+ * Currently, a new range is created at server start to generate a new key or
+ * disable encryption for the following (until the next range) WAL records.
+ * Hence, the range can be encrypted or unencrypted. When created, `start` and
+ * `end` are left empty. `start` will be updated with the TLI+LSN of the first
+ * following write. And `end` is either equal to `start` of the next range, or
+ * to "+infinity" (all following WAL records) if this is the most recent range.
+ * Some FE tools generate a new range as well.
+ */
 typedef struct WalEncryptionRange
 {
 	WalEncryptionRangeType type;
@@ -75,7 +85,7 @@ typedef struct WALKeyCacheRec
 } WALKeyCacheRec;
 
 extern int	pg_tde_count_wal_ranges_in_file(void);
-extern void pg_tde_create_wal_range(WalEncryptionRange *range, WalEncryptionRangeType type);
+extern void pg_tde_create_wal_range(WalEncryptionRange *range, WalEncryptionRangeType type, int key_len);
 extern void pg_tde_delete_server_key(void);
 extern WALKeyCacheRec *pg_tde_fetch_wal_keys(WalLocation start);
 extern void pg_tde_free_wal_key_cache(void);

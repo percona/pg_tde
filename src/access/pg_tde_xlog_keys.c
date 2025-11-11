@@ -22,7 +22,9 @@
 #include "pg_tde_fe.h"
 #endif
 
-#define PG_TDE_WAL_KEY_FILE_MAGIC 0x014B4557	/* version ID value = WEK 01 */
+#define PG_TDE_WAL_KEY_FILE_MAGIC_OLD 0x014B4557	/* old version ID value =
+													 * WEK 01 */
+#define PG_TDE_WAL_KEY_FILE_MAGIC 0x024B4557	/* version ID value = WEK 02 */
 #define PG_TDE_WAL_KEY_FILE_NAME "wal_keys"
 
 typedef struct WalKeyFileHeader
@@ -40,12 +42,12 @@ typedef struct WalKeyFileHeader
  * encrypting/decrypting existing keys from the key files, so any changes here
  * might break existing clusters.
  */
-typedef struct WalKeyFileEntry
+typedef struct WalKeyFileEntryOld
 {
 	uint32		_unused1;		/* Part of AAD, is 1 or 2 in existing entries */
 	uint32		_unused2;		/* Part of AAD */
 
-	uint8		encrypted_key_data[INTERNAL_KEY_LEN];
+	uint8		encrypted_key_data[INTERNAL_KEY_OLD_LEN];
 	uint8		key_base_iv[INTERNAL_KEY_IV_LEN];
 
 	uint32		range_type;		/* WalEncryptionRangeType */
@@ -55,6 +57,26 @@ typedef struct WalKeyFileEntry
 	/* IV and tag used when encrypting the key itself */
 	unsigned char entry_iv[MAP_ENTRY_IV_SIZE];
 	unsigned char aead_tag[MAP_ENTRY_AEAD_TAG_SIZE];
+} WalKeyFileEntryOld;
+
+typedef struct WalKeyFileEntry
+{
+	uint32		cipher;			/* Cipher type. We support only AES_128 and
+								 * AES_256 for now. */
+	uint32		range_type;		/* WalEncryptionRangeType */
+	WalLocation range_start;
+
+	/*
+	 * IV and tag used when encrypting the key itself
+	 *
+	 * TODO: should we extend MAP_ENTRY_IV_SIZE to 192(?) bit and add an
+	 * iv_size filed?
+	 */
+	unsigned char entry_iv[MAP_ENTRY_IV_SIZE];
+	unsigned char aead_tag[MAP_ENTRY_AEAD_TAG_SIZE];
+
+	uint8		key_base_iv[INTERNAL_KEY_IV_LEN];
+	uint8		encrypted_key_data[INTERNAL_KEY_MAX_LEN];
 } WalKeyFileEntry;
 
 static WALKeyCacheRec *tde_wal_key_cache = NULL;
@@ -178,7 +200,7 @@ pg_tde_wal_last_range_set_location(WalLocation loc)
  * with the actual lsn by the first WAL write.
  */
 void
-pg_tde_create_wal_range(WalEncryptionRange *range, WalEncryptionRangeType type)
+pg_tde_create_wal_range(WalEncryptionRange *range, WalEncryptionRangeType type, int key_len)
 {
 	TDEPrincipalKey *principal_key;
 
@@ -199,7 +221,7 @@ pg_tde_create_wal_range(WalEncryptionRange *range, WalEncryptionRangeType type)
 	range->end.lsn = MaxXLogRecPtr;
 	range->end.tli = MaxTimeLineID;
 
-	pg_tde_generate_internal_key(&range->key, 16);
+	pg_tde_generate_internal_key(&range->key, key_len);
 
 	pg_tde_write_wal_key_file_entry(range, principal_key);
 
@@ -615,12 +637,13 @@ pg_tde_wal_range_from_entry(const TDEPrincipalKey *principal_key, WalKeyFileEntr
 	range->start = entry->range_start;
 	range->end.tli = MaxTimeLineID;
 	range->end.lsn = MaxXLogRecPtr;
+	range->key.key_len = pg_tde_cipher_key_length(entry->cipher);
 
 	memcpy(range->key.base_iv, entry->key_base_iv, INTERNAL_KEY_IV_LEN);
-	if (!AesGcmDecrypt(principal_key->keyData, 16,
+	if (!AesGcmDecrypt(principal_key->keyData, principal_key->keyLength,
 					   entry->entry_iv, MAP_ENTRY_IV_SIZE,
-					   (unsigned char *) entry, offsetof(WalKeyFileEntry, encrypted_key_data),
-					   entry->encrypted_key_data, 16,
+					   (unsigned char *) entry, offsetof(WalKeyFileEntry, range_start),
+					   entry->encrypted_key_data, range->key.key_len,
 					   range->key.key,
 					   entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE))
 		ereport(ERROR,
@@ -664,12 +687,9 @@ pg_tde_initialize_wal_key_file_entry(WalKeyFileEntry *entry,
 
 	memset(entry, 0, sizeof(WalKeyFileEntry));
 
-	/*
-	 * We set this field here so that existing file entries will be consistent
-	 * and future use of this field easier. Some existing entries will have 2
-	 * here.
-	 */
-	entry->_unused1 = 1;
+	Assert(range->key.key_len == 16 || range->key.key_len == 32);
+	entry->cipher = range->key.key_len == 32 ? CIPHER_AES_256 : CIPHER_AES_128; /* We support only those
+																				 * for now */
 
 	entry->range_type = range->type;
 	entry->range_start = range->start;
@@ -680,10 +700,16 @@ pg_tde_initialize_wal_key_file_entry(WalKeyFileEntry *entry,
 				errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("could not generate iv for wal key file entry: %s", ERR_error_string(ERR_get_error(), NULL)));
 
-	AesGcmEncrypt(principal_key->keyData, 16,
+	/*
+	 * TODO: we may want to include `range_start` in AAD. But now it is zero
+	 * on the key (range) creation and later gets updated by the first WAL
+	 * write. The current AAD has a little sense now, so we might want not to
+	 * calculate it at all.
+	 */
+	AesGcmEncrypt(principal_key->keyData, principal_key->keyLength,
 				  entry->entry_iv, MAP_ENTRY_IV_SIZE,
-				  (unsigned char *) entry, offsetof(WalKeyFileEntry, encrypted_key_data),
-				  range->key.key, 16,
+				  (unsigned char *) entry, offsetof(WalKeyFileEntry, range_start),
+				  range->key.key, range->key.key_len,
 				  entry->encrypted_key_data,
 				  entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }
