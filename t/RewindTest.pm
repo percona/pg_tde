@@ -114,6 +114,7 @@ sub setup_cluster
 {
 	my $extra_name = shift;    # Used to differentiate clusters
 	my $extra = shift;         # Extra params for initdb
+	my $extra_conf = shift;    # Extra config
 
 	my ($test_name) = basename($0) =~ /([^.]*)/;
 	my ($test_mode) = $extra_name //= 'default';
@@ -144,6 +145,11 @@ allow_in_place_tablespaces = on
 
 shared_preload_libraries = 'pg_tde'
 ));
+
+	foreach my $param_item (@$extra_conf)
+	{
+		$node_primary->append_conf('postgresql.conf', qq($param_item));
+	}
 
 	$node_primary->start;
 

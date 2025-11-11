@@ -60,13 +60,13 @@ If a table has additional associated relations, such as sequences or a TOAST tab
 
 `pg_tde` currently uses the following encryption algorithms:
 
-* `AES-128-CBC` for encrypting database files; encrypted with internal keys.
+* `AES-128-CBC`, `AES-256-CBC` for encrypting database files; encrypted with internal keys.
 
-* `AES-128-CTR` for WAL encryption; encrypted with internal keys.
+* `AES-128-CTR`, `AES-256-CTR` for WAL encryption; encrypted with internal keys.
 
-* `AES-128-GCM` for encrypting internal keys; encrypted with the principal key.
+* `AES-128-GCM`, `AES-256-GCM` for encrypting internal keys; encrypted with the principal key.
 
-Support for other cipher lengths / algorithms is planned in the future.
+Support for other cipher lengths / algorithms might be added in the future.
 
 ### Encryption workflow
 
