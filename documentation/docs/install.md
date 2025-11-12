@@ -7,7 +7,7 @@ You can select from multiple easy-to-follow installation options to install `pg_
 
 === ":octicons-terminal-16: Package manager"
 
-    Percona provides installation packages in `DEB` and `RPM` formats for 64-bit Linux distributions.
+    Percona provides installation packages in DEB and RPM formats for 64-bit Linux distributions.
 
     If you are on Debian or Ubuntu, use `apt` for installation.
 
