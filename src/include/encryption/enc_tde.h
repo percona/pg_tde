@@ -16,23 +16,7 @@ typedef enum CipherType
 	CIPHER_AES_256,
 } CipherType;
 
-static inline uint32
-pg_tde_cipher_key_length(CipherType cipher)
-{
-	switch (cipher)
-	{
-		case CIPHER_AES_128:
-			return KEY_DATA_SIZE_128;
-		case CIPHER_AES_256:
-			return KEY_DATA_SIZE_256;
-
-		default:
-			Assert(false);
-			return 0;
-	}
-}
-
-#define INTERNAL_KEY_OLD_LEN 16
+extern uint32 pg_tde_cipher_key_length(CipherType cipher);
 
 #define INTERNAL_KEY_MAX_LEN 32 /* Max size of an Internal Key */
 #define INTERNAL_KEY_IV_LEN 16
