@@ -26,7 +26,7 @@ static const struct config_enum_entry cipher_options[] = {
 static void
 assign_keys_size(int newval, void *extra)
 {
-	KeyLength = pg_tde_cipher_key_lenght(newval);
+	KeyLength = pg_tde_cipher_key_length(newval);
 }
 
 void

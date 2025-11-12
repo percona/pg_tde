@@ -26,6 +26,22 @@ iv_prefix_debug(const char *iv_prefix, char *out_hex)
 }
 #endif
 
+uint32
+pg_tde_cipher_key_length(CipherType cipher)
+{
+	switch (cipher)
+	{
+		case CIPHER_AES_128:
+			return KEY_DATA_SIZE_128;
+		case CIPHER_AES_256:
+			return KEY_DATA_SIZE_256;
+
+		default:
+			elog(ERROR, "failed to get key size from the unknown cipher %d",
+				 cipher);
+	}
+}
+
 void
 pg_tde_generate_internal_key(InternalKey *int_key, int key_len)
 {
