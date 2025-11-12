@@ -5,7 +5,7 @@ tdeversion: '2.0'
 release: '2.0'
 pgversion17: '17.5'
 pgversion: '17'
-tdebranch: release-17.5.3
+tdebranch: main
 
 date:
   GA20: '2025-09-01'
