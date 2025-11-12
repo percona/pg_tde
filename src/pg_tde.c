@@ -15,9 +15,6 @@
 #include "storage/shmem.h"
 #include "utils/builtins.h"
 #include "utils/percona.h"
-#if PG_VERSION_NUM >= 180000
-#include "storage/aio.h"
-#endif
 
 #include "access/pg_tde_tdemap.h"
 #include "access/pg_tde_xlog.h"
