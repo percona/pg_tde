@@ -21,6 +21,7 @@
 #include "encryption/enc_aes.h"
 #include "encryption/enc_tde.h"
 #include "keyring/keyring_api.h"
+#include "pg_tde.h"
 
 #ifdef FRONTEND
 #include "pg_tde_fe.h"
@@ -39,10 +40,8 @@
 }
 #endif
 
-#define PG_TDE_FILEMAGIC_OLD			0x03454454	/* version ID value = TDE
-													 * 03 */
+#define PG_TDE_FILEMAGIC_OLD		0x03454454	/* version ID value = TDE 03 */
 
-#define PG_TDE_FILEMAGIC		  0x04454454	/* version ID value = TDE 04 */
 #define PG_TDE_MAP_FILENAME			"%d_keys"
 
 typedef enum
@@ -112,7 +111,7 @@ static bool pg_tde_find_map_entry(const RelFileLocator *rlocator, char *db_map_p
 static InternalKey *tde_decrypt_rel_key(const TDEPrincipalKey *principal_key, TDEMapEntry *map_entry);
 static int	pg_tde_open_file_basic(const char *tde_filename, int fileFlags, bool ignore_missing);
 static int	pg_tde_open_file_read(const char *tde_filename, bool ignore_missing, off_t *curr_pos);
-static void pg_tde_file_header_read(const char *tde_filename, int fd, TDEFileHeader *fheader, off_t *bytes_read);
+static int32 pg_tde_file_header_read(const char *tde_filename, int fd, TDEFileHeader *fheader, off_t *bytes_read);
 static bool pg_tde_read_one_map_entry(int fd, TDEMapEntry *map_entry, off_t *offset);
 
 #ifndef FRONTEND
@@ -655,6 +654,7 @@ pg_tde_open_file_read(const char *tde_filename, bool ignore_missing, off_t *curr
 	int			fd;
 	TDEFileHeader fheader;
 	off_t		bytes_read = 0;
+	int			file_version;
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_SHARED) || LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
@@ -662,7 +662,12 @@ pg_tde_open_file_read(const char *tde_filename, bool ignore_missing, off_t *curr
 	if (ignore_missing && fd < 0)
 		return fd;
 
-	pg_tde_file_header_read(tde_filename, fd, &fheader, &bytes_read);
+	file_version = pg_tde_file_header_read(tde_filename, fd, &fheader, &bytes_read);
+	if (bytes_read > 0 && file_version != PG_TDE_FILEMAGIC)
+		ereport(FATAL,
+				errcode_for_file_access(),
+				errmsg("key file \"%s\" has wrong version: %m", tde_filename));
+
 	*curr_pos = bytes_read;
 
 	return fd;
@@ -684,12 +689,17 @@ pg_tde_open_file_write(const char *tde_filename, const TDESignedPrincipalKeyInfo
 	off_t		bytes_read = 0;
 	off_t		bytes_written = 0;
 	int			file_flags = O_RDWR | O_CREAT | PG_BINARY | (truncate ? O_TRUNC : 0);
+	int			file_version;
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
 	fd = pg_tde_open_file_basic(tde_filename, file_flags, false);
 
-	pg_tde_file_header_read(tde_filename, fd, &fheader, &bytes_read);
+	file_version = pg_tde_file_header_read(tde_filename, fd, &fheader, &bytes_read);
+	if (bytes_read > 0 && file_version != PG_TDE_FILEMAGIC)
+		ereport(FATAL,
+				errcode_for_file_access(),
+				errmsg("key file \"%s\" has wrong version: %m", tde_filename));
 
 	/* In case it's a new file, let's add the header now. */
 	if (bytes_read == 0 && signed_key_info)
@@ -702,8 +712,10 @@ pg_tde_open_file_write(const char *tde_filename, const TDESignedPrincipalKeyInfo
 
 /*
  * Read TDE file header from a TDE file and fill in the fheader data structure.
+ * It sets the read offset (header size) in bytes_read, and returns a current
+ * file version. It returns -1 if the file is empty.
  */
-static void
+static int32
 pg_tde_file_header_read(const char *tde_filename, int fd, TDEFileHeader *fheader, off_t *bytes_read)
 {
 	Assert(fheader);
@@ -712,15 +724,16 @@ pg_tde_file_header_read(const char *tde_filename, int fd, TDEFileHeader *fheader
 
 	/* File is empty */
 	if (*bytes_read == 0)
-		return;
+		return -1;
 
-	if (*bytes_read != sizeof(TDEFileHeader)
-		|| fheader->file_version != PG_TDE_FILEMAGIC)
+	if (*bytes_read != sizeof(TDEFileHeader))
 	{
 		ereport(FATAL,
 				errcode_for_file_access(),
 				errmsg("TDE map file \"%s\" is corrupted: %m", tde_filename));
 	}
+
+	return fheader->file_version;
 }
 
 #ifndef FRONTEND
@@ -793,6 +806,7 @@ pg_tde_get_principal_key_info(Oid dbOid)
 	TDEFileHeader fheader;
 	TDESignedPrincipalKeyInfo *signed_key_info = NULL;
 	off_t		bytes_read = 0;
+	int32		file_version;
 
 	pg_tde_set_db_file_path(dbOid, db_map_path);
 
@@ -806,7 +820,17 @@ pg_tde_get_principal_key_info(Oid dbOid)
 	if (fd < 0)
 		return NULL;
 
-	pg_tde_file_header_read(db_map_path, fd, &fheader, &bytes_read);
+	file_version = pg_tde_file_header_read(db_map_path, fd, &fheader, &bytes_read);
+
+	if (bytes_read > 0 &&
+		file_version != PG_TDE_FILEMAGIC &&
+		file_version != PG_TDE_FILEMAGIC_OLD)
+	{
+		ereport(FATAL,
+				errcode_for_file_access(),
+				errmsg("key file \"%s\" is corrupted or has wrong version: %m", db_map_path),
+				errdetail("Getting principal key from the file."));
+	}
 
 	CloseTransientFile(fd);
 
@@ -899,3 +923,159 @@ pg_tde_get_smgr_key(RelFileLocator rel)
 
 	return rel_key;
 }
+
+
+#ifndef FRONTEND
+
+/*
+ * Functions for rewriting old smgr _key into a new format file.
+ *
+ * TODO: The old format should be deprecated. And this code should be removed
+ * eventually.
+ */
+
+static bool
+pg_tde_read_one_old_map_entry(int map_file, TDEMapEntryOld *map_entry, off_t *offset)
+{
+	off_t		bytes_read = 0;
+
+	Assert(map_entry);
+	Assert(offset);
+
+	bytes_read = pg_pread(map_file, map_entry, sizeof(TDEMapEntryOld), *offset);
+
+	/* We've reached the end of the file. */
+	if (bytes_read != sizeof(TDEMapEntryOld))
+		return false;
+
+	*offset += bytes_read;
+
+	return true;
+}
+
+static InternalKey *
+tde_decrypt_old_rel_key(const TDEPrincipalKey *principal_key, TDEMapEntryOld *map_entry)
+{
+	InternalKey *key = palloc_object(InternalKey);
+
+	Assert(principal_key);
+
+	if (!AesGcmDecrypt(principal_key->keyData, principal_key->keyLength,
+					   map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
+					   (unsigned char *) map_entry, offsetof(TDEMapEntryOld, encrypted_key_data),
+					   map_entry->encrypted_key_data, INTERNAL_KEY_OLD_LEN,
+					   key->key,
+					   map_entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE))
+		ereport(ERROR,
+				errmsg("Failed to decrypt key, incorrect principal key or corrupted key file"));
+
+	memcpy(key->base_iv, map_entry->key_base_iv, INTERNAL_KEY_IV_LEN);
+	key->key_len = INTERNAL_KEY_OLD_LEN;
+
+	return key;
+}
+
+void
+pg_tde_migrate_smgr_keys_file(void)
+{
+	DIR		   *dir;
+	LWLock	   *lock_pk = tde_lwlock_enc_keys();
+	struct dirent *file;
+	TDEPrincipalKey *principal_key = NULL;
+	TDESignedPrincipalKeyInfo signed_key_info;
+
+	/*
+	 * No real need in lock here as the func should be called only on the
+	 * server start, but GetPrincipalKey() expects lock.
+	 */
+	LWLockAcquire(lock_pk, LW_EXCLUSIVE);
+
+	dir = opendir(pg_tde_get_data_dir());
+	if (dir == NULL && errno != ENOENT)
+		elog(ERROR, "could not open directory \"%s\": %m",
+			 pg_tde_get_data_dir());
+
+	while (errno = 0, (file = readdir(dir)) != NULL)
+	{
+		char		db_map_path[MAXPGPATH] = {0};
+		char		tmp_db_map_path[MAXPGPATH] = {0};
+		off_t		read_pos,
+					write_pos;
+		int			old_fd,
+					new_fd;
+		Oid			dbOid;
+		char	   *suffix;
+		int			file_version;
+		TDEFileHeader fheader;
+
+
+		dbOid = strtoul(file->d_name, &suffix, 10);
+
+		if (strcmp(suffix, "_keys") != 0)
+			continue;
+
+		pg_tde_set_db_file_path(dbOid, db_map_path);
+
+		snprintf(tmp_db_map_path, MAXPGPATH, "%s.r", db_map_path);
+
+
+		old_fd = pg_tde_open_file_basic(db_map_path, O_RDONLY | PG_BINARY, false);
+		file_version = pg_tde_file_header_read(db_map_path, old_fd, &fheader, &read_pos);
+
+		/* check if we have anything to do */
+		if (file_version != PG_TDE_FILEMAGIC_OLD)
+		{
+			CloseTransientFile(old_fd);
+			continue;
+		}
+
+		/*
+		 * The old file exists and it's not empty, hece a principal key should
+		 * exist as well.
+		 */
+		if (principal_key == NULL)
+		{
+			principal_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
+			if (principal_key == NULL)
+			{
+				ereport(ERROR,
+						errmsg("could not get server principal key"),
+						errdetail("Failed to migrate the keys file of %u database.", dbOid));
+			}
+			pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
+		}
+
+		new_fd = pg_tde_open_file_write(tmp_db_map_path, &signed_key_info, true, &write_pos);
+
+		while (1)
+		{
+			TDEMapEntryOld old_entry;
+			TDEMapEntry new_entry;
+			InternalKey *rel_key_data;
+			RelFileLocator rloc;
+
+			if (!pg_tde_read_one_old_map_entry(old_fd, &old_entry, &read_pos))
+				break;
+
+			rloc.spcOid = old_entry.spcOid;
+			rloc.dbOid = dbOid;
+			rloc.relNumber = old_entry.relNumber;
+
+			rel_key_data = tde_decrypt_old_rel_key(principal_key, &old_entry);
+			pg_tde_initialize_map_entry(&new_entry, principal_key, &rloc, rel_key_data);
+			pg_tde_write_one_map_entry(new_fd, &new_entry, &write_pos, db_map_path);
+
+			pfree(rel_key_data);
+		}
+
+		CloseTransientFile(old_fd);
+		CloseTransientFile(new_fd);
+		durable_rename(tmp_db_map_path, db_map_path, ERROR);
+
+	}
+
+	closedir(dir);
+	LWLockRelease(lock_pk);
+}
+
+#endif
