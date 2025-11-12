@@ -19,10 +19,6 @@ track_commit_timestamp = on
 # WAL Encryption
 shared_preload_libraries = 'pg_tde'
 });
-if ($node->pg_version >= 18)
-{
-	$node->append_conf('postgresql.conf', 'io_method = sync');
-}
 
 $node->start;
 $node->safe_psql('postgres', "CREATE EXTENSION pg_tde;");

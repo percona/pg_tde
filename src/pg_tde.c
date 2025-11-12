@@ -51,7 +51,8 @@ tde_shmem_request(void)
 	Size		sz = 0;
 
 	sz = add_size(sz, PrincipalKeyShmemSize());
-	sz = add_size(sz, TDEXLogEncryptStateSize());
+	sz = add_size(sz, TDESmgrShmemSize());
+	sz = add_size(sz, TDEXLogSmgrShmemSize());
 
 	if (prev_shmem_request_hook)
 		prev_shmem_request_hook();
@@ -71,7 +72,9 @@ tde_shmem_startup(void)
 
 	KeyProviderShmemInit();
 	PrincipalKeyShmemInit();
-	TDEXLogShmemInit();
+	TDESmgrShmemInit();
+	TDEXLogSmgrShmemInit();
+
 	TDEXLogSmgrInit();
 	TDEXLogSmgrInitWrite(EncryptXLog);
 
@@ -94,13 +97,6 @@ _PG_init(void)
 	}
 
 	check_percona_api_version();
-
-#if PG_VERSION_NUM >= 180000
-	if (io_method != IOMETHOD_SYNC)
-	{
-		elog(FATAL, "pg_tde currently doesn't support Postgres 18 AIO. Disable it using 'io_method = sync' and restart the server.");
-	}
-#endif
 
 	pg_tde_init_data_dir();
 	AesInit();

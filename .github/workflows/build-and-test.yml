@@ -136,6 +136,7 @@ jobs:
         with:
           name: log-test-global-tde-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
+            pginst/postgresql.log
             postgres/contrib/*/log
             postgres/contrib/*/regression.diffs
             postgres/contrib/*/regression.out

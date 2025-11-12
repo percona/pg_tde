@@ -89,10 +89,6 @@ my $archive_dir = $primary->archive_dir;
 $primary->init(allows_streaming => 1);
 $primary->append_conf('postgresql.conf',
 	"shared_preload_libraries = 'pg_tde'");
-if ($primary->pg_version >= 18)
-{
-	$primary->append_conf('postgresql.conf', 'io_method = sync');
-}
 $primary->append_conf('postgresql.conf', "wal_level = 'replica'");
 $primary->append_conf('postgresql.conf', "autovacuum = off");
 $primary->append_conf('postgresql.conf', "checkpoint_timeout = 1h");

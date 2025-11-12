@@ -43,8 +43,16 @@ case "$1" in
 esac
 
 cd "$PSP_DIR"
-./configure --prefix="$INSTALL_DIR" --enable-debug --enable-tap-tests $ARGS
+
+./configure \
+   --prefix="$INSTALL_DIR" \
+   --enable-debug \
+   --enable-tap-tests \
+   --with-liburing \
+   $ARGS
+
 make install-world -j -s
+
 if [ "$INSTALL_INJECTION_POINTS" = 1 ]; then
     # Injection points extension is not built by default
     make install -j -s -C src/test/modules/injection_points
