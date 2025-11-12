@@ -157,10 +157,10 @@ ValidateKey(KeyInfo *key)
  * TODO: Avoid the global state here
  */
 #ifndef FRONTEND
-	if (key->data.len != TdeKeyLength)
+	if (key->data.len != KeyLength)
 	{
 		ereport(WARNING,
-				errmsg("length \"%u\" of key \"%s\" does not match the length \"%d\" of the current cipher setting", key->data.len, key->name, TdeKeyLength),
+				errmsg("length \"%u\" of key \"%s\" does not match the length \"%d\" of the current cipher setting", key->data.len, key->name, KeyLength),
 				errhint("Create a new principal key and set it instead of the current one."));
 	}
 #endif

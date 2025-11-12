@@ -14,7 +14,7 @@ bool		AllowInheritGlobalProviders = true;
 bool		EncryptXLog = false;
 bool		EnforceEncryption = false;
 int			Cipher = CIPHER_AES_128;
-int			TdeKeyLength = KEY_DATA_SIZE_128;
+int			KeyLength = KEY_DATA_SIZE_128;
 
 /* Custom GUC variable */
 static const struct config_enum_entry cipher_options[] = {
@@ -26,7 +26,7 @@ static const struct config_enum_entry cipher_options[] = {
 static void
 assign_keys_size(int newval, void *extra)
 {
-	TdeKeyLength = pg_tde_cipher_key_lenght(newval);
+	KeyLength = pg_tde_cipher_key_length(newval);
 }
 
 void

@@ -104,7 +104,7 @@ tde_smgr_create_key(const RelFileLocatorBackend *smgr_rlocator)
 {
 	InternalKey *key = palloc_object(InternalKey);
 
-	pg_tde_generate_internal_key(key, TdeKeyLength);
+	pg_tde_generate_internal_key(key, KeyLength);
 
 	if (RelFileLocatorBackendIsTemp(*smgr_rlocator))
 		tde_smgr_save_temp_key(&smgr_rlocator->locator, key);
@@ -122,7 +122,7 @@ tde_smgr_create_key_redo(const RelFileLocator *rlocator)
 {
 	InternalKey key;
 
-	pg_tde_generate_internal_key(&key, TdeKeyLength);
+	pg_tde_generate_internal_key(&key, KeyLength);
 
 	pg_tde_save_smgr_key(*rlocator, &key);
 }
