@@ -13,8 +13,12 @@
 #include "pg_tde_event_capture.h"
 #include "smgr/pg_tde_smgr.h"
 #if PG_VERSION_NUM >= 180000
+#include "miscadmin.h"
 #include "storage/aio.h"
+#include "storage/aio_subsys.h"
 #include "storage/bufmgr.h"
+#include "storage/proc.h"
+#include "storage/shmem.h"
 #endif
 
 typedef enum TDEMgrRelationEncryptionStatus
@@ -433,7 +437,44 @@ tde_mdopen(SMgrRelation reln)
 
 #if PG_VERSION_NUM >= 180000
 
-static TDESMgrRelation *aio_tdereln = NULL;
+/*
+ * Area in shared memory which has the capacity to store one InternalKey per
+ * IO handle.
+ *
+ * This way we can still have the backend which issues the IO fetch, decrypt
+ * and cache relation keys and then have it put the key in this array to pass
+ * it to the process completing the IO so it can use the key to decrypt the
+ * buffer. The IO handle ID is used to index the array.
+ *
+ * Allocating a slot for each IO handle may seem wasteful but it is no more
+ * wasteful than the allocation of IO handles itself.
+ */
+static InternalKey *tde_io_handle_keys;
+
+static Size
+tde_io_handle_keys_size(void)
+{
+	uint32		aio_procs;
+	uint32		io_handle_count;
+
+	/* We need to make sure io_max_concurrency is initialized */
+	AioShmemSize();
+
+	/* pgaio_ctl->io_handle_count is not set yet, so re-implement logic */
+	aio_procs = MaxBackends + NUM_AUXILIARY_PROCS;
+	io_handle_count = aio_procs * io_max_concurrency;
+
+	return mul_size(io_handle_count, sizeof(InternalKey));
+}
+
+static void
+tde_io_handle_keys_init(void)
+{
+	bool		found;
+
+	tde_io_handle_keys = (InternalKey *)
+		ShmemInitStruct("tde_io_handle_keys", tde_io_handle_keys_size(), &found);
+}
 
 /*
  * AIO completion callback for tde_mdstartreadv().
@@ -444,9 +485,7 @@ tde_readv_complete(PgAioHandle *ioh, PgAioResult prior_result, uint8 cb_data)
 	PgAioTargetData *td = pgaio_io_get_target_data(ioh);
 	uint64	   *io_data;
 	uint8		handle_data_len;
-
-	Assert(aio_tdereln != NULL);
-	Assert(aio_tdereln->encryption_status == RELATION_KEY_AVAILABLE);
+	InternalKey *int_key = &tde_io_handle_keys[pgaio_io_get_id(ioh)];
 
 	if (prior_result.status != PGAIO_RS_OK)
 		return prior_result;
@@ -484,9 +523,9 @@ tde_readv_complete(PgAioHandle *ioh, PgAioResult prior_result, uint8 cb_data)
 		if (allZero)
 			continue;
 
-		CalcBlockIv(td->smgr.forkNum, bn, aio_tdereln->relKey.base_iv, iv);
+		CalcBlockIv(td->smgr.forkNum, bn, int_key->base_iv, iv);
 
-		AesDecrypt(aio_tdereln->relKey.key, iv, ((unsigned char *) buf_ptr), BLCKSZ, ((unsigned char *) buf_ptr));
+		AesDecrypt(int_key->key, iv, ((unsigned char *) buf_ptr), BLCKSZ, ((unsigned char *) buf_ptr));
 	}
 
 	return prior_result;
@@ -498,35 +537,42 @@ static PgAioHandleCallbackID PGAIO_HCB_TDE_READV = PGAIO_HCB_INVALID;
  * Adds a callback which decrypts the pages and is executed after the md.c's
  * AIO callback but before the callback's in the buffer manager.
  *
- * This function does not work in real AIO due its reliance on a global
- * variable to pass relation the key.
+ * We communicate which key to use to decrypt using the tde_io_handle_keys
+ * array in shared memory.
  */
 static void
 tde_mdstartreadv(PgAioHandle *ioh,
 				 SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 				 void **buffers, BlockNumber nblocks)
 {
-	/* Uses a global variable to pass the relation key and IV */
-	aio_tdereln = (TDESMgrRelation *) reln;
+	TDESMgrRelation *tdereln = (TDESMgrRelation *) reln;
 
-	/* Load key early: later we are in a critical section */
-	if (aio_tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE)
+	/* Load key in issuing backend: later we are in a critical section */
+	if (tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE)
 	{
 		InternalKey *int_key = tde_smgr_get_key(&reln->smgr_rlocator);
 
-		aio_tdereln->relKey = *int_key;
-		aio_tdereln->encryption_status = RELATION_KEY_AVAILABLE;
+		tdereln->relKey = *int_key;
+		tdereln->encryption_status = RELATION_KEY_AVAILABLE;
 		pfree(int_key);
 	}
 
-	if (aio_tdereln->encryption_status == RELATION_KEY_AVAILABLE)
+	if (tdereln->encryption_status == RELATION_KEY_AVAILABLE)
+	{
+		/* Register decryption callback and connect key to IO handle */
+		tde_io_handle_keys[pgaio_io_get_id(ioh)] = tdereln->relKey;
 		pgaio_io_register_callbacks(ioh, PGAIO_HCB_TDE_READV, 0);
+	}
 
 	mdstartreadv(ioh, reln, forknum, blocknum, buffers, nblocks);
-
-	aio_tdereln = NULL;
 }
 
+/*
+ * We use the same callback for both normal and temporary tables despite for
+ * simplicity. For temporary tables we could in theory move the decryption
+ * of the buffer from complete_shared to complete_local but it is unclear
+ * if that would reap any benefits.
+ */
 const static PgAioHandleCallbacks aio_tde_readv_cb = {
 	.complete_shared = tde_readv_complete,
 };
@@ -569,6 +615,26 @@ RegisterStorageMgr(void)
 
 #if PG_VERSION_NUM >= 180000
 	PGAIO_HCB_TDE_READV = pgaio_io_register_callback_entry(&aio_tde_readv_cb, "aio_tde_readv_cb");
+#endif
+}
+
+Size
+TDESmgrShmemSize(void)
+{
+	Size		sz = 0;
+
+#if PG_VERSION_NUM >= 180000
+	sz = add_size(sz, tde_io_handle_keys_size());
+#endif
+
+	return sz;
+}
+
+void
+TDESmgrShmemInit(void)
+{
+#if PG_VERSION_NUM >= 180000
+	tde_io_handle_keys_init();
 #endif
 }
 

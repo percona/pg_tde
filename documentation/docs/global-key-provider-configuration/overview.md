@@ -23,4 +23,5 @@ To use an external KMS with `pg_tde`, follow these two steps:
 | **Fortanix**       | Fortanix DSM key management.                          | [Configure Fortanix →](kmip-fortanix.md) |
 | **Thales**         | Thales CipherTrust Manager and DSM.                   | [Configure Thales →](kmip-thales.md) |
 | **OpenBao**        | Community fork of Vault, supporting KV v2.            | [Configure OpenBao →](openbao.md) |
+| **Akeyless**        | A cloud-based secrets management platform for securely storing and accessing credentials and encryption keys.            | [Configure Akeyless →](kmip-akeyless.md) |
 | **Keyring file** *(not recommended)* | Local key file for dev/test only.                  | [Configure keyring file →](keyring.md) |

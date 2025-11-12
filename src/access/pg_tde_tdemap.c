@@ -364,10 +364,7 @@ pg_tde_delete_principal_key(Oid dbOid)
 static void
 pg_tde_set_db_file_path(Oid dbOid, char *path)
 {
-	char	   *fname = psprintf(PG_TDE_MAP_FILENAME, dbOid);
-
-	join_path_components(path, pg_tde_get_data_dir(), fname);
-	pfree(fname);
+	snprintf(path, MAXPGPATH, "%s/" PG_TDE_MAP_FILENAME, pg_tde_get_data_dir(), dbOid);
 }
 
 void

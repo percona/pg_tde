@@ -45,10 +45,6 @@ $node_london->append_conf(
 ));
 $node_london->append_conf('postgresql.conf',
 	"shared_preload_libraries = 'pg_tde'");
-if ($node_london->pg_version >= 18)
-{
-	$node_london->append_conf('postgresql.conf', 'io_method = sync');
-}
 $node_london->append_conf('postgresql.conf',
 	"default_table_access_method = 'tde_heap'");
 $node_london->start;
