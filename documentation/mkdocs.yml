@@ -173,7 +173,7 @@ nav:
   - "Get started":
     - "1. Install pg_tde": install.md
     - "1.1 Via apt": apt.md
-    - "1.2 Via yum": yum.md   
+    - "1.2 Via yum": yum.md
     - "2. Configure pg_tde": setup.md
     - "2.1 Configure Key Management (KMS)": 
       - "Key management overview": global-key-provider-configuration/overview.md
