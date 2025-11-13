@@ -8,6 +8,8 @@
 #include "access/pg_tde_fe_init.h"
 #include "access/pg_tde_xlog_smgr.h"
 
+#include <signal.h>
+
 #define TMPFS_DIRECTORY "/dev/shm"
 
 /*
@@ -129,6 +131,27 @@ usage(const char *progname)
 			 "\n"), progname, progname);
 }
 
+static char tmpdir[MAXPGPATH] = TMPFS_DIRECTORY "/pg_tde_restoreXXXXXX";
+static char tmppath[MAXPGPATH];
+
+static void
+cleanup_tmpdir(void)
+{
+	if (unlink(tmppath) < 0 && errno != ENOENT)
+		pg_log_warning("could not remove file \"%s\": %m", tmppath);
+	if (rmdir(tmpdir) < 0 && errno != ENOENT)
+		pg_log_warning("could not remove directory \"%s\": %m", tmpdir);
+}
+
+/* Clean up temporary files and dirs on SIGINT/SIGTERM */
+static void
+trapsig(int signum)
+{
+	cleanup_tmpdir();
+	signal(signum, SIG_DFL);
+	kill(getpid(), signum);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -138,8 +161,6 @@ main(int argc, char *argv[])
 	char	   *command;
 	char	   *sep;
 	char	   *targetname;
-	char		tmpdir[MAXPGPATH] = TMPFS_DIRECTORY "/pg_tde_restoreXXXXXX";
-	char		tmppath[MAXPGPATH];
 	bool		issegment;
 	int			rc;
 
@@ -194,6 +215,11 @@ main(int argc, char *argv[])
 		s = stpcpy(s, "/");
 		stpcpy(s, targetname);
 
+		/* There is a mostly harmless race condition with creating the dir */
+		signal(SIGTERM, trapsig);
+		signal(SIGINT, trapsig);
+		atexit(cleanup_tmpdir);
+
 		command = replace_percent_placeholders(command,
 											   "RESTORE-COMMAND", "fp",
 											   sourcename, tmppath);
@@ -222,14 +248,7 @@ main(int argc, char *argv[])
 	free(command);
 
 	if (issegment)
-	{
 		write_encrypted_segment(targetpath, sourcename, tmppath);
-
-		if (unlink(tmppath) < 0)
-			pg_log_warning("could not remove file \"%s\": %m", tmppath);
-		if (rmdir(tmpdir) < 0)
-			pg_log_warning("could not remove directory \"%s\": %m", tmpdir);
-	}
 
 	return 0;
 }
