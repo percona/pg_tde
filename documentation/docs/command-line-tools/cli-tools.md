@@ -14,5 +14,5 @@ These tools are introduced by `pg_tde` to support key rotation and WAL encryptio
 
 These existing PostgreSQL tools are enhanced to support `pg_tde`:
 
-* [pg_checksums](./pg-tde-checksums.md): verify data checksums (non-encrypted files only)
-* [pg_waldump](./pg-waldump.md): inspect and decrypt WAL files
+* [pg_tde_checksums](./pg-tde-checksums.md): verify data checksums (non-encrypted files only)
+* [pg_tde_waldump](./pg-waldump.md): inspect and decrypt WAL files
