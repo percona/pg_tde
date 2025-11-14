@@ -9,6 +9,9 @@
 
 #define TDE_TRANCHE_NAME "pg_tde_tranche"
 
+#define PG_TDE_WAL_KEY_FILE_MAGIC 0x024B4557	/* version ID value = WEK 02 */
+#define PG_TDE_FILEMAGIC		  0x04454454	/* version ID value = TDE 04 */
+
 typedef enum
 {
 	TDE_LWLOCK_ENC_KEY,
