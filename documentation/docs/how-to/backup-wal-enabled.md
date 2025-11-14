@@ -18,7 +18,7 @@ Also copy any external files referenced by your providers configuration (such as
     - `-E` (or `--encrypt-wal`) enables WAL encryption and validates that the copied `pg_tde` and provider files are present and that the server key is accessible (required).
 
 !!! note
-    - The `-E` flag only works with the `-X stream` option (default). It is not compatible with `-X none` or `-X fetch`. For more information, see [the other WAL methods topic](#other-wal-methods).
+    - The `-E` flag only works with the `-X stream` option (default). It is not compatible with `-X none` or `-X fetch`. For more information, see [the backup method compatibility with WAL encryption](#backup-method-compatibility-with-wal-encryption).
     - The `-E` flag is only supported with the plain output format (`-F p`). It cannot be used with the tar output format (`-F t`).
 
 ## Key rotation during backups
@@ -63,7 +63,6 @@ Fetch mode (`-X fetch`):
 None (`-X none`):
 
 * Excludes WAL from the backup and is unaffected by WAL encryption.
-
 
 !!! note
     If the source server has `pg_tde/wal_keys`, running `pg_basebackup` with `-X none` or `-X fetch` produces warnings such as:
