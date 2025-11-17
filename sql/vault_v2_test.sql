@@ -1,7 +1,7 @@
 CREATE EXTENSION pg_tde;
 
 \getenv root_token_file VAULT_ROOT_TOKEN_FILE
-\getenv cacert_file VAULT_CACERT_FILE
+\getenv cacert_file VAULT_CACERT
 
 -- FAILS as mount path does not exist
 SELECT pg_tde_add_database_key_provider_vault_v2('vault-incorrect', 'https://127.0.0.1:8200', 'DUMMY-MOUNT-PATH', :'root_token_file', :'cacert_file');
