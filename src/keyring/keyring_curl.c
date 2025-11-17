@@ -41,8 +41,6 @@ curlSetupSession(const char *url, const char *caFile, CurlString *outStr)
 		curl_easy_reset(keyringCurl);
 	}
 
-	if (curl_easy_setopt(keyringCurl, CURLOPT_SSL_VERIFYPEER, 1) != CURLE_OK)
-		return 0;
 	if (caFile != NULL && strlen(caFile) != 0)
 	{
 		if (curl_easy_setopt(keyringCurl, CURLOPT_CAINFO, caFile) != CURLE_OK)
@@ -61,11 +59,6 @@ curlSetupSession(const char *url, const char *caFile, CurlString *outStr)
 	if (curl_easy_setopt(keyringCurl, CURLOPT_WRITEDATA, outStr) != CURLE_OK)
 		return 0;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_URL, url) != CURLE_OK)
-		return 0;
-
-	if (curl_easy_setopt(keyringCurl, CURLOPT_POSTFIELDS, NULL) != CURLE_OK)
-		return 0;
-	if (curl_easy_setopt(keyringCurl, CURLOPT_POST, 0) != CURLE_OK)
 		return 0;
 
 	return 1;
