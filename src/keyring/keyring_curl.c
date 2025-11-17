@@ -34,7 +34,7 @@ curlSetupSession(const char *url, const char *caFile, CurlString *outStr)
 		keyringCurl = curl_easy_init();
 
 		if (keyringCurl == NULL)
-			return 0;
+			return false;
 	}
 	else
 	{
@@ -44,22 +44,22 @@ curlSetupSession(const char *url, const char *caFile, CurlString *outStr)
 	if (caFile != NULL && strlen(caFile) != 0)
 	{
 		if (curl_easy_setopt(keyringCurl, CURLOPT_CAINFO, caFile) != CURLE_OK)
-			return 0;
+			return false;
 	}
 	if (curl_easy_setopt(keyringCurl, CURLOPT_FOLLOWLOCATION, 1) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_CONNECTTIMEOUT, 3) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_TIMEOUT, 10) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_WRITEFUNCTION, write_func) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_WRITEDATA, outStr) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_URL, url) != CURLE_OK)
-		return 0;
+		return false;
 
-	return 1;
+	return true;
 }
