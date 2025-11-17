@@ -11,10 +11,12 @@ DEPS=(
     docbook-xsl
     flex
     gettext
+    libcurl4-openssl-dev
     libicu-dev
     libkrb5-dev
     libldap2-dev
     liblz4-dev
+    libnuma-dev
     libpam0g-dev
     libperl-dev
     libreadline-dev
@@ -36,8 +38,6 @@ DEPS=(
     xsltproc
     zlib1g-dev
     zstd
-    # Build pg_tde
-    libcurl4-openssl-dev
     # Test
     libipc-run-perl
     # Test pg_tde
