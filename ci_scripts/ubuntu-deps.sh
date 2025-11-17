@@ -4,6 +4,7 @@ set -e
 
 DEPS=(
     # Setup
+    jq
     wget
     # Build
     bison
