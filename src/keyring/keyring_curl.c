@@ -43,8 +43,6 @@ curlSetupSession(const char *url, const char *caFile, CurlString *outStr)
 
 	if (curl_easy_setopt(keyringCurl, CURLOPT_SSL_VERIFYPEER, 1) != CURLE_OK)
 		return 0;
-	if (curl_easy_setopt(keyringCurl, CURLOPT_USE_SSL, CURLUSESSL_ALL) != CURLE_OK)
-		return 0;
 	if (caFile != NULL && strlen(caFile) != 0)
 	{
 		if (curl_easy_setopt(keyringCurl, CURLOPT_CAINFO, caFile) != CURLE_OK)
