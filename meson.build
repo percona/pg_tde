@@ -1,0 +1,309 @@
+curldep = dependency('libcurl')
+
+pg_tde_sources = files(
+  'src/access/pg_tde_tdemap.c',
+  'src/access/pg_tde_xlog.c',
+  'src/access/pg_tde_xlog_keys.c',
+  'src/access/pg_tde_xlog_smgr.c',
+  'src/catalog/tde_keyring.c',
+  'src/catalog/tde_keyring_parse_opts.c',
+  'src/catalog/tde_principal_key.c',
+  'src/common/pg_tde_utils.c',
+  'src/encryption/enc_aes.c',
+  'src/encryption/enc_tde.c',
+  'src/keyring/keyring_api.c',
+  'src/keyring/keyring_curl.c',
+  'src/keyring/keyring_file.c',
+  'src/keyring/keyring_kmip.c',
+  'src/keyring/keyring_kmip_impl.c',
+  'src/keyring/keyring_vault.c',
+  'src/pg_tde.c',
+  'src/pg_tde_event_capture.c',
+  'src/pg_tde_guc.c',
+  'src/smgr/pg_tde_smgr.c',
+)
+
+tde_frontend_sources = files(
+  'src/access/pg_tde_tdemap.c',
+  'src/access/pg_tde_xlog_keys.c',
+  'src/access/pg_tde_xlog_smgr.c',
+  'src/catalog/tde_keyring.c',
+  'src/catalog/tde_keyring_parse_opts.c',
+  'src/catalog/tde_principal_key.c',
+  'src/common/pg_tde_utils.c',
+  'src/encryption/enc_aes.c',
+  'src/encryption/enc_tde.c',
+  'src/keyring/keyring_api.c',
+  'src/keyring/keyring_curl.c',
+  'src/keyring/keyring_file.c',
+  'src/keyring/keyring_kmip.c',
+  'src/keyring/keyring_kmip_impl.c',
+  'src/keyring/keyring_vault.c',
+)
+
+incdir = include_directories('src/include', '.', 'src/libkmip/libkmip/include/')
+
+kmip = static_library(
+  'kmip',
+  files(
+    'src/libkmip/libkmip/src/kmip.c',
+    'src/libkmip/libkmip/src/kmip_bio.c',
+    'src/libkmip/libkmip/src/kmip_locate.c',
+    'src/libkmip/libkmip/src/kmip_memset.c'
+  ),
+  c_args: [ '-w' ], # This is a 3rd party, disable warnings completely
+  include_directories: incdir
+)
+
+deps_update = {'dependencies': contrib_mod_args.get('dependencies') + [curldep]}
+
+mod_args = contrib_mod_args + deps_update
+
+pg_tde = shared_module('pg_tde',
+  pg_tde_sources,
+  c_pch: pch_postgres_h,
+  kwargs: mod_args,
+  include_directories: incdir,
+  link_whole: [kmip]
+)
+contrib_targets += pg_tde
+
+ldflags = []
+if host_system == 'darwin'
+  # On MacOS Shared Libraries and Loadable Modules are different things,
+  # so we need to pass an extra flag to the linker.
+  ldflags += '-bundle'
+endif
+
+install_data(
+  'pg_tde.control',
+  'pg_tde--1.0.sql',
+  'pg_tde--1.0--2.0.sql',
+  kwargs: contrib_data_args,
+)
+
+sql_tests = [
+  'access_control',
+  'alter_index',
+  'cache_alloc',
+  'change_access_method',
+  'create_database',
+  'default_principal_key',
+  'delete_principal_key',
+  'insert_update_delete',
+  'key_provider',
+  'kmip_test',
+  'partition_table',
+  'pg_tde_is_encrypted',
+  'recreate_storage',
+  'relocate',
+  'tablespace',
+  'toast_decrypt',
+  'vault_v2_test',
+  'version',
+]
+
+tap_tests = [
+  't/basic.pl',
+  't/change_key_provider.pl',
+  't/crash_recovery.pl',
+  't/key_rotate_tablespace.pl',
+  't/key_validation.pl',
+  't/multiple_extensions.pl',
+  't/pg_basebackup.pl',
+  't/pg_tde_change_key_provider.pl',
+  't/pg_rewind_basic.pl',
+  't/pg_rewind_databases.pl',
+  't/pg_rewind_extrafiles.pl',
+  't/pg_rewind_growing_files.pl',
+  't/pg_rewind_keep_recycled_wals.pl',
+  't/pg_rewind_min_recovery_point.pl',
+  't/pg_rewind_options.pl',
+  't/pg_rewind_pg_xlog_symlink.pl',
+  't/pg_rewind_same_timeline.pl',
+  't/pg_waldump_basic.pl',
+  't/pg_waldump_fullpage.pl',
+  't/replication.pl',
+  't/rotate_key.pl',
+  't/tde_heap.pl',
+  't/unlogged_tables.pl',
+  't/wal_archiving.pl',
+  't/wal_encrypt.pl',
+  't/wal_key_tli.pl',
+  't/2pc_replication.pl',
+  't/stream_rep.pl',
+]
+
+tests += {
+  'name': 'pg_tde',
+  'sd': meson.current_source_dir(),
+  'bd': meson.current_build_dir(),
+  'regress': {
+    'sql': sql_tests,
+    'regress_args': ['--temp-config', files('pg_tde.conf')],
+    'runningcheck': false,
+  },
+  'tap': {
+    'tests': tap_tests
+  },
+}
+
+pg_tde_inc = incdir
+
+pg_tde_frontend = static_library('pg_tde_frontend',
+  tde_frontend_sources,
+  c_pch: pch_postgres_h,
+  c_args: ['-DFRONTEND'],
+  kwargs: mod_args,
+  include_directories: incdir,
+  link_whole: [kmip]
+)
+
+pg_tde_change_key_provider_sources = files(
+  'src/bin/pg_tde_change_key_provider.c',
+)
+
+pg_tde_change_key_provider = executable('pg_tde_change_key_provider',
+  pg_tde_change_key_provider_sources,
+  dependencies: [frontend_code, lz4, zstd],
+  c_args: ['-DFRONTEND'], # needed for xlogreader et al
+  kwargs: default_bin_args,
+  include_directories: [postgres_inc, pg_tde_inc],
+  link_with: [pg_tde_frontend]
+)
+contrib_targets += pg_tde_change_key_provider
+
+pg_tde_archive_decrypt_sources = files(
+  'src/bin/pg_tde_archive_decrypt.c',
+) + xlogreader_sources
+
+pg_tde_archive_decrypt = executable('pg_tde_archive_decrypt',
+  pg_tde_archive_decrypt_sources,
+  dependencies: [frontend_code],
+  c_args: ['-DFRONTEND'], # needed for xlogreader et al
+  kwargs: default_bin_args,
+  include_directories: [postgres_inc, pg_tde_inc],
+  link_with: [pg_tde_frontend]
+)
+contrib_targets += pg_tde_archive_decrypt
+
+pg_tde_restore_encrypt_sources = files(
+  'src/bin/pg_tde_restore_encrypt.c',
+) + xlogreader_sources
+
+pg_tde_restore_encrypt = executable('pg_tde_restore_encrypt',
+  pg_tde_restore_encrypt_sources,
+  dependencies: [frontend_code],
+  c_args: ['-DFRONTEND'], # needed for xlogreader et al
+  kwargs: default_bin_args,
+  include_directories: [postgres_inc, pg_tde_inc],
+  link_with: [pg_tde_frontend]
+)
+contrib_targets += pg_tde_restore_encrypt
+
+###############################################################
+# Frontend tools
+###############################################################
+fetools_dir = 'fetools/pg' + pg_version_major.to_string()
+
+pg_tde_basebackup_sources = xlogreader_sources
+
+if pg_version_major == 18
+	pg_tde_basebackup_sources += files(
+		fetools_dir + '/pg_basebackup/pg_basebackup.c',
+		fetools_dir + '/pg_basebackup/astreamer_inject.c',
+		fetools_dir + '/pg_basebackup/receivelog.c',
+		fetools_dir + '/pg_basebackup/streamutil.c',
+		fetools_dir + '/pg_basebackup/walmethods.c',
+	)
+else
+	pg_tde_basebackup_sources += files(
+		fetools_dir + '/pg_basebackup/receivelog.c',
+		fetools_dir + '/pg_basebackup/streamutil.c',
+		fetools_dir + '/pg_basebackup/walmethods.c',
+		fetools_dir + '/pg_basebackup/pg_basebackup.c',
+		fetools_dir + '/pg_basebackup/bbstreamer_file.c',
+		fetools_dir + '/pg_basebackup/bbstreamer_gzip.c',
+		fetools_dir + '/pg_basebackup/bbstreamer_inject.c',
+		fetools_dir + '/pg_basebackup/bbstreamer_lz4.c',
+		fetools_dir + '/pg_basebackup/bbstreamer_tar.c',
+		fetools_dir + '/pg_basebackup/bbstreamer_zstd.c',
+	)
+endif
+
+pg_tde_basebackup = executable('pg_tde_basebackup',
+	pg_tde_basebackup_sources,
+	dependencies: [frontend_code, libpq, lz4, zlib, zstd],
+	c_args: ['-DFRONTEND'],
+	kwargs: default_bin_args,
+	include_directories: [postgres_inc, pg_tde_inc],
+	link_with: [pg_tde_frontend]
+)
+contrib_targets += pg_tde_basebackup
+
+# pg_tde_checksums
+pg_tde_checksums_sources = files(
+	fetools_dir + '/pg_checksums/pg_checksums.c'
+)
+pg_tde_checksums = executable('pg_tde_checksums',
+	pg_tde_checksums_sources,
+	dependencies: [frontend_code],
+	c_args: ['-DFRONTEND'],
+	kwargs: default_bin_args,
+	include_directories: [postgres_inc, pg_tde_inc],
+	link_with: [pg_tde_frontend]
+)
+contrib_targets += pg_tde_checksums
+
+# pg_tde_resetwal
+pg_tde_resetwal_sources = files(
+	fetools_dir + '/pg_resetwal/pg_resetwal.c'
+) + xlogreader_sources
+pg_tde_resetwal = executable('pg_tde_resetwal',
+	pg_tde_resetwal_sources,
+	dependencies: [frontend_code],
+	c_args: ['-DFRONTEND'],
+	kwargs: default_bin_args,
+	include_directories: [postgres_inc, pg_tde_inc],
+	link_with: [pg_tde_frontend]
+)
+contrib_targets += pg_tde_resetwal
+
+# pg_tde_rewind
+pg_tde_rewind_sources = files(
+	fetools_dir + '/pg_rewind/datapagemap.c',
+	fetools_dir + '/pg_rewind/file_ops.c',
+	fetools_dir + '/pg_rewind/filemap.c',
+	fetools_dir + '/pg_rewind/libpq_source.c',
+	fetools_dir + '/pg_rewind/local_source.c',
+	fetools_dir + '/pg_rewind/parsexlog.c',
+	fetools_dir + '/pg_rewind/pg_rewind.c',
+	fetools_dir + '/pg_rewind/timeline.c',
+) + xlogreader_sources
+pg_tde_rewind = executable('pg_tde_rewind',
+	pg_tde_rewind_sources,
+	dependencies: [frontend_code, libpq],
+	c_args: ['-DFRONTEND'],
+	kwargs: default_bin_args,
+	include_directories: [postgres_inc, pg_tde_inc],
+	link_with: [pg_tde_frontend]
+)
+contrib_targets += pg_tde_rewind
+
+# pg_tde_waldump
+pg_tde_waldump_sources = files(
+	fetools_dir + '/pg_waldump/compat.c',
+	fetools_dir + '/pg_waldump/pg_waldump.c',
+	fetools_dir + '/pg_waldump/rmgrdesc.c',
+	fetools_dir + '/xlogstats.c',
+) + xlogreader_sources + rmgr_desc_sources
+
+pg_tde_waldump = executable('pg_tde_waldump',
+	pg_tde_waldump_sources,
+	dependencies: [frontend_code],
+	c_args: ['-DFRONTEND'],
+	kwargs: default_bin_args,
+	include_directories: [postgres_inc, pg_tde_inc],
+	link_with: [pg_tde_frontend]
+)
+contrib_targets += pg_tde_waldump
