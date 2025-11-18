@@ -76,6 +76,9 @@ The following is a Percona-tested example configuration.
       connect_address: pg1:5432
       data_dir: /var/lib/postgresql/patroni-17
       bin_dir: /lib/postgresql/17/bin
+      bin_name:
+        pg_basebackup: pg_tde_basebackup
+        pg_rewind: pg_tde_rewind
       pgpass: /var/lib/postgresql/patronipass
       authentication:
         replication:
