@@ -27,7 +27,7 @@ The following tools have been tested and verified by Percona to work with `pg_td
 * `pg_tde_rewind`
 * `pg_tde_upgrade`
 * `pg_tde_waldump`
-* pg_tde_BackRest
+* pgBackRest
 
 ## Example Patroni configuration
 
