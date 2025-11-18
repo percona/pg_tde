@@ -51,7 +51,7 @@ The following is a Percona-tested example configuration.
         retry_timeout: 10
         maximum_lag_on_failover: 1048576
         postgresql:
-          use_pg_tde_rewind: true
+          use_pg_rewind: true
           use_slots: true
           parameters:
             archive_command: "/lib/postgresql/17/bin/pg_tde_archive_decrypt %f %p \"pgbackrest --stanza=tde archive-push %%p\""
@@ -76,6 +76,9 @@ The following is a Percona-tested example configuration.
       connect_address: pg1:5432
       data_dir: /var/lib/postgresql/patroni-17
       bin_dir: /lib/postgresql/17/bin
+      bin_name:
+        pg_basebackup: pg_tde_basebackup
+        pg_rewind: pg_tde_rewind
       pgpass: /var/lib/postgresql/patronipass
       authentication:
         replication:
