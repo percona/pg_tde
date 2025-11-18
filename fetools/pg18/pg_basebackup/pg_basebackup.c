@@ -47,7 +47,7 @@
 
 #define GLOBAL_DATA_TDE_OID 1664
 
-#define ERRCODE_DATA_CORRUPTED_BCP	"XX001"
+#define ERRCODE_DATA_CORRUPTED	"XX001"
 
 typedef struct TablespaceListCell
 {
@@ -2243,7 +2243,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 		const char *sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
 
 		if (sqlstate &&
-			strcmp(sqlstate, ERRCODE_DATA_CORRUPTED_BCP) == 0)
+			strcmp(sqlstate, ERRCODE_DATA_CORRUPTED) == 0)
 		{
 			pg_log_error("checksum error occurred");
 			checksum_failure = true;
