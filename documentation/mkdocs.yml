@@ -6,9 +6,9 @@ site_author: Percona LLC
 copyright: >
   <a href="https://www.percona.com/about">Percona LLC</a> and/or its affiliates © 2025 — <a href="#__consent">Cookie Consent</a>
 
-repo_name: percona/postgres
-repo_url: https://github.com/percona/postgres
-edit_uri: edit/TDE_REL_17_STABLE/contrib/pg_tde/documentation/docs
+repo_name: percona/pg_tde
+repo_url: https://github.com/percona/pg_tde
+edit_uri: edit/main/documentation/docs/
 
 use_directory_urls: false
 
@@ -62,11 +62,13 @@ extra_css:
   - css/osano.css
   - css/postgresql.css
   - css/landing.css
+  - css/rating.css
 
 extra_javascript:
   - js/version-select.js
   - js/promptremover.js
   - js/consent.js
+  - js/rating.js
 
 markdown_extensions:
   - attr_list
@@ -105,6 +107,10 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
       enabled: !ENV [ENABLED_GIT_REVISION_DATE, True]
+  - git-committers:
+      enabled: !ENV [CI, false]
+      repository: percona/pg_tde
+      branch: "main"
   - meta-descriptions:
       export_csv: false
       quiet: false
@@ -142,19 +148,6 @@ extra:
   analytics:
     provider: google
     property: G-J4J70BNH0G
-    feedback:
-      title: Was this page helpful?
-      ratings:
-        - icon: material/emoticon-happy-outline
-          name: This page was helpful
-          data: 1
-          note: >-
-            Thanks for your feedback!
-        - icon: material/emoticon-sad-outline
-          name: This page could be improved
-          data: 0
-          note: >-
-            Thanks for your feedback! Want to improve this page? Click  <strong>Edit this page on GitHub</strong> above to submit a pull request.
 
 nav:
   - "Home": index.md
