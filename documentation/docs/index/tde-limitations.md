@@ -22,7 +22,7 @@ The following tools and extensions in Percona Distribution for PostgreSQL have b
 The following tools have been tested and verified by Percona to work with `pg_tde` WAL encryption:
 
 * Patroni, for an example configuration see the following [Patroni configuration file](#example-patroni-configuration)
-* `pg_tde_basebackup` (with `--wal-method=stream` or `--wal-method=none`), for details on using `pg_basebackup` with WAL encryption, see [Backup with WAL encryption enabled](../how-to/backup-wal-enabled.md)
+* `pg_tde_basebackup` (with `--wal-method=stream` or `--wal-method=none`), for details on using `pg_tde_basebackup` with WAL encryption, see [Backup with WAL encryption enabled](../how-to/backup-wal-enabled.md)
 * `pg_tde_resetwal`
 * `pg_tde_rewind`
 * `pg_tde_waldump`
