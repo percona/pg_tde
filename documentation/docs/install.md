@@ -1,22 +1,17 @@
 # Install pg_tde
 
-!!! warning "No upgrade path from RC to GA"
-    There is no safe upgrade path from the previous versions, such as Release Candidate 2, to the General Availability (GA) version of `pg_tde`.  
-    We recommend starting with a **clean installation** for GA deployments. Avoid using RC environments in production.
+You can select from multiple easy-to-follow installation options to install `pg_tde`, however **we strongly recommend using a Package Manager** for a convenient and quick installation.
 
-To install `pg_tde`, use one of the following methods:
+!!! note
+    Specific information on the supported platforms, products, and versions is described in the [Percona Software and Platform Lifecycle :octicons-link-external-16:](https://www.percona.com/services/policies/percona-software-support-lifecycle) page.
 
 === ":octicons-terminal-16: Package manager"
 
-    The packages are available for the following operating systems:
-    
-    - Red Hat Enterprise Linux 8 and compatible derivatives
-    - Red Hat Enterprise Linux 9 and compatible derivatives
-    - Ubuntu 20.04 (Focal Fossa)
-    - Ubuntu 22.04 (Jammy Jellyfish)
-    - Ubuntu 24.04 (Noble Numbat)
-    - Debian 11 (Bullseye) 
-    - Debian 12 (Bookworm)
+    Percona provides installation packages in DEB and RPM formats for 64-bit Linux distributions.
+
+    If you are on Debian or Ubuntu, use `apt` for installation.
+
+    If you are on Red Hat Enterprise Linux or compatible derivatives, use `yum` for installation.
 
     [Install on Debian or Ubuntu :material-arrow-right:](apt.md){.md-button}
     [Install on RHEL or derivatives :material-arrow-right:](yum.md){.md-button}
@@ -25,18 +20,23 @@ To install `pg_tde`, use one of the following methods:
 
     `pg_tde` is a part of the Percona Distribution for PostgreSQL Docker image. Use this image to enjoy full encryption capabilities. Check below to get access to a detailed step-by-step guide. 
 
-    [Run in Docker :material-arrow-right:](https://docs.percona.com/postgresql/latest/docker.html){.md-button}
+    [Run in Docker :octicons-link-external-16:](https://docs.percona.com/postgresql/17/docker.html#enable-encryption){.md-button}
 
-=== ":octicons-download-16: Tar download"
+=== ":simple-kubernetes: Kubernetes"
+
+    You can enable `pg_tde` when deploying Percona Server for PostgreSQL in Kubernetes using the Percona Operator.
+
+=== ":octicons-download-16: Tar download (not recommended)"
 
     `pg_tde` is included in the Percona Distribution for PostgreSQL tarball. Select the below link to access the step-by-step guide. 
 
-    [Install from tarballs :material-arrow-right:](https://docs.percona.com/postgresql/17/tarball.html){.md-button}
+    [Install from tarballs :material-arrow-right:](https://docs.percona.com/postgresql/{{pgversion}}/tarball.html){.md-button}
 
-Follow the configuration steps below to continue:
+## Next steps
 
-[Configure pg_tde :material-arrow-right:](setup.md){.md-button}
+After finishing the installation, proceed with:
 
-If you’ve already completed these steps, feel free to skip ahead to a later section:
-
- [Configure Key Management (KMS)](global-key-provider-configuration/overview.md){.md-button} [Validate Encryption with pg_tde](test.md){.md-button} [Configure WAL encryption](wal-encryption.md){.md-button}
+- [Set up `pg_tde`](setup.md)
+- [Learn about key management](global-key-provider-configuration/overview.md)
+- [Validate your encryption setup](test.md)
+- [Enable WAL encryption](wal-encryption.md)
