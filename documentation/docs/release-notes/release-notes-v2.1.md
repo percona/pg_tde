@@ -18,13 +18,13 @@ Added support for **asynchronous I/O (AIO)** which is now the default I/O mechan
 
 The standard PostgreSQL command-line utilities can no longer operate on clusters encrypted with `pg_tde`. To manage encrypted data safely, use the pg_tde_ equivalents provided by Percona. These tools replace the PostgreSQL originals when working with encrypted clusters:
 
-    * pg_basebackup to pg_tde_basebackup
-    * pg_checksums to pg_tde_checksums
-    * pg_waldump to pg_tde_waldump
-    * pg_basebackup to pg_tde_basebackup
-    * pg_resetwal to pg_tde_resetwal
-    * pg_rewind to pg_tde_rewind
-    * pg_waldump to pg_tde_waldump
+* pg_basebackup to pg_tde_basebackup
+* pg_checksums to pg_tde_checksums
+* pg_waldump to pg_tde_waldump
+* pg_basebackup to pg_tde_basebackup
+* pg_resetwal to pg_tde_resetwal
+* pg_rewind to pg_tde_rewind
+* pg_waldump to pg_tde_waldump
 
 !!! important
 
