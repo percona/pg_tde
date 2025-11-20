@@ -26,7 +26,7 @@ The standard PostgreSQL command-line utilities can no longer operate on clusters
 * pg_rewind to pg_tde_rewind
 * pg_waldump to pg_tde_waldump
 
-!!! important
+!!! warning
 
     The non-pg_tde_* versions will not work on encrypted clusters and may fail with errors if used. Always use the pg_tde_ variants when working with TDE-enabled data.
 
