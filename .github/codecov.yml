@@ -7,7 +7,6 @@ coverage:
         target: 90%
         threshold: 1%
         base: auto
-        paths: "!fetools/"
 comment:
   layout: "header, diff, components"
 component_management:
@@ -21,9 +20,6 @@ component_management:
     - component_id: access
       paths:
         - src/access/**
-    - component_id: bin
-      paths:
-        - src/bin/**
     - component_id: catalog
       paths:
         - src/catalog/**
@@ -42,3 +38,6 @@ component_management:
     - component_id: smgr
       paths:
         - src/smgr/**
+    - component_id: transam
+      paths:
+        - src/transam/**
