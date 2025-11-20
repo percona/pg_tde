@@ -24,8 +24,6 @@ The standard PostgreSQL command-line utilities can no longer operate on clusters
 
 * pg_basebackup to pg_tde_basebackup
 * pg_checksums to pg_tde_checksums
-* pg_waldump to pg_tde_waldump
-* pg_basebackup to pg_tde_basebackup
 * pg_resetwal to pg_tde_resetwal
 * pg_rewind to pg_tde_rewind
 * pg_waldump to pg_tde_waldump
