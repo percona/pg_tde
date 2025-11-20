@@ -14,6 +14,10 @@ The `pg_tde` by Percona extension brings [Transparent Data Encryption (TDE)](../
 
 Added support for **asynchronous I/O (AIO)** which is now the default I/O mechanism.
 
+### Repository split for multi-version PostgreSQL support
+
+Reorganized the project into a multi-repository structure to support several PostgreSQL versions more efficiently.
+
 ### Tooling changes
 
 The standard PostgreSQL command-line utilities can no longer operate on clusters encrypted with `pg_tde`. To manage encrypted data safely, use the `pg_tde_` equivalents provided by Percona:
