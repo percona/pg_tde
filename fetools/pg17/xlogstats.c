@@ -1,7 +1,7 @@
 /*-------------------------------------------------------------------------
  *
  * xlogstats.c
- *		Functions for WAL Statistics
+ *		Functions for WAL Statitstics
  *
  * Copyright (c) 2022-2024, PostgreSQL Global Development Group
  *
