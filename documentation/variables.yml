@@ -1,10 +1,10 @@
 #Variables used throughout the docs
 
-latestreleasenotes: 'release-notes-v2.0'
-tdeversion: '2.0'
-release: '2.0'
-pgversion17: '17.5'
-tdebranch: release-17.5.3
+latestreleasenotes: 'release-notes-v2.1'
+tdeversion: '2.1'
+release: '2.1'
+pgversion17: '18.1'
+tdebranch: release-2.1
 
 date:
 

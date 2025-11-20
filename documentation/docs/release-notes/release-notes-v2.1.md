@@ -14,6 +14,22 @@ The `pg_tde` by Percona extension brings [Transparent Data Encryption (TDE)](../
 
 Added support for **asynchronous I/O (AIO)** which is now the default I/O mechanism.
 
+### Encrypted-cluster tooling changes
+
+The standard PostgreSQL command-line utilities can no longer operate on clusters encrypted with `pg_tde`. To manage encrypted data safely, use the pg_tde_ equivalents provided by Percona. These tools replace the PostgreSQL originals when working with encrypted clusters:
+
+    * pg_basebackup to pg_tde_basebackup
+    * pg_checksums to pg_tde_checksums
+    * pg_waldump to pg_tde_waldump
+    * pg_basebackup to pg_tde_basebackup
+    * pg_resetwal to pg_tde_resetwal
+    * pg_rewind to pg_tde_rewind
+    * pg_waldump to pg_tde_waldump
+
+!!! important
+
+    The non-pg_tde_* versions will not work on encrypted clusters and may fail with errors if used. Always use the pg_tde_ variants when working with TDE-enabled data.
+
 ### Added Akeyless support
 
 `pg_tde` is now compatible with the Akeyless CipherTrust Manager via the KMIP protocol. For more information, see the [Key management overview topic](../global-key-provider-configuration/overview.md).
@@ -25,17 +41,6 @@ Implemented support for the "namespace" feature in Vault Enterprise and OpenBao,
 ### Documentation updates
 
 - Added the [Akeyless topic](../global-key-provider-configuration/kmip-akeyless.md)
-- Renamed the following components:
-
-    * pg_tdebasebackup to pg_tde_basebackup
-    * pg_checksums to pg_tde_checksums
-    * pg_waldump to pg_tde_waldump
-    * pg_basebackup to pg_tde_basebackup
-    * pg_resetwal to pg_tde_resetwal
-    * pg_rewind to pg_tde_rewind
-    * pg_upgrade to pg_tde_upgrade
-    * pg_waldump to pg_tde_waldump
-
 - Added the [Impact of pg_tde on database operations](../index/what-tde-impacts.md) topic which summarizes how `pg_tde` interacts with core PostgreSQL operations.
 
 ## Known issues
