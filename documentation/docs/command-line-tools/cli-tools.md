@@ -12,7 +12,7 @@ These tools are introduced by `pg_tde` to support key rotation and WAL encryptio
 
 ## Extended tools
 
-These existing PostgreSQL tools are enhanced to support `pg_tde`:
+These tools are available as part of the distribution:
 
 * [pg_tde_checksums](./pg-tde-checksums.md): verify data checksums (non-encrypted files only)
-* [pg_tde_waldump](./pg-waldump.md): inspect and decrypt WAL files
+* [pg_tde_waldump](./pg-tde-waldump.md): inspect and decrypt WAL files

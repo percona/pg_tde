@@ -200,7 +200,7 @@ nav:
       - "pg_tde_archive_decrypt": command-line-tools/pg-tde-archive-decrypt.md
       - "pg_tde_restore_encrypt": command-line-tools/pg-tde-restore-encrypt.md
       - "pg_checksums": command-line-tools/pg-tde-checksums.md 
-      - "pg_waldump": command-line-tools/pg-waldump.md
+      - "pg_waldump": command-line-tools/pg-tde-waldump.md
     - "Uninstall pg_tde": how-to/uninstall.md
     - "Configure Multi-tenancy": how-to/multi-tenant-setup.md
     - "Encryption Enforcement": how-to/enforcement.md
