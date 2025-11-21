@@ -12,7 +12,7 @@
 extern Size TDEXLogSmgrShmemSize(void);
 extern void TDEXLogSmgrShmemInit(void);
 extern void TDEXLogSmgrInit(void);
-extern void TDEXLogSmgrInitWrite(bool encrypt_xlog);
+extern void TDEXLogSmgrInitWrite(bool encrypt_xlog, int key_len);
 extern void TDEXLogSmgrInitWriteOldKeys(void);
 
 extern void TDEXLogCryptBuffer(const void *buf, void *out_buf, size_t count, off_t offset,
