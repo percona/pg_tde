@@ -7,7 +7,7 @@ The `pg_tde` extension provides functions for managing different aspects of its 
 
 ## Key provider management
 
-A key provider is a system or service responsible for managing encryption keys. For more information on the key providers `pg_tde` supports see the [Key management overview](../docs/global-key-provider-configuration/overview.md).
+A key provider is a system or service responsible for managing encryption keys. For more information on the key providers `pg_tde` supports see the [Key management overview](global-key-provider-configuration/overview.md).
 
 Key provider management includes the following operations:
 
