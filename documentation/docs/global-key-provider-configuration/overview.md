@@ -12,7 +12,7 @@ To use an external KMS with `pg_tde`, follow these two steps:
      While key files may be acceptable for **local** or **testing environments**, KMS integration is the recommended approach for production deployments.
 
 !!! warning
-    Do not rotate encryption keys while `pg_basebackup` is running. Standbys or standalone clusters created from such backups may fail to start during WAL replay. Schedule rotations outside your backup windows and run a new full backup afterward.
+    Do not rotate encryption keys while `pg_tde_basebackup` is running. Standbys or standalone clusters created from such backups may fail to start during WAL replay. Schedule rotations outside your backup windows and run a new full backup afterward.
 
 `pg_tde` has been tested with the following key providers:
 
