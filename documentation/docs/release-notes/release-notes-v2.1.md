@@ -10,6 +10,18 @@ The `pg_tde` by Percona extension brings [Transparent Data Encryption (TDE)](../
 
 `pg_tde` is fully supported with the Postgres 18.1 version.
 
+### Packaging changes for PostgreSQL 18
+
+Starting with PostgreSQL 18, `pg_tde` is distributed as a **standalone package** for RPM and DEB installations.
+
+It is no longer bundled with the main PostgreSQL server package.
+
+If your PostgreSQL 18 deployment uses `pg_tde`, make sure to install the matching `pg_tde` package separately.
+
+Percona’s PostgreSQL **Docker images continue to include `pg_tde` by default**, so no additional action is required for container-based deployments.
+
+For more information on the availability by PostgreSQL version, please see [Install pg_tde](../install.md).
+
 ### Added support for AIO
 
 Added support for **asynchronous I/O (AIO)** which is now the default I/O mechanism.
@@ -44,6 +56,8 @@ Implemented support for the "namespace" feature in Vault Enterprise and OpenBao,
 
 - Added the [Akeyless topic](../global-key-provider-configuration/kmip-akeyless.md)
 - Added the [Impact of pg_tde on database operations](../index/what-tde-impacts.md) topic which summarizes how `pg_tde` interacts with core PostgreSQL operations.
+- Updated the [FAQ](../faq.md) with an answer to logical replication keeping data encrypted on subscribers.
+- Updated [Install pg_tde](../install.md) with a table for the `pg_tde` availability by PostgreSQL version.
 
 ## Known issues
 
