@@ -33,6 +33,15 @@ If to translate sensitive data to files stored in your database, these are user 
 
 Yes, logical replication works with the encrypted tables.
 
+## Does logical replication keep data encrypted on subscribers?
+
+Logical replication **does not** preserve encryption state. If the publisher uses `pg_tde` but the subscriber does not, the replicated data will be stored **in plain text** on the subscriber.
+
+Encryption is not propagated to the data-block level due to how logical replication operates.
+
+!!! note
+        This means encrypted publishers **do not guarantee** encrypted logical replicas.
+
 ## I use disk-level encryption. Why should I care about TDE?
 
 Encrypting a hard drive encrypts all data, including system, application, and temporary files.
