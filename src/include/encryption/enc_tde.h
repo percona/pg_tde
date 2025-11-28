@@ -32,8 +32,6 @@ pg_tde_cipher_key_lenght(CipherType cipher)
 	}
 }
 
-#define INTERNAL_KEY_OLD_LEN 16
-
 #define INTERNAL_KEY_MAX_LEN 32 /* Max size of an Internal Key */
 #define INTERNAL_KEY_IV_LEN 16
 

@@ -162,7 +162,7 @@ pg_tde_create_keys_version_file(void)
 	char		version_file_path[MAXPGPATH] = {0};
 	int			fd;
 	keys_version_info curr_version = {
-		.smgr_version = PG_TDE_FILEMAGIC,
+		.smgr_version = PG_TDE_SMGR_FILE_MAGIC,
 		.wal_version = PG_TDE_WAL_KEY_FILE_MAGIC,
 	};
 
@@ -226,7 +226,7 @@ pg_tde_migrate_internal_keys(void)
 		CloseTransientFile(fd);
 
 		/* All is up-to-date, nothing to do */
-		if (curr_version.smgr_version == PG_TDE_FILEMAGIC &&
+		if (curr_version.smgr_version == PG_TDE_SMGR_FILE_MAGIC &&
 			curr_version.wal_version == PG_TDE_WAL_KEY_FILE_MAGIC)
 			return;
 	}
