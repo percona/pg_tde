@@ -21,6 +21,7 @@
 #include "encryption/enc_aes.h"
 #include "encryption/enc_tde.h"
 #include "keyring/keyring_api.h"
+#include "pg_tde.h"
 
 #ifdef FRONTEND
 #include "pg_tde_fe.h"
@@ -39,7 +40,6 @@
 }
 #endif
 
-#define PG_TDE_FILEMAGIC			0x03454454	/* version ID value = TDE 03 */
 #define PG_TDE_MAP_FILENAME			"%d_keys"
 
 typedef enum
@@ -54,32 +54,25 @@ typedef struct TDEFileHeader
 	TDESignedPrincipalKeyInfo signed_key_info;
 } TDEFileHeader;
 
-/*
- * Feel free to use the unused fields for something, but beware that existing
- * files may contain unexpected values here. Also be aware of alignment if
- * changing any of the types as this struct is written/read directly from file.
- *
- * If changes are made, know that the first four fields are used as AAD when
- * encrypting/decrypting existing keys from the key files, so any changes here
- * might break existing clusters.
- */
 typedef struct TDEMapEntry
 {
+	uint32		cipher;			/* Part of AAD. Cipher type. We support only
+								 * AES_128 and AES_256 for now. */
 	Oid			spcOid;			/* Part of AAD */
 	RelFileNumber relNumber;	/* Part of AAD */
 	uint32		type;			/* Part of AAD */
-	uint32		_unused3;		/* Part of AAD */
 
-	uint8		encrypted_key_data[INTERNAL_KEY_LEN];
-	uint8		key_base_iv[INTERNAL_KEY_IV_LEN];
-
-	uint32		_unused1;		/* Will be 1 in existing files entries. */
-	uint32		_unused4;
-	uint64		_unused2;		/* Will be 0 in existing files entries. */
-
-	/* IV and tag used when encrypting the key itself */
+	/*
+	 * IV and tag used when encrypting the key itself
+	 *
+	 * TODO: should we extend MAP_ENTRY_IV_SIZE to 192(?) bit and add an
+	 * iv_size filed?
+	 */
 	unsigned char entry_iv[MAP_ENTRY_IV_SIZE];
 	unsigned char aead_tag[MAP_ENTRY_AEAD_TAG_SIZE];
+
+	uint8		key_base_iv[INTERNAL_KEY_IV_LEN];
+	uint8		encrypted_key_data[INTERNAL_KEY_MAX_LEN];
 } TDEMapEntry;
 
 static void pg_tde_set_db_file_path(Oid dbOid, char *path);
@@ -377,7 +370,7 @@ pg_tde_sign_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, const
 				errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("could not generate iv for key map: %s", ERR_error_string(ERR_get_error(), NULL)));
 
-	AesGcmEncrypt(principal_key->keyData,
+	AesGcmEncrypt(principal_key->keyData, principal_key->keyLength,
 				  signed_key_info->sign_iv, MAP_ENTRY_IV_SIZE,
 				  (unsigned char *) &signed_key_info->data, sizeof(signed_key_info->data),
 				  NULL, 0,
@@ -394,22 +387,19 @@ pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *princ
 	map_entry->type = MAP_ENTRY_TYPE_KEY;
 	memcpy(map_entry->key_base_iv, rel_key_data->base_iv, INTERNAL_KEY_IV_LEN);
 
-	/*
-	 * We set these fields here so that existing file entries will be
-	 * consistent and future use of these fields easier.
-	 */
-	map_entry->_unused1 = 1;
-	map_entry->_unused2 = 0;
+	Assert(rel_key_data->key_len == 16 || rel_key_data->key_len == 32);
+	map_entry->cipher = rel_key_data->key_len == 32 ? CIPHER_AES_256 : CIPHER_AES_128;	/* We support only those
+																						 * for now */
 
 	if (!RAND_bytes(map_entry->entry_iv, MAP_ENTRY_IV_SIZE))
 		ereport(ERROR,
 				errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("could not generate iv for key map: %s", ERR_error_string(ERR_get_error(), NULL)));
 
-	AesGcmEncrypt(principal_key->keyData,
+	AesGcmEncrypt(principal_key->keyData, principal_key->keyLength,
 				  map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
-				  (unsigned char *) map_entry, offsetof(TDEMapEntry, encrypted_key_data),
-				  rel_key_data->key, INTERNAL_KEY_LEN,
+				  (unsigned char *) map_entry, offsetof(TDEMapEntry, entry_iv),
+				  rel_key_data->key, rel_key_data->key_len,
 				  map_entry->encrypted_key_data,
 				  map_entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }
@@ -570,7 +560,7 @@ pg_tde_count_encryption_keys(Oid dbOid)
 bool
 pg_tde_verify_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, const KeyData *principal_key_data)
 {
-	return AesGcmDecrypt(principal_key_data->data,
+	return AesGcmDecrypt(principal_key_data->data, principal_key_data->len,
 						 signed_key_info->sign_iv, MAP_ENTRY_IV_SIZE,
 						 (unsigned char *) &signed_key_info->data, sizeof(signed_key_info->data),
 						 NULL, 0,
@@ -582,19 +572,21 @@ static InternalKey *
 tde_decrypt_rel_key(const TDEPrincipalKey *principal_key, TDEMapEntry *map_entry)
 {
 	InternalKey *key = palloc_object(InternalKey);
+	uint32		key_len = pg_tde_cipher_key_lenght(map_entry->cipher);
 
 	Assert(principal_key);
 
-	if (!AesGcmDecrypt(principal_key->keyData,
+	if (!AesGcmDecrypt(principal_key->keyData, principal_key->keyLength,
 					   map_entry->entry_iv, MAP_ENTRY_IV_SIZE,
-					   (unsigned char *) map_entry, offsetof(TDEMapEntry, encrypted_key_data),
-					   map_entry->encrypted_key_data, INTERNAL_KEY_LEN,
+					   (unsigned char *) map_entry, offsetof(TDEMapEntry, entry_iv),
+					   map_entry->encrypted_key_data, key_len,
 					   key->key,
 					   map_entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE))
 		ereport(ERROR,
 				errmsg("Failed to decrypt key, incorrect principal key or corrupted key file"));
 
 	memcpy(key->base_iv, map_entry->key_base_iv, INTERNAL_KEY_IV_LEN);
+	key->key_len = key_len;
 
 	return key;
 }
@@ -642,6 +634,11 @@ pg_tde_open_file_read(const char *tde_filename, bool ignore_missing, off_t *curr
 		return fd;
 
 	pg_tde_file_header_read(tde_filename, fd, &fheader, &bytes_read);
+	if (bytes_read > 0 && fheader.file_version != PG_TDE_SMGR_FILE_MAGIC)
+		ereport(FATAL,
+				errcode_for_file_access(),
+				errmsg("key file \"%s\" has wrong version: %m", tde_filename));
+
 	*curr_pos = bytes_read;
 
 	return fd;
@@ -669,6 +666,10 @@ pg_tde_open_file_write(const char *tde_filename, const TDESignedPrincipalKeyInfo
 	fd = pg_tde_open_file_basic(tde_filename, file_flags, false);
 
 	pg_tde_file_header_read(tde_filename, fd, &fheader, &bytes_read);
+	if (bytes_read > 0 && fheader.file_version != PG_TDE_SMGR_FILE_MAGIC)
+		ereport(FATAL,
+				errcode_for_file_access(),
+				errmsg("key file \"%s\" has wrong version: %m", tde_filename));
 
 	/* In case it's a new file, let's add the header now. */
 	if (bytes_read == 0 && signed_key_info)
@@ -693,8 +694,7 @@ pg_tde_file_header_read(const char *tde_filename, int fd, TDEFileHeader *fheader
 	if (*bytes_read == 0)
 		return;
 
-	if (*bytes_read != sizeof(TDEFileHeader)
-		|| fheader->file_version != PG_TDE_FILEMAGIC)
+	if (*bytes_read != sizeof(TDEFileHeader))
 	{
 		ereport(FATAL,
 				errcode_for_file_access(),
@@ -713,7 +713,7 @@ pg_tde_file_header_write(const char *tde_filename, int fd, const TDESignedPrinci
 
 	Assert(signed_key_info);
 
-	fheader.file_version = PG_TDE_FILEMAGIC;
+	fheader.file_version = PG_TDE_SMGR_FILE_MAGIC;
 	fheader.signed_key_info = *signed_key_info;
 	*bytes_written = pg_pwrite(fd, &fheader, sizeof(TDEFileHeader), 0);
 
@@ -786,6 +786,15 @@ pg_tde_get_principal_key_info(Oid dbOid)
 		return NULL;
 
 	pg_tde_file_header_read(db_map_path, fd, &fheader, &bytes_read);
+
+	if (bytes_read > 0 &&
+		FILEMAGIC_TYPE(fheader.file_version) != FILEMAGIC_TYPE(PG_TDE_SMGR_FILE_MAGIC))
+	{
+		ereport(FATAL,
+				errcode_for_file_access(),
+				errmsg("key file \"%s\" is corrupted or has wrong version: %m", db_map_path),
+				errdetail("Getting principal key from the file."));
+	}
 
 	CloseTransientFile(fd);
 
@@ -876,5 +885,195 @@ pg_tde_get_smgr_key(RelFileLocator rel)
 
 	LWLockRelease(lock_pk);
 
+	if (principal_key->keyLength != rel_key->key_len)
+	{
+		ereport(LOG,
+				errmsg("length \"%u\" of principal key \"%s\" does not match the length \"%d\" of the internal key", principal_key->keyLength, principal_key->keyInfo.name, rel_key->key_len),
+				errhint("Create a new principal key and set it instead of the current one."));
+	}
+
 	return rel_key;
 }
+
+
+#ifndef FRONTEND
+
+/*****************************************
+ * Functions for migrating old smgr keys into a new format file.
+ *****************************************/
+
+/*
+ * A version-specific migration routine. It reads an entry of the specific
+ * version from the given fd and offset, and transforms it into
+ * WalKeyFileEntry (current version)
+ */
+typedef bool (*MapFromDiskEntry) (int fd, off_t *entry_offset, const TDEPrincipalKey *principal_key, TDEMapEntry *out);
+
+typedef struct TDEMapEntryV3
+{
+	Oid			spcOid;			/* Part of AAD */
+	RelFileNumber relNumber;	/* Part of AAD */
+	uint32		type;			/* Part of AAD */
+	uint32		_unused1;		/* Part of AAD */
+
+	uint8		encrypted_key_data[16];
+	uint8		key_base_iv[16];
+
+	uint32		_unused2;		/* Will be 1 in existing files entries. */
+	uint32		_unused3;
+	uint64		_unused4;		/* Will be 0 in existing files entries. */
+
+	/* IV and tag used when encrypting the key itself */
+	unsigned char entry_iv[16];
+	unsigned char aead_tag[16];
+} TDEMapEntryV3;
+
+static bool
+read_one_map_entry_v3(int fd, TDEMapEntryV3 *entry, off_t *offset)
+{
+	off_t		bytes_read = 0;
+
+	Assert(entry);
+	Assert(offset);
+
+	bytes_read = pg_pread(fd, entry, sizeof(TDEMapEntryV3), *offset);
+
+	/* We've reached the end of the file. */
+	if (bytes_read != sizeof(TDEMapEntryV3))
+		return false;
+
+	*offset += bytes_read;
+
+	return true;
+}
+
+static void
+ikey_from_map_entry_v3(TDEMapEntryV3 *entry, const TDEPrincipalKey *principal_key, InternalKey *out)
+{
+	out->key_len = sizeof(entry->encrypted_key_data);
+
+	memcpy(out->base_iv, entry->key_base_iv, sizeof(entry->key_base_iv));
+	if (!AesGcmDecrypt(principal_key->keyData, principal_key->keyLength,
+					   entry->entry_iv, sizeof(entry->entry_iv),
+					   (unsigned char *) entry, offsetof(TDEMapEntryV3, encrypted_key_data),
+					   entry->encrypted_key_data, out->key_len,
+					   out->key,
+					   entry->aead_tag, sizeof(entry->aead_tag)))
+		ereport(ERROR,
+				errmsg("Failed to decrypt key, incorrect principal key or corrupted key file"));
+}
+
+static bool
+map_from_disk_entry_v3(int fd, off_t *entry_offset, const TDEPrincipalKey *principal_key, TDEMapEntry *out)
+{
+	TDEMapEntryV3 disk_entry;
+	InternalKey key;
+	RelFileLocator rloc;
+
+	if (!read_one_map_entry_v3(fd, &disk_entry, entry_offset))
+		return false;
+
+	ikey_from_map_entry_v3(&disk_entry, principal_key, &key);
+
+	rloc.spcOid = disk_entry.spcOid;
+	rloc.dbOid = principal_key->keyInfo.databaseId;
+	rloc.relNumber = disk_entry.relNumber;
+
+	pg_tde_initialize_map_entry(out, principal_key, &rloc, &key);
+
+	return true;
+}
+
+void
+pg_tde_migrate_smgr_keys_file(void)
+{
+	DIR		   *dir;
+	LWLock	   *lock_pk = tde_lwlock_enc_keys();
+	struct dirent *file;
+	TDEPrincipalKey *principal_key = NULL;
+	TDESignedPrincipalKeyInfo signed_key_info;
+
+	/*
+	 * No real need in lock here as the func should be called only on the
+	 * server start, but GetPrincipalKey() expects lock.
+	 */
+	LWLockAcquire(lock_pk, LW_EXCLUSIVE);
+
+	dir = opendir(pg_tde_get_data_dir());
+	if (dir == NULL && errno != ENOENT)
+		elog(ERROR, "could not open directory \"%s\": %m",
+			 pg_tde_get_data_dir());
+
+	while (errno = 0, (file = readdir(dir)) != NULL)
+	{
+		char		db_map_path[MAXPGPATH] = {0};
+		char		tmp_db_map_path[MAXPGPATH] = {0};
+		off_t		read_pos,
+					write_pos;
+		int			old_fd,
+					new_fd;
+		Oid			dbOid;
+		char	   *suffix;
+		TDEFileHeader fheader;
+		MapFromDiskEntry read_map_entry;
+		TDEMapEntry new_entry;
+
+
+		dbOid = strtoul(file->d_name, &suffix, 10);
+
+		if (strcmp(suffix, "_keys") != 0)
+			continue;
+
+		pg_tde_set_db_file_path(dbOid, db_map_path);
+
+		snprintf(tmp_db_map_path, MAXPGPATH, "%s.r", db_map_path);
+
+		old_fd = pg_tde_open_file_basic(db_map_path, O_RDONLY | PG_BINARY, false);
+		pg_tde_file_header_read(db_map_path, old_fd, &fheader, &read_pos);
+
+		/* check if we have anything to do */
+		if (fheader.file_version == PG_TDE_SMGR_FILE_MAGIC)
+		{
+			CloseTransientFile(old_fd);
+			continue;
+		}
+
+		/* The type check later, when extracting the principal key */
+		if (FILEMAGIC_VERSION(fheader.file_version) == 3)
+			read_map_entry = map_from_disk_entry_v3;
+		else
+			elog(ERROR, "keys migration: unsupported or corrupted version %d of file \"%s\"", FILEMAGIC_VERSION(fheader.file_version), db_map_path);
+
+		/*
+		 * The old file exists and it's not empty, hece a principal key should
+		 * exist as well.
+		 */
+		if (principal_key == NULL)
+		{
+			principal_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
+			if (principal_key == NULL)
+			{
+				ereport(ERROR,
+						errmsg("could not get server principal key"),
+						errdetail("Failed to migrate the keys file of %u database.", dbOid));
+			}
+			pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
+		}
+
+		new_fd = pg_tde_open_file_write(tmp_db_map_path, &signed_key_info, true, &write_pos);
+
+		while (read_map_entry(old_fd, &read_pos, principal_key, &new_entry))
+		{
+			pg_tde_write_one_map_entry(new_fd, &new_entry, &write_pos, db_map_path);
+		}
+
+		CloseTransientFile(old_fd);
+		CloseTransientFile(new_fd);
+		durable_rename(tmp_db_map_path, db_map_path, ERROR);
+	}
+
+	closedir(dir);
+	LWLockRelease(lock_pk);
+}
+
+#endif

@@ -10,6 +10,8 @@
 extern bool AllowInheritGlobalProviders;
 extern bool EncryptXLog;
 extern bool EnforceEncryption;
+extern int	Cipher;
+extern int	TdeKeyLength;
 
 extern void TdeGucInit(void);
 
