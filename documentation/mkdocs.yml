@@ -62,11 +62,13 @@ extra_css:
   - css/osano.css
   - css/postgresql.css
   - css/landing.css
+  - css/rating.css
 
 extra_javascript:
   - js/version-select.js
   - js/promptremover.js
   - js/consent.js
+  - js/rating.js
 
 markdown_extensions:
   - attr_list
@@ -142,19 +144,6 @@ extra:
   analytics:
     provider: google
     property: G-J4J70BNH0G
-    feedback:
-      title: Was this page helpful?
-      ratings:
-        - icon: material/emoticon-happy-outline
-          name: This page was helpful
-          data: 1
-          note: >-
-            Thanks for your feedback!
-        - icon: material/emoticon-sad-outline
-          name: This page could be improved
-          data: 0
-          note: >-
-            Thanks for your feedback! Want to improve this page? Click  <strong>Edit this page on GitHub</strong> above to submit a pull request.
 
 nav:
   - "Home": index.md
