@@ -55,9 +55,10 @@ Implemented support for the "namespace" feature in Vault Enterprise and OpenBao,
 ### Documentation updates
 
 - Added the [Akeyless topic](../global-key-provider-configuration/kmip-akeyless.md)
-- Added the [Impact of pg_tde on database operations](../index/what-tde-impacts.md) topic which summarizes how `pg_tde` interacts with core PostgreSQL operations.
-- Updated the [FAQ](../faq.md) with an answer to logical replication keeping data encrypted on subscribers.
-- Updated [Install pg_tde](../install.md) with a table for the `pg_tde` availability by PostgreSQL version.
+- Added the [Impact of pg_tde on database operations](../index/what-tde-impacts.md) topic which summarizes how `pg_tde` interacts with core PostgreSQL operations
+- Updated the [FAQ](../faq.md) with an answer to logical replication keeping data encrypted on subscribers
+- Updated [Install pg_tde](../install.md) with a table for the `pg_tde` availability by PostgreSQL version
+- Added support for HashiCorp Vault namespaces in [Add or modify Vault providers](../functions.md#add-or-modify-vault-providers). The `namespace` parameter is now documented and fully supported.
 
 ## Known issues
 
