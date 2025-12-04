@@ -33,6 +33,15 @@ If to translate sensitive data to files stored in your database, these are user 
 
 Yes, logical replication works with the encrypted tables.
 
+## Does logical replication keep data encrypted on subscribers?
+
+Logical replication **does not** preserve encryption state. If the publisher uses `pg_tde` but the subscriber does not, the replicated data will be stored **in plain text** on the subscriber.
+
+Encryption is not propagated to the data-block level due to how logical replication operates.
+
+!!! note
+        This means encrypted publishers **do not guarantee** encrypted logical replicas.
+
 ## I use disk-level encryption. Why should I care about TDE?
 
 Encrypting a hard drive encrypts all data, including system, application, and temporary files.
@@ -167,8 +176,12 @@ To restore from an encrypted backup, you must have the same principal encryption
 
 Yes. `pg_tde` works with the FIPS-compliant version of OpenSSL, whether it is provided by your operating system or if you use your own OpenSSL libraries. If you use your own libraries, make sure they are FIPS certified.
 
-## How to rotate internal encryption keys in pg_tde?
+## How do I rotate internal encryption keys in pg_tde?
 
 We don't have a dedicated function to rotate internal keys, because a key is effectively rotated any time a table's data file is completely rewritten. Operations like `VACUUM FULL`, `TRUNCATE`, or some but not all `ALTER TABLE` commands automatically generate a new internal key.
 
 If you're concerned about internal keys being leaked, the best way to address it is by vacuuming the database. This operation rewrites the table's data and, in the process, creates a new internal key.
+
+## What tools are supported with `pg_tde` WAL encryption?
+
+For a comprehensive list of supported `pg_tde` WAL encryption tools see [Limitations of pg_tde](../docs/index/tde-limitations.md).

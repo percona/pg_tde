@@ -43,7 +43,7 @@ Run the base backup from your standby machine to pull the encrypted base backup:
 
 ```bash
 export PGPASSWORD='example_password'
-pg_basebackup \
+pg_tde_basebackup \
   -h primary_ip \
   -D /var/lib/pgsql/data \
   -U example_replicator \
