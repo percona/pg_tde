@@ -7,18 +7,14 @@ The `pg_tde` extension provides functions for managing different aspects of its 
 
 ## Key provider management
 
-A key provider is a system or service responsible for managing encryption keys. `pg_tde` supports the following key providers:
-
-* local file (not recommended for production use)
-* HashiCorp Vault / OpenBao
-* KMIP compatible providers
+A key provider is a system or service responsible for managing encryption keys. For more information on the key providers `pg_tde` supports see the [Key management overview](global-key-provider-configuration/overview.md).
 
 Key provider management includes the following operations:
 
-* creating a new key provider,
-* changing an existing key provider,
-* deleting a key provider,
-* listing key providers.
+* [add a new key provider](#add-a-key-provider)
+* [change an existing key provider](#change-an-existing-provider)
+* [delete a key provider](#delete-a-provider)
+* [list key providers](#list-key-providers)
 
 ### Add a key provider
 

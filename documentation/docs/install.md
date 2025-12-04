@@ -2,6 +2,13 @@
 
 You can select from multiple easy-to-follow installation options to install `pg_tde`, however **we strongly recommend using a Package Manager** for a convenient and quick installation.
 
+`pg_tde` availability by PostgreSQL version:
+
+| **PostgreSQL Version** | **Is pg_tde installed automatically?** | **Action Required** |
+| -------- | -------- | -------- |
+| 17.x (minor updates) | Yes | None |
+| 18.x (or later)  | No | Install package manually |
+
 !!! note
     Specific information on the supported platforms, products, and versions is described in the [Percona Software and Platform Lifecycle :octicons-link-external-16:](https://www.percona.com/services/policies/percona-software-support-lifecycle) page.
 
@@ -34,9 +41,9 @@ You can select from multiple easy-to-follow installation options to install `pg_
 
 ## Next steps
 
-After finishing the installation, proceed with:
+After finishing the installation, you can proceed with:
 
-- [Set up `pg_tde`](setup.md)
-- [Learn about key management](global-key-provider-configuration/overview.md)
-- [Validate your encryption setup](test.md)
-- [Enable WAL encryption](wal-encryption.md)
+[Set up pg_tde](setup.md){.md-button}
+[Learn about key management](global-key-provider-configuration/overview.md){.md-button}
+[Validate your encryption setup](test.md){.md-button}
+[Enable WAL encryption](wal-encryption.md){.md-button}

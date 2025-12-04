@@ -1,6 +1,10 @@
 # Configure WAL encryption
 
-Before enabling WAL encryption, follow the steps below to create a principal key and configure it for WAL:
+Follow the steps below to create a principal key and configure it for WAL before enabling encryption:
+
+!!! note
+
+    For a comprehensive list of supported `pg_tde` WAL encryption tools see [Limitations of pg_tde](../docs/index/tde-limitations.md).
 
 1. Create the `pg_tde` extension if it does not exist:
 
