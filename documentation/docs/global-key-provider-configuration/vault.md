@@ -60,6 +60,29 @@ vault secrets enable -path=tde -version=2 kv
 
 This creates a `tde/` mount for storing encrypted keys.
 
+!!! note "Vault namespaces (Enterprise) and mounts"
+    If you are using **Vault Enterprise namespaces**, you don’t need a separate
+    namespace parameter when configuring `pg_tde`.
+
+    You can include the namespace directly in the mount path. For example:
+
+    ```sql
+    SELECT pg_tde_add_global_key_provider_vault_v2(
+        'vault-ns',
+        'https://127.0.0.1:8200',
+        'pgns/tde/data/global-key',
+        '/etc/postgresql/secrets/vault_token.txt',
+        NULL
+    );
+    ```
+
+    This is equivalent to configuring a namespace separately and works with both:
+
+    * Vault OSS  
+    * Vault Enterprise (with namespaces)
+
+    Using the full path (`namespace/mount/...`) is the recommended approach.
+
 ### 3. Create a Vault policy for pg_tde
 
 Define a Vault policy that grants `pg_tde` access to read, write, and list keys.
