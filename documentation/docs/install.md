@@ -7,8 +7,8 @@ You can select from multiple easy-to-follow installation options to install `pg_
 | **PostgreSQL Version** | **Is pg_tde installed automatically?** | **Action Required** |
 | -------- | -------- | -------- |
 | 17.x - 17.6 (minor updates) | Yes | None |
-| 17.7 (and later) | No | Install package manually |
-| 18.x (and later)  | No | Install package manually |
+| 17.7 (and later) | No | Install percona-pg-tde${PG_VER} package manually |
+| 18.x (and later)  | No | Install percona-pg-tde${PG_VER} package manually |
 
 !!! note
     Specific information on the supported platforms, products, and versions is described in the [Percona Software and Platform Lifecycle :octicons-link-external-16:](https://www.percona.com/services/policies/percona-software-support-lifecycle) page.

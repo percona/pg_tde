@@ -24,8 +24,7 @@ You need the `percona-release` repository management tool that enables the desir
 ## Install pg_tde {.power-number}
 
 !!! important
-
-    The `pg_tde` extension is a part of the `percona-postgresql17` package. If you installed a previous version of `pg_tde` from the `percona-pg_tde_17` package, do the following:
+    The `pg_tde` extension is a part of the `percona-pg-tde${PG_VER}` package. If you installed a previous version of `pg_tde` from the `percona-postgresql-17-pg-tde` or `percona-pg-tde${PG_VER}` package, do the following:
 
     1. Drop the extension using the `DROP EXTENSION` with `CASCADE` command.
 
@@ -35,7 +34,7 @@ You need the `percona-release` repository management tool that enables the desir
     DROP EXTENSION pg_tde CASCADE;
     ```
 
-    2. Uninstall the `percona-pg_tde_17` package.  
+    2. Uninstall the `percona-postgresql-17-pg-tde` or `percona-pg-tde${PG_VER}` package.  
     
 Run the following command to install `pg_tde`:
 

@@ -52,8 +52,7 @@ This page explains how to install `pg_tde` with [Percona Distribution for Postgr
 ## Install pg_tde {.power-number}
 
 !!! important
-
-    The `pg_tde` extension is a part of the `percona-postgresql-17` package. If you installed a previous version of `pg_tde` from the `percona-postgresql-17-pg-tde` package, do the following:
+    The `pg_tde` extension is a part of the `percona-pg-tde${PG_VER}` package. If you installed a previous version of `pg_tde` from the `percona-postgresql-17-pg-tde` or `percona-pg-tde${PG_VER}` package, do the following:
 
     1. Drop the extension using the `DROP EXTENSION` with `CASCADE` command.
 
@@ -63,12 +62,12 @@ This page explains how to install `pg_tde` with [Percona Distribution for Postgr
         DROP EXTENSION pg_tde CASCADE;
         ```
 
-    2. Uninstall the `percona-postgresql-17-pg-tde` package.  
+    2. Uninstall the `percona-postgresql-17-pg-tde` or `percona-pg-tde${PG_VER}` package.  
 
 After all [preconditions](#preconditions) are met, run the following command to install `pg_tde`:
 
 ```{.bash data-prompt="$"}
-sudo apt-get install -y percona-pg-tde${PG_VER} 
+sudo apt-get install -y percona-pg-tde${PG_VER}
 ```
 
 ## Next steps
