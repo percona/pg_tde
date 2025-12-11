@@ -112,6 +112,9 @@ c. Restart the `postgresql` cluster to apply the changes:
     sudo systemctl restart postgresql-(pg-version)
     ```
 
+    !!! note
+        The service name may differ depending on your distribution and PostgreSQL version.
+
 ## Step 4. (Optional but recommended) Clean up configuration
 
 At this point it is safe to remove any configuration related to `pg_tde` from `postgresql.conf` and `postgresql.auto.conf`. Look for any configuration parameters prefixed with `pg_tde.` and remove or comment them out, as needed.
