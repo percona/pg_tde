@@ -1,16 +1,16 @@
 # Install pg_tde on Debian or Ubuntu
 
-This page explains how to install `pg_tde` with [Percona Distribution for PostgreSQL :octicons-link-external-16:](https://docs.percona.com/postgresql/latest/index.html).
+This page explains how to install `pg_tde` for [Percona Distribution for PostgreSQL :octicons-link-external-16:](https://docs.percona.com/postgresql/latest/index.html).
 
 !!! tip
     Check the [list of supported platforms :octicons-link-external-16:](https://www.percona.com/services/policies/percona-software-support-lifecycle) before continuing.
 
-## Preconditions
+## Preconditions {.power-number}
 
-1. Debian and other systems that use the `apt` package manager include the upstream PostgreSQL server package (`postgresql-{{pgversion17}}`) by default. You need to uninstall this package before you install Percona Server for PostgreSQL and `pg_tde` to avoid conflicts.
-2. You need the `percona-release` repository management tool that enables the desired Percona repository for you.
+1. Remove any upstream PostgreSQL packages (postgresql-*) that may already be installed on Debian or other apt-based systems. These packages conflict with Percona Server for PostgreSQL and with the standalone `pg_tde` package.
+2. Ensure you enable the Percona APT repository using the repository management tool `percona-release`. This ensures the correct Percona Server for PostgreSQL and pg_tde packages are available for installation.
 
-### Install percona-release {.power-number}
+## Install percona-release {.power-number}
 
 1. You need the following dependencies to install `percona-release`:
 
@@ -19,7 +19,7 @@ This page explains how to install `pg_tde` with [Percona Distribution for Postgr
     - `curl`
     - `lsb-release`
 
-    Install them with the following command:
+    Install the dependencies:
 
     ```{.bash data-prompt="$"}
     sudo apt-get install -y wget gnupg2 curl lsb-release
@@ -43,31 +43,24 @@ This page explains how to install `pg_tde` with [Percona Distribution for Postgr
     sudo percona-release enable-only ppg-{{pgversion17}}
     ```
 
-6. Update the local cache
+5. Update the local cache
 
     ```{.bash data-prompt="$"}
     sudo apt-get update
     ```
 
-## Install pg_tde {.power-number}
+## Install pg_tde {.power-number}  
 
-!!! important
-    The `pg_tde` extension is a part of the `percona-pg-tde${PG_VER}` package. If you installed a previous version of `pg_tde` from the `percona-postgresql-17-pg-tde` or `percona-pg-tde${PG_VER}` package, do the following:
-
-    1. Drop the extension using the `DROP EXTENSION` with `CASCADE` command.
-
-        The use of the `CASCADE` parameter deletes all tables that were created in the database with `pg_tde` enabled and also all dependencies upon the encrypted table (e.g. foreign keys in a non-encrypted table used in the encrypted one).     
-
-        ```sql
-        DROP EXTENSION pg_tde CASCADE;
-        ```
-
-    2. Uninstall the `percona-postgresql-17-pg-tde` or `percona-pg-tde${PG_VER}` package.  
-
-After all [preconditions](#preconditions) are met, run the following command to install `pg_tde`:
+After all [preconditions](#preconditions) are met, install the `pg_tde` package:
 
 ```{.bash data-prompt="$"}
-sudo apt-get install -y percona-pg-tde${PG_VER}
+sudo apt-get install -y percona-pg-tde-(pg-version)
+```
+
+### Example for PostgreSQL 17
+
+```{.bash data-prompt="$"}
+sudo apt-get install -y percona-pg-tde-17
 ```
 
 ## Next steps

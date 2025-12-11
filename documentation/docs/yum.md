@@ -15,31 +15,24 @@ You need the `percona-release` repository management tool that enables the desir
     sudo yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     ```
 
-2. Enable the repository.
+2. Enable the repository:
 
     ```{.bash data-prompt="$"}
-    sudo percona-release enable-only ppg-17.5
+    sudo percona-release enable-only ppg-{{pgversion17}}
     ```
 
 ## Install pg_tde {.power-number}
 
-!!! important
-    The `pg_tde` extension is a part of the `percona-pg-tde${PG_VER}` package. If you installed a previous version of `pg_tde` from the `percona-postgresql-17-pg-tde` or `percona-pg-tde${PG_VER}` package, do the following:
-
-    1. Drop the extension using the `DROP EXTENSION` with `CASCADE` command.
-
-       The use of the `CASCADE` parameter deletes all tables that were created in the database with `pg_tde` enabled and also all dependencies upon the encrypted table (e.g. foreign keys in a non-encrypted table used in the encrypted one).    
-
-    ```sql
-    DROP EXTENSION pg_tde CASCADE;
-    ```
-
-    2. Uninstall the `percona-postgresql-17-pg-tde` or `percona-pg-tde${PG_VER}` package.  
-    
-Run the following command to install `pg_tde`:
+Install `pg_tde`:
 
 ```{.bash data-prompt="$"}
-sudo yum install -y percona-pg_tde${PG_VER}
+sudo yum install -y percona-pg_tde-(pg-version)
+```
+
+### Example for PostgreSQL 17
+
+```{.bash data-prompt="$"}
+sudo yum install -y percona-pg_tde-17
 ```
 
 ## Next steps
