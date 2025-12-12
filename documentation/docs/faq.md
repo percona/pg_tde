@@ -184,4 +184,4 @@ If you're concerned about internal keys being leaked, the best way to address it
 
 ## What tools are supported with `pg_tde` WAL encryption?
 
-For a comprehensive list of supported `pg_tde` WAL encryption tools see [Limitations of pg_tde](../docs/index/tde-limitations.md).
+For a comprehensive list of supported `pg_tde` WAL encryption tools see [Limitations of pg_tde](index/tde-limitations.md).
