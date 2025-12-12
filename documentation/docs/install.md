@@ -11,17 +11,7 @@ You can select from multiple easy-to-follow installation options to install `pg_
 | 18.x (and later)  | No | Install percona-pg-tde-(pg-version) package manually |
 
 !!! important
-    Starting with PPG 17.7, `pg_tde` is no longer bundled with the PostgreSQL server package. It is now delivered as a separate package named `percona-pg-tde-(pg-version)`. If you previously installed `pg_tde` from either the old bundled package `percona-postgresql-17-pg-tde`, or an earlier standalone package `percona-pg-tde-(pg-version)`, complete the following steps before installing the new version:
-
-    1. Drop the extension using `DROP EXTENSION … CASCADE`.
-
-        The `CASCADE` option removes all tables created with `pg_tde` encryption and any dependent objects (for example, foreign keys in non-encrypted tables that reference encrypted tables).    
-
-        ```sql
-        DROP EXTENSION pg_tde CASCADE;
-        ```
-
-    2. Uninstall the old package (`percona-postgresql-17-pg-tde` or `percona-pg-tde-(pg-version)`).
+    Starting with PPG 17.7, `pg_tde` is no longer bundled with the PostgreSQL server package. It is now delivered as a separate package named `percona-pg-tde-(pg-version)`.
 
 !!! note
     Specific information on the supported platforms, products, and versions is described in the [Percona Software and Platform Lifecycle :octicons-link-external-16:](https://www.percona.com/services/policies/percona-software-support-lifecycle) page.

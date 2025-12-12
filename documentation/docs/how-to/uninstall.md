@@ -113,7 +113,7 @@ c. Restart the `postgresql` cluster to apply the changes:
     ```
 
     !!! note
-        The service name may differ depending on your distribution and PostgreSQL version.
+        The service name may differ depending on your distribution and PostgreSQL version.nod
 
 ## Step 4. (Optional but recommended) Clean up configuration
 
