@@ -11,7 +11,7 @@ You can select from multiple easy-to-follow installation options to install `pg_
 | 18.x (and later)  | No | Install percona-pg-tde-(pg-version) package manually |
 
 !!! important
-    Starting with PPG 17.7, `pg_tde` is no longer bundled with the PostgreSQL server package. It is now delivered as a separate package named `percona-pg-tde-(pg-version)`.
+    Starting with PPG 17.7, `pg_tde` is no longer bundled with the Percona server for PostgreSQL package. It is now delivered as a separate package named `percona-pg-tde-(pg-version)`.
 
 !!! note
     Specific information on the supported platforms, products, and versions is described in the [Percona Software and Platform Lifecycle :octicons-link-external-16:](https://www.percona.com/services/policies/percona-software-support-lifecycle) page.
