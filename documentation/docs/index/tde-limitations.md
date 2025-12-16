@@ -14,6 +14,7 @@ The following tools are currently unsupported with `pg_tde` WAL encryption:
 * `Barman`
 * `pg_verifybackup` by default fails with checksum or WAL key size mismatch errors.
   As a workaround, use `-s` (skip checksum) and `-n` (`--no-parse-wal`) to verify backups.
+* The asynchronous archiving feature of pgBackRest.
 
 The following tools and extensions in Percona Distribution for PostgreSQL have been tested and verified to work with `pg_tde` WAL encryption:
 
@@ -26,7 +27,7 @@ The following tools have been tested and verified by Percona to work with `pg_td
 * `pg_tde_resetwal`
 * `pg_tde_rewind`
 * `pg_tde_waldump`
-* pgBackRest
+* pgBackRest (asynchronous archiving is NOT supported with encrypted WAL)
 
 ## Example Patroni configuration
 
