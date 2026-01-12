@@ -5,10 +5,10 @@ If you want to contribute code, see the [Code contribution guide](../CONTRIBUTIN
 
 You can contribute to the documentation in one of the following ways:
 
-1. [Submit a pull request (PR) for documentation](#submit-a-pull-request)
+1. [Submit a pull request (PR) for documentation on Github](#edit-documentation-on-github)
 2. Reach us on our [Forums](https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82)
 
-The `pg_tde` documentation is written in Markdown language.
+The `pg_tde` documentation is written in Markdown.
 
 ## Edit documentation on GitHub
 
