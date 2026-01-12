@@ -9,10 +9,9 @@ You can contribute in one of the following ways:
 1. Reach us on our [Forums](https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82).
 2. [Submit a bug report or a feature request](#submit-a-bug-report-or-a-feature-request)
 3. [Submit a pull request (PR) with the code patch](#submit-a-pull-request)
-4. [Contribute to documentation](#contributing-to-documentation)
+4. [Contribute to documentation](#documentation-contribution)
 
 By contributing, you agree to the [Percona Community code of conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md).
-
 
 ## Submit a bug report or a feature request
 
@@ -93,7 +92,6 @@ You can find the tests in the `sql` directory.
         make installcheck
         ```
 
-
     2. If you installed PostgreSQL server  from Percona Distribution for PostgreSQL, use the following command:
 
         ```sh
@@ -106,7 +104,7 @@ The tests are run automatically with GitHub actions once you commit and push you
 
 ## Documentation contribution
 
-To contribute to the documentation, see the following [Documentation contribution guide](/documentation/documentation-contribution.md).
+To contribute to the documentation, see the following [Documentation contribution guide](/documentation/documentation-contributing.md).
 
 ## After your pull request is merged
 
