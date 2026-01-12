@@ -1,6 +1,9 @@
 # Documentation contribution guide
 
-This guide explains how to contribute to the **pg_tde documentation**.  
+Thank you for deciding to contribute and help us improve the **pg_tde documentation**!
+
+We welcome contributors from all users and community. By contributing, you agree to the [Percona Community code of conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md).
+
 If you want to contribute code, see the [Code contribution guide](../CONTRIBUTING.md).
 
 You can contribute to the documentation in one of the following ways:
