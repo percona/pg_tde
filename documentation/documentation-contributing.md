@@ -49,6 +49,7 @@ git remote add upstream git@github.com:percona/postgres.git
 
 ```sh
 git fetch upstream
+git merge upstream
 ```
 
 5. Create a separate branch for your changes. If you work on a Jira issue, please follow this pattern for a branch name: `<PG-123>-short-description`:
