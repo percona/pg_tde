@@ -1,4 +1,4 @@
-# Documentation contribution guide
+# Documentation contributing guide
 
 Thank you for deciding to contribute and help us improve the **pg_tde documentation**!
 
