@@ -2,13 +2,13 @@
 
 Thank you for deciding to contribute and help us improve the **pg_tde documentation**!
 
-We welcome contributors from all users and community. By contributing, you agree to the [Percona Community code of conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md).
+We welcome contributors from all users and the community. By contributing, you agree to the [Percona Community code of conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md).
 
 If you want to contribute code, see the [Code contribution guide](../CONTRIBUTING.md).
 
 You can contribute to the documentation in one of the following ways:
 
-1. [Submit a pull request (PR) for documentation on Github](#edit-documentation-on-github)
+1. [Submit a pull request (PR) for documentation on GitHub](#edit-documentation-on-github)
 2. Reach us on our [Forums](https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82)
 
 The `pg_tde` documentation is written in Markdown.
@@ -25,7 +25,7 @@ The `pg_tde` documentation is written in Markdown.
 - Select the **Create a new branch for this commit** and name your branch
 - Click **Propose changes** to create the pull request
 
-4. GitHub creates a branch and a commit for your changes. It loads a new page on which you can open a pull request to Percona. The page shows the base branch (the one you offer your changes for) your commit message and a diff (a visual representation of your changes against the original page). This allows you to make any last-minute changes. When you are ready, click the **Create pull request** button.
+4. GitHub creates a branch and a commit for your changes. It loads a new page on which you can open a pull request to Percona. The page shows the base branch (the one you offer your changes for), your commit message, and a diff (a visual representation of your changes against the original page). This allows you to make any last-minute changes. When you are ready, click the **Create pull request** button.
 
 5. Your changes will be reviewed and merged into the documentation.
 
@@ -50,7 +50,7 @@ git remote add upstream git@github.com:percona/postgres.git
 
 ```sh
 git fetch upstream
-git merge upstream
+git merge upstream/<target-branch>
 ```
 
 5. Create a separate branch for your changes. If you work on a Jira issue, please follow this pattern for a branch name: `<PG-123>-short-description`:
@@ -60,16 +60,22 @@ git checkout -b <PG-123>-short-description upstream/<target-branch>
 
 ```
 
-6. Make changes
-7. Commit your changes
-8. Open a pull request to Percona
+6. Make and commit your changes. If applicable, mention the Jira issue in the commit message:
+
+   ```
+   git add .
+   git commit -m "<my_fixes>"
+   git push -u origin <my_branch_name>
+   ```
+
+7. Open a pull request to Percona
 
 ### Building the documentation using MkDocs
 
 To verify how your changes look, generate the static site with the documentation. This process is called *building*.
 
-[!NOTE]
-Learn more about the documentation structure in the [Repository structure](#repository-structure) section.
+> **NOTE**
+> Learn more about the documentation structure in the [Repository structure](#repository-structure) section.
 
 To verify how your changes look, you can generate a static site locally:
 
@@ -78,13 +84,14 @@ To verify how your changes look, you can generate a static site locally:
 2. Install MkDocs and the required extensions:
 
     ```sh
+    cd pg_tde/documentation
     pip install -r requirements.txt
     ```
 
 3. Build the site:
 
     ```sh
-    cd contrib/pg_tde/documentation
+    cd pg_tde/documentation
     mkdocs build
     ```
 
@@ -93,7 +100,7 @@ To verify how your changes look, you can generate a static site locally:
 Or, to run the built-in web server:
 
 ```sh
-cd contrib/pg_tde/documentation
+cd pg_tde/documentation
 mkdocs serve
 ```
 
