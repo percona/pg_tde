@@ -81,8 +81,6 @@ This creates a `tde/` mount for storing encrypted keys.
     * Vault OSS  
     * Vault Enterprise (with namespaces)
 
-    Using the full path (`namespace/mount/...`) is the recommended approach.
-
 ### 3. Create a Vault policy for pg_tde
 
 Define a Vault policy that grants `pg_tde` access to read, write, and list keys.
