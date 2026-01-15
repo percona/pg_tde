@@ -14,8 +14,14 @@ use RewindTest;
 sub run_test
 {
 	my $test_mode = shift;
+	my $extra_name = shift;
+	my $extra_conf = shift;
 
-	RewindTest::setup_cluster($test_mode);
+	my $cluster_name = $test_mode;
+
+	$cluster_name = $cluster_name . $extra_name if defined $extra_name;
+
+	RewindTest::setup_cluster($cluster_name, [], $extra_conf);
 	RewindTest::start_primary();
 
 	# Create an in-place tablespace with some data on it.
@@ -44,7 +50,7 @@ sub run_test
 
 	primary_psql("CHECKPOINT");
 
-	RewindTest::create_standby($test_mode);
+	RewindTest::create_standby($cluster_name);
 
 	# Insert additional data on primary that will be replicated to standby
 	primary_psql("INSERT INTO tbl1 values ('in primary, before promotion')");
@@ -210,5 +216,8 @@ in primary, before promotion
 run_test('local');
 run_test('remote');
 run_test('archive');
+
+my @conf_params = ("pg_tde.cipher = 'aes_256'");
+run_test('local', "_aes_256", \@conf_params);
 
 done_testing();

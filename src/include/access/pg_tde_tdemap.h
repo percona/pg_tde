@@ -27,4 +27,6 @@ extern void pg_tde_sign_principal_key_info(TDESignedPrincipalKeyInfo *signed_key
 
 const char *tde_sprint_key(InternalKey *k);
 
+extern void pg_tde_migrate_smgr_keys_file(void);
+
 #endif							/* PG_TDE_MAP_H */
