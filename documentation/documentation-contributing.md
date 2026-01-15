@@ -80,27 +80,24 @@ To verify how your changes look, generate the static site with the documentation
 To verify how your changes look, you can generate a static site locally:
 
 1. Install [Python]
+2. Install [MkDocs] and the required extensions:
 
-2. Install MkDocs and the required extensions:
-
-    ```sh
-    cd pg_tde/documentation
-    pip install -r requirements.txt
-    ```
+```sh
+cd pg_tde/documentation
+pip install -r requirements.txt
+```
 
 3. Build the site:
 
-    ```sh
-    cd pg_tde/documentation
-    mkdocs build
-    ```
+```sh
+mkdocs build
+```
 
 4. Open `site/index.html`
 
 Or, to run the built-in web server:
 
 ```sh
-cd pg_tde/documentation
 mkdocs serve
 ```
 
