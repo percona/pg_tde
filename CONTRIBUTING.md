@@ -73,7 +73,7 @@ To build `pg_tde` from source code, you require the following:
 
 Refer to the [Building from source code](https://github.com/percona/pg_tde?tab=readme-ov-file#building-from-sources-for-community-postgresql) section for guidelines.
 
-### Running tests
+### Run tests
 
 When you work, you should periodically run tests to check that your changes don’t break existing code.
 
