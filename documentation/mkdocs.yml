@@ -210,4 +210,3 @@ nav:
       - "Alpha 1": release-notes/alpha1.md
     - "2023 (MVP)":
       - "MVP": release-notes/mvp.md
-  - contribute.md
