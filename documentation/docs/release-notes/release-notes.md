@@ -4,9 +4,9 @@ This page lists all release notes for `pg_tde`, organized by year and version. U
 
 ## 2025
 
-* [2.1](release-notes-v2.1.md) ({{date.2_1}})
-* [2.0](release-notes-v2.0.md) ({{date.GA20}})
-* [1.0](release-notes-v1.0.md) ({{date.GA10}})
+* [2.1.0](release-notes-v2.1.md) ({{date.2_1}})
+* [2.0.0](release-notes-v2.0.md) ({{date.GA20}})
+* [1.0.0](release-notes-v1.0.md) ({{date.GA10}})
 * [Release Candidate 2 (RC2)](rc2.md)  ({{date.RC2}})
 * [Release Candidate 1 (RC1)](rc.md) ({{date.RC}})
 

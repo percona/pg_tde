@@ -1,4 +1,4 @@
-# pg_tde 1.0 ({{date.GA10}})
+# pg_tde 1.0.0 ({{date.GA10}})
 
 The `pg_tde` by Percona extension brings in [Transparent Data Encryption (TDE) :octicons-link-external-16:](../index/about-tde.md) to PostgreSQL and enables you to keep sensitive data safe and secure.
 
