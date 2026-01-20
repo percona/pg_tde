@@ -1,15 +1,17 @@
 # Global Principal Key configuration
 
-You can configure a default principal key using a global key provider. This key is used by all databases that do not have their own encryption keys configured.
+You can configure a default principal key for the server using a global key provider. This key is used by all databases that do not have their own encryption keys configured.
 
-There are two main functions for this:
+There are three main functions for this:
 
+- [pg_tde_add_global_key_provider_<TYPE>()](../architecture/architecture.md#add-providers) registers a global key provider
 - [pg_tde_create_key_using_global_key_provider()](../functions.md#pg_tde_create_key_using_global_key_provider) creates a principal key at a global key provider
 - [pg_tde_set_default_key_using_global_key_provider()](../functions.md#pg_tde_set_default_key_using_global_key_provider) sets the default principal key and rotates the internal encryption key if one is already configured
 
 ## Create a default principal key
 
 !!! note
+    Before running this command, ensure that a global key provider is already configured.
 
     The sample output below is for demonstration purposes only. Be sure to replace the key name and provider with your actual values.
 
@@ -34,9 +36,9 @@ SELECT pg_tde_create_key_using_global_key_provider(
         (1 row)
     ```
 
-## Configure a default principal key
+## Set a default principal key
 
-To configure a global principal key, run:
+To set a global principal key, run:
 
 ```sql
 SELECT pg_tde_set_default_key_using_global_key_provider(
