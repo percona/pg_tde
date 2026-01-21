@@ -54,13 +54,13 @@ This page explains how to install `pg_tde` for [Percona Distribution for Postgre
 After all [preconditions](#preconditions) are met, install the `pg_tde` package:
 
 ```{.bash data-prompt="$"}
-sudo apt-get install -y percona-pg-tde-(pg-version)
+sudo apt-get install -y percona-pg-tde(pg-version)
 ```
 
 ### Example for PostgreSQL 17
 
 ```{.bash data-prompt="$"}
-sudo apt-get install -y percona-pg-tde-17
+sudo apt-get install -y percona-pg-tde17
 ```
 
 ## Next steps
