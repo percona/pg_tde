@@ -1,6 +1,6 @@
 # pg_tde 2.1.1 ({{date.2_1_1}})
 
-The `pg_tde` by Percona extension brings [Transparent Data Encryption (TDE)](../index/about-tde.md) to PostgreSQL and enables you to keep sensitive data safe and secure.
+The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (TDE)](../index/about-tde.md) to PostgreSQL and helps protect sensitive data at rest.
 
 [Get Started](../install.md){.md-button}
 
