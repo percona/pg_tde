@@ -2,6 +2,10 @@
 
 This page lists all release notes for `pg_tde`, organized by year and version. Use it to track new features, fixes, and updates across major and minor versions.
 
+## 2026
+
+* [2.1.1](release-notes-v2.1.1.md) ({{date.2_1_1}})
+
 ## 2025
 
 * [2.1.0](release-notes-v2.1.md) ({{date.2_1}})
