@@ -8,7 +8,7 @@ If a default principal key is already configured for the server, WAL encryption 
 
 If you have not yet configured a default principal key, see [Default Principal Key configuration](global-key-provider-configuration/set-principal-key.md).
 
-## Option 2: Configure a dedicated server (principal) key for WAL
+## Option 2: Configure a dedicated server principal key for WAL
 
 !!! note
     For a comprehensive list of supported `pg_tde` WAL encryption tools see [Limitations of pg_tde](index/tde-limitations.md).
