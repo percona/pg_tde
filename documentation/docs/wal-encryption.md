@@ -1,13 +1,14 @@
 # Configure WAL encryption
 
-The WAL encryption setup consists of four phases:
+WAL encryption requires a principal key. You can satisfy this requirement in one of the following ways:
 
-1. [Register a global key provider](global-key-provider-configuration/overview.md)
-2. [Create a server (principal) key using that provider](functions.md#pg_tde_create_key_using_global_key_provider)
-3. [Set a server (principal) key using that provider](functions.md#pg_tde_set_key_using_global_key_provider)
-4. Enable WAL encryption and restart PostgreSQL
+## Option 1: Use the default principal key
 
-Follow the steps below to configure the server (principal) key for WAL before enabling encryption:
+If a default principal key is already configured for the server, WAL encryption uses it automatically. No additional server key configuration is required.
+
+If you have not yet configured a default principal key, see [Default Principal Key configuration](global-key-provider-configuration/set-principal-key.md).
+
+## Option 2: Configure a dedicated server (principal) key for WAL
 
 !!! note
     For a comprehensive list of supported `pg_tde` WAL encryption tools see [Limitations of pg_tde](index/tde-limitations.md).
@@ -24,33 +25,13 @@ Follow the steps below to configure the server (principal) key for WAL before en
 
 3. Create the server (principal) key using the global key provider
 
-    The server key (also referred to as the principal key) is the key used by PostgreSQL to encrypt WAL data.
-
-     ```sql
-        SELECT pg_tde_create_key_using_global_key_provider(
-                'server-key-name', 
-                'provider-name'
-        );
-     ```
-
-    Where:
-
-    - `server-key-name` is the identifier for the server (principal) key
-    - `provider-name` is the name of the previously configured global key provider
+    The server key (also referred to as the principal key) is the key used by PostgreSQL to encrypt WAL data. See [pg_tde_create_key_using_global_key_provider](functions.md#pg_tde_create_key_using_global_key_provider) for  more detailed instructions.
 
 4. Set the server (principal) key
 
-    ```sql
-    SELECT pg_tde_set_server_key_using_global_key_provider(
-            'server-key-name', 
-            'provider-name'
-    );
-    ```
+    This step sets the previously created server (principal) key as the active key used by PostgreSQL for WAL encryption. See [pg_tde_set_server_key_using_global_key_provider](functions.md#pg_tde_set_server_key_using_global_key_provider) for  more detailed instructions.
 
-    This step sets the previously created server (principal) key as the active key used by PostgreSQL for WAL encryption.
-
-
-5. Enable WAL level encryption using the `ALTER SYSTEM` command. You need the privileges of the superuser to run this command:
+5. Enable WAL encryption using the `ALTER SYSTEM` command. You need the privileges of the superuser to run this command:
 
     ```sql
     ALTER SYSTEM SET pg_tde.wal_encrypt = on;
