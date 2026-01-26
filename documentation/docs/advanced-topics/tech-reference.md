@@ -14,11 +14,11 @@ Step-by-step instructions for using `pg_tde`. Set up the extension, configure ke
 
 </div><div data-banner markdown>
 
-### :material-database-sync: Streaming replication { .title }
+### :material-function-variant: Functions { .title }
 
-Learn how to configure PostgreSQL streaming replication with `pg_tde` using the `tde_heap` access method. Covers primary and standby setup, key management requirements, and validation steps.
+Use built-in functions to manage key providers, create and rotate principal keys, and verify encryption status. Includes commands for Vault, KMIP, and local providers, plus utilities to inspect or validate keys.
 
-[Set up replication with `tde_heap` :material-arrow-right:](../replication.md){.md-button}
+[Browse available functions :material-arrow-right:→](../functions.md){.md-button}
 
 </div><div data-banner markdown>
 
@@ -30,10 +30,10 @@ Configure how `pg_tde` behaves with PostgreSQL. Control WAL encryption, enforce 
 
 </div><div data-banner markdown>
 
-### :material-function-variant: Functions { .title }
+### :material-database-sync: Streaming replication { .title }
 
-Use built-in functions to manage key providers, create and rotate principal keys, and verify encryption status. Includes commands for Vault, KMIP, and local providers, plus utilities to inspect or validate keys.
+Learn how to configure PostgreSQL streaming replication with `pg_tde` using the `tde_heap` access method. Covers primary and standby setup, key management requirements, and validation steps.
 
-[Browse available functions :material-arrow-right:→](../functions.md){.md-button}
+[Set up replication with `tde_heap` :material-arrow-right:](../replication.md){.md-button}
 
 </div></div>
