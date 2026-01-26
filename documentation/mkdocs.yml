@@ -180,8 +180,8 @@ nav:
     - "Overview": advanced-topics/tech-reference.md
     - "About pg_tde architecture": 
       - "Architecture overview": architecture/overview.md
-      - "Encryption internals": architecture/encrypt-internals.md
-      - "Key and provider management": architecture/key-prov-management.md
+      - "Encryption architecture": architecture/encryption-architecture.md
+      - "Key and provider management": architecture/key-provider-management.md
     - "Usage guide": advanced-topics/usage-guide.md
     - "GUC variables": variables.md
     - "Functions": functions.md
