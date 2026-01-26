@@ -1,21 +1,16 @@
-# Usage guide
+# Usage reference
 
-This guide shows how to use `pg_tde` in practice. It walks you through setting up `pg_tde`, adding and managing key providers, creating and rotating keys, setting permissions, and encrypting tables.  
+This chapter describes the main `pg_tde` operations available, including configuring key providers, managing principal keys, setting permissions, and encrypting tables.
 
-Use this section as a step-by-step reference when deploying or operating `pg_tde` in your PostgreSQL environment.
+Use this chapter as a reference when performing specific `pg_tde` tasks.
 
-## Set up pg_tde
+## Prerequisites
 
-To get started with `pg_tde`, follow these steps:
-
-* Add `pg_tde` to the `shared_preload_libraries` in `postgresql.conf` as this is required for the SMGR extensions
-* Execute `CREATE EXTENSION pg_tde` in the databases where they want to use encryption
-* Optionally, enable `pg_tde.wal_encrypt` in `postgresql.conf` to encrypt WAL writes
-* Optionally, disable `pg_tde.inherit_global_providers` in `postgresql.conf` (it is enabled by default)
+Before using `pg_tde`, complete the setup steps as described in [Install pg_tde](../install.md).
 
 ## Add providers
 
-You can add keyring providers to either the global or database specific scope.
+You can add key providers to either the global or database specific scope.
 
 If `pg_tde.inherit_global_providers` is `on`, global providers are visible for all databases, and can be used.
 If `pg_tde.inherit_global_providers` is `off`, global providers are only used for WAL encryption.
@@ -52,7 +47,7 @@ These functions also allow changing the type of a provider but **do not** migrat
 
 To change a provider from a command line, `pg_tde` provides the `pg_tde_change_key_provider` command line tool.
 
-This tool work similarly to the above functions, with the following syntax:
+This tool works similarly to the above functions, with the following syntax:
 
 ```sh
 pg_tde_change_key_provider <dbOid> <providerType> ... details ...
@@ -149,7 +144,7 @@ The `pg_tde_delete_key()` function unsets the principal key for the current data
 
 ## Key permissions
 
-Users with management permissions to a specific database `(pg_tde_(grant/revoke)_(global/databse)_key_management_(to/from)_role)` can change the keys for the database, and use the current key functions. This includes creating keys using global providers, if `pg_tde.inherit_global_providers` is enabled.
+Users with management permissions to a specific database `(pg_tde_(grant/revoke)_(global/database)_key_management_(to/from)_role)` can change the keys for the database, and use the current key functions. This includes creating keys using global providers, if `pg_tde.inherit_global_providers` is enabled.
 
 Also the `pg_tde_(grant/revoke)_database_key_management_to_role` function deals with only the specific permission for the above function: it allows a user to change the key for the database, but not to modify the provider configuration.
 
@@ -171,6 +166,6 @@ ALTER TABLE t1 SET ACCESS METHOD tde_heap;
 
 ## Change the pg_tde.inherit_global_keys setting
 
-It is possible to use `pg_tde` with `inherit_global_keys = on`, refer to the global keys or keyrings in databases, and then change this setting to `off`.
+It is possible to use `pg_tde` with `pg_tde.inherit_global_keys = on`, refer to the global keys or keyrings in databases, and then change this setting to `off`.
 
 In this case, existing references to global providers or the global default principal key keep working as before, but new references to the global scope cannot be made.

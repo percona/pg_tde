@@ -26,7 +26,7 @@ Explore what features Percona's `pg_tde` extension brings to PostgreSQL.
 
 Understand how `pg_tde` integrates into PostgreSQL with Percona's architecture. Learn how keys are managed, how encryption is applied, and how our design ensures performance and security.
 
-[Check what’s under the hood for `pg_tde` :material-arrow-right:](architecture/architecture.md){.md-button}
+[Check what’s under the hood for `pg_tde` :material-arrow-right:](architecture/overview.md){.md-button}
 
 </div><div data-banner markdown>
 

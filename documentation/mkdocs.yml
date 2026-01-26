@@ -182,7 +182,7 @@ nav:
       - "Architecture overview": architecture/overview.md
       - "Encryption architecture": architecture/encryption-architecture.md
       - "Key and provider management": architecture/key-provider-management.md
-    - "Usage guide": advanced-topics/usage-guide.md
+    - "Usage reference": advanced-topics/usage-guide.md
     - "GUC variables": variables.md
     - "Functions": functions.md
     - "Streaming replication with tde_heap": replication.md

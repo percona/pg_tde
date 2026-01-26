@@ -6,9 +6,9 @@ Use it to understand how encryption is implemented, fine-tune a configuration, l
 
 <div data-grid markdown><div data-banner markdown>
 
-### :material-playlist-check: Usage guide { .title }
+### :material-playlist-check: Usage reference { .title }
 
-Step-by-step instructions for using `pg_tde`. Set up the extension, configure key providers, create and rotate keys, manage permissions, and encrypt tables.
+A description of the main `pg_tde` operations available, including configuring key providers, managing principal keys, setting permissions, and encrypting tables.
 
 [Follow the usage guide :material-arrow-right:](usage-guide.md){.md-button}
 

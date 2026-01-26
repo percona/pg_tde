@@ -45,11 +45,14 @@ Subsequent decisions are done using a slightly modified Storage Manager (SMGR) A
 * When a database file is re-created with a different ID as a result of a `TRUNCATE` or a `VACUUM FULL` command, the newly created file inherits the encryption information
 * The file is then either encrypted or left unencrypted based on that inheritance
 
-## WAL encryption
+## WAL encryption functionality
 
 You can control WAL encryption globally via the [`pg_tde.wal_encrypt`](../variables.md#pg_tdewal_encrypt) GUC variable, which requires a server restart.
 
 WAL keys also contain the [LSN :octicons-link-external-16:](https://www.postgresql.org/docs/17/wal-internals.html) of the first WAL write after key creation. This allows `pg_tde` to know which WAL ranges are encrypted or not and with which key.
+
+!!! note
+    See the [Configure WAL encryption](../wal-encryption.md) chapter for more information.
 
 The setting only controls writes so that only WAL writes are encrypted when WAL encryption is enabled. This means that WAL files can contain both encrypted and unencrypted data, depending on what the status of this variable was when writing the data.
 
