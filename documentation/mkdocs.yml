@@ -173,7 +173,7 @@ nav:
       - "Akeyless configuration": global-key-provider-configuration/kmip-akeyless.md
       - "Using OpenBao as a key provider": global-key-provider-configuration/openbao.md
       - "Keyring file configuration": global-key-provider-configuration/keyring.md
-    - "2.2 Global principal key configuration": global-key-provider-configuration/set-principal-key.md
+    - "2.2 Default Principal Key configuration": global-key-provider-configuration/set-principal-key.md
     - "3. Validate encryption with pg_tde": test.md
     - "4. Configure WAL encryption": wal-encryption.md
   - "Technical reference":
@@ -203,15 +203,17 @@ nav:
   - faq.md
   - "Release notes":
     - "Release notes index": release-notes/release-notes.md
-    - "2.1": release-notes/release-notes-v2.1.md
-    - "2.0": release-notes/release-notes-v2.0.md
-    - "1.0": release-notes/release-notes-v1.0.md
-    - "Release Candidate 2": release-notes/rc2.md
-    - "Release Candidate 1": release-notes/rc.md
+    - "2026":
+      - "2.1.1": release-notes/release-notes-v2.1.1.md
+    - "2025":
+      - "2.1.0": release-notes/release-notes-v2.1.md
+      - "2.0.0": release-notes/release-notes-v2.0.md
+      - "1.0.0": release-notes/release-notes-v1.0.md
+      - "Release Candidate 2": release-notes/rc2.md
+      - "Release Candidate 1": release-notes/rc.md
     - "2024 (Alpha 1 - Beta 2)":
       - "Beta 2": release-notes/beta2.md
       - "Beta": release-notes/beta.md
       - "Alpha 1": release-notes/alpha1.md
     - "2023 (MVP)":
       - "MVP": release-notes/mvp.md
-  - contribute.md
