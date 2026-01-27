@@ -64,3 +64,12 @@ You can set this variable at the following levels:
 
 !!! note
     Setting this variable doesn't affect existing uses of global keys. It only prevents the creation of new principal keys using global providers.
+
+## pg_tde.cipher
+
+**Type** - string <br>
+**Default** - aes_128
+
+A `string` variable to choose a cipher (encryption algorithm). Currently, only `aes_128` and `aes_256` options are available, corresponding to AES 128-bit and 256-bit key lengths, respectively. 
+
+The new setting will be applied only to newly created objects (Primary keys, internal keys, and data encrypted by those keys). All the existing objects will NOT be re-encrypted.

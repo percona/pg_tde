@@ -26,10 +26,28 @@ iv_prefix_debug(const char *iv_prefix, char *out_hex)
 }
 #endif
 
-void
-pg_tde_generate_internal_key(InternalKey *int_key)
+uint32
+pg_tde_cipher_key_length(CipherType cipher)
 {
-	if (!RAND_bytes(int_key->key, INTERNAL_KEY_LEN))
+	switch (cipher)
+	{
+		case CIPHER_AES_128:
+			return KEY_DATA_SIZE_128;
+		case CIPHER_AES_256:
+			return KEY_DATA_SIZE_256;
+
+		default:
+			elog(ERROR, "failed to get key size from the unknown cipher %d",
+				 cipher);
+	}
+}
+
+void
+pg_tde_generate_internal_key(InternalKey *int_key, int key_len)
+{
+	Assert(key_len == 16 || key_len == 32);
+
+	if (!RAND_bytes(int_key->key, key_len))
 		ereport(ERROR,
 				errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("could not generate internal key: %s",
@@ -39,6 +57,8 @@ pg_tde_generate_internal_key(InternalKey *int_key)
 				errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("could not generate IV: %s",
 					   ERR_error_string(ERR_get_error(), NULL)));
+
+	int_key->key_len = key_len;
 }
 
 /*
@@ -53,6 +73,7 @@ pg_tde_stream_crypt(const char *iv_prefix,
 					uint32 data_len,
 					char *out,
 					const uint8 *key,
+					int key_len,
 					void **ctxPtr)
 {
 	const uint64 aes_start_block = start_offset / AES_BLOCK_SIZE;
@@ -68,7 +89,7 @@ pg_tde_stream_crypt(const char *iv_prefix,
 		uint32		current_batch_bytes;
 		uint64		batch_end_block = Min(batch_start_block + NUM_AES_BLOCKS_IN_BATCH, aes_end_block);
 
-		AesCtrEncryptedZeroBlocks(ctxPtr, key, iv_prefix, batch_start_block, batch_end_block, enc_key);
+		AesCtrEncryptedZeroBlocks(ctxPtr, key, key_len, iv_prefix, batch_start_block, batch_end_block, enc_key);
 
 #ifdef ENCRYPTION_DEBUG
 		{

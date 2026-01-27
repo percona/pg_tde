@@ -22,10 +22,14 @@ my $results_folder = "t/results";
 
 sub psql
 {
-	my ($node, $dbname, $sql) = @_;
+	my ($node, $dbname, $sql, %params) = @_;
 
-	my (undef, $stdout, $stderr) = $node->psql($dbname, $sql,
-		extra_params => [ '-a', '-Pformat=aligned', '-Ptuples_only=off' ]);
+	my (undef, $stdout, $stderr) = $node->psql(
+		$dbname, $sql,
+		extra_params => [
+			'-a', '-Pformat=aligned',
+			'-Ptuples_only=off', @{ $params{extra_params} }
+		]);
 
 	if ($stdout ne '')
 	{
