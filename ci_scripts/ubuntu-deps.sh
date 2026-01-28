@@ -4,6 +4,7 @@ set -e
 
 DEPS=(
     # Setup
+    jq
     wget
     # Build
     bison
@@ -11,10 +12,12 @@ DEPS=(
     docbook-xsl
     flex
     gettext
+    libcurl4-openssl-dev
     libicu-dev
     libkrb5-dev
     libldap2-dev
     liblz4-dev
+    libnuma-dev
     libpam0g-dev
     libperl-dev
     libreadline-dev
@@ -30,14 +33,13 @@ DEPS=(
     mawk
     perl
     pkgconf
+    python3-dev
     systemtap-sdt-dev
     tcl-dev
     uuid-dev
     xsltproc
     zlib1g-dev
     zstd
-    # Build pg_tde
-    libcurl4-openssl-dev
     # Test
     libipc-run-perl
     # Test pg_tde
