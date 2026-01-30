@@ -56,8 +56,17 @@ jobs:
           
           src/ci_scripts/macos-deps.sh
 
+      - name: debug
+        run: |
+          clang --version
+
+
       - name: Build postgres
         run: src/ci_scripts/build-and-install-psp.sh ${{ inputs.build_type }}
+
+      - name: debug 2
+        if: ${{ failure() }}
+        run: cat config.log
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh ${{ inputs.build_type }}
