@@ -11,6 +11,10 @@ DEPS=(
     icu4c
     lz4
     zstd
+    docbook
+    docbook-xsl
+    libxslt
+    fop
     # Build pg_tde
     
     # Test
