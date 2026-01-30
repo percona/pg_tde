@@ -42,13 +42,16 @@ case "$1" in
         ;;
 esac
 
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    ARGS+=" --with-liburing"
+fi
+
 cd "$PSP_DIR"
 
 ./configure \
    --prefix="$INSTALL_DIR" \
    --enable-debug \
    --enable-tap-tests \
-   --with-liburing \
    $ARGS
 
 make install-world -j -s
