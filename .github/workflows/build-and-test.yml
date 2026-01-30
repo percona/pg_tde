@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "CPPFLAGS=-I/opt/homebrew/include" >> $GITHUB_ENV
           echo "LDFLAGS=-L/opt/homebrew/lib" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/icu4c/lib/pkgconfig" >> $GITHUB_ENV
           echo "XML_CATALOG_FILES=/opt/homebrew/etc/xml/catalog" >> $GITHUB_ENV
           
           src/ci_scripts/macos-deps.sh
