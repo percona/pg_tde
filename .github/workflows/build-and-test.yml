@@ -66,7 +66,7 @@ jobs:
 
       - name: debug 2
         if: ${{ failure() }}
-        run: cat config.log
+        run: cat /Users/runner/work/pg_tde/pg_tde/postgres/config.log
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh ${{ inputs.build_type }}
