@@ -26,6 +26,10 @@ brew install ${DEPS[@]}
 pip3 install meson pykmip cryptography setuptools wheel
 
 # OpenBao
-wget https://github.com/openbao/openbao/releases/download/v2.4.3/bao_2.4.3_Darwin_x86_64.tar.gz 
-tar -xzf bao_2.4.3_Darwin_x86_64.tar.gz
-sudo mv bao_2.4.3_Darwin_x86_64/bao /usr/local/bin/bao
+wget https://github.com/openbao/openbao/releases/download/v2.4.3/bao_2.4.3_Darwin_arm64.tar.gz 
+tar -xzf bao_2.4.3_Darwin_arm64.tar.gz
+
+ls -l 
+ls -l bao_2.4.3_Darwin_arm64/
+ls -l /usr/local/bin/
+sudo mv bao_2.4.3_Darwin_arm64/bao /usr/local/bin/bao
