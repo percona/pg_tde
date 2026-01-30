@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 
 DEPS=(
@@ -12,7 +14,6 @@ DEPS=(
     # Build pg_tde
     
     # Test
-    libipc-run-perl
     # Test pg_tde
 
     # Run pgperltidy
@@ -20,7 +21,7 @@ DEPS=(
 )
 
 brew update
-brew install -y ${DEPS[@]}
+brew install ${DEPS[@]}
 
 sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 pip3 install meson pykmip cryptography setuptools wheel
