@@ -10,7 +10,9 @@ DEPS=(
     openssl
     icu4c
     lz4
+    m4
     zstd
+    flex
     docbook
     docbook-xsl
     libxslt
