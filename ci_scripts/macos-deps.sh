@@ -23,7 +23,6 @@ DEPS=(
 brew update
 brew install ${DEPS[@]}
 
-sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 pip3 install meson pykmip cryptography setuptools wheel
 
 # OpenBao
