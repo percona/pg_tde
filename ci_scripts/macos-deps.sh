@@ -24,6 +24,7 @@ brew update
 brew install ${DEPS[@]}
 
 pip3 install meson pykmip cryptography setuptools wheel
+sudo /usr/bin/perl -MCPAN -e 'install IPC::Run'
 
 # OpenBao
 wget https://github.com/openbao/openbao/releases/download/v2.4.3/bao_2.4.3_Darwin_arm64.tar.gz 
