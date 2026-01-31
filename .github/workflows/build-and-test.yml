@@ -100,8 +100,19 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install dependencies
+      - name: Install dependencies for Ubuntu
+        if: ${{ startsWith(inputs.os, 'ubuntu-') }}
         run: src/ci_scripts/ubuntu-deps.sh
+
+      - name: Install dependencies for MacOS
+        if: ${{ startsWith(inputs.os,  'macos-') }}
+        run: |
+          echo "CPPFLAGS=-I/opt/homebrew/include" >> $GITHUB_ENV
+          echo "LDFLAGS=-L/opt/homebrew/lib" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/icu4c/lib/pkgconfig" >> $GITHUB_ENV
+          echo "XML_CATALOG_FILES=/opt/homebrew/etc/xml/catalog" >> $GITHUB_ENV
+          
+          src/ci_scripts/macos-deps.sh
 
       - name: Setup kmip and vault
         run: src/ci_scripts/setup-keyring-servers.sh
@@ -139,8 +150,19 @@ jobs:
       - name: Extract artifact file
         run: tar -xzf artifacts.tar
 
-      - name: Install dependencies
+      - name: Install dependencies for Ubuntu
+        if: ${{ startsWith(inputs.os, 'ubuntu-') }}
         run: src/ci_scripts/ubuntu-deps.sh
+
+      - name: Install dependencies for MacOS
+        if: ${{ startsWith(inputs.os,  'macos-') }}
+        run: |
+          echo "CPPFLAGS=-I/opt/homebrew/include" >> $GITHUB_ENV
+          echo "LDFLAGS=-L/opt/homebrew/lib" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/icu4c/lib/pkgconfig" >> $GITHUB_ENV
+          echo "XML_CATALOG_FILES=/opt/homebrew/etc/xml/catalog" >> $GITHUB_ENV
+          
+          src/ci_scripts/macos-deps.sh
 
       - name: Test postgres with TDE as default access method
         run: src/ci_scripts/test-global-tde.sh --continue
