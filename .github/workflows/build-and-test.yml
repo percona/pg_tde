@@ -138,6 +138,11 @@ jobs:
       - name: Extract artifact file
         run: tar -xzf artifacts.tar
 
+      - name: Downgrade python to 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.11
+
       - name: Install dependencies for Ubuntu
         if: ${{ startsWith(inputs.os, 'ubuntu-') }}
         run: src/ci_scripts/ubuntu-deps.sh
