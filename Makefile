@@ -126,11 +126,11 @@ EXTRA_CLEAN = \
 
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
-PG_CPPFLAGS = -Isrc/include -Isrc/libkmip/libkmip/include -I$(FETOOLS)/include -I$(includedir)
+PG_CPPFLAGS += -Isrc/include -Isrc/libkmip/libkmip/include -I$(FETOOLS)/include -I$(includedir)
 include $(PGXS)
 
-SHLIB_LINK = -lcurl -lcrypto -lssl
-LDFLAGS_EX = -Lsrc/fe_utils -lcurl -lcrypto -lssl -lz -lzstd -llz4 -lpgfeutils $(libpq_pgport)
+SHLIB_LINK += -lcurl -lcrypto -lssl
+LDFLAGS_EX += -Lsrc/fe_utils -lcurl -lcrypto -lssl -lz -lzstd -llz4 -lpgfeutils $(libpq_pgport)
 
 ifeq ($(MAJORVERSION),18)
 BBOBJS = \

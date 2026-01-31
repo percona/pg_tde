@@ -44,11 +44,20 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install dependencies
+      - name: Install dependencies for Ubuntu
+        if: ${{ startsWith(inputs.os, 'ubuntu-') }}
         run: src/ci_scripts/ubuntu-deps.sh
+
+      - name: Install dependencies for MacOS
+        if: ${{ startsWith(inputs.os,  'macos-') }}
+        run: src/ci_scripts/macos-deps.sh
 
       - name: Build postgres
         run: src/ci_scripts/build-and-install-psp.sh ${{ inputs.build_type }}
+
+      - name: debug 2
+        if: ${{ failure() }}
+        run: cat /Users/runner/work/pg_tde/pg_tde/postgres/config.log
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh ${{ inputs.build_type }}
@@ -85,8 +94,13 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install dependencies
+      - name: Install dependencies for Ubuntu
+        if: ${{ startsWith(inputs.os, 'ubuntu-') }}
         run: src/ci_scripts/ubuntu-deps.sh
+
+      - name: Install dependencies for MacOS
+        if: ${{ startsWith(inputs.os,  'macos-') }}
+        run: src/ci_scripts/macos-deps.sh
 
       - name: Setup kmip and vault
         run: src/ci_scripts/setup-keyring-servers.sh
@@ -124,8 +138,18 @@ jobs:
       - name: Extract artifact file
         run: tar -xzf artifacts.tar
 
-      - name: Install dependencies
+      - name: Downgrade python to 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies for Ubuntu
+        if: ${{ startsWith(inputs.os, 'ubuntu-') }}
         run: src/ci_scripts/ubuntu-deps.sh
+
+      - name: Install dependencies for MacOS
+        if: ${{ startsWith(inputs.os,  'macos-') }}
+        run: src/ci_scripts/macos-deps.sh
 
       - name: Test postgres with TDE as default access method
         run: src/ci_scripts/test-global-tde.sh --continue
