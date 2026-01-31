@@ -36,7 +36,7 @@ tar -xzf bao_2.4.3_Darwin_arm64.tar.gz
 
 sudo mv bao /usr/local/bin/bao
 
-if [ -v GITHUB_ACTIONS ]; then
+if [[ -z $GITHUB_ACTIONS ]]; then
     echo "CPPFLAGS=-I/opt/homebrew/include" >> $GITHUB_ENV
     echo "LDFLAGS=-L/opt/homebrew/lib" >> $GITHUB_ENV
     echo "PKG_CONFIG_PATH=/opt/homebrew/opt/icu4c/lib/pkgconfig" >> $GITHUB_ENV
