@@ -44,6 +44,9 @@ esac
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     ARGS+=" --with-liburing"
+    NCPU=$(nproc)
+elif [[ "$OSTYPE" == "darwin"*]]; then
+    NCPU=$(sysctl -n hw.ncpu)
 fi
 
 cd "$PSP_DIR"

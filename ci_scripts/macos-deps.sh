@@ -6,16 +6,15 @@ DEPS=(
     # Setup
     wget
     # Build
-    gnu-sed
-    openssl
-    icu4c
-    lz4
-    m4
-    zstd
     docbook
     docbook-xsl
-    libxslt
     fop
+    gnu-sed
+    icu4c
+    libxslt
+    lz4
+    openssl
+    zstd
     # Build pg_tde
     
     # Test
