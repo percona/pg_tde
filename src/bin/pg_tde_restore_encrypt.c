@@ -10,7 +10,11 @@
 
 #include <signal.h>
 
+#ifdef __APPLE__
+#define TMPFS_DIRECTORY "/tmp"
+#else
 #define TMPFS_DIRECTORY "/dev/shm"
+#endif
 
 /*
  * Partial WAL segments are archived but never automatically fetched from the
