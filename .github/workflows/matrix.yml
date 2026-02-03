@@ -28,6 +28,23 @@ jobs:
         build_type: ${{ matrix.build_type }}
     secrets: inherit
 
+  macos:
+    name: MacOS matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        pg_version: [18]
+        os: [macos-15]
+        compiler: [clang]
+        build_type: [debugoptimized]
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+        pg_version: ${{ matrix.pg_version }}
+        os: ${{ matrix.os }}
+        compiler: ${{ matrix.compiler }}
+        build_type: ${{ matrix.build_type }}
+    secrets: inherit
+
   arm:
     name: ARM matrix
     if: github.event_name != 'pull_request'
