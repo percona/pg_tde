@@ -68,6 +68,7 @@ jobs:
     needs: [main, arm]
     name: Slack Notification
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Notify
         uses: slackapi/slack-github-action@v2.1.1
