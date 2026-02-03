@@ -63,6 +63,10 @@ AesEcbEncrypt(EVP_CIPHER_CTX **ctxPtr, const unsigned char *key, int key_len, co
 	Assert(key_len == 16 || key_len == 32);
 	cipher = key_len == 32 ? cipher_ctr_ecb_256 : cipher_ctr_ecb_128;
 
+	/*
+	 * TODO: Currently, only Ecb (WAL) use cached context. This caching was
+	 * done for optimisation. Do we need it anymore?
+	 */
 	if (*ctxPtr == NULL)
 	{
 		Assert(cipher != NULL);
