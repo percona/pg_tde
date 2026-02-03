@@ -33,7 +33,7 @@ bao secrets enable -path=kv-v1 -version=1 kv
 bao namespace create pgns
 bao secrets enable -ns=pgns -path=secret -description="Production Secrets" kv-v2
 
-if [ -v GITHUB_ACTIONS ]; then
+if [[ -n $GITHUB_ACTIONS ]]; then
     echo "VAULT_ROOT_TOKEN_FILE=$VAULT_ROOT_TOKEN_FILE" >> $GITHUB_ENV
     echo "VAULT_CACERT=$VAULT_CACERT" >> $GITHUB_ENV
 fi
