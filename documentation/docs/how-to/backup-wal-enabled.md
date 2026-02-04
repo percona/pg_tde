@@ -9,13 +9,13 @@ Also copy any external files referenced by your providers configuration (such as
 2. Run:
 
     ```bash
-    pg_tde_basebackup -D /path/to/backup -E
+    pg_tde_basebackup -D /path/to/backup -E [aes_128|aes_256]
     ```
 
     Where:
 
     - `-D /path/to/backup` specifies the backup location where you have to copy `pg_tde`.
-    - `-E` (or `--encrypt-wal`) enables WAL encryption and validates that the copied `pg_tde` and provider files are present and that the server key is accessible (required).
+    - `-E` (or `--encrypt-wal`) enables WAL encryption and validates that the copied `pg_tde` and provider files are present and that the server key is accessible (required). The `-E` option accepts a cipher argument. The currently supported values are `aes_128` and `aes_256`. If `-E` is not specified, `pg_tde_basebackup` attempts to determine the cipher from the server's key. If no cipher can be determined, `pg_tde_basebackup` defaults to `aes_128`.
 
 !!! note
     - The `-E` flag only works with the `-X stream` option (default). It is not compatible with `-X none` or `-X fetch`. For more information, see [the backup method compatibility with WAL encryption](#backup-method-compatibility-with-wal-encryption).
