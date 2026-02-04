@@ -41,7 +41,7 @@ You can select from multiple easy-to-follow installation options to install `pg_
 
     `pg_tde` is included in the Percona Distribution for PostgreSQL tarball. Select the below link to access the step-by-step guide. 
 
-    [Install from tarballs :material-arrow-right:](https://docs.percona.com/postgresql/{{pgversion}}/tarball.html){.md-button}
+    [Install from tarballs :material-arrow-right:](https://docs.percona.com/postgresql/18/tarball.html){.md-button}
 
 ## Next steps
 
