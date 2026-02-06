@@ -361,45 +361,52 @@ validate(GenericKeyring *keyring)
 					   vault_keyring->keyring.provider_name));
 
 	if (httpCode != 200)
-		ereport(ERROR,
+	{
+		ereport(WARNING,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("failed to get mount info for \"%s\" at mountpoint \"%s\" (HTTP %ld)",
 					   vault_keyring->vault_url, vault_keyring->vault_mount_path, httpCode));
+	}
+	else
+	{
+		jlex = makeJsonLexContextCstringLen(NULL, str.ptr, str.len, PG_UTF8, true);
+		json_error = parse_vault_mount_info(&parse, jlex);
 
-	jlex = makeJsonLexContextCstringLen(NULL, str.ptr, str.len, PG_UTF8, true);
-	json_error = parse_vault_mount_info(&parse, jlex);
+		if (json_error != JSON_SUCCESS)
+			ereport(WARNING,
+					errcode(ERRCODE_INVALID_JSON_TEXT),
+					errmsg("failed to parse mount info for \"%s\" at mountpoint \"%s\": %s",
+						   vault_keyring->vault_url, vault_keyring->vault_mount_path, json_errdetail(json_error, jlex)));
 
-	if (json_error != JSON_SUCCESS)
-		ereport(WARNING,
-				errcode(ERRCODE_INVALID_JSON_TEXT),
-				errmsg("failed to parse mount info for \"%s\" at mountpoint \"%s\": %s",
-					   vault_keyring->vault_url, vault_keyring->vault_mount_path, json_errdetail(json_error, jlex)));
+		else if (parse.type == NULL)
+			ereport(WARNING,
+					errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("failed to parse mount info for \"%s\" at mountpoint \"%s\": missing type field",
+						   vault_keyring->vault_url, vault_keyring->vault_mount_path));
 
-	else if (parse.type == NULL)
-		ereport(WARNING,
-				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("failed to parse mount info for \"%s\" at mountpoint \"%s\": missing type field",
-					   vault_keyring->vault_url, vault_keyring->vault_mount_path));
+		else if (strcmp(parse.type, "kv") != 0)
+			ereport(ERROR,
+					errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("vault mount at \"%s\" has unsupported engine type \"%s\"",
+						   vault_keyring->vault_mount_path, parse.type),
+					errhint("The only supported vault engine type is Key/Value version \"2\""));
 
-	else if (strcmp(parse.type, "kv") != 0)
-		ereport(ERROR,
-				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("vault mount at \"%s\" has unsupported engine type \"%s\"",
-					   vault_keyring->vault_mount_path, parse.type),
-				errhint("The only supported vault engine type is Key/Value version \"2\""));
+		else if (parse.version == NULL)
+			ereport(ERROR,
+					errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("failed to parse mount info for \"%s\" at mountpoint \"%s\": missing version field",
+						   vault_keyring->vault_url, vault_keyring->vault_mount_path));
 
-	else if (parse.version == NULL)
-		ereport(ERROR,
-				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("failed to parse mount info for \"%s\" at mountpoint \"%s\": missing version field",
-					   vault_keyring->vault_url, vault_keyring->vault_mount_path));
+		else if (strcmp(parse.version, "2") != 0)
+			ereport(ERROR,
+					errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("vault mount at \"%s\" has unsupported Key/Value engine version \"%s\"",
+						   vault_keyring->vault_mount_path, parse.version),
+					errhint("The only supported vault engine type is Key/Value version \"2\""));
 
-	else if (strcmp(parse.version, "2") != 0)
-		ereport(ERROR,
-				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("vault mount at \"%s\" has unsupported Key/Value engine version \"%s\"",
-					   vault_keyring->vault_mount_path, parse.version),
-				errhint("The only supported vault engine type is Key/Value version \"2\""));
+		if (jlex != NULL)
+			freeJsonLexContext(jlex);
+	}
 
 	/*
 	 * Validate that we can read the secrets at the mount point.
@@ -425,9 +432,6 @@ validate(GenericKeyring *keyring)
 
 	if (str.ptr != NULL)
 		pfree(str.ptr);
-
-	if (jlex != NULL)
-		freeJsonLexContext(jlex);
 }
 
 /*
