@@ -10,7 +10,11 @@
 
 #include <signal.h>
 
+#ifdef __APPLE__
+#define TMPFS_DIRECTORY "/tmp"
+#else
 #define TMPFS_DIRECTORY "/dev/shm"
+#endif
 
 static bool
 is_segment(const char *filename)
