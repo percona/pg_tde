@@ -1,3 +1,9 @@
+SELECT * FROM pg_get_loaded_modules() WHERE file_name = 'pg_tde.so';
+ module_name | version | file_name 
+-------------+---------+-----------
+ pg_tde      | 2.1.1   | pg_tde.so
+(1 row)
+
 CREATE EXTENSION pg_tde;
 SELECT pg_tde_version();
  pg_tde_version 
