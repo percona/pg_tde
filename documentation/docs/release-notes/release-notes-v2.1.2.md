@@ -8,7 +8,7 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ### Documentation updates
 
-* Reorganized and redesigned the Architecture documentation for improved clarity and readability. The chapter is now split into smaller, focused sections, adds a Technical Reference overview with quick-skim cards, and introduces a dedicated Usage Guide for deploying and operating pg_tde.
+* Reorganized and redesigned the Architecture documentation for improved clarity and readability. The chapter is now split into smaller, focused sections, adds a Technical Reference overview with quick-skim cards, and introduces a dedicated Usage Guide for deploying and operating `pg_tde`.
 
 ## Known issues
 
@@ -30,6 +30,10 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
     Adjust the limits with caution since it affects other processes running in your system.
 
 ## Changelog
+
+### Improvements
+
+* [PG-2088 :octicons-link-external-16:](https://perconadev.atlassian.net/browse/PG-2088) - Improved handling of Vault KV v2 mount point checks to avoid permission-related failures when configuring `pg_tde` with HashiCorp Vault or OpenBao.
 
 ### Bugs Fixed
 
