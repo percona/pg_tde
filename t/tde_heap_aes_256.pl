@@ -35,7 +35,7 @@ PGTDE::psql($node, 'postgres',
 );
 
 PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc0 (k) VALUES ('foobar'), ('barfoo');");
+	"INSERT INTO test_enc0 (k) VALUES ('multitude'), ('multitudinous');");
 
 PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
 
@@ -45,7 +45,8 @@ $node->restart;
 PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
 
 PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc0 (k) VALUES ('foo'), ('foobarfoo');");
+	"INSERT INTO test_enc0 (k) VALUES ('multitudinously'), ('multitudinousness');"
+);
 
 PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
 
@@ -57,7 +58,7 @@ PGTDE::psql($node, 'postgres',
 );
 
 PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc1 (k) VALUES ('foobar'), ('barfoo');");
+	"INSERT INTO test_enc1 (k) VALUES ('multitude'), ('multitudinous');");
 
 PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc1 ORDER BY id;');
 
@@ -67,7 +68,7 @@ PGTDE::psql($node, 'postgres',
 	'CREATE TABLE test_enc2 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id));');
 
 PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc2 (k) VALUES ('foobar'), ('barfoo');");
+	"INSERT INTO test_enc2 (k) VALUES ('multitude'), ('multitudinous');");
 
 PGTDE::psql($node, 'postgres',
 	'ALTER TABLE test_enc2 SET ACCESS METHOD tde_heap;');
@@ -81,7 +82,7 @@ PGTDE::psql($node, 'postgres',
 );
 
 PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc3 (k) VALUES ('foobar'), ('barfoo');");
+	"INSERT INTO test_enc3 (k) VALUES ('multitude'), ('multitudinous');");
 
 PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc3 ORDER BY id;');
 
@@ -92,7 +93,7 @@ PGTDE::psql($node, 'postgres',
 );
 
 PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc4 (k) VALUES ('foobar'), ('barfoo');");
+	"INSERT INTO test_enc4 (k) VALUES ('multitude'), ('multitudinous');");
 
 PGTDE::psql($node, 'postgres',
 	'SET default_table_access_method = "tde_heap"; ALTER TABLE test_enc4 SET ACCESS METHOD DEFAULT;'
@@ -107,16 +108,27 @@ PGTDE::psql($node, 'postgres',
 );
 
 PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc5 (k) VALUES ('foobar'), ('barfoo');");
+	"INSERT INTO test_enc5 (k) VALUES ('multitude'), ('multitudinous');");
 
 PGTDE::psql($node, 'postgres', 'CHECKPOINT;');
 
 PGTDE::psql($node, 'postgres', 'TRUNCATE test_enc5;');
 
 PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc5 (k) VALUES ('foobar'), ('barfoo');");
+	"INSERT INTO test_enc5 (k) VALUES ('multitude'), ('multitudinous');");
 
 PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc5 ORDER BY id;');
+
+######################### test_enc6 (unencrypted table to cross check verify_table())
+
+PGTDE::psql($node, 'postgres',
+	'CREATE TABLE test_enc6 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;'
+);
+
+PGTDE::psql($node, 'postgres',
+	"INSERT INTO test_enc6 (k) VALUES ('multitude'), ('multitudinous');");
+
+PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc6 ORDER BY id;');
 
 PGTDE::append_to_result_file("-- server restart");
 $node->restart;
@@ -140,8 +152,11 @@ sub verify_table
 		  . ' FOUND: '
 		  . (-f $tablefile ? 'yes' : 'no'));
 
-	my $strings = 'CONTAINS FOO (should be empty): ';
-	$strings .= `strings $tablefile | grep foo`;
+	my $shouldnot = $table eq 'test_enc6' ? 'NOT ' : '';
+
+	my $strings =
+	  'CONTAINS "multitud*" (should ' . $shouldnot . 'be empty): ';
+	$strings .= `strings $tablefile | grep multitud`;
 	PGTDE::append_to_result_file($strings);
 }
 
@@ -152,6 +167,7 @@ verify_table('test_enc2');
 verify_table('test_enc3');
 verify_table('test_enc4');
 verify_table('test_enc5');
+verify_table('test_enc6');
 
 PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc0;');
 PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc1;');
@@ -159,6 +175,7 @@ PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc2;');
 PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc3;');
 PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc4;');
 PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc5;');
+PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc6;');
 
 PGTDE::psql($node, 'postgres', 'DROP EXTENSION pg_tde;');
 
