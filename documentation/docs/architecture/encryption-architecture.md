@@ -8,8 +8,8 @@ Together, these components form the foundation of data-at-rest encryption in `pg
 
 `pg_tde` uses two kinds of keys for encryption:
 
-1. Internal keys to encrypt the data. They are stored in PostgreSQL's data directory under `$PGDATA/pg_tde`.
-2. Principal keys, which encrypt internal keys, are stored externally in a Key Management System (KMS) using the key provider API.
+1. Internal keys to encrypt the data. They are stored in PostgreSQL's data directory under `$PGDATA/pg_tde`
+2. Principal keys, which encrypt internal keys, are stored externally in a Key Management System (KMS) using the key provider API
 
 `pg_tde` uses one principal key per database. Every internal key for the given database is encrypted using this principal key.
 
@@ -23,9 +23,9 @@ A table with 4 indexes will have at least 5 internal keys, one for the table and
 
 `pg_tde` currently uses the following encryption algorithms:
 
-* `AES-128-CBC` for encrypting database files; encrypted with internal keys.
-* `AES-128-CTR` for WAL encryption; encrypted with internal keys.
-* `AES-128-GCM` for encrypting internal keys; encrypted with the principal key.
+* `AES-128-CBC` for encrypting database files; encrypted with internal keys
+* `AES-128-CTR` for WAL encryption; encrypted with internal keys
+* `AES-128-GCM` for encrypting internal keys; encrypted with the principal key
 
 ## Encryption workflow
 
@@ -33,7 +33,7 @@ You can use `pg_tde` to encrypt entire databases or only selected tables.
 
 To support this without metadata changes, encrypted tables are labeled with the `tde_heap` access method marker.
 
-The `tde_heap` access method is functionally identical to the `heap` access method. It uses the same functions internally without any changes, but with a different name and ID. This allows `pg_tde` to distinguish between encrypted (`tde_heap`)  and non-encrypted (`heap`) tables.
+The `tde_heap` access method is functionally identical to the `heap` access method. This allows `pg_tde` to distinguish between encrypted (`tde_heap`)  and non-encrypted (`heap`) tables.
 
 The initial decision about encryption is made using the `postgres` event trigger mechanism:
 
@@ -66,7 +66,9 @@ Currently `pg_tde` only encrypts `heap` tables and other files such as indexes, 
 
 Indexes include any kind of index that goes through the SMGR API, not just the built-in indexes in PostgreSQL.
 
-Other table access methods that use the SMGR API could also be encrypted. This requires adding a marker access method and extending the event triggers, using the same approach as with heap tables.
+Other table access methods that use the SMGR API could also be encrypted. This requires adding a marker access method and extending the event triggers, using the same approach as with `heap` tables.
+
+WAL encryption is implemented through a separate, server-wide mechanism and does not rely on table access methods or the SMGR API. For details, see [Configure WAL encryption](../wal-encryption.md).
 
 ## Storage Manager (SMGR) API
 

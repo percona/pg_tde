@@ -30,7 +30,7 @@ Configure how `pg_tde` behaves with PostgreSQL. Control WAL encryption, enforce 
 
 </div><div data-banner markdown>
 
-### :material-database-sync: Streaming replication { .title }
+### :material-database-arrow-right: Streaming replication { .title }
 
 Learn how to configure PostgreSQL streaming replication with `pg_tde` using the `tde_heap` access method. Covers primary and standby setup, key management requirements, and validation steps.
 

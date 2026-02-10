@@ -54,7 +54,7 @@ pg_tde_change_key_provider <dbOid> <providerType> ... details ...
 ```
 
 !!! note
-    Since this tool is expected to be offline, it bypasses all permission checks. This is also the reason why it requires a `dbOid` instead of a name, as it has no way to process the catalog and look up names.
+    Since this tool is intended to be run while the PostgreSQL server is stopped, it bypasses all permission checks. For this reason, it requires a database OID (`dbOid`) instead of a database name, as it cannot access the system catalogs.
 
     This tool does not validate any parameters.
 
@@ -84,12 +84,14 @@ These functions return a list of provider names, type and configuration.
 
 `pg_tde` implements access control based on execution rights on the administration functions.
 
-For keys and providers administration, it provides two pair of functions:
+For keys and providers administration, it provides two functions:
 
 ```sql
-pg_tde_GRANT_database_key_management_TO_role
-pg_tde_REVOKE_database_key_management_FROM_role
+pg_tde_GRANT_database_key_management_TO_role(role_name)
+pg_tde_REVOKE_database_key_management_FROM_role(role_name)
 ```
+
+These functions take a role name as a string argument, for example `'user1'`.
 
 ## Create and rotate keys
 
@@ -161,7 +163,7 @@ CREATE TABLE t1(a INT) USING tde_heap;
 To alter or modify an encrypted table, use the following command:
 
 ```sql
-ALTER TABLE t1 SET ACCESS METHOD tde_heap;
+ALTER TABLE t1;
 ```
 
 ## Change the pg_tde.inherit_global_keys setting
