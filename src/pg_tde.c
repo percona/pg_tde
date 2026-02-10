@@ -31,7 +31,11 @@
 #include "pg_tde_guc.h"
 #include "smgr/pg_tde_smgr.h"
 
+#if PG_VERSION_NUM >= 180000
+PG_MODULE_MAGIC_EXT(.name = PG_TDE_NAME,.version = PG_TDE_VERSION);
+#else
 PG_MODULE_MAGIC;
+#endif
 
 #define KEYS_VERSION_FILE	"keys_version"
 

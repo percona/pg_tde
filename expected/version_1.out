@@ -1,0 +1,13 @@
+SELECT * FROM pg_get_loaded_modules() WHERE file_name = 'pg_tde.so';
+ERROR:  function pg_get_loaded_modules() does not exist
+LINE 1: SELECT * FROM pg_get_loaded_modules() WHERE file_name = 'pg_...
+                      ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_version();
+ pg_tde_version 
+----------------
+ pg_tde 2.1.1
+(1 row)
+
+DROP EXTENSION pg_tde;
