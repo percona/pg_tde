@@ -37,7 +37,7 @@ my $data_dir = $node->data_dir;
 mkdir $data_dir
   or die "Can't create folder $data_dir: $!\n";
 
-system_or_bail('gzip', '-d', '-k', 't/keys_update_datadir.tar.gz');
+system_or_bail('gzip', '-d', '-f', '-k', 't/keys_update_datadir.tar.gz');
 system_or_bail(
 	'tar',
 	'xf' => 't/keys_update_datadir.tar',
