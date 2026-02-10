@@ -18,152 +18,174 @@ SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');
 (1 row)
 
 CREATE TABLE test_enc0 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;
-INSERT INTO test_enc0 (k) VALUES ('foobar'), ('barfoo');
+INSERT INTO test_enc0 (k) VALUES ('multitude'), ('multitudinous');
 SELECT * FROM test_enc0 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 SELECT * FROM test_enc0 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 psql:<stdin>:1: WARNING:  length "16" of key "test-db-key" does not match the length "32" of the current cipher setting
 HINT:  Create a new principal key and set it instead of the current one.
-INSERT INTO test_enc0 (k) VALUES ('foo'), ('foobarfoo');
+INSERT INTO test_enc0 (k) VALUES ('multitudinously'), ('multitudinousness');
 SELECT * FROM test_enc0 ORDER BY id;
- id |     k     
-----+-----------
-  1 | foobar
-  2 | barfoo
-  3 | foo
-  4 | foobarfoo
+ id |         k         
+----+-------------------
+  1 | multitude
+  2 | multitudinous
+  3 | multitudinously
+  4 | multitudinousness
 (4 rows)
 
 CREATE TABLE test_enc1 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;
-INSERT INTO test_enc1 (k) VALUES ('foobar'), ('barfoo');
+INSERT INTO test_enc1 (k) VALUES ('multitude'), ('multitudinous');
 SELECT * FROM test_enc1 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 CREATE TABLE test_enc2 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id));
-INSERT INTO test_enc2 (k) VALUES ('foobar'), ('barfoo');
+INSERT INTO test_enc2 (k) VALUES ('multitude'), ('multitudinous');
 ALTER TABLE test_enc2 SET ACCESS METHOD tde_heap;
 SELECT * FROM test_enc2 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 SET default_table_access_method = "tde_heap"; CREATE TABLE test_enc3 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id));
-INSERT INTO test_enc3 (k) VALUES ('foobar'), ('barfoo');
+INSERT INTO test_enc3 (k) VALUES ('multitude'), ('multitudinous');
 SELECT * FROM test_enc3 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 CREATE TABLE test_enc4 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;
-INSERT INTO test_enc4 (k) VALUES ('foobar'), ('barfoo');
+INSERT INTO test_enc4 (k) VALUES ('multitude'), ('multitudinous');
 SET default_table_access_method = "tde_heap"; ALTER TABLE test_enc4 SET ACCESS METHOD DEFAULT;
 SELECT * FROM test_enc4 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 CREATE TABLE test_enc5 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;
-INSERT INTO test_enc5 (k) VALUES ('foobar'), ('barfoo');
+INSERT INTO test_enc5 (k) VALUES ('multitude'), ('multitudinous');
 CHECKPOINT;
 TRUNCATE test_enc5;
-INSERT INTO test_enc5 (k) VALUES ('foobar'), ('barfoo');
+INSERT INTO test_enc5 (k) VALUES ('multitude'), ('multitudinous');
 SELECT * FROM test_enc5 ORDER BY id;
- id |   k    
-----+--------
-  3 | foobar
-  4 | barfoo
+ id |       k       
+----+---------------
+  3 | multitude
+  4 | multitudinous
+(2 rows)
+
+CREATE TABLE test_enc6 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;
+INSERT INTO test_enc6 (k) VALUES ('multitude'), ('multitudinous');
+SELECT * FROM test_enc6 ORDER BY id;
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 -- server restart
 ###########################
 SELECT * FROM test_enc0 ORDER BY id;
- id |     k     
-----+-----------
-  1 | foobar
-  2 | barfoo
-  3 | foo
-  4 | foobarfoo
+ id |         k         
+----+-------------------
+  1 | multitude
+  2 | multitudinous
+  3 | multitudinously
+  4 | multitudinousness
 (4 rows)
 
 psql:<stdin>:1: WARNING:  length "16" of key "test-db-key" does not match the length "32" of the current cipher setting
 HINT:  Create a new principal key and set it instead of the current one.
 TABLEFILE FOR test_enc0 FOUND: yes
-CONTAINS FOO (should be empty): 
+CONTAINS "multitud*" (should be empty): 
 ###########################
 SELECT * FROM test_enc1 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 TABLEFILE FOR test_enc1 FOUND: yes
-CONTAINS FOO (should be empty): 
+CONTAINS "multitud*" (should be empty): 
 ###########################
 SELECT * FROM test_enc2 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 TABLEFILE FOR test_enc2 FOUND: yes
-CONTAINS FOO (should be empty): 
+CONTAINS "multitud*" (should be empty): 
 ###########################
 SELECT * FROM test_enc3 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 TABLEFILE FOR test_enc3 FOUND: yes
-CONTAINS FOO (should be empty): 
+CONTAINS "multitud*" (should be empty): 
 ###########################
 SELECT * FROM test_enc4 ORDER BY id;
- id |   k    
-----+--------
-  1 | foobar
-  2 | barfoo
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
 (2 rows)
 
 TABLEFILE FOR test_enc4 FOUND: yes
-CONTAINS FOO (should be empty): 
+CONTAINS "multitud*" (should be empty): 
 ###########################
 SELECT * FROM test_enc5 ORDER BY id;
- id |   k    
-----+--------
-  3 | foobar
-  4 | barfoo
+ id |       k       
+----+---------------
+  3 | multitude
+  4 | multitudinous
 (2 rows)
 
 TABLEFILE FOR test_enc5 FOUND: yes
-CONTAINS FOO (should be empty): 
+CONTAINS "multitud*" (should be empty): 
+###########################
+SELECT * FROM test_enc6 ORDER BY id;
+ id |       k       
+----+---------------
+  1 | multitude
+  2 | multitudinous
+(2 rows)
+
+TABLEFILE FOR test_enc6 FOUND: yes
+CONTAINS "multitud*" (should NOT be empty): multitudinous
+multitude
+
 DROP TABLE test_enc0;
 DROP TABLE test_enc1;
 DROP TABLE test_enc2;
 DROP TABLE test_enc3;
 DROP TABLE test_enc4;
 DROP TABLE test_enc5;
+DROP TABLE test_enc6;
 DROP EXTENSION pg_tde;
