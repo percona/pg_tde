@@ -54,13 +54,6 @@ The guide also includes instructions for:
 - Setting up key providers
 - Creating encrypted tables
 
-## Downloads
-
-To download the latest build of the main branch, use the `HEAD` release from [releases](https://github.com/percona/postgres/releases).
-
-Builds are available in a tar.gz format, containing only the required files, and as a deb package.
-The deb package is built against the pgdg17 release, but this dependency is not yet enforced in the package.
-
 ## Additional functions
 
 Learn more about the helper functions available in `pg_tde`, including how to check table encryption status, in the [Functions topic](https://docs.percona.com/pg-tde/functions.html?h=pg_tde_is_encrypted#encryption-status-check).
