@@ -25,7 +25,7 @@ Transparent Data Encryption offers encryption at the file level and solves the p
 
 This access method:
 
-- Works only with [Percona Server for PostgreSQL 17](https://docs.percona.com/postgresql/17/postgresql-server.html)
+- Works only with [Percona Server for PostgreSQL 17](https://docs.percona.com/postgresql/17/postgresql-server.html) or [Percona Server for PostgreSQL 18](https://docs.percona.com/postgresql/18/postgresql-server.html)
 - Uses extended Storage Manager and WAL APIs
 - Encrypts tuples, WAL and indexes
 - It **does not** encrypt temporary files and statistics **yet**
