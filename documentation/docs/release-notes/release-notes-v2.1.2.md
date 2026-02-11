@@ -8,13 +8,13 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ### Documentation updates
 
-* Reorganized and redesigned the Architecture documentation for improved clarity and readability. The chapter is now split into smaller, focused sections, adds a Technical Reference overview with quick-skim cards, and introduces a dedicated Usage Guide for deploying and operating `pg_tde`.
+* The [Architecture](../architecture/overview.md) documentation is redesigned for improved clarity and readability. The chapter is now split into smaller, more focused sections.
+* The [Technical reference overview](../tech-reference.md) is updated with quick-skim cards for quick topic access.
+* A dedicated [Usage reference](../advanced-topics/usage-guide.md) topic is introduced which describes the main `pg_tde` operations available.
 
 ## Known issues
 
-* Creating, changing, or rotating global key providers (or their keys) while `pg_tde_basebackup` is running may cause standbys or standalone clusters initialized from the backup to fail during WAL replay and may also lead to the corruption of encrypted data (tables, indexes, and other relations).
-
-    Avoid making these actions during backup windows. Run a new full backup after completing a rotation or provider update.
+* Do not create, change, or rotate global key providers (or their keys) while `pg_tde_basebackup` is running. Doing so may cause standbys or clusters initialized from the backup to fail during WAL replay and may result in corruption of encrypted data (tables, indexes, and other relations).
 
 * Using `pg_tde_basebackup` with `--wal-method=fetch` produces warnings.
 
