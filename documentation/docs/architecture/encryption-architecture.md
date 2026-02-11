@@ -78,3 +78,7 @@ WAL encryption is implemented through a separate, server-wide mechanism and does
 * Adding tracking information for files. When a new file is created for an existing relation, references to the existing file are also passed to the SMGR functions
 
 With these modifications, `pg_tde` implements an additional layer on top of the normal Magnetic Disk SMGR API: if the related table is encrypted, `pg_tde` encrypts a file before writing it to the disk and, similarly, decrypts it after reading when needed.
+
+## WAL encryption
+
+WAL encryption is implemented through a separate, server-wide mechanism that extends PostgreSQL WAL-related APIs. Like the SMGR changes described above, this required additional core API extensions. For details, see [Configure WAL encryption](../wal-encryption.md).
