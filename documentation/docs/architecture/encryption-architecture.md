@@ -68,8 +68,6 @@ Indexes include any kind of index that goes through the SMGR API, not just the b
 
 Other table access methods that use the SMGR API could also be encrypted. This requires adding a marker access method and extending the event triggers, using the same approach as with `heap` tables.
 
-WAL encryption is implemented through a separate, server-wide mechanism and does not rely on table access methods or the SMGR API. For details, see [Configure WAL encryption](../wal-encryption.md).
-
 ## Storage Manager (SMGR) API
 
 `pg_tde` relies on a slightly modified version of the SMGR API. These modifications include:
