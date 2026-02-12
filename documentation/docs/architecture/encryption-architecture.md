@@ -81,4 +81,4 @@ With these modifications, `pg_tde` implements an additional layer on top of the 
 
 WAL encryption is implemented through a separate, server-wide mechanism that extends PostgreSQL WAL-related APIs. Similar to the SMGR integration, this relies on additional extensions to PostgreSQL core APIs to support encryption of WAL records.
 
-For details, see [Configure WAL encryption](../wal-encryption.md).
+For configuration details, see [Configure WAL encryption](../wal-encryption.md).
