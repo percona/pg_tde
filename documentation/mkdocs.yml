@@ -164,7 +164,7 @@ nav:
     - "1.1 Via apt": apt.md
     - "1.2 Via yum": yum.md
     - "2. Configure pg_tde": setup.md
-    - "2.1 Configure Key Management (KMS)": 
+    - "2.1 Configure key management (KMS)": 
       - "Key management overview": global-key-provider-configuration/overview.md
       - "KMIP configuration": global-key-provider-configuration/kmip-server.md
       - "Fortanix configuration": global-key-provider-configuration/kmip-fortanix.md  
@@ -178,10 +178,14 @@ nav:
     - "4. Configure WAL encryption": wal-encryption.md
   - "Technical reference":
     - "Overview": advanced-topics/tech-reference.md
-    - "Architecture": architecture/architecture.md
+    - "About pg_tde architecture": 
+      - "Architecture overview": architecture/overview.md
+      - "Encryption architecture": architecture/encryption-architecture.md
+      - "Key and provider management": architecture/key-provider-management.md
+    - "Usage reference": advanced-topics/usage-guide.md
     - "GUC variables": variables.md
     - "Functions": functions.md
-    - "Streaming Replication with tde_heap": replication.md
+    - "Streaming replication with tde_heap": replication.md
   - "TDE operations":
     - "pg_tde CLI tools":
       - "Overview": command-line-tools/cli-tools.md
@@ -191,9 +195,9 @@ nav:
       - "pg_tde_checksums": command-line-tools/pg-tde-checksums.md 
       - "pg_tde_waldump": command-line-tools/pg-tde-waldump.md
     - "Uninstall pg_tde": how-to/uninstall.md
-    - "Configure Multi-tenancy": how-to/multi-tenant-setup.md
-    - "Encryption Enforcement": how-to/enforcement.md
-    - "Decrypt an Encrypted Table": how-to/decrypt.md
+    - "Configure multi-tenancy": how-to/multi-tenant-setup.md
+    - "Encryption enforcement": how-to/enforcement.md
+    - "Decrypt an encrypted table": how-to/decrypt.md
     - "Backup with WAL encryption enabled": how-to/backup-wal-enabled.md
     - "Restore an encrypted pg_tde backup": how-to/restore-backups.md
   - faq.md
