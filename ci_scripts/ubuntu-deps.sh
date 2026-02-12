@@ -32,6 +32,7 @@ DEPS=(
     mawk
     perl
     pkgconf
+    python3-dev
     systemtap-sdt-dev
     tcl-dev
     uuid-dev
