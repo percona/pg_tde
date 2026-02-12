@@ -3,8 +3,6 @@
 set -e
 
 DEPS=(
-    # Setup
-    wget
     # Build
     bison
     docbook-xml
