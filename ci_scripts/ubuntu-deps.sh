@@ -3,7 +3,9 @@
 set -e
 
 DEPS=(
-    # Build
+    # PostgreeSQL build dependencies
+    #
+    # Based on https://salsa.debian.org/postgresql/postgresql/-/blob/18/debian/control
     bison
     docbook-xml
     docbook-xsl
@@ -11,6 +13,7 @@ DEPS=(
     gettext
     libcurl4-openssl-dev
     libicu-dev
+    libipc-run-perl
     libkrb5-dev
     libldap2-dev
     liblz4-dev
@@ -37,12 +40,9 @@ DEPS=(
     xsltproc
     zlib1g-dev
     zstd
-    # Test
-    libipc-run-perl
-    # Test pg_tde
+    # pg_tde test dependencies
     libhttp-server-simple-perl
     lcov
-    # Run pgperltidy
     perltidy
 )
 
