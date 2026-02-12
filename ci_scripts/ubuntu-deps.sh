@@ -3,18 +3,21 @@
 set -e
 
 DEPS=(
-    # Setup
-    wget
-    # Build
+    # PostgreeSQL build dependencies
+    #
+    # Based on https://salsa.debian.org/postgresql/postgresql/-/blob/18/debian/control
     bison
     docbook-xml
     docbook-xsl
     flex
     gettext
+    libcurl4-openssl-dev
     libicu-dev
+    libipc-run-perl
     libkrb5-dev
     libldap2-dev
     liblz4-dev
+    libnuma-dev
     libpam0g-dev
     libperl-dev
     libreadline-dev
@@ -30,20 +33,16 @@ DEPS=(
     mawk
     perl
     pkgconf
+    python3-dev
     systemtap-sdt-dev
     tcl-dev
     uuid-dev
     xsltproc
     zlib1g-dev
     zstd
-    # Build pg_tde
-    libcurl4-openssl-dev
-    # Test
-    libipc-run-perl
-    # Test pg_tde
+    # pg_tde test dependencies
     libhttp-server-simple-perl
     lcov
-    # Run pgperltidy
     perltidy
 )
 
