@@ -252,7 +252,7 @@ main(int argc, char *argv[])
 
 	record.provider.provider_type = get_keyring_provider_from_typename(new_provider_type);
 	memset(record.provider.options, 0, sizeof(record.provider.options));
-	strncpy(record.provider.options, json, sizeof(record.provider.options));
+	strlcpy(record.provider.options, json, sizeof(record.provider.options));
 
 	write_key_provider_info(&record, false);
 
