@@ -11,6 +11,11 @@ To use an external KMS with `pg_tde`, follow these two steps:
 !!! note
      While key files may be acceptable for **local** or **testing environments**, KMS integration is the recommended approach for production deployments.
 
+!!! important
+    When using HashiCorp Vault, **KV v2 is the recommended and supported integration method**.
+
+    The KMIP engine in Vault is not a validated configuration for `pg_tde` and is not recommended for production deployments.
+
 !!! warning
     Do not rotate encryption keys while `pg_tde_basebackup` is running. Standbys or standalone clusters created from such backups may fail to start during WAL replay. Schedule rotations outside your backup windows and run a new full backup afterward.
 
@@ -19,7 +24,7 @@ To use an external KMS with `pg_tde`, follow these two steps:
 | KMS Provider       | Description                                           | Documentation |
 |--------------------|-------------------------------------------------------|---------------|
 | **KMIP**           | Standard Key Management Interoperability Protocol.    | [Configure KMIP →](kmip-server.md) |
-| **Vault**          | HashiCorp Vault integration (KV v2 API, KMIP engine). | [Configure Vault →](vault.md) |
+| **Vault**          | HashiCorp Vault integration (KV v2 API). | [Configure Vault →](vault.md) |
 | **Fortanix**       | Fortanix DSM key management.                          | [Configure Fortanix →](kmip-fortanix.md) |
 | **Thales**         | Thales CipherTrust Manager and DSM.                   | [Configure Thales →](kmip-thales.md) |
 | **OpenBao**        | Community fork of Vault, supporting KV v2.            | [Configure OpenBao →](openbao.md) |
