@@ -2,10 +2,13 @@
 
 To use a Key Management Interoperability Protocol (KMIP) server with `pg_tde`, you must configure it as a global key provider. This setup enables `pg_tde` to securely fetch and manage encryption keys from a centralized key management appliance.
 
+!!! important
+    When using HashiCorp Vault as a KMIP server, this configuration is not a validated deployment model for `pg_tde` and is not recommended for production use.
+
+    For Vault-based key management, use the [KV v2 integration](vault.md) instead.
+
 !!! note
     You need the root certificate of the KMIP server and a client key/certificate pair with permissions to create and read keys on the server.
-
-It is recommended to review the [configuration guidelines for the HashiCorp Vault Enterprise KMIP Secrets Engine](https://developer.hashicorp.com/vault/tutorials/enterprise/kmip-engine) if you're using Vault.
 
 For testing purposes, you can use a lightweight PyKMIP server, which enables easy certificate generation and basic KMIP behavior. If you're using a production-grade KMIP server, ensure you obtain valid, trusted certificates from the key management appliance.
 
