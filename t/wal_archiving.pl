@@ -12,6 +12,14 @@ unlink('/tmp/wal_archiving.per');
 
 # Test CLI tools directly
 
+# Wal archiving uses linux specific tmpfs mount point for temporary files.
+if ($^O ne 'linux')
+{
+	plan skip_all => 'tde wal_archiving works only on Linux';
+	exit 0;
+}
+
+
 command_like(
 	[ 'pg_tde_archive_decrypt', '--help' ],
 	qr/wraps an archive command to give the command unencrypted WAL/,
