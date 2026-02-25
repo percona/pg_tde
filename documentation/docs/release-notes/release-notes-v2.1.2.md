@@ -9,7 +9,7 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 ### Documentation updates
 
 * The [Architecture](../architecture/overview.md) documentation is redesigned for improved clarity and readability. The chapter is now split into smaller, more focused sections.
-* The [Technical reference overview](../tech-reference.md) is updated with quick-skim cards for quick topic access.
+* The [Technical reference overview](../advanced-topics/tech-reference.md) is updated with quick-skim cards for quick topic access.
 * A dedicated [Usage reference](../advanced-topics/usage-guide.md) topic is introduced which describes the main `pg_tde` operations available.
 
 ## Known issues
@@ -37,4 +37,4 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ### Bugs Fixed
 
-* Updated `pg_tde` CLI tools to include upstream bug fixes and stability improvements from PostgreSQL 18.1.
+* Updated `pg_tde` CLI tools to include upstream bug fixes and stability improvements from PostgreSQL 18.2 and 17.8.
