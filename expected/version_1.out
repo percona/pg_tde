@@ -1,6 +1,6 @@
-SELECT * FROM pg_get_loaded_modules() WHERE file_name = 'pg_tde.so';
+SELECT * FROM pg_get_loaded_modules() WHERE file_name IN ('pg_tde.so', 'pg_tde.dylib');
 ERROR:  function pg_get_loaded_modules() does not exist
-LINE 1: SELECT * FROM pg_get_loaded_modules() WHERE file_name = 'pg_...
+LINE 1: SELECT * FROM pg_get_loaded_modules() WHERE file_name IN ('p...
                       ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 CREATE EXTENSION pg_tde;
