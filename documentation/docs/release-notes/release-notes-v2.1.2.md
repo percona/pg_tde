@@ -33,8 +33,8 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ### Improvements
 
-* [PG-2088 :octicons-link-external-16:](https://perconadev.atlassian.net/browse/PG-2088) - Improved handling of Vault KV v2 mount point checks to avoid permission-related failures when configuring `pg_tde` with HashiCorp Vault or OpenBao.
+* [PG-2088 :octicons-link-external-16:](https://perconadev.atlassian.net/browse/PG-2088), [PG-2179 :octicons-link-external-16:](https://perconadev.atlassian.net/browse/PG-2179) - Improved handling of Vault/OpenBao KV v2 mount point validation in `pg_tde`. The extension no longer fails when configured with tokens that lack access to mount metadata endpoints and now works correctly with tokens that have only the required KV v2 read/write permissions.
 
 ### Bugs Fixed
 
-* [PG-2179 :octicons-link-external-16:](https://perconadev.atlassian.net/browse/PG-2179) - Fixed a fatal error in ``pg_tde`` when using Vault/OpenBao keyring providers with tokens that lack access to mount metadata endpoints. ``pg_tde`` now works correctly with tokens that have only the required KV v2 read/write permissions.
+* Updated `pg_tde` CLI tools to include upstream bug fixes and stability improvements from PostgreSQL 18.1.
