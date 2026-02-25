@@ -203,8 +203,8 @@ nav:
   - faq.md
   - "Release notes":
     - "Release notes index": release-notes/release-notes.md
-    - "2026":
-      - "2.1.1": release-notes/release-notes-v2.1.1.md
+    - "2.1.2": release-notes/release-notes-v2.1.2.md
+    - "2.1.1": release-notes/release-notes-v2.1.1.md
     - "2025":
       - "2.1.0": release-notes/release-notes-v2.1.md
       - "2.0.0": release-notes/release-notes-v2.0.md
