@@ -2,7 +2,7 @@
 
 Thank you for deciding to contribute and help us improve the **pg_tde documentation**!
 
-We welcome contributors from all users and the community. By contributing, you agree to the [Percona Community code of conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md).
+We welcome contributors from all users and the community. By contributing, you agree to the [Percona Community code of conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md). 
 
 If you want to contribute code, see the [Code contribution guide](../CONTRIBUTING.md).
 
