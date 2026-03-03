@@ -132,7 +132,7 @@ TDEXLogEncryptBuffSize(void)
 }
 
 Size
-TDEXLogEncryptStateSize(void)
+TDEXLogSmgrShmemSize(void)
 {
 	Size		sz;
 
@@ -154,7 +154,7 @@ TDEXLogEncryptStateSize(void)
  * be called with WALWriteLock held, hence no need in extra locks.
  */
 void
-TDEXLogShmemInit(void)
+TDEXLogSmgrShmemInit(void)
 {
 	bool		found;
 
@@ -162,7 +162,7 @@ TDEXLogShmemInit(void)
 
 	EncryptionState = (EncryptionStateData *)
 		ShmemInitStruct("TDE XLog Encryption State",
-						TDEXLogEncryptStateSize(),
+						TDEXLogSmgrShmemSize(),
 						&found);
 
 	if (!found)
@@ -171,12 +171,12 @@ TDEXLogShmemInit(void)
 
 		pg_atomic_init_u64(&EncryptionState->enc_key_lsn, 0);
 
-		elog(DEBUG1, "pg_tde: initialized encryption buffer %lu bytes", TDEXLogEncryptStateSize());
+		elog(DEBUG1, "pg_tde: initialized encryption buffer %lu bytes", TDEXLogSmgrShmemSize());
 	}
 
 	EncryptionBuf = (char *) TYPEALIGN(PG_IO_ALIGN_SIZE, ((char *) EncryptionState) + sizeof(EncryptionStateData));
 
-	Assert((char *) EncryptionState + TDEXLogEncryptStateSize() >= (char *) EncryptionBuf + TDEXLogEncryptBuffSize());
+	Assert((char *) EncryptionState + TDEXLogSmgrShmemSize() >= (char *) EncryptionBuf + TDEXLogEncryptBuffSize());
 }
 
 #else							/* !FRONTEND */
@@ -220,8 +220,15 @@ TDEXLogSmgrInit()
 	SetXLogSmgr(&tde_xlog_smgr);
 }
 
+/*
+ * Creates a new WAL range; all following WAL writes, until the new range, will
+ * obey the rules of this range. See. comments to `WalEncryptionRange`.
+ *
+ * TODO: We don't need `key_len` when range is unencrypted. And don't have to
+ * generate a key in that case (which we do now).
+ */
 void
-TDEXLogSmgrInitWrite(bool encrypt_xlog)
+TDEXLogSmgrInitWrite(bool encrypt_xlog, int key_len)
 {
 	WalEncryptionRange *range;
 	WALKeyCacheRec *keys;
@@ -242,11 +249,11 @@ TDEXLogSmgrInitWrite(bool encrypt_xlog)
 	 */
 	if (encrypt_xlog)
 	{
-		pg_tde_create_wal_range(&CurrentWalEncryptionRange, WAL_ENCRYPTION_RANGE_ENCRYPTED);
+		pg_tde_create_wal_range(&CurrentWalEncryptionRange, WAL_ENCRYPTION_RANGE_ENCRYPTED, key_len);
 	}
 	else if (range && range->type == WAL_ENCRYPTION_RANGE_ENCRYPTED)
 	{
-		pg_tde_create_wal_range(&CurrentWalEncryptionRange, WAL_ENCRYPTION_RANGE_UNENCRYPTED);
+		pg_tde_create_wal_range(&CurrentWalEncryptionRange, WAL_ENCRYPTION_RANGE_UNENCRYPTED, key_len);
 	}
 	else if (range)
 	{
@@ -353,6 +360,7 @@ TDEXLogWriteEncryptedPages(int fd, const void *buf, size_t count, off_t offset,
 						count,
 						enc_buff,
 						range->key.key,
+						range->key.key_len,
 						&EncryptionCryptCtx);
 
 	return pg_pwrite(fd, enc_buff, count, offset);
@@ -584,6 +592,7 @@ TDEXLogCryptBuffer(const void *buf, void *out_buf, size_t count, off_t offset,
 									dec_sz,
 									o_buf,
 									curr_key->range.key.key,
+									curr_key->range.key.key_len,
 									&curr_key->crypt_ctx);
 			}
 		}

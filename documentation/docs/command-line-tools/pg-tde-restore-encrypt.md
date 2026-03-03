@@ -50,3 +50,6 @@ restore_command='pg_tde_restore_encrypt %f %p "pgbackrest --stanza=your_stanza a
 
 !!! warning
     When using PgBackRest with WAL encryption, disable PostgreSQL data checksums. Otherwise, PgBackRest may spam error messages, and in some package builds the log statement can cause crashes.
+
+!!! warning
+    PgBackRest's [asynchronous archiving](https://pgbackrest.org/user-guide.html#async-archiving) doesn't work with encrypted WAL.

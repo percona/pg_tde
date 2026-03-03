@@ -8,7 +8,6 @@ DATA_DIR=$INSTALL_DIR/data
 
 cd "$SCRIPT_DIR/.."
 
-export TDE_MODE=1
 export PATH=$INSTALL_DIR/bin:$PATH
 export PGDATA="${1:-$DATA_DIR}"
 export PGPORT="${2:-5432}"
@@ -30,16 +29,10 @@ if [ -d "$PGDATA" ]; then
     rm -rf "$PGDATA"
 fi
 
-OPTS='--set shared_preload_libraries=pg_tde'
+initdb -D "$PGDATA" --set shared_preload_libraries=pg_tde
 
-if [ "$PG_VERSION" -ge 18 ]; then
-    OPTS+=' --set io_method=sync'
-fi
-
-initdb -D "$PGDATA" $OPTS
-
-pg_ctl -D "$PGDATA" start -o "-p $PGPORT"
+pg_ctl -D "$PGDATA" start -o "-p $PGPORT" -l "$INSTALL_DIR/postgresql.log"
 
 psql postgres -f "$SCRIPT_DIR/tde_setup_global.sql" -v ON_ERROR_STOP=on
 
-pg_ctl -D "$PGDATA" restart -o "-p $PGPORT"
+pg_ctl -D "$PGDATA" restart -o "-p $PGPORT" -l "$INSTALL_DIR/postgresql.log"

@@ -3,7 +3,6 @@ on:
   pull_request:
     paths-ignore:
       - documentation/**
-  workflow_dispatch:
 
 env:
   pg_version: 18
@@ -12,6 +11,7 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Clone repository
         uses: actions/checkout@v5
@@ -33,7 +33,7 @@ jobs:
         run: src/ci_scripts/build-and-install-psp.sh debug
 
       - name: Build pg_tde
-        run: src/ci_scripts/make-build.sh debug
+        run: src/ci_scripts/build.sh debug
 
       - name: Update typedefs
         run: src/ci_scripts/dump-typedefs.sh

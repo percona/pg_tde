@@ -25,7 +25,7 @@ Transparent Data Encryption offers encryption at the file level and solves the p
 
 This access method:
 
-- Works only with [Percona Server for PostgreSQL 17](https://docs.percona.com/postgresql/17/postgresql-server.html)
+- Works only with [Percona Server for PostgreSQL 17](https://docs.percona.com/postgresql/17/postgresql-server.html) or [Percona Server for PostgreSQL 18](https://docs.percona.com/postgresql/18/postgresql-server.html)
 - Uses extended Storage Manager and WAL APIs
 - Encrypts tuples, WAL and indexes
 - It **does not** encrypt temporary files and statistics **yet**
@@ -53,13 +53,6 @@ The guide also includes instructions for:
 - Installing and enabling the extension
 - Setting up key providers
 - Creating encrypted tables
-
-## Downloads
-
-To download the latest build of the main branch, use the `HEAD` release from [releases](https://github.com/percona/postgres/releases).
-
-Builds are available in a tar.gz format, containing only the required files, and as a deb package.
-The deb package is built against the pgdg17 release, but this dependency is not yet enforced in the package.
 
 ## Additional functions
 

@@ -9,7 +9,6 @@ on:
       - release-[0-9]+.[0-9]+*
     paths-ignore:
       - documentation/**
-  workflow_dispatch:
 
 jobs:
   main:
@@ -20,6 +19,23 @@ jobs:
         pg_version: [17, 18]
         os: [ubuntu-24.04]
         compiler: [gcc, clang]
+        build_type: [debugoptimized]
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+        pg_version: ${{ matrix.pg_version }}
+        os: ${{ matrix.os }}
+        compiler: ${{ matrix.compiler }}
+        build_type: ${{ matrix.build_type }}
+    secrets: inherit
+
+  macos:
+    name: MacOS matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        pg_version: [18]
+        os: [macos-15]
+        compiler: [clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
@@ -52,6 +68,7 @@ jobs:
     needs: [main, arm]
     name: Slack Notification
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Notify
         uses: slackapi/slack-github-action@v2.1.1

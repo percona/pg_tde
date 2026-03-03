@@ -1,4 +1,4 @@
-# Contributing guide
+# Code contributing guide
 
 Welcome to `pg_tde` - the Transparent Database Encryption for PostgreSQL!
 
@@ -9,10 +9,9 @@ You can contribute in one of the following ways:
 1. Reach us on our [Forums](https://forums.percona.com/c/postgresql/pg-tde-transparent-data-encryption-tde/82).
 2. [Submit a bug report or a feature request](#submit-a-bug-report-or-a-feature-request)
 3. [Submit a pull request (PR) with the code patch](#submit-a-pull-request)
-4. [Contribute to documentation](#contributing-to-documentation)
+4. [Contribute to documentation](#documentation-contribution)
 
 By contributing, you agree to the [Percona Community code of conduct](https://github.com/percona/community/blob/main/content/contribute/coc.md).
-
 
 ## Submit a bug report or a feature request
 
@@ -39,27 +38,17 @@ For feature requests and enhancements, we do ask you to create a Jira issue, des
 If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancement implementation with you, do the following:
 
 1. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) this repository
-2. Clone this repository on your machine.
-3. Create a separate branch for your changes. If you work on a Jira issue, please include the issue number in the branch name so it reads as `<JIRAISSUE>-my_branch`. This makes it easier to track your contribution.
-4. Make your changes. Please follow the guidelines outlined in the [PostgreSQL Coding Standard](https://www.postgresql.org/docs/current/source.html) to improve code readability.
-   <details>
-    <summary>.vimrc configuration example</summary> 
 
-    ```
-    set nocompatible                " choose no compatibility with legacy vi
-    syntax enableset 
-    tabstop=4set 
-    background=lightset 
-    textwidth=80set 
-    colorcolumn=80
-    let g:filestyle_ignore_patterns = ['^\t* \{1,3}\S']
-    highlight Normal ctermbg=15
-    highlight ColorColumn ctermbg=52 
-    ```
-  </details>
+2. Clone this repository on your machine
 
-5. Test your changes locally. See the [Running tests ](#running-tests) section for more information
-6. Update the documentation describing your changes. See the [Contributing to documentation](#contributing-to-documentation) section for details
+3. Create a separate branch for your changes. If you work on a Jira issue, please include the issue number in the branch name so it reads as `<JIRAISSUE>-my_branch`.
+
+4. Make your changes. Follow the guidelines outlined in the [PostgreSQL Coding Standard](https://www.postgresql.org/docs/current/source.html) to improve code readability.
+
+5. Test your changes locally. See the [Running tests](#running-tests) section for more information.
+
+6. To update the documentation describing your changes, see [Documentation contribution](#documentation-contribution).
+
 7. Commit the changes. Add the Jira issue number at the beginning of your message subject, so that is reads as `<JIRAISSUE> : My commit message`.  Follow this pattern for your commits:
 
     ```
@@ -68,12 +57,12 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
     Details of fix.
     ```
 
-    The [commit message guidelines](https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53) will help you with writing great commit messages
+    See the [commit message guidelines](https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53) for more information.
 
 8. Open a pull request to Percona
 9. Our team will review your code and if everything is correct, will merge it. Otherwise, we will contact you for additional information or with the request to make changes.
 
-### Building pg_tde
+### Build pg_tde
 
 To build `pg_tde` from source code, you require the following:
 
@@ -84,8 +73,7 @@ To build `pg_tde` from source code, you require the following:
 
 Refer to the [Building from source code](https://github.com/percona/pg_tde?tab=readme-ov-file#building-from-sources-for-community-postgresql) section for guidelines.
 
-
-### Running tests 
+### Run tests
 
 When you work, you should periodically run tests to check that your changes don’t break existing code.
 
@@ -93,7 +81,7 @@ You can find the tests in the `sql` directory.
 
 #### Run manually
 
-1. Change directory to pg_tde
+1. Change the directory to `pg_tde`
 
 **NOTE**: Make sure `postgres` user is the owner of the `pg_tde` directory
 
@@ -103,21 +91,20 @@ You can find the tests in the `sql` directory.
         ```sh
         make installcheck
         ```
-        
 
     2. If you installed PostgreSQL server  from Percona Distribution for PostgreSQL, use the following command:
 
         ```sh
         sudo su postgres bash -c 'make installcheck USE_PGXS=1'
         ```
-#### Run automatically       
+
+#### Run automatically
 
 The tests are run automatically with GitHub actions once you commit and push your changes. Make sure all tests are successfully passed before you proceed.
 
+## Documentation contribution
 
-## Contributing to documentation
-
-`pg_tde` documentation is maintained in the `documentation` directory. Please read the [Contributing guide](https://github.com/percona/pg_tde/blob/main/documentation/CONTRIBUTING.md) for guidelines how you can contribute to the docs.
+To contribute to the documentation, see the following [Documentation contribution guide](/documentation/documentation-contributing.md).
 
 ## After your pull request is merged
 

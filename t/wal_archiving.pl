@@ -12,6 +12,14 @@ unlink('/tmp/wal_archiving.per');
 
 # Test CLI tools directly
 
+# Wal archiving uses linux specific tmpfs mount point for temporary files.
+if ($^O ne 'linux')
+{
+	plan skip_all => 'tde wal_archiving works only on Linux';
+	exit 0;
+}
+
+
 command_like(
 	[ 'pg_tde_archive_decrypt', '--help' ],
 	qr/wraps an archive command to give the command unencrypted WAL/,
@@ -89,10 +97,6 @@ my $archive_dir = $primary->archive_dir;
 $primary->init(allows_streaming => 1);
 $primary->append_conf('postgresql.conf',
 	"shared_preload_libraries = 'pg_tde'");
-if ($primary->pg_version >= 18)
-{
-	$primary->append_conf('postgresql.conf', 'io_method = sync');
-}
 $primary->append_conf('postgresql.conf', "wal_level = 'replica'");
 $primary->append_conf('postgresql.conf', "autovacuum = off");
 $primary->append_conf('postgresql.conf', "checkpoint_timeout = 1h");

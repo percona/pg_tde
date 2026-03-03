@@ -34,41 +34,32 @@ curlSetupSession(const char *url, const char *caFile, CurlString *outStr)
 		keyringCurl = curl_easy_init();
 
 		if (keyringCurl == NULL)
-			return 0;
+			return false;
 	}
 	else
 	{
 		curl_easy_reset(keyringCurl);
 	}
 
-	if (curl_easy_setopt(keyringCurl, CURLOPT_SSL_VERIFYPEER, 1) != CURLE_OK)
-		return 0;
-	if (curl_easy_setopt(keyringCurl, CURLOPT_USE_SSL, CURLUSESSL_ALL) != CURLE_OK)
-		return 0;
 	if (caFile != NULL && strlen(caFile) != 0)
 	{
 		if (curl_easy_setopt(keyringCurl, CURLOPT_CAINFO, caFile) != CURLE_OK)
-			return 0;
+			return false;
 	}
-	if (curl_easy_setopt(keyringCurl, CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK)
-		return 0;
+	if (curl_easy_setopt(keyringCurl, CURLOPT_FOLLOWLOCATION, 1) != CURLE_OK)
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_CONNECTTIMEOUT, 3) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_TIMEOUT, 10) != CURLE_OK)
-		return 0;
-	if (curl_easy_setopt(keyringCurl, CURLOPT_HTTP_VERSION, (long) CURL_HTTP_VERSION_1_1) != CURLE_OK)
-		return 0;
+		return false;
+	if (curl_easy_setopt(keyringCurl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1) != CURLE_OK)
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_WRITEFUNCTION, write_func) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_WRITEDATA, outStr) != CURLE_OK)
-		return 0;
+		return false;
 	if (curl_easy_setopt(keyringCurl, CURLOPT_URL, url) != CURLE_OK)
-		return 0;
+		return false;
 
-	if (curl_easy_setopt(keyringCurl, CURLOPT_POSTFIELDS, NULL) != CURLE_OK)
-		return 0;
-	if (curl_easy_setopt(keyringCurl, CURLOPT_POST, 0) != CURLE_OK)
-		return 0;
-
-	return 1;
+	return true;
 }

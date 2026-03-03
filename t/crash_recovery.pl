@@ -18,10 +18,6 @@ $node->append_conf(
 checkpoint_timeout = 1h
 shared_preload_libraries = 'pg_tde'
 });
-if ($node->pg_version >= 18)
-{
-	$node->append_conf('postgresql.conf', 'io_method = sync');
-}
 $node->start;
 
 PGTDE::psql($node, 'postgres', 'CREATE EXTENSION pg_tde;');
@@ -115,6 +111,21 @@ PGTDE::append_to_result_file(
 	"-- check redo of the smgr internal key creation when the key is on disk"
 );
 PGTDE::poll_start($node);
+
+PGTDE::psql($node, 'postgres', "INSERT INTO test_enc (x) VALUES (7), (8);");
+PGTDE::append_to_result_file("-- kill -9");
+$node->kill9;
+PGTDE::append_to_result_file("-- change cipher to aes_256");
+$node->append_conf(
+	'postgresql.conf', q{
+pg_tde.cipher = 'aes_256'
+});
+PGTDE::append_to_result_file("-- server start");
+PGTDE::append_to_result_file(
+	"-- check redo when cipher was changed after the server crash");
+PGTDE::poll_start($node);
+
+PGTDE::psql($node, 'postgres', "TABLE test_enc;");
 
 $node->stop;
 

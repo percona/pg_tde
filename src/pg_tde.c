@@ -15,9 +15,6 @@
 #include "storage/shmem.h"
 #include "utils/builtins.h"
 #include "utils/percona.h"
-#if PG_VERSION_NUM >= 180000
-#include "storage/aio.h"
-#endif
 
 #include "access/pg_tde_tdemap.h"
 #include "access/pg_tde_xlog.h"
@@ -34,9 +31,22 @@
 #include "pg_tde_guc.h"
 #include "smgr/pg_tde_smgr.h"
 
+#if PG_VERSION_NUM >= 180000
+PG_MODULE_MAGIC_EXT(.name = PG_TDE_NAME,.version = PG_TDE_VERSION);
+#else
 PG_MODULE_MAGIC;
+#endif
+
+#define KEYS_VERSION_FILE	"keys_version"
+
+typedef struct keys_version_info
+{
+	int32		smgr_version;
+	int32		wal_version;
+} keys_version_info;
 
 static void pg_tde_init_data_dir(void);
+static void pg_tde_migrate_internal_keys(void);
 
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 static shmem_request_hook_type prev_shmem_request_hook = NULL;
@@ -51,7 +61,8 @@ tde_shmem_request(void)
 	Size		sz = 0;
 
 	sz = add_size(sz, PrincipalKeyShmemSize());
-	sz = add_size(sz, TDEXLogEncryptStateSize());
+	sz = add_size(sz, TDESmgrShmemSize());
+	sz = add_size(sz, TDEXLogSmgrShmemSize());
 
 	if (prev_shmem_request_hook)
 		prev_shmem_request_hook();
@@ -71,9 +82,12 @@ tde_shmem_startup(void)
 
 	KeyProviderShmemInit();
 	PrincipalKeyShmemInit();
-	TDEXLogShmemInit();
+	TDESmgrShmemInit();
+	TDEXLogSmgrShmemInit();
+
 	TDEXLogSmgrInit();
-	TDEXLogSmgrInitWrite(EncryptXLog);
+	pg_tde_migrate_internal_keys();
+	TDEXLogSmgrInitWrite(EncryptXLog, KeyLength);
 
 	LWLockRelease(AddinShmemInitLock);
 }
@@ -94,13 +108,6 @@ _PG_init(void)
 	}
 
 	check_percona_api_version();
-
-#if PG_VERSION_NUM >= 180000
-	if (io_method != IOMETHOD_SYNC)
-	{
-		elog(FATAL, "pg_tde currently doesn't support Postgres 18 AIO. Disable it using 'io_method = sync' and restart the server.");
-	}
-#endif
 
 	pg_tde_init_data_dir();
 	AesInit();
@@ -150,6 +157,35 @@ extension_install_redo(XLogExtensionInstall *xlrec)
 	extension_install(xlrec->database_id);
 }
 
+static void
+pg_tde_create_keys_version_file(void)
+{
+	char		version_file_path[MAXPGPATH] = {0};
+	int			fd;
+	keys_version_info curr_version = {
+		.smgr_version = PG_TDE_SMGR_FILE_MAGIC,
+		.wal_version = PG_TDE_WAL_KEY_FILE_MAGIC,
+	};
+
+	join_path_components(version_file_path, PG_TDE_DATA_DIR, KEYS_VERSION_FILE);
+
+	fd = OpenTransientFile(version_file_path, O_RDWR | O_CREAT | O_TRUNC | PG_BINARY);
+
+	if (pg_pwrite(fd, &curr_version, sizeof(keys_version_info), 0) != sizeof(keys_version_info))
+	{
+		/*
+		 * The worst that may happen is that we will re-scan all *_keys on the
+		 * next start. So a failed write isn't worth aborting the cluster
+		 * start.
+		 */
+		ereport(WARNING,
+				errcode_for_file_access(),
+				errmsg("failed to write keys version file \"%s\": %m", version_file_path));
+	}
+
+	CloseTransientFile(fd);
+}
+
 /* Creates a tde directory for internal files if not exists */
 static void
 pg_tde_init_data_dir(void)
@@ -161,7 +197,45 @@ pg_tde_init_data_dir(void)
 					errcode_for_file_access(),
 					errmsg("could not create tde directory \"%s\": %m",
 						   PG_TDE_DATA_DIR));
+
+		pg_tde_create_keys_version_file();
 	}
+}
+
+/* Migrate *_keys files to the new format if needed. */
+static void
+pg_tde_migrate_internal_keys(void)
+{
+	char		version_file_path[MAXPGPATH] = {0};
+	keys_version_info curr_version;
+	int			fd;
+
+	join_path_components(version_file_path, PG_TDE_DATA_DIR, KEYS_VERSION_FILE);
+
+	if (access(version_file_path, F_OK) == 0)
+	{
+		fd = OpenTransientFile(version_file_path, O_RDONLY | PG_BINARY);
+
+		if (pg_pread(fd, &curr_version, sizeof(keys_version_info), 0) != sizeof(keys_version_info))
+		{
+			ereport(FATAL,
+					errcode_for_file_access(),
+					errmsg("internal keys version file \"%s\" is corrupted: %m", version_file_path),
+					errhint("Try to remove the file and restart server."));
+		}
+
+		CloseTransientFile(fd);
+
+		/* All is up-to-date, nothing to do */
+		if (curr_version.smgr_version == PG_TDE_SMGR_FILE_MAGIC &&
+			curr_version.wal_version == PG_TDE_WAL_KEY_FILE_MAGIC)
+			return;
+	}
+
+	pg_tde_update_wal_keys_file();
+	pg_tde_migrate_smgr_keys_file();
+
+	pg_tde_create_keys_version_file();
 }
 
 /* Returns package version */

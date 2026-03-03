@@ -3,7 +3,7 @@
 The `pg_tde_archive_decrypt` tool wraps an archive command and decrypts WAL files before archiving. It allows external tools to access unencrypted WAL data, which is required because WAL encryption keys in the two-key hierarchy are host-specific and may not be available on the replay host.
 
 !!! tip
-    For more information on the encryption architecture and key hierarchy, see [Architecture](../architecture/architecture.md).
+    For more information on the encryption architecture and key hierarchy, see [Architecture](../architecture/overview.md).
 
 This tool is often used in conjunction with [pg_tde_restore_encrypt](./pg-tde-restore-encrypt.md) to support WAL archive.
 
@@ -55,3 +55,6 @@ archive_command='pg_tde_archive_decrypt %f %p "pgbackrest --stanza=your_stanza a
 
 !!! warning
     When using PgBackRest with WAL encryption, disable PostgreSQL data checksums. Otherwise, PgBackRest may spam error messages, and in some package builds the log statement can cause crashes.
+
+!!! warning
+    PgBackRest's [asynchronous archiving](https://pgbackrest.org/user-guide.html#async-archiving) doesn't work with encrypted WAL.

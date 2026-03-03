@@ -14,10 +14,6 @@ unlink('/tmp/pg_tde_test_001_basic.per');
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
 $node->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
-if ($node->pg_version >= 18)
-{
-	$node->append_conf('postgresql.conf', 'io_method = sync');
-}
 $node->start;
 
 PGTDE::psql($node, 'postgres', 'CREATE EXTENSION pg_tde;');

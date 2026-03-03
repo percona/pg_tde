@@ -14,6 +14,7 @@ The following tools are currently unsupported with `pg_tde` WAL encryption:
 * `Barman`
 * `pg_verifybackup` by default fails with checksum or WAL key size mismatch errors.
   As a workaround, use `-s` (skip checksum) and `-n` (`--no-parse-wal`) to verify backups.
+* The asynchronous archiving feature of pgBackRest.
 
 The following tools and extensions in Percona Distribution for PostgreSQL have been tested and verified to work with `pg_tde` WAL encryption:
 
@@ -22,12 +23,11 @@ The following tools and extensions in Percona Distribution for PostgreSQL have b
 The following tools have been tested and verified by Percona to work with `pg_tde` WAL encryption:
 
 * Patroni, for an example configuration see the following [Patroni configuration file](#example-patroni-configuration)
-* `pg_basebackup` (with `--wal-method=stream` or `--wal-method=none`), for details on using `pg_basebackup` with WAL encryption, see [Backup with WAL encryption enabled](../how-to/backup-wal-enabled.md)
-* `pg_resetwal`
-* `pg_rewind`
-* `pg_upgrade`
-* `pg_waldump`
-* pgBackRest
+* `pg_tde_basebackup` (with `--wal-method=stream` or `--wal-method=none`), for details on using `pg_tde_basebackup` with WAL encryption, see [Backup with WAL encryption enabled](../how-to/backup-wal-enabled.md)
+* `pg_tde_resetwal`
+* `pg_tde_rewind`
+* `pg_tde_waldump`
+* pgBackRest (asynchronous archiving is NOT supported with encrypted WAL)
 
 ## Example Patroni configuration
 
@@ -76,6 +76,9 @@ The following is a Percona-tested example configuration.
       connect_address: pg1:5432
       data_dir: /var/lib/postgresql/patroni-17
       bin_dir: /lib/postgresql/17/bin
+      bin_name:
+        pg_basebackup: pg_tde_basebackup
+        pg_rewind: pg_tde_rewind
       pgpass: /var/lib/postgresql/patronipass
       authentication:
         replication:

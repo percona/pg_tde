@@ -23,6 +23,7 @@ jobs:
   build:
     name: Build
     runs-on: ${{ inputs.os }}
+    timeout-minutes: 10
     steps:
       - name: Clone repository
         uses: actions/checkout@v5
@@ -44,14 +45,19 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install dependencies
+      - name: Install dependencies for Ubuntu
+        if: startsWith(inputs.os, 'ubuntu-')
         run: src/ci_scripts/ubuntu-deps.sh
+
+      - name: Install dependencies for MacOS
+        if: startsWith(inputs.os,  'macos-')
+        run: src/ci_scripts/macos-deps.sh
 
       - name: Build postgres
         run: src/ci_scripts/build-and-install-psp.sh ${{ inputs.build_type }}
 
       - name: Build pg_tde
-        run: src/ci_scripts/make-build.sh ${{ inputs.build_type }}
+        run: src/ci_scripts/build.sh ${{ inputs.build_type }}
 
       - name: Add build and install to artifact tar file
         run: tar -czf artifacts.tar src postgres pginst
@@ -69,6 +75,7 @@ jobs:
     name: Test
     runs-on: ${{ inputs.os }}
     needs: build
+    timeout-minutes: 20
 
     steps:
       - name: Download build artifacts
@@ -80,19 +87,25 @@ jobs:
       - name: Extract artifact file
         run: tar -xzf artifacts.tar
 
+      # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
       - name: Downgrade python to 3.11
         uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
-      - name: Install dependencies
+      - name: Install dependencies for Ubuntu
+        if: startsWith(inputs.os, 'ubuntu-')
         run: src/ci_scripts/ubuntu-deps.sh
+
+      - name: Install dependencies for MacOS
+        if: startsWith(inputs.os,  'macos-')
+        run: src/ci_scripts/macos-deps.sh
 
       - name: Setup kmip and vault
         run: src/ci_scripts/setup-keyring-servers.sh
 
       - name: Test pg_tde
-        run: src/ci_scripts/make-test.sh
+        run: src/ci_scripts/test.sh
 
       - name: Report on test fail
         uses: actions/upload-artifact@v4
@@ -113,6 +126,9 @@ jobs:
     name: Test PSP with TDE enabled by default
     runs-on: ${{ inputs.os }}
     needs: build
+    timeout-minutes: 30
+    # Skip PSP tests for MacOS because it doesn't support TDE archiving commands.
+    if: ${{ ! startsWith(inputs.os,  'macos-') }}
 
     steps:
       - name: Download build artifacts
@@ -130,14 +146,11 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install dependencies
+      - name: Install dependencies for Ubuntu
         run: src/ci_scripts/ubuntu-deps.sh
 
-      - name: Setup kmip and vault
-        run: src/ci_scripts/setup-keyring-servers.sh
-
       - name: Test postgres with TDE as default access method
-        run: src/ci_scripts/make-test-global-tde.sh --continue
+        run: src/ci_scripts/test-global-tde.sh --continue
 
       - name: Report on test fail
         uses: actions/upload-artifact@v4
@@ -145,6 +158,7 @@ jobs:
         with:
           name: log-test-global-tde-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
+            pginst/postgresql.log
             postgres/contrib/*/log
             postgres/contrib/*/regression.diffs
             postgres/contrib/*/regression.out

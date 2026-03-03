@@ -32,39 +32,55 @@
  * 16 byte blocks.
  */
 
-static const EVP_CIPHER *cipher_cbc = NULL;
-static const EVP_CIPHER *cipher_gcm = NULL;
-static const EVP_CIPHER *cipher_ctr_ecb = NULL;
+static const EVP_CIPHER *cipher_cbc_128 = NULL;
+static const EVP_CIPHER *cipher_gcm_128 = NULL;
+static const EVP_CIPHER *cipher_ctr_ecb_128 = NULL;
+
+static const EVP_CIPHER *cipher_cbc_256 = NULL;
+static const EVP_CIPHER *cipher_gcm_256 = NULL;
+static const EVP_CIPHER *cipher_ctr_ecb_256 = NULL;
 
 void
 AesInit(void)
 {
-	OpenSSL_add_all_algorithms();
-	ERR_load_crypto_strings();
+	OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
 
-	cipher_cbc = EVP_aes_128_cbc();
-	cipher_gcm = EVP_aes_128_gcm();
-	cipher_ctr_ecb = EVP_aes_128_ecb();
+	cipher_cbc_128 = EVP_aes_128_cbc();
+	cipher_gcm_128 = EVP_aes_128_gcm();
+	cipher_ctr_ecb_128 = EVP_aes_128_ecb();
+
+	cipher_cbc_256 = EVP_aes_256_cbc();
+	cipher_gcm_256 = EVP_aes_256_gcm();
+	cipher_ctr_ecb_256 = EVP_aes_256_ecb();
 }
 
 static void
-AesEcbEncrypt(EVP_CIPHER_CTX **ctxPtr, const unsigned char *key, const unsigned char *in, int in_len, unsigned char *out)
+AesEcbEncrypt(EVP_CIPHER_CTX **ctxPtr, const unsigned char *key, int key_len, const unsigned char *in, int in_len, unsigned char *out)
 {
 	int			out_len;
+	const EVP_CIPHER *cipher;
 
+	Assert(key_len == 16 || key_len == 32);
+	cipher = key_len == 32 ? cipher_ctr_ecb_256 : cipher_ctr_ecb_128;
+
+	/*
+	 * TODO: Currently, only Ecb (WAL) use cached context. This caching was
+	 * done for optimisation. Do we need it anymore?
+	 */
 	if (*ctxPtr == NULL)
 	{
-		Assert(cipher_ctr_ecb != NULL);
+		Assert(cipher != NULL);
 
 		*ctxPtr = EVP_CIPHER_CTX_new();
-		EVP_CIPHER_CTX_init(*ctxPtr);
 
-		if (EVP_CipherInit_ex(*ctxPtr, cipher_ctr_ecb, NULL, key, NULL, 1) == 0)
+		if (EVP_CipherInit_ex(*ctxPtr, cipher, NULL, key, NULL, 1) == 0)
 			ereport(ERROR,
 					errmsg("EVP_CipherInit_ex failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL)));
 
 		EVP_CIPHER_CTX_set_padding(*ctxPtr, 0);
 	}
+	else
+		Assert(EVP_CIPHER_CTX_key_length(*ctxPtr) == key_len);
 
 	if (EVP_CipherUpdate(*ctxPtr, out, &out_len, in, in_len) == 0)
 		ereport(ERROR,
@@ -74,19 +90,22 @@ AesEcbEncrypt(EVP_CIPHER_CTX **ctxPtr, const unsigned char *key, const unsigned 
 }
 
 static void
-AesRunCbc(int enc, const unsigned char *key, const unsigned char *iv, const unsigned char *in, int in_len, unsigned char *out)
+AesRunCbc(int enc, const unsigned char *key, int key_len, const unsigned char *iv, const unsigned char *in, int in_len, unsigned char *out)
 {
 	int			out_len;
 	int			out_len_final;
 	EVP_CIPHER_CTX *ctx = NULL;
+	const EVP_CIPHER *cipher;
 
-	Assert(cipher_cbc != NULL);
-	Assert(in_len % EVP_CIPHER_block_size(cipher_cbc) == 0);
+	Assert(key_len == 16 || key_len == 32);
+	cipher = key_len == 32 ? cipher_cbc_256 : cipher_cbc_128;
+
+	Assert(cipher != NULL);
+	Assert(in_len % EVP_CIPHER_block_size(cipher) == 0);
 
 	ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
 
-	if (EVP_CipherInit_ex(ctx, cipher_cbc, NULL, key, iv, enc) == 0)
+	if (EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, enc) == 0)
 		ereport(ERROR,
 				errmsg("EVP_CipherInit_ex failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL)));
 
@@ -107,36 +126,38 @@ AesRunCbc(int enc, const unsigned char *key, const unsigned char *iv, const unsi
 	out_len += out_len_final;
 	Assert(in_len == out_len);
 
-	EVP_CIPHER_CTX_cleanup(ctx);
 	EVP_CIPHER_CTX_free(ctx);
 }
 
 void
-AesEncrypt(const unsigned char *key, const unsigned char *iv, const unsigned char *in, int in_len, unsigned char *out)
+AesEncrypt(const unsigned char *key, int key_len, const unsigned char *iv, const unsigned char *in, int in_len, unsigned char *out)
 {
-	AesRunCbc(1, key, iv, in, in_len, out);
+	AesRunCbc(1, key, key_len, iv, in, in_len, out);
 }
 
 void
-AesDecrypt(const unsigned char *key, const unsigned char *iv, const unsigned char *in, int in_len, unsigned char *out)
+AesDecrypt(const unsigned char *key, int key_len, const unsigned char *iv, const unsigned char *in, int in_len, unsigned char *out)
 {
-	AesRunCbc(0, key, iv, in, in_len, out);
+	AesRunCbc(0, key, key_len, iv, in, in_len, out);
 }
 
 void
-AesGcmEncrypt(const unsigned char *key, const unsigned char *iv, int iv_len, const unsigned char *aad, int aad_len, const unsigned char *in, int in_len, unsigned char *out, unsigned char *tag, int tag_len)
+AesGcmEncrypt(const unsigned char *key, int key_len, const unsigned char *iv, int iv_len, const unsigned char *aad, int aad_len, const unsigned char *in, int in_len, unsigned char *out, unsigned char *tag, int tag_len)
 {
 	int			out_len;
 	int			out_len_final;
 	EVP_CIPHER_CTX *ctx;
+	const EVP_CIPHER *cipher;
 
-	Assert(cipher_gcm != NULL);
-	Assert(in_len % EVP_CIPHER_block_size(cipher_gcm) == 0);
+	Assert(key_len == 16 || key_len == 32);
+	cipher = key_len == 32 ? cipher_gcm_256 : cipher_gcm_128;
+
+	Assert(cipher != NULL);
+	Assert(in_len % EVP_CIPHER_block_size(cipher) == 0);
 
 	ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
 
-	if (EVP_EncryptInit_ex(ctx, cipher_gcm, NULL, NULL, NULL) == 0)
+	if (EVP_EncryptInit_ex(ctx, cipher, NULL, NULL, NULL) == 0)
 		ereport(ERROR,
 				errmsg("EVP_EncryptInit_ex failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL)));
 
@@ -175,23 +196,25 @@ AesGcmEncrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
 	out_len += out_len_final;
 	Assert(in_len == out_len);
 
-	EVP_CIPHER_CTX_cleanup(ctx);
 	EVP_CIPHER_CTX_free(ctx);
 }
 
 bool
-AesGcmDecrypt(const unsigned char *key, const unsigned char *iv, int iv_len, const unsigned char *aad, int aad_len, const unsigned char *in, int in_len, unsigned char *out, unsigned char *tag, int tag_len)
+AesGcmDecrypt(const unsigned char *key, int key_len, const unsigned char *iv, int iv_len, const unsigned char *aad, int aad_len, const unsigned char *in, int in_len, unsigned char *out, unsigned char *tag, int tag_len)
 {
 	int			out_len;
 	int			out_len_final;
 	EVP_CIPHER_CTX *ctx;
+	const EVP_CIPHER *cipher;
 
-	Assert(in_len % EVP_CIPHER_block_size(cipher_gcm) == 0);
+	Assert(key_len == 16 || key_len == 32);
+	cipher = key_len == 32 ? cipher_gcm_256 : cipher_gcm_128;
+
+	Assert(in_len % EVP_CIPHER_block_size(cipher) == 0);
 
 	ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
 
-	if (EVP_DecryptInit_ex(ctx, cipher_gcm, NULL, NULL, NULL) == 0)
+	if (EVP_DecryptInit_ex(ctx, cipher, NULL, NULL, NULL) == 0)
 		ereport(ERROR,
 				errmsg("EVP_EncryptInit_ex failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL)));
 
@@ -221,7 +244,6 @@ AesGcmDecrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
 
 	if (EVP_DecryptFinal_ex(ctx, out + out_len, &out_len_final) == 0)
 	{
-		EVP_CIPHER_CTX_cleanup(ctx);
 		EVP_CIPHER_CTX_free(ctx);
 		return false;
 	}
@@ -233,7 +255,6 @@ AesGcmDecrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
 	out_len += out_len_final;
 	Assert(in_len == out_len);
 
-	EVP_CIPHER_CTX_cleanup(ctx);
 	EVP_CIPHER_CTX_free(ctx);
 
 	return true;
@@ -243,7 +264,7 @@ AesGcmDecrypt(const unsigned char *key, const unsigned char *iv, int iv_len, con
  * This function assumes that the out buffer is big enough: at least (blockNumber2 - blockNumber1) * 16 bytes
  */
 void
-AesCtrEncryptedZeroBlocks(void *ctxPtr, const unsigned char *key, const char *iv_prefix, uint64_t blockNumber1, uint64_t blockNumber2, unsigned char *out)
+AesCtrEncryptedZeroBlocks(void *ctxPtr, const unsigned char *key, int key_len, const char *iv_prefix, uint64_t blockNumber1, uint64_t blockNumber2, unsigned char *out)
 {
 	unsigned char *p;
 
@@ -265,5 +286,5 @@ AesCtrEncryptedZeroBlocks(void *ctxPtr, const unsigned char *key, const char *iv
 		p += sizeof(j);
 	}
 
-	AesEcbEncrypt(ctxPtr, key, out, p - out, out);
+	AesEcbEncrypt(ctxPtr, key, key_len, out, p - out, out);
 }
