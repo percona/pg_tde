@@ -42,16 +42,22 @@ case "$1" in
         ;;
 esac
 
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    ARGS+=" --with-liburing"
+    NCPU=$(nproc)
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    NCPU=$(sysctl -n hw.ncpu)
+fi
+
 cd "$PSP_DIR"
 
 ./configure \
    --prefix="$INSTALL_DIR" \
    --enable-debug \
    --enable-tap-tests \
-   --with-liburing \
    $ARGS
 
-make install-world -j -s
+make install-world -s -j $NCPU
 
 if [ "$INSTALL_INJECTION_POINTS" = 1 ]; then
     # Injection points extension is not built by default

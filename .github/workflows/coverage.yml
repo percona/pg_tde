@@ -19,6 +19,7 @@ jobs:
   collect:
     name: Collect and upload
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - name: Clone repository
         uses: actions/checkout@v5
