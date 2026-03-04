@@ -57,10 +57,10 @@ After all [preconditions](#preconditions) are met, install the `pg_tde` package:
 sudo apt-get install -y percona-pg-tde(pg-version)
 ```
 
-### Example for PostgreSQL 17
+### Example for PostgreSQL {{pgversion17}}
 
 ```{.bash data-prompt="$"}
-sudo apt-get install -y percona-pg-tde17
+sudo apt-get install -y percona-pg-tde{{pgversion17}}
 ```
 
 ## Next steps

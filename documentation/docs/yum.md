@@ -26,13 +26,13 @@ You need the `percona-release` repository management tool that enables the desir
 Install `pg_tde`:
 
 ```{.bash data-prompt="$"}
-sudo yum install -y percona-pg_tde-(pg-version)
+sudo yum install -y percona-pg_tde(pg-version)
 ```
 
-### Example for PostgreSQL 17
+### Example for PostgreSQL 18
 
 ```{.bash data-prompt="$"}
-sudo yum install -y percona-pg_tde-17
+sudo yum install -y percona-pg_tde18
 ```
 
 ## Next steps
