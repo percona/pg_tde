@@ -5,6 +5,22 @@ Limitations of `pg_tde` {{release}}:
 * PostgreSQL’s internal system tables, which include statistics and metadata, are not encrypted.
 * Temporary files created when queries exceed `work_mem` are not encrypted. These files may persist during long-running queries or after a server crash which can expose sensitive data in plaintext on disk.
 
+## ## `pg_rewind` and `pg_tde_rewind` encrypted relations
+
+!!! danger "Risk of corruption when using `pg_rewind` or `pg_tde_rewind` with TDE"
+    When TDE is enabled, using `pg_rewind` or `pg_tde_rewind` between PostgreSQL nodes that use different encryption keys can result in corrupted encrypted relations.
+
+    This happens because ... <!-- Details to be added -->
+
+    Queries against the affected relations may fail, with errors such as:
+
+    ```bash
+    ERROR: invalid page in block 0 of relation "base/..."
+    ```
+
+    Avoid using `pg_rewind` or `pg_tde_rewind` on clusters where the source and destination
+    nodes use **different** TDE keys.
+
 ## Currently unsupported WAL tools
 
 The following tools are currently unsupported with `pg_tde` WAL encryption:
@@ -15,8 +31,6 @@ The following tools are currently unsupported with `pg_tde` WAL encryption:
 * `pg_verifybackup` by default fails with checksum or WAL key size mismatch errors.
   As a workaround, use `-s` (skip checksum) and `-n` (`--no-parse-wal`) to verify backups.
 * The asynchronous archiving feature of pgBackRest.
-
-The following tools and extensions in Percona Distribution for PostgreSQL have been tested and verified to work with `pg_tde` WAL encryption:
 
 ## Supported WAL tools
 
