@@ -2,6 +2,7 @@
 
 #include "access/xloginsert.h"
 #include "catalog/catalog.h"
+#include "miscadmin.h"
 #include "storage/md.h"
 #include "storage/smgr.h"
 #include "utils/hsearch.h"
@@ -14,7 +15,6 @@
 #include "pg_tde_event_capture.h"
 #include "smgr/pg_tde_smgr.h"
 #if PG_VERSION_NUM >= 180000
-#include "miscadmin.h"
 #include "storage/aio.h"
 #include "storage/aio_subsys.h"
 #include "storage/bufmgr.h"
@@ -379,6 +379,10 @@ tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool 
 	 * for other forks anyway.
 	 */
 	if (isRedo)
+		return;
+
+	/* When running pg_upgrade we do not want to overwrite any old keys. */
+	if (IsBinaryUpgrade)
 		return;
 
 	/*
