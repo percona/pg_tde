@@ -68,3 +68,9 @@ leak:bin/pgbench/pgbench.c
 
 # Frontend utilities leak the return of this function in PostgreSQL 18
 leak:GetDbnameFromConnectionOptions
+
+# We run the unpatched pg_resetwal in our pg_upgrade tests
+leak:read_controlfile
+
+#pg_dumpall
+leak:dumpRoleMembership
