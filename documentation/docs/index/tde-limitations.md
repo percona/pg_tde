@@ -5,14 +5,14 @@ Limitations of `pg_tde` {{release}}:
 * PostgreSQL’s internal system tables, which include statistics and metadata, are not encrypted.
 * Temporary files created when queries exceed `work_mem` are not encrypted. These files may persist during long-running queries or after a server crash which can expose sensitive data in plaintext on disk.
 
-## ## `pg_rewind` and `pg_tde_rewind` encrypted relations
+## `pg_rewind` and `pg_tde_rewind`
 
 !!! danger "Risk of corruption when using `pg_rewind` or `pg_tde_rewind` with TDE"
-    When TDE is enabled, using `pg_rewind` or `pg_tde_rewind` between PostgreSQL nodes that use different encryption keys can result in corrupted encrypted relations.
+    When TDE is enabled, using `pg_rewind` or `pg_tde_rewind` between diverged PostgreSQL nodes that use different encryption keys can result in corrupted encrypted relations.
 
     This happens because ... <!-- Details to be added -->
 
-    Queries against the affected relations may fail, with errors such as:
+    Queries against affected relations may fail, with errors such as:
 
     ```bash
     ERROR: invalid page in block 0 of relation "base/..."
@@ -24,10 +24,9 @@ Limitations of `pg_tde` {{release}}:
 ## `pg_upgrade` and encrypted relations
 
 !!! warning "Upgrading clusters that use TDE"
-
     When upgrading PostgreSQL clusters that use TDE, ensure that the destination cluster is configured with the same TDE key providers and encryption configuration as the source cluster.
 
-    If the encryption configuration differs, the upgraded cluster may fail to access encrypted relations.
+    If the encryption configuration differs, the upgraded cluster may fail to access encrypted relations or may not start correctly.
 
 ## Currently unsupported WAL tools
 
