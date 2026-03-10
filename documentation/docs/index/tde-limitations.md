@@ -21,6 +21,14 @@ Limitations of `pg_tde` {{release}}:
     Avoid using `pg_rewind` or `pg_tde_rewind` on clusters where the source and destination
     nodes use **different** TDE keys.
 
+## `pg_upgrade` and encrypted relations
+
+!!! warning "Upgrading clusters that use TDE"
+
+    When upgrading PostgreSQL clusters that use TDE, ensure that the destination cluster is configured with the same TDE key providers and encryption configuration as the source cluster.
+
+    If the encryption configuration differs, the upgraded cluster may fail to access encrypted relations.
+
 ## Currently unsupported WAL tools
 
 The following tools are currently unsupported with `pg_tde` WAL encryption:
