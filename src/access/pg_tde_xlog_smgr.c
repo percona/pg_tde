@@ -2,9 +2,12 @@
  * Encrypted XLog storage manager
  */
 
+#ifdef FRONTEND
+#include "postgres_fe.h"
+#else
 #include "postgres.h"
+#endif
 
-#include "access/xlog.h"
 #include "access/xlog_internal.h"
 #include "access/xlog_smgr.h"
 #include "access/xloginsert.h"
@@ -22,6 +25,7 @@
 #ifdef FRONTEND
 #include "pg_tde_fe.h"
 #else
+#include "access/xlog.h"
 #include "port/atomics.h"
 #include "storage/shmem.h"
 #endif
