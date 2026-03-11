@@ -24,15 +24,13 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
     ERROR: invalid page in block 0 of relation "base/..."
     ```
 
-    This behavior is a known issue. A fix is planned for `pg_tde` 2.1.3.
+    This behavior is a known issue.
 
     For more information, see [pg_tde limitations](../index/tde-limitations.md).
 
 * `pg_upgrade` is currently unsupported when `pg_tde` is enabled
 
     PostgreSQL clusters that use `pg_tde` cannot currently be upgraded using `pg_upgrade`.
-
-    Support for upgrading clusters that contain encrypted data is planned for `pg_tde` 2.1.3.
 
 * Do not create, change, or rotate global key providers (or their keys) while `pg_tde_basebackup` is running. Doing so may cause standbys or clusters initialized from the backup to fail during WAL replay and may result in corruption of encrypted data (tables, indexes, and other relations).
 
