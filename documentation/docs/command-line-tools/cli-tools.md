@@ -22,3 +22,4 @@ These tools are modified versions of standard PostgreSQL utilities that include 
 * [pg_tde_basebackup](../how-to/backup-wal-enabled.md): create base backups that include encrypted data
 * pg_tde_resetwal: reset the WAL for clusters using `pg_tde`
 * pg_tde_rewind: rewind clusters that use encrypted WAL
+* [pg_tde_upgrade](./pg-tde-upgrade.md): perform major version upgrades of clusters with `pg_tde`

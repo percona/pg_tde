@@ -101,6 +101,7 @@ SCRIPTS_built = \
 	src/bin/pg_tde_archive_decrypt \
 	src/bin/pg_tde_change_key_provider \
 	src/bin/pg_tde_restore_encrypt \
+	src/bin/pg_tde_upgrade \
 	$(FETOOLS)/pg_tde_basebackup \
 	$(FETOOLS)/pg_tde_checksums \
 	$(FETOOLS)/pg_tde_resetwal \
@@ -111,6 +112,7 @@ EXTRA_CLEAN = \
 	src/bin/pg_tde_archive_decrypt.o \
 	src/bin/pg_tde_change_key_provider.o \
 	src/bin/pg_tde_restore_encrypt.o \
+	src/bin/pg_tde_upgrade.o \
 	$(FETOOLS)/xlogreader.o \
 	$(FETOOLS)/xlogstats.o \
 	$(TDE_XLOG_OBJS) \
@@ -161,6 +163,9 @@ src/bin/pg_tde_archive_decrypt: src/bin/pg_tde_archive_decrypt.o $(FETOOLS)/xlog
 	$(CC) $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
 
 src/bin/pg_tde_restore_encrypt: src/bin/pg_tde_restore_encrypt.o $(FETOOLS)/xlogreader.o libtdexlog.a libtde.a
+	$(CC) $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
+
+src/bin/pg_tde_upgrade: src/bin/pg_tde_upgrade.o
 	$(CC) $(CFLAGS) $^ $(PG_LIBS_INTERNAL) $(LDFLAGS) $(LDFLAGS_EX) $(PG_LIBS) $(LIBS) -o $@$(X)
 
 $(FETOOLS)/pg_tde_basebackup: $(BBOBJS) $(FETOOLS)/xlogreader.o libtdexlog.a libtde.a
