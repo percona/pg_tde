@@ -84,6 +84,7 @@ RWOBJS = \
 	$(FETOOLS)/pg_rewind/local_source.o \
 	$(FETOOLS)/pg_rewind/parsexlog.o \
 	$(FETOOLS)/pg_rewind/pg_rewind.o \
+	$(FETOOLS)/pg_rewind/tde_ops.o \
 	$(FETOOLS)/pg_rewind/timeline.o
 
 RMGRDESCSOURCES = $(sort $(wildcard $(FETOOLS)/rmgrdesc/*desc*.c))

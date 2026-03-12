@@ -600,6 +600,7 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 			while (datapagemap_next(iter, &blkno))
 			{
 				offset = blkno * BLCKSZ;
+
 				source->queue_fetch_range(source, entry->path, offset, BLCKSZ);
 			}
 			pg_free(iter);
@@ -643,6 +644,8 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 	source->finish_fetch(source);
 
 	close_target_file();
+
+	fetch_tde_dir();
 
 	progress_report(true);
 

@@ -572,8 +572,32 @@ isRelDataFile(const char *path)
 {
 	RelFileLocator rlocator;
 	unsigned int segNo;
-	int			nmatch;
 	bool		matched;
+
+	matched = path_rlocator(path, &rlocator, &segNo);
+	if (matched)
+	{
+		char	   *check_path = datasegpath(rlocator, MAIN_FORKNUM, segNo);
+
+		if (strcmp(check_path, path) != 0)
+			matched = false;
+
+		pfree(check_path);
+	}
+
+	return matched;
+}
+
+/*
+ * Sets rlocator and segNo based on given path. Returns false if didn't find
+ * a match.
+ * 
+ * Only concerned with files belonging to the main fork.
+ */
+bool
+path_rlocator(const char *path, RelFileLocator *rlocator, unsigned int *segNo)
+{
+	int			nmatch;
 
 	/*----
 	 * Relation data files can be in one of the following directories:
@@ -594,55 +618,38 @@ isRelDataFile(const char *path)
 	 *
 	 *----
 	 */
-	rlocator.spcOid = InvalidOid;
-	rlocator.dbOid = InvalidOid;
-	rlocator.relNumber = InvalidRelFileNumber;
-	segNo = 0;
-	matched = false;
+	rlocator->spcOid = InvalidOid;
+	rlocator->dbOid = InvalidOid;
+	rlocator->relNumber = InvalidRelFileNumber;
+	*segNo = 0;
 
-	nmatch = sscanf(path, "global/%u.%u", &rlocator.relNumber, &segNo);
+	nmatch = sscanf(path, "global/%u.%u", &rlocator->relNumber, segNo);
 	if (nmatch == 1 || nmatch == 2)
 	{
-		rlocator.spcOid = GLOBALTABLESPACE_OID;
-		rlocator.dbOid = 0;
-		matched = true;
+		rlocator->spcOid = GLOBALTABLESPACE_OID;
+		rlocator->dbOid = 0;
+		return true;
 	}
 	else
 	{
 		nmatch = sscanf(path, "base/%u/%u.%u",
-						&rlocator.dbOid, &rlocator.relNumber, &segNo);
+						&rlocator->dbOid, &rlocator->relNumber, segNo);
 		if (nmatch == 2 || nmatch == 3)
 		{
-			rlocator.spcOid = DEFAULTTABLESPACE_OID;
-			matched = true;
+			rlocator->spcOid = DEFAULTTABLESPACE_OID;
+			return true;
 		}
 		else
 		{
 			nmatch = sscanf(path, "pg_tblspc/%u/" TABLESPACE_VERSION_DIRECTORY "/%u/%u.%u",
-							&rlocator.spcOid, &rlocator.dbOid, &rlocator.relNumber,
-							&segNo);
+							&rlocator->spcOid, &rlocator->dbOid, &rlocator->relNumber,
+							segNo);
 			if (nmatch == 3 || nmatch == 4)
-				matched = true;
+				return true;
 		}
 	}
 
-	/*
-	 * The sscanf tests above can match files that have extra characters at
-	 * the end. To eliminate such cases, cross-check that GetRelationPath
-	 * creates the exact same filename, when passed the RelFileLocator
-	 * information we extracted from the filename.
-	 */
-	if (matched)
-	{
-		char	   *check_path = datasegpath(rlocator, MAIN_FORKNUM, segNo);
-
-		if (strcmp(check_path, path) != 0)
-			matched = false;
-
-		pfree(check_path);
-	}
-
-	return matched;
+	return false;
 }
 
 /*
@@ -710,6 +717,15 @@ decide_file_action(file_entry_t *entry)
 
 	/* Skip macOS system files */
 	if (strstr(path, ".DS_Store") != NULL)
+		return FILE_ACTION_NONE;
+
+	/* 
+	 * Skip pg_tde key data but WAL-related stuff as WAL being replaced by
+	 * source's. We will handle the rest while re-encrypting data.
+	 */
+	if (strstr(path, "pg_tde/") != NULL &&
+		strstr(path, "pg_tde/wal_keys") == NULL &&
+		strstr(path, "pg_tde/1664_providers") == NULL)
 		return FILE_ACTION_NONE;
 
 	/*
