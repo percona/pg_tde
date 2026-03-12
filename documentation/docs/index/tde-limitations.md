@@ -54,6 +54,7 @@ The following tools have been tested and verified by Percona to work with `pg_td
 * `pg_tde_basebackup` (with `--wal-method=stream` or `--wal-method=none`), for details on using `pg_tde_basebackup` with WAL encryption, see [Backup with WAL encryption enabled](../how-to/backup-wal-enabled.md)
 * `pg_tde_resetwal`
 * `pg_tde_rewind`
+* `pg_tde_upgrade`
 * `pg_tde_waldump`
 * pgBackRest (asynchronous archiving is NOT supported with encrypted WAL)
 

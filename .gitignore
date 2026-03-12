@@ -58,6 +58,7 @@ __pycache__
 /src/bin/pg_tde_archive_decrypt
 /src/bin/pg_tde_change_key_provider
 /src/bin/pg_tde_restore_encrypt
+/src/bin/pg_tde_upgrade
 /fetools/*/pg_tde_basebackup
 /fetools/*/pg_tde_checksums
 /fetools/*/pg_tde_resetwal
