@@ -24,18 +24,12 @@ Limitations of `pg_tde` {{release}}:
     ERROR: invalid page in block 0 of relation "base/..."
     ```
 
-!!! danger "`pg_upgrade` is not supported with `pg_tde`"
-
-  PostgreSQL clusters that use `pg_tde` cannot currently be upgraded using `pg_upgrade`.
-
-  The upgrade process copies data files between clusters, but encrypted relations rely on internal encryption keys generated separately for each cluster. Because these keys do not match, the upgraded cluster cannot decrypt the copied data.
-
 ## `pg_upgrade` and encrypted relations
 
 !!! danger "`pg_upgrade` is not supported with `pg_tde`"
     PostgreSQL clusters that use `pg_tde` cannot currently be upgraded using `pg_upgrade`.
 
-    The upgrade process copies data files between clusters, but encrypted relations rely on internal encryption keys generated separately for each cluster. Because these keys do not match, the upgraded cluster cannot decrypt the copied data.
+    The `pg_upgrade` tool does not properly handle the internal encryption keys used by `pg_tde`, which prevents the upgraded cluster from decrypting encrypted relations.
 
 ## Currently unsupported WAL tools
 
