@@ -74,3 +74,17 @@ leak:read_controlfile
 
 #pg_dumpall
 leak:dumpRoleMembership
+
+#pg_upgrade
+leak:check_new_cluster
+leak:parseCommandLine
+leak:prepare_new_globals
+
+#vacuumdb
+leak:vacuum_one_database
+
+#psql
+leak:HandleSlashCmds
+
+#pg_restore
+leak:RestoreArchive

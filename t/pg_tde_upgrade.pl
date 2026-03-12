@@ -4,6 +4,42 @@ use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
 
+program_help_ok('pg_tde_upgrade');
+program_version_ok('pg_tde_upgrade');
+program_options_handling_ok('pg_tde_upgrade');
+
+my $oldnotde = PostgreSQL::Test::Cluster->new('oldnotde');
+$oldnotde->init;
+$oldnotde->start;
+$oldnotde->safe_psql(
+	'postgres', "
+CREATE TABLE test_plain (k int, PRIMARY KEY (k));
+
+INSERT INTO test_plain (k) VALUES (1), (2);
+");
+$oldnotde->stop;
+
+my $newnotde = PostgreSQL::Test::Cluster->new('newnotde');
+$newnotde->init;
+
+command_ok(
+	[
+		'pg_tde_upgrade', '--no-sync',
+		'--old-datadir' => $oldnotde->data_dir,
+		'--new-datadir' => $newnotde->data_dir,
+		'--old-bindir' => $oldnotde->config_data('--bindir'),
+		'--new-bindir' => $newnotde->config_data('--bindir'),
+		'--socketdir' => $newnotde->host,
+		'--old-port' => $oldnotde->port,
+		'--new-port' => $newnotde->port,
+	],
+	'executes pg_upgrade successfully without pg_tde');
+
+$newnotde->start;
+is($newnotde->safe_psql('postgres', "SELECT * FROM test_plain"),
+	"1\n2", 'can read tables');
+$newnotde->stop;
+
 unlink('/tmp/pg_tde_test_pg_upgrade.per');
 
 my $old = PostgreSQL::Test::Cluster->new('old');
@@ -32,29 +68,18 @@ $new->init;
 $new->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
 $new->append_conf('postgresql.conf', "pg_tde.wal_encrypt = on");
 
-# TODO: Automate this with a script?
-my $tempbin = PostgreSQL::Test::Utils::tempdir;
-system_or_bail('cp', '-R', $new->config_data('--bindir') . '/.', $tempbin);
-system_or_bail('cp', $tempbin . '/pg_tde_resetwal',
-	$tempbin . '/pg_resetwal');
-
-system_or_bail(
-	'cp', '-R',
-	$old->data_dir . '/pg_tde',
-	$new->data_dir . '/pg_tde');
-
 command_ok(
 	[
-		'pg_upgrade', '--no-sync',
+		'pg_tde_upgrade', '--no-sync',
 		'--old-datadir' => $old->data_dir,
 		'--new-datadir' => $new->data_dir,
 		'--old-bindir' => $old->config_data('--bindir'),
-		'--new-bindir' => $tempbin,
+		'--new-bindir' => $new->config_data('--bindir'),
 		'--socketdir' => $new->host,
 		'--old-port' => $old->port,
 		'--new-port' => $new->port,
 	],
-	'executes pg_upgrade successfully');
+	'executes pg_upgrade successfully with pg_tde');
 
 $new->start;
 is($new->safe_psql('postgres', "SELECT * FROM test_enc"),
