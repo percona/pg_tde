@@ -10,8 +10,8 @@ Limitations of `pg_tde` {{release}}:
 !!! danger "Risk of corruption when using `pg_rewind` or `pg_tde_rewind` with TDE"
     When TDE is enabled, using `pg_rewind` or `pg_tde_rewind` between diverged PostgreSQL nodes may corrupt encrypted relations.
 
-    This happens because `pg_rewind` and `pg_tde_rewind` copy relation files between the data directories of two clusters. In some cases they copy only parts of files, which results in encrypted data that cannot be decrypted by the destination cluster.
-
+    This happens because `pg_rewind` and `pg_tde_rewind` copy relation files between the data directories of two clusters. In some cases, only parts of files are replaced, leaving data encrypted with the internal encryption keys of the source cluster. This data cannot be decrypted by the destination cluster.
+    
     For more information about how `pg_tde` manages internal encryption keys, see [How pg_tde works](how-does-tde-work.md) and [Encryption of data files](../faq.md#encryption-of-data-files).
 
     This behavior is inherited from `pg_rewind` and is currently a known issue in `pg_tde_rewind`.
