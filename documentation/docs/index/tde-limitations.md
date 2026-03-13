@@ -5,6 +5,13 @@ Limitations of `pg_tde` {{release}}:
 * PostgreSQL’s internal system tables, which include statistics and metadata, are not encrypted.
 * Temporary files created when queries exceed `work_mem` are not encrypted. These files may persist during long-running queries or after a server crash which can expose sensitive data in plaintext on disk.
 
+## Recovery without `pg_tde` in `shared_preload_libraries`
+
+!!! danger "Risk of corruption when recovering encrypted clusters without pg_tde loaded"
+    When recovering a PostgreSQL cluster that contains encrypted tables, the `pg_tde` extension must be loaded through the `shared_preload_libraries` configuration parameter.
+
+
+
 ## Currently unsupported WAL tools
 
 The following tools are currently unsupported with `pg_tde` WAL encryption:
