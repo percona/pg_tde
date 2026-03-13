@@ -127,6 +127,23 @@ PGTDE::poll_start($node);
 
 PGTDE::psql($node, 'postgres', "TABLE test_enc;");
 
+# Use an unlogged sequence owned by the encrypted table to ensure the sequence
+# is also encrypted. This is to verify that WAL replay doesn't overwrite the key
+# of an unlogged object's init fork, which would cause it to be unrecoverable
+# after crash recovery. We cannot use a regular relation in this test, because
+# their init forks is a 0 byte file so the wrong key being used isn't an issue
+# for them.
+PGTDE::psql($node, 'postgres',
+	"CREATE UNLOGGED SEQUENCE seq_unlogged OWNED BY test_enc.x;");
+PGTDE::psql($node, 'postgres', "SELECT pg_tde_is_encrypted('seq_unlogged');");
+PGTDE::psql($node, 'postgres', "SELECT nextval('seq_unlogged');");
+$node->kill9;
+PGTDE::poll_start($node);
+
+# The sequence is now reset by crash recovery and will give us the same result
+# as it did above.
+PGTDE::psql($node, 'postgres', "SELECT nextval('seq_unlogged');");
+
 $node->stop;
 
 # Compare the expected and out file

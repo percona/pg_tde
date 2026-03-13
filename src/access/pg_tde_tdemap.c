@@ -88,13 +88,25 @@ static void pg_tde_write_one_map_entry(int fd, const TDEMapEntry *map_entry, off
 static int	pg_tde_file_header_write(const char *tde_filename, int fd, const TDESignedPrincipalKeyInfo *signed_key_info, off_t *bytes_written);
 static void pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *principal_key, const RelFileLocator *rlocator, const InternalKey *rel_key_data);
 static int	pg_tde_open_file_write(const char *tde_filename, const TDESignedPrincipalKeyInfo *signed_key_info, bool truncate, off_t *curr_pos);
-static void pg_tde_replace_key_map_entry(const RelFileLocator *rlocator, const InternalKey *rel_key_data, const TDEPrincipalKey *principal_key);
 
+/*
+ * Saves an internal key for the given relation. If replace_existing is false,
+ * the function will not overwrite an existing key for the relation, but will
+ * instead do nothing.
+ */
 void
-pg_tde_save_smgr_key(RelFileLocator rel, const InternalKey *rel_key_data)
+pg_tde_save_smgr_key(RelFileLocator rel,
+					 const InternalKey *rel_key_data,
+					 bool replace_existing)
 {
-	TDEPrincipalKey *principal_key;
+	char		file_path[MAXPGPATH];
+	bool		entry_already_exists;
+	int			fd;
 	LWLock	   *lock_pk = tde_lwlock_enc_keys();
+	TDEPrincipalKey *principal_key;
+	off_t		scan_offset;
+	TDESignedPrincipalKeyInfo signed_key_info;
+	off_t		write_offset;
 
 	LWLockAcquire(lock_pk, LW_EXCLUSIVE);
 	principal_key = GetPrincipalKey(rel.dbOid, LW_EXCLUSIVE);
@@ -105,7 +117,54 @@ pg_tde_save_smgr_key(RelFileLocator rel, const InternalKey *rel_key_data)
 				errhint("Use pg_tde_set_key_using_database_key_provider() or pg_tde_set_key_using_global_key_provider() to configure one."));
 	}
 
-	pg_tde_replace_key_map_entry(&rel, rel_key_data, principal_key);
+	pg_tde_set_db_file_path(rel.dbOid, file_path);
+	pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
+
+	fd = pg_tde_open_file_write(file_path, &signed_key_info, false, &scan_offset);
+
+	/*
+	 * Look for an existing entry for the relation, also keep track of the
+	 * first free entry we find to be reused for the new key we're saving.
+	 */
+	entry_already_exists = false;
+	write_offset = 0;
+	while (1)
+	{
+		TDEMapEntry entry;
+		off_t		entry_offset = scan_offset;
+
+		if (!pg_tde_read_one_map_entry(fd, &entry, &scan_offset))
+		{
+			/*
+			 * If we're through the whole file without having found an empty
+			 * entry to overwrite, write at the end.
+			 */
+			if (write_offset == 0)
+				write_offset = entry_offset;
+			break;
+		}
+
+		if (entry.spcOid == rel.spcOid &&
+			entry.relNumber == rel.relNumber)
+		{
+			entry_already_exists = true;
+			write_offset = entry_offset;
+			break;
+		}
+
+		if (write_offset == 0 && entry.type == MAP_ENTRY_TYPE_EMPTY)
+			write_offset = entry_offset;
+	}
+
+	if (!entry_already_exists || replace_existing)
+	{
+		TDEMapEntry write_entry;
+
+		pg_tde_initialize_map_entry(&write_entry, principal_key, &rel, rel_key_data);
+		pg_tde_write_one_map_entry(fd, &write_entry, &write_offset, file_path);
+	}
+
+	CloseTransientFile(fd);
 	LWLockRelease(lock_pk);
 }
 
@@ -427,67 +486,6 @@ pg_tde_write_one_map_entry(int fd, const TDEMapEntry *map_entry, off_t *offset, 
 	}
 
 	*offset += bytes_written;
-}
-#endif
-
-#ifndef FRONTEND
-/*
- * The caller must hold an exclusive lock on the key file to avoid
- * concurrent in place updates leading to data conflicts.
- */
-void
-pg_tde_replace_key_map_entry(const RelFileLocator *rlocator, const InternalKey *rel_key_data, const TDEPrincipalKey *principal_key)
-{
-	char		db_map_path[MAXPGPATH];
-	int			map_fd;
-	off_t		curr_pos = 0;
-	off_t		write_pos = 0;
-	TDEMapEntry write_map_entry;
-	TDESignedPrincipalKeyInfo signed_key_Info;
-
-	Assert(rlocator);
-
-	pg_tde_set_db_file_path(rlocator->dbOid, db_map_path);
-
-	pg_tde_sign_principal_key_info(&signed_key_Info, principal_key);
-
-	/* Open and validate file for basic correctness. */
-	map_fd = pg_tde_open_file_write(db_map_path, &signed_key_Info, false, &curr_pos);
-
-	/*
-	 * Read until we find an empty slot. Otherwise, read until end. This seems
-	 * to be less frequent than vacuum. So let's keep this function here
-	 * rather than overloading the vacuum process.
-	 */
-	while (1)
-	{
-		TDEMapEntry read_map_entry;
-		off_t		prev_pos = curr_pos;
-
-		if (!pg_tde_read_one_map_entry(map_fd, &read_map_entry, &curr_pos))
-		{
-			if (write_pos == 0)
-				write_pos = prev_pos;
-			break;
-		}
-
-		if (read_map_entry.spcOid == rlocator->spcOid && read_map_entry.relNumber == rlocator->relNumber)
-		{
-			write_pos = prev_pos;
-			break;
-		}
-
-		if (write_pos == 0 && read_map_entry.type == MAP_ENTRY_TYPE_EMPTY)
-			write_pos = prev_pos;
-	}
-
-	/* Initialize map entry and encrypt key */
-	pg_tde_initialize_map_entry(&write_map_entry, principal_key, rlocator, rel_key_data);
-
-	/* Write the given entry at curr_pos; i.e. the free entry. */
-	pg_tde_write_one_map_entry(map_fd, &write_map_entry, &write_pos, db_map_path);
-
-	CloseTransientFile(map_fd);
 }
 #endif
 
