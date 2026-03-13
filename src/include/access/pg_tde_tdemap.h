@@ -6,7 +6,7 @@
 #include "access/pg_tde_keys_common.h"
 #include "encryption/enc_tde.h"
 
-extern void pg_tde_save_smgr_key(RelFileLocator rel, const InternalKey *key);
+extern void pg_tde_save_smgr_key(RelFileLocator rel, const InternalKey *key, bool replace_existing);
 extern bool pg_tde_has_smgr_key(RelFileLocator rel);
 extern InternalKey *pg_tde_get_smgr_key(RelFileLocator rel);
 extern void pg_tde_free_key_map_entry(RelFileLocator rel);

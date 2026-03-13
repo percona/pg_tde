@@ -133,3 +133,22 @@ TABLE test_enc;
  8
 (8 rows)
 
+CREATE UNLOGGED SEQUENCE seq_unlogged OWNED BY test_enc.x;
+SELECT pg_tde_is_encrypted('seq_unlogged');
+ pg_tde_is_encrypted 
+---------------------
+ t
+(1 row)
+
+SELECT nextval('seq_unlogged');
+ nextval 
+---------
+       1
+(1 row)
+
+SELECT nextval('seq_unlogged');
+ nextval 
+---------
+       1
+(1 row)
+
