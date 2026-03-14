@@ -19,26 +19,12 @@ if ($^O ne 'linux')
 	exit 0;
 }
 
-
-command_like(
-	[ 'pg_tde_archive_decrypt', '--help' ],
-	qr/wraps an archive command to give the command unencrypted WAL/,
-	'pg_tde_archive_decrypt displays help');
-
-command_like(
-	[ 'pg_tde_restore_encrypt', '--help' ],
-	qr/wraps a restore command to encrypt its returned WAL/,
-	'pg_tde_restore_encrypt displays help');
-
-command_like(
-	[ 'pg_tde_archive_decrypt', '--version' ],
-	qr/pg_tde_archive_decrypt \(PostgreSQL\) /,
-	'pg_tde_archive_decrypt displays version');
-
-command_like(
-	[ 'pg_tde_restore_encrypt', '--version' ],
-	qr/pg_tde_restore_encrypt \(PostgreSQL\) /,
-	'pg_tde_restore_encrypt displays version');
+program_help_ok('pg_tde_archive_decrypt');
+program_help_ok('pg_tde_restore_encrypt');
+program_version_ok('pg_tde_archive_decrypt');
+program_version_ok('pg_tde_restore_encrypt');
+program_options_handling_ok('pg_tde_archive_decrypt');
+program_options_handling_ok('pg_tde_restore_encrypt');
 
 command_fails_like(
 	[ 'pg_tde_archive_decrypt', 'a', 'b' ],

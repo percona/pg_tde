@@ -9,10 +9,8 @@ use JSON;
 command_like([ 'pg_tde_change_key_provider', '--help' ],
 	qr/Usage:/, 'displays help');
 
-command_like(
-	[ 'pg_tde_change_key_provider', '--version' ],
-	qr/pg_tde_change_key_provider \(PostgreSQL\) /,
-	'displays version');
+program_version_ok('pg_tde_change_key_provider');
+program_options_handling_ok('pg_tde_change_key_provider');
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
