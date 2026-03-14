@@ -1,8 +1,5 @@
 #include "postgres_fe.h"
 
-#include <stdarg.h>
-#include <stdio.h>
-
 #include "common/controldata_utils.h"
 #include "common/logging.h"
 #include "pg_getopt.h"
