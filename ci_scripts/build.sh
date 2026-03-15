@@ -34,6 +34,8 @@ case "$1" in
         ;;
 esac
 
+"$PG_CONFIG"
+
 export CFLAGS
 meson setup --buildtype="$BUILD_TYPE" -Dpg_config="$PG_CONFIG" -Dwerror=true build
 cd build
