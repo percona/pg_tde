@@ -1,8 +1,10 @@
 project('pg_tde',
   ['c'],
   version: '2.1.2',
-  meson_version: '>=0.53',
+  meson_version: '>=0.56',
 )
+
+fs = import('fs')
 
 pg_config = find_program(get_option('pg_config'))
 
@@ -295,6 +297,43 @@ regress_tests = [
   'version',
 ]
 
+tap_tests = [
+  't/2pc_replication.pl',
+  't/basic.pl',
+  't/change_key_provider.pl',
+  't/crash_recovery.pl',
+  't/key_rotate_tablespace.pl',
+  't/keys_update.pl',
+  't/key_validation.pl',
+  't/multiple_extensions.pl',
+  't/pg_basebackup.pl',
+  't/pg_resetwal_basic.pl',
+  't/pg_resetwal_corrupted.pl',
+  't/pg_rewind_basic.pl',
+  't/pg_rewind_databases.pl',
+  't/pg_rewind_extrafiles.pl',
+  't/pg_rewind_growing_files.pl',
+  't/pg_rewind_keep_recycled_wals.pl',
+  't/pg_rewind_min_recovery_point.pl',
+  't/pg_rewind_options.pl',
+  't/pg_rewind_pg_xlog_symlink.pl',
+  't/pg_rewind_same_timeline.pl',
+  't/pg_tde_change_key_provider.pl',
+  't/pg_tde_upgrade.pl',
+  't/pg_waldump_basic.pl',
+  't/pg_waldump_fullpage.pl',
+  't/replication.pl',
+  't/reuse_relfilenode_in_cache.pl',
+  't/rotate_key.pl',
+  't/stream_rep.pl',
+  't/tde_heap_aes_256.pl',
+  't/tde_heap.pl',
+  't/unlogged_tables.pl',
+  't/wal_archiving.pl',
+  't/wal_encrypt.pl',
+  't/wal_key_tli.pl',
+]
+
 pg_regress = find_program('pg_regress', dirs: [pkglibdir / 'pgxs/src/test/regress'])
 
 test('regress',
@@ -305,3 +344,27 @@ test('regress',
     '--inputdir', meson.current_source_dir(),
   ] + regress_tests,
 )
+
+testwrap = files('testwrap')
+perl = find_program('perl')
+pg_regress = find_program('pg_regress', dirs: [pkglibdir / 'pgxs/src/test/regress'])
+
+env = environment()
+env.prepend('PATH', bindir)
+env.set('PG_REGRESS', pg_regress.full_path())
+
+foreach test : tap_tests
+  test(test,
+    testwrap,
+    protocol: 'tap',
+    env: env,
+    args: [
+      fs.stem(fs.name(test)),
+      meson.project_source_root(),
+      perl.full_path(),
+      '-I', meson.project_source_root() / 't',
+      '-I', pkglibdir / 'pgxs/src/test/perl',
+      files(test),
+    ],
+  )
+endforeach
