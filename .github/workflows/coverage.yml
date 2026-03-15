@@ -69,11 +69,11 @@ jobs:
         with:
           name: coverage-testlog
           path: |
-            src/regress_install
-            src/regress_install.log
-            src/regression.diffs
-            src/regression.out
-            src/results
+            src/build/meson-logs/testlog.txt
+            src/build/regress_install
+            src/build/regress_install.log
+            src/build/regression.diffs
+            src/build/results
+            src/build/testrun
             src/t/results
-            src/tmp_check
           retention-days: 3
