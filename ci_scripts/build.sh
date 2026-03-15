@@ -9,6 +9,7 @@ CFLAGS=
 cd "$SCRIPT_DIR/.."
 
 BUILD_TYPE=
+ARGS=
 
 case "$1" in
     debug)
@@ -21,6 +22,11 @@ case "$1" in
         BUILD_TYPE=$1
         ;;
 
+    coverage)
+        BUILD_TYPE=debug
+        ARGS+=-Db_coverage=true
+        ;;
+
     sanitize)
         echo "Building with sanitize option"
         BUILD_TYPE=debug
@@ -29,7 +35,7 @@ case "$1" in
 
     *)
         echo "Unknown build type: $1"
-        echo "Please use one of the following: debug, debugoptimized, sanitize"
+        echo "Please use one of the following: debug, debugoptimized, coverage, sanitize"
         exit 1
         ;;
 esac
@@ -37,6 +43,6 @@ esac
 "$PG_CONFIG"
 
 export CFLAGS
-meson setup --buildtype="$BUILD_TYPE" -Dpg_config="$PG_CONFIG" -Dwerror=true build
+meson setup --buildtype="$BUILD_TYPE" -Dpg_config="$PG_CONFIG" -Dwerror=true $ARGS build
 cd build
 meson install

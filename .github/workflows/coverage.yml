@@ -44,10 +44,10 @@ jobs:
         run: src/ci_scripts/ubuntu-deps.sh
 
       - name: Build postgres
-        run: src/ci_scripts/build-and-install-psp.sh coverage
+        run: src/ci_scripts/build-and-install-psp.sh debug
 
       - name: Build pg_tde
-        run: src/ci_scripts/build.sh debug
+        run: src/ci_scripts/build.sh coverage
 
       - name: Setup kmip and vault
         run: src/ci_scripts/setup-keyring-servers.sh
@@ -55,16 +55,23 @@ jobs:
       - name: Run pg_tde tests
         run: src/ci_scripts/test.sh
 
+      - name: Process coverage
+        run: |
+          geninfo -o coverage.info --rc lcov_branch_coverage=1 -i .
+          geninfo -o coverage.info --rc lcov_branch_coverage=1 .
+        working-directory: src/build
+
       - name: Upload coverage data to codecov.io
         uses: codecov/codecov-action@v5
         with:
           verbose: true
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+          directory: build
           working-directory: src
 
       - name: Report on test fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: ${{ failure() }}
         with:
           name: coverage-testlog

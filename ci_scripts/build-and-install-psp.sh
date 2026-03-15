@@ -24,12 +24,6 @@ case "$1" in
         INSTALL_INJECTION_POINTS=1
         ;;
 
-    coverage)
-        echo "Building with coverage option"
-        ARGS+=" --enable-cassert --enable-injection-points --enable-coverage"
-        INSTALL_INJECTION_POINTS=1
-        ;;
-
     sanitize)
         echo "Building with sanitize option"
         export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-inline-functions"
