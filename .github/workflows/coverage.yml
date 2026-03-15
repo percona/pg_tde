@@ -47,7 +47,7 @@ jobs:
         run: src/ci_scripts/build-and-install-psp.sh coverage
 
       - name: Build pg_tde
-        run: src/ci_scripts/build.sh debug
+        run: src/ci_scripts/build.sh coverage
 
       - name: Setup kmip and vault
         run: src/ci_scripts/setup-keyring-servers.sh
@@ -57,9 +57,9 @@ jobs:
 
       - name: Process coverage
         run: |
-          geninfo -o coverage.info --no-external --rc lcov_branch_coverage=1 -i .
-          geninfo -o coverage.info --no-external --rc lcov_branch_coverage=1 .
-        working-directory: src
+          geninfo -o coverage.info --rc lcov_branch_coverage=1 -i .
+          geninfo -o coverage.info --rc lcov_branch_coverage=1 .
+        working-directory: build
 
       - name: Upload coverage data to codecov.io
         uses: codecov/codecov-action@v5
@@ -68,7 +68,7 @@ jobs:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           disable_search: true
-          files: coverage.info
+          files: ../build/coverage.info
           working-directory: src
 
       - name: Report on test fail
@@ -77,11 +77,11 @@ jobs:
         with:
           name: coverage-testlog
           path: |
-            src/regress_install
-            src/regress_install.log
-            src/regression.diffs
-            src/regression.out
-            src/results
+            build/meson-logs/testlog.txt
+            build/regress_install
+            build/regress_install.log
+            build/regression.diffs
+            build/results
+            build/testrun
             src/t/results
-            src/tmp_check
           retention-days: 3

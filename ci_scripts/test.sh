@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 
-cd "$SCRIPT_DIR/.."
+cd "$SCRIPT_DIR/../../build"
 
 OPTS='--set shared_preload_libraries=pg_tde'
 
@@ -16,6 +16,6 @@ fi
 
 ../pginst/bin/pg_ctl -D regress_install -l regress_install.log start
 
-make PG_CONFIG=../pginst/bin/pg_config installcheck
+meson test --timeout-multiplier=0 --print-errorlogs
 
 ../pginst/bin/pg_ctl -D regress_install stop

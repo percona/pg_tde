@@ -253,7 +253,7 @@ typedef struct astreamer_pg_tde_injector
 	astreamer	base;
 	bool		skip_file;
 	bool		encryped_wal;
-}			astreamer_pg_tde_injector;
+} astreamer_pg_tde_injector;
 
 static void astreamer_pg_tde_injector_content(astreamer *streamer,
 											  astreamer_member *member,

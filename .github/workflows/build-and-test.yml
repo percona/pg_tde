@@ -60,7 +60,7 @@ jobs:
         run: src/ci_scripts/build.sh ${{ inputs.build_type }}
 
       - name: Add build and install to artifact tar file
-        run: tar -czf artifacts.tar src postgres pginst
+        run: tar -czf artifacts.tar src build postgres pginst
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -113,13 +113,13 @@ jobs:
         with:
           name: log-test-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
-            src/regress_install
-            src/regress_install.log
-            src/regression.diffs
-            src/regression.out
-            src/results
+            build/meson-logs/testlog.txt
+            build/regress_install
+            build/regress_install.log
+            build/regression.diffs
+            build/results
+            build/testrun
             src/t/results
-            src/tmp_check
           retention-days: 3
 
   test-psp-with-tde:
