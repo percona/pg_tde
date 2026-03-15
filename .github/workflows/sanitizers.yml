@@ -66,11 +66,11 @@ jobs:
           name: sanitizers-testlog
           path: |
             sanitize.log.*
-            src/regress_install
-            src/regress_install.log
-            src/regression.diffs
-            src/regression.out
-            src/results
+            build/meson-logs/testlog.txt
+            build/regress_install
+            build/regress_install.log
+            build/regression.diffs
+            build/results
+            build/testrun
             src/t/results
-            src/tmp_check
           retention-days: 3

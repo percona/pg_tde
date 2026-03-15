@@ -37,7 +37,7 @@ case "$1" in
 
     *)
         echo "Unknown build type: $1"
-        echo "Please use one of the following: debug, debugoptimized, sanitize"
+        echo "Please use one of the following: debug, debugoptimized, coverage, sanitize"
         exit 1
         ;;
 esac
