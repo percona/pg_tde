@@ -5,6 +5,30 @@ Limitations of `pg_tde` {{release}}:
 * PostgreSQL’s internal system tables, which include statistics and metadata, are not encrypted.
 * Temporary files created when queries exceed `work_mem` are not encrypted. These files may persist during long-running queries or after a server crash which can expose sensitive data in plaintext on disk.
 
+## `pg_rewind` and `pg_tde_rewind`
+
+!!! danger "Risk of corruption when using `pg_rewind` or `pg_tde_rewind` with TDE"
+    When TDE is enabled, using `pg_rewind` or `pg_tde_rewind` between diverged PostgreSQL nodes may corrupt encrypted relations.
+
+    This happens because `pg_rewind` and `pg_tde_rewind` copy relation files between the data directories of two clusters. In some cases, only parts of files are replaced, leaving data encrypted with the internal encryption keys of the source cluster. This data cannot be decrypted by the destination cluster.
+    
+    For more information about how `pg_tde` manages internal encryption keys, see [How pg_tde works](how-does-tde-work.md) and [Encryption of data files](../faq.md#encryption-of-data-files).
+
+    This behavior is inherited from `pg_rewind` and is currently a known issue in `pg_tde_rewind`.
+
+    As a result, `pg_tde` may be unable to decrypt the copied data, causing queries to fail with errors such as:
+
+    ```bash
+    ERROR: 16 invalid pages among blocks 15..30 of relation "base/16384/16438"
+    ```
+
+## `pg_upgrade` and encrypted relations
+
+!!! danger "`pg_upgrade` is not supported with `pg_tde`"
+    PostgreSQL clusters that use `pg_tde` cannot currently be upgraded using `pg_upgrade`.
+
+    The `pg_upgrade` tool does not properly handle the internal encryption keys used by `pg_tde`, which prevents the upgraded cluster from decrypting encrypted relations.
+
 ## Currently unsupported WAL tools
 
 The following tools are currently unsupported with `pg_tde` WAL encryption:
@@ -15,8 +39,6 @@ The following tools are currently unsupported with `pg_tde` WAL encryption:
 * `pg_verifybackup` by default fails with checksum or WAL key size mismatch errors.
   As a workaround, use `-s` (skip checksum) and `-n` (`--no-parse-wal`) to verify backups.
 * The asynchronous archiving feature of pgBackRest.
-
-The following tools and extensions in Percona Distribution for PostgreSQL have been tested and verified to work with `pg_tde` WAL encryption:
 
 ## Supported WAL tools
 
