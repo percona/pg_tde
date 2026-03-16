@@ -63,6 +63,5 @@ jobs:
             src/regression.diffs
             src/regression.out
             src/results
-            src/t/results
             src/tmp_check
           retention-days: 3
