@@ -82,5 +82,4 @@ jobs:
             src/build/regression.diffs
             src/build/results
             src/build/testrun
-            src/t/results
           retention-days: 3

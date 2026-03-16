@@ -49,7 +49,6 @@ __pycache__
 # Generated subdirectories
 /log/
 /results/
-/t/results/
 /tmp_check/
 /regress_install/
 /regress_install.log
