@@ -153,6 +153,9 @@ AesGcmEncrypt(const unsigned char *key, int key_len, const unsigned char *iv, in
 	cipher = key_len == 32 ? cipher_gcm_256 : cipher_gcm_128;
 
 	Assert(cipher != NULL);
+	Assert(aad != NULL);
+	Assert(in != NULL);
+	Assert(out != NULL);
 	Assert(in_len % EVP_CIPHER_block_size(cipher) == 0);
 
 	ctx = EVP_CIPHER_CTX_new();
@@ -210,6 +213,9 @@ AesGcmDecrypt(const unsigned char *key, int key_len, const unsigned char *iv, in
 	Assert(key_len == 16 || key_len == 32);
 	cipher = key_len == 32 ? cipher_gcm_256 : cipher_gcm_128;
 
+	Assert(aad != NULL);
+	Assert(in != NULL);
+	Assert(out != NULL);
 	Assert(in_len % EVP_CIPHER_block_size(cipher) == 0);
 
 	ctx = EVP_CIPHER_CTX_new();
