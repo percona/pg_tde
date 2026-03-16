@@ -432,8 +432,8 @@ pg_tde_sign_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, const
 	AesGcmEncrypt(principal_key->keyData, principal_key->keyLength,
 				  signed_key_info->sign_iv, MAP_ENTRY_IV_SIZE,
 				  (unsigned char *) &signed_key_info->data, sizeof(signed_key_info->data),
-				  NULL, 0,
-				  NULL,
+				  (unsigned char *) "", 0,
+				  (unsigned char *) "",
 				  signed_key_info->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }
 
@@ -562,8 +562,8 @@ pg_tde_verify_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, con
 	return AesGcmDecrypt(principal_key_data->data, principal_key_data->len,
 						 signed_key_info->sign_iv, MAP_ENTRY_IV_SIZE,
 						 (unsigned char *) &signed_key_info->data, sizeof(signed_key_info->data),
-						 NULL, 0,
-						 NULL,
+						 (unsigned char *) "", 0,
+						 (unsigned char *) "",
 						 signed_key_info->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }
 
