@@ -3,6 +3,7 @@ package PGTDE;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 
+use Cwd qw(abs_path);
 use File::Basename;
 use File::Compare;
 use Test::More;
@@ -18,7 +19,12 @@ our $out_filename_with_path;
 our $debug_out_filename_with_path;
 
 my $expected_folder = "t/expected";
-my $results_folder = "t/results";
+my $results_folder;
+
+INIT
+{
+	$results_folder = "$PostgreSQL::Test::Utils::tmp_check/results";
+}
 
 sub psql
 {
@@ -95,8 +101,9 @@ sub setup_files_dir
 
 	my ($test_name) = $test_filename =~ /([^.]*)/;
 
-	$expected_filename_with_path = "${expected_folder}/${test_name}.out";
-	$out_filename_with_path = "${results_folder}/${test_name}.out";
+	$expected_filename_with_path =
+	  abs_path("${expected_folder}/${test_name}.out");
+	$out_filename_with_path = abs_path("${results_folder}/${test_name}.out");
 	$debug_out_filename_with_path =
 	  "${results_folder}/${test_name}.out.debug";
 

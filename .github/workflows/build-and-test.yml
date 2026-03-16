@@ -119,7 +119,6 @@ jobs:
             build/regression.diffs
             build/results
             build/testrun
-            src/t/results
           retention-days: 3
 
   test-psp-with-tde:
