@@ -6,8 +6,6 @@ SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 
 cd "$SCRIPT_DIR/.."
 
-PG_VERSION=$(../pginst/bin/pg_config --version | sed -n 's/PostgreSQL \([0-9]*\).*/\1/p')
-
 OPTS='--set shared_preload_libraries=pg_tde'
 
 if [ "$1" = sanitize ]; then

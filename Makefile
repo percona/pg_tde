@@ -107,7 +107,6 @@ SCRIPTS_built = \
 	$(FETOOLS)/pg_tde_rewind \
 	$(FETOOLS)/pg_tde_waldump
 
-EXTRA_INSTALL = contrib/pg_buffercache contrib/test_decoding
 EXTRA_CLEAN = \
 	src/bin/pg_tde_archive_decrypt.o \
 	src/bin/pg_tde_change_key_provider.o \

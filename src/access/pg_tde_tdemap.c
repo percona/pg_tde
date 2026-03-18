@@ -340,7 +340,7 @@ pg_tde_delete_principal_key(Oid dbOid)
 	char		path[MAXPGPATH];
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
-	Assert(pg_tde_count_encryption_keys(dbOid) == 0);
+	Assert(pg_tde_count_encryption_keys(dbOid, InvalidOid) == 0);
 
 	pg_tde_set_db_file_path(dbOid, path);
 
@@ -530,7 +530,7 @@ pg_tde_find_map_entry(const RelFileLocator *rlocator, char *db_map_path, TDEMapE
  * Works even if the database has no key file.
  */
 int
-pg_tde_count_encryption_keys(Oid dbOid)
+pg_tde_count_encryption_keys(Oid dbOid, Oid spcOid)
 {
 	char		db_map_path[MAXPGPATH];
 	File		map_fd;
@@ -548,7 +548,8 @@ pg_tde_count_encryption_keys(Oid dbOid)
 
 	while (pg_tde_read_one_map_entry(map_fd, &map_entry, &curr_pos))
 	{
-		if (map_entry.type == MAP_ENTRY_TYPE_KEY)
+		if (map_entry.type == MAP_ENTRY_TYPE_KEY &&
+			(spcOid == InvalidOid || map_entry.spcOid == spcOid))
 			count++;
 	}
 

@@ -22,8 +22,39 @@ ALTER TABLE test SET TABLESPACE pg_default;
 REINDEX (TABLESPACE test_tblspace, CONCURRENTLY) TABLE test;
 INSERT INTO test VALUES (110, 2);
 
+-- Should refuse to move database if it contains encrypted objects
+
+CREATE TABLESPACE test_tblspace2 LOCATION '';
+
+SELECT current_database() AS regress_database
+\gset
+
 SELECT * FROM test WHERE num1=110;
 
+CREATE DATABASE move_test;
+
+\c move_test
+
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_add_database_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');
+SELECT pg_tde_create_key_using_database_key_provider('test-db-key2','file-vault');
+SELECT pg_tde_set_key_using_database_key_provider('test-db-key2','file-vault');
+CREATE TABLE test2 (x int) USING tde_heap TABLESPACE test_tblspace2;
+
+\c :regress_database
+
+ALTER DATABASE move_test SET TABLESPACE test_tblspace;
+
+\c move_test
+
+CREATE TABLE test3 (x int) USING tde_heap;
+
+\c :regress_database
+
+ALTER DATABASE move_test SET TABLESPACE pg_default;
+
+DROP DATABASE move_test;
 DROP TABLE test;
 DROP TABLESPACE test_tblspace;
+DROP TABLESPACE test_tblspace2;
 DROP EXTENSION pg_tde;

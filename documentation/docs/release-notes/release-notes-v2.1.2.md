@@ -14,6 +14,24 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ## Known issues
 
+* `pg_rewind` and `pg_tde_rewind`
+
+    Using `pg_rewind` or `pg_tde_rewind` between diverged nodes in clusters that use `pg_tde` may lead to corrupted tables or indexes due to internal encryption key differences between clusters.
+
+    Queries may fail with:
+
+    ```bash
+    ERROR: invalid page in block 0 of relation "base/..."
+    ```
+
+    This behavior is a known issue.
+
+    For more information, see [pg_tde limitations](../index/tde-limitations.md).
+
+* `pg_upgrade` is currently unsupported when `pg_tde` is enabled
+
+    PostgreSQL clusters that use `pg_tde` cannot currently be upgraded using `pg_upgrade`.
+
 * Do not create, change, or rotate global key providers (or their keys) while `pg_tde_basebackup` is running. Doing so may cause standbys or clusters initialized from the backup to fail during WAL replay and may result in corruption of encrypted data (tables, indexes, and other relations).
 
 * Using `pg_tde_basebackup` with `--wal-method=fetch` produces warnings.

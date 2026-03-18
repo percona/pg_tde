@@ -21,12 +21,6 @@ if ($pg_version !~ /PostgreSQL 18/)
 	plan skip_all => 'PostgreSQL 18 required';
 }
 
-my $gzip = `which gzip`;
-if (!defined $gzip || $gzip eq '')
-{
-	plan skip_all => 'gzip not available';
-}
-
 PGTDE::setup_files_dir(basename($0));
 
 my $node = PostgreSQL::Test::Cluster->new('main');
@@ -37,10 +31,9 @@ my $data_dir = $node->data_dir;
 mkdir $data_dir
   or die "Can't create folder $data_dir: $!\n";
 
-system_or_bail('gzip', '-d', '-f', '-k', 't/keys_update_datadir.tar.gz');
 system_or_bail(
 	'tar',
-	'xf' => 't/keys_update_datadir.tar',
+	'xf' => 't/keys_update_datadir.tar.gz',
 	'-C' => $data_dir);
 
 chmod(0700, "$data_dir")

@@ -45,7 +45,7 @@ typedef struct
 static FullTransactionId ddlEventStackTid = {0};
 static List *ddlEventStack = NIL;
 
-static Oid	get_db_oid(const char *name);
+static bool get_db_info(const char *name, Oid *dbIdP, Oid *dbTablespace);
 static Oid	get_tde_table_am_oid(void);
 
 PG_FUNCTION_INFO_V1(pg_tde_ddl_command_start_capture);
@@ -636,21 +636,61 @@ pg_tde_proccess_utility(PlannedStmt *pstmt,
 
 				if (pg_strcasecmp(strategy, "file_copy") == 0)
 				{
-					Oid			dbOid = get_db_oid(dbtemplate);
+					Oid			dbOid;
 
-					if (dbOid != InvalidOid)
+					if (get_db_info(dbtemplate, &dbOid, NULL))
 					{
 						int			count;
 
 						LWLockAcquire(tde_lwlock_enc_keys(), LW_SHARED);
-						count = pg_tde_count_encryption_keys(dbOid);
+						count = pg_tde_count_encryption_keys(dbOid, InvalidOid);
 						LWLockRelease(tde_lwlock_enc_keys());
 
 						if (count > 0)
 							ereport(ERROR,
 									errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("The FILE_COPY strategy cannot be used when there are encrypted objects in the template database: %d objects found", count),
+									errmsg_plural("The FILE_COPY strategy cannot be used when there are encrypted objects in the template database: %d object found",
+												  "The FILE_COPY strategy cannot be used when there are encrypted objects in the template database: %d objects found",
+												  count, count),
 									errhint("Use the WAL_LOG strategy instead."));
+					}
+				}
+			}
+			break;
+		case T_AlterDatabaseStmt:
+			{
+				AlterDatabaseStmt *stmt = castNode(AlterDatabaseStmt, parsetree);
+				ListCell   *option;
+				char	   *tablespace = NULL;
+
+				foreach(option, stmt->options)
+				{
+					DefElem    *defel = lfirst_node(DefElem, option);
+
+					if (strcmp(defel->defname, "tablespace") == 0)
+						tablespace = defGetString(defel);
+				}
+
+				if (tablespace)
+				{
+					Oid			dbOid;
+					Oid			dbTablespace;
+
+					if (get_db_info(stmt->dbname, &dbOid, &dbTablespace))
+					{
+						int			count;
+
+						LWLockAcquire(tde_lwlock_enc_keys(), LW_SHARED);
+						count = pg_tde_count_encryption_keys(dbOid, dbTablespace);
+						LWLockRelease(tde_lwlock_enc_keys());
+
+						if (count > 0)
+							ereport(ERROR,
+									errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg_plural("ALTER DATABSE ... SET TABLESPACE cannot be used when there are encrypted objects in the default tablsapce of the database: %d object found",
+												  "ALTER DATABSE ... SET TABLESPACE cannot be used when there are encrypted objects in the default tablsapce of the database: %d objects found",
+												  count, count),
+									errhint("Move every object separately and then change the tablespace instead."));
 					}
 				}
 			}
@@ -679,10 +719,10 @@ TdeEventCaptureInit(void)
 /*
  * A stripped down version of get_db_info() from src/backend/commands/dbcommands.c
  */
-static Oid
-get_db_oid(const char *name)
+static bool
+get_db_info(const char *name, Oid *dbIdP, Oid *dbTablespace)
 {
-	Oid			resDbOid = InvalidOid;
+	bool		result = false;
 	Relation	relation;
 
 	Assert(name);
@@ -743,8 +783,15 @@ get_db_oid(const char *name)
 
 			if (strcmp(name, NameStr(dbform->datname)) == 0)
 			{
-				resDbOid = dbOid;
+				/* oid of the database */
+				if (dbIdP)
+					*dbIdP = dbOid;
+				/* default tablespace for this database */
+				if (dbTablespace)
+					*dbTablespace = dbform->dattablespace;
+
 				ReleaseSysCache(tuple);
+				result = true;
 				break;
 			}
 			/* can only get here if it was just renamed */
@@ -756,5 +803,5 @@ get_db_oid(const char *name)
 
 	table_close(relation, AccessShareLock);
 
-	return resDbOid;
+	return result;
 }

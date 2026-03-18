@@ -7,7 +7,10 @@ coverage:
         target: 90%
         threshold: 1%
         base: auto
-        paths: "!fetools/"
+        paths:
+          - "!fetools/"
+ignore:
+  - src/libkmip/
 comment:
   layout: "header, diff, components"
 component_management:
