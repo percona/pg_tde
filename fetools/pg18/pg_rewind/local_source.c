@@ -85,6 +85,12 @@ local_queue_fetch_file(rewind_source *source, const char *path, size_t len)
 	char		srcpath[MAXPGPATH];
 	int			srcfd;
 	size_t		written_len;
+	InternalKey *target_key = NULL;
+	InternalKey *source_key = NULL;
+	RelFileLocator rlocator;
+	int 		segNo;
+	char		target_tde_path[MAXPGPATH];
+	char		source_tde_path[MAXPGPATH];
 
 	snprintf(srcpath, sizeof(srcpath), "%s/%s", datadir, path);
 
@@ -97,6 +103,22 @@ local_queue_fetch_file(rewind_source *source, const char *path, size_t len)
 	/* Truncate and open the target file for writing */
 	open_target_file(path, true);
 
+	/*
+	 * Get keys for the relation. A NULL key means the data should not be
+	 * decrypted or encrypted. Unlike fetch_range, files here might be
+	 * non-relation, hence don't have rlocator at all.
+	 */
+	if (path_rlocator(path, &rlocator, &segNo))
+	{
+		snprintf(source_tde_path, sizeof(source_tde_path), "%s/%s", datadir, PG_TDE_DATA_DIR);
+		pg_tde_set_data_dir(source_tde_path);
+		source_key = pg_tde_get_smgr_key(rlocator);
+
+		snprintf(target_tde_path, sizeof(target_tde_path), "%s/%s", datadir_target, PG_TDE_DATA_DIR);
+		pg_tde_set_data_dir(target_tde_path);
+		target_key = pg_tde_get_smgr_key(rlocator);
+	}
+
 	written_len = 0;
 	for (;;)
 	{
@@ -108,6 +130,37 @@ local_queue_fetch_file(rewind_source *source, const char *path, size_t len)
 			pg_fatal("could not read file \"%s\": %m", srcpath);
 		else if (read_len == 0)
 			break;				/* EOF reached */
+
+		/* Re-encrypt blocks with a proper key if neeed. */
+		if (source_key != NULL)
+		{
+			BlockNumber blkno = written_len / BLCKSZ + segNo * RELSEG_SIZE;
+
+			pg_log_debug("__DECRYPT: %s, off: %lu, sz: %lu, forknum: %lu blockNum: %lu | KEY_SZ: %d / OID: %u", path, written_len, read_len, MAIN_FORKNUM, blkno, source_key->key_len, rlocator.relNumber);
+			tde_decrypt_smgr_block(source_key, MAIN_FORKNUM, blkno, (unsigned char *) buf.data, (unsigned char *) buf.data);
+
+			/* 
+			 * If the source key exists but there is no target one, that means 
+			 * VACUUM FULL moved the data to new rlocator. So create a new
+			 * target key and encrypt data with it.
+			 */
+			if (target_key == NULL)
+			{
+				InternalKey key;
+
+				pg_tde_generate_internal_key(&key, source_key->key_len);
+				pg_tde_save_smgr_key(rlocator, &key);
+
+				target_key = &key;
+			}
+		}
+		if (target_key != NULL)
+		{
+			BlockNumber blkno = written_len / BLCKSZ + segNo * RELSEG_SIZE;
+
+			pg_log_debug("++EnCRYPT: %s, off: %lu, sz: %lu, forknum: %lu blockNum: %lu | KEY_SZ: %d / OID: %u", path, written_len, read_len, MAIN_FORKNUM, blkno, source_key->key_len, rlocator.relNumber);
+			tde_encrypt_smgr_block(target_key, MAIN_FORKNUM, blkno, (unsigned char *) buf.data, (unsigned char *) buf.data);
+		}
 
 		write_target_range(buf.data, written_len, read_len);
 		written_len += read_len;
@@ -195,6 +248,17 @@ local_queue_fetch_range(rewind_source *source, const char *path, off_t off,
 
 			pg_log_debug("__DECRYPT: %s, off: %lu, sz: %lu, forknum: %lu blockNum: %lu | KEY_SZ: %d", path, begin, thislen, MAIN_FORKNUM, begin / BLCKSZ, source_key->key_len);
 			tde_decrypt_smgr_block(source_key, MAIN_FORKNUM, blkno, (unsigned char *) buf.data, (unsigned char *) buf.data);
+
+			/* 
+			 * If the source key exists but there is no target one, that means 
+			 * VACUUM FULL moved the data to new rlocator. So create a new
+			 * target key and encrypt data with it.
+			 */
+			if (target_key == NULL)
+			{
+				pg_tde_generate_internal_key(target_key, source_key->key_len);
+				pg_tde_save_smgr_key(rlocator, target_key);
+			}
 		}
 		if (target_key != NULL)
 		{
