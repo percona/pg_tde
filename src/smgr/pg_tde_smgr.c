@@ -28,10 +28,10 @@ typedef enum TDEMgrRelationEncryptionStatus
 	RELATION_NOT_ENCRYPTED = 0,
 
 	/* This is an encrypted relation, and we have the key available. */
-	RELATION_KEY_AVAILABLE = 1,
+	RELATION_ENCRYPTED = 1,
 
-	/* This is an encrypted relation, but we haven't loaded the key yet. */
-	RELATION_KEY_NOT_AVAILABLE = 2,
+	/* Encryption status is unknown */
+	RELATION_ENCRYPTION_UNKNOWN = 2,
 } TDEMgrRelationEncryptionStatus;
 
 /*
@@ -197,6 +197,32 @@ tde_smgr_should_encrypt(const RelFileLocatorBackend *smgr_rlocator, RelFileLocat
 	return false;
 }
 
+/*
+ * Ensure the encryption status of the relation is known, and load the key if
+ * it is encrypted.
+ */
+static void
+tde_smgr_resolve_encryption_status(TDESMgrRelation *tdereln)
+{
+	InternalKey *key;
+
+	if (tdereln->encryption_status != RELATION_ENCRYPTION_UNKNOWN)
+		return;
+
+	key = tde_smgr_get_key(&tdereln->reln.smgr_rlocator);
+
+	if (key)
+	{
+		tdereln->relKey = *key;
+		tdereln->encryption_status = RELATION_ENCRYPTED;
+		pfree(key);
+	}
+	else
+	{
+		tdereln->encryption_status = RELATION_NOT_ENCRYPTED;
+	}
+}
+
 bool
 tde_smgr_rel_is_encrypted(SMgrRelation reln)
 {
@@ -205,8 +231,14 @@ tde_smgr_rel_is_encrypted(SMgrRelation reln)
 	if (reln->smgr_which != OurSMgrId)
 		return false;
 
-	return tdereln->encryption_status == RELATION_KEY_AVAILABLE ||
-		tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE;
+	/*
+	 * We don't want to actually try to load the key here as we want this
+	 * function to work even if the principal key is not available
+	 */
+	if (tdereln->encryption_status == RELATION_ENCRYPTION_UNKNOWN)
+		return tde_smgr_is_encrypted(&reln->smgr_rlocator);
+
+	return tdereln->encryption_status == RELATION_ENCRYPTED;
 }
 
 static void
@@ -214,6 +246,8 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 			 const void **buffers, BlockNumber nblocks, bool skipFsync)
 {
 	TDESMgrRelation *tdereln = (TDESMgrRelation *) reln;
+
+	tde_smgr_resolve_encryption_status(tdereln);
 
 	if (tdereln->encryption_status == RELATION_NOT_ENCRYPTED)
 	{
@@ -223,15 +257,6 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 	{
 		unsigned char *local_blocks = palloc_aligned(BLCKSZ * nblocks, PG_IO_ALIGN_SIZE, 0);
 		void	  **local_buffers = palloc_array(void *, nblocks);
-
-		if (tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE)
-		{
-			InternalKey *int_key = tde_smgr_get_key(&reln->smgr_rlocator);
-
-			tdereln->relKey = *int_key;
-			tdereln->encryption_status = RELATION_KEY_AVAILABLE;
-			pfree(int_key);
-		}
 
 		for (int i = 0; i < nblocks; ++i)
 		{
@@ -286,6 +311,8 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 {
 	TDESMgrRelation *tdereln = (TDESMgrRelation *) reln;
 
+	tde_smgr_resolve_encryption_status(tdereln);
+
 	if (tdereln->encryption_status == RELATION_NOT_ENCRYPTED)
 	{
 		mdextend(reln, forknum, blocknum, buffer, skipFsync);
@@ -294,15 +321,6 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 	{
 		unsigned char *local_blocks = palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, 0);
 		unsigned char iv[16];
-
-		if (tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE)
-		{
-			InternalKey *int_key = tde_smgr_get_key(&reln->smgr_rlocator);
-
-			tdereln->relKey = *int_key;
-			tdereln->encryption_status = RELATION_KEY_AVAILABLE;
-			pfree(int_key);
-		}
 
 		CalcBlockIv(forknum, blocknum, tdereln->relKey.base_iv, iv);
 
@@ -322,16 +340,10 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 	mdreadv(reln, forknum, blocknum, buffers, nblocks);
 
+	tde_smgr_resolve_encryption_status(tdereln);
+
 	if (tdereln->encryption_status == RELATION_NOT_ENCRYPTED)
 		return;
-	else if (tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE)
-	{
-		InternalKey *int_key = tde_smgr_get_key(&reln->smgr_rlocator);
-
-		tdereln->relKey = *int_key;
-		tdereln->encryption_status = RELATION_KEY_AVAILABLE;
-		pfree(int_key);
-	}
 
 	for (int i = 0; i < nblocks; ++i)
 	{
@@ -406,7 +418,7 @@ tde_mdcreate(RelFileLocator relold, SMgrRelation reln, ForkNumber forknum, bool 
 
 	key = tde_smgr_create_key(&reln->smgr_rlocator);
 
-	tdereln->encryption_status = RELATION_KEY_AVAILABLE;
+	tdereln->encryption_status = RELATION_ENCRYPTED;
 	tdereln->relKey = *key;
 	pfree(key);
 }
@@ -425,14 +437,7 @@ tde_mdopen(SMgrRelation reln)
 
 	mdopen(reln);
 
-	if (tde_smgr_is_encrypted(&reln->smgr_rlocator))
-	{
-		tdereln->encryption_status = RELATION_KEY_NOT_AVAILABLE;
-	}
-	else
-	{
-		tdereln->encryption_status = RELATION_NOT_ENCRYPTED;
-	}
+	tdereln->encryption_status = RELATION_ENCRYPTION_UNKNOWN;
 }
 
 #if PG_VERSION_NUM >= 180000
@@ -548,16 +553,9 @@ tde_mdstartreadv(PgAioHandle *ioh,
 	TDESMgrRelation *tdereln = (TDESMgrRelation *) reln;
 
 	/* Load key in issuing backend: later we are in a critical section */
-	if (tdereln->encryption_status == RELATION_KEY_NOT_AVAILABLE)
-	{
-		InternalKey *int_key = tde_smgr_get_key(&reln->smgr_rlocator);
+	tde_smgr_resolve_encryption_status(tdereln);
 
-		tdereln->relKey = *int_key;
-		tdereln->encryption_status = RELATION_KEY_AVAILABLE;
-		pfree(int_key);
-	}
-
-	if (tdereln->encryption_status == RELATION_KEY_AVAILABLE)
+	if (tdereln->encryption_status == RELATION_ENCRYPTED)
 	{
 		/* Register decryption callback and connect key to IO handle */
 		tde_io_handle_keys[pgaio_io_get_id(ioh)] = tdereln->relKey;
@@ -579,12 +577,23 @@ const static PgAioHandleCallbacks aio_tde_readv_cb = {
 
 #endif
 
+static void
+tde_mdclose(SMgrRelation reln, ForkNumber forknum)
+{
+	TDESMgrRelation *tdereln = (TDESMgrRelation *) reln;
+
+	mdclose(reln, forknum);
+
+	if (forknum == MAIN_FORKNUM)
+		tdereln->encryption_status = RELATION_ENCRYPTION_UNKNOWN;
+}
+
 static const struct f_smgr tde_smgr = {
 	.name = "tde",
 	.smgr_init = mdinit,
 	.smgr_shutdown = NULL,
 	.smgr_open = tde_mdopen,
-	.smgr_close = mdclose,
+	.smgr_close = tde_mdclose,
 	.smgr_create = tde_mdcreate,
 	.smgr_exists = mdexists,
 	.smgr_unlink = tde_mdunlink,

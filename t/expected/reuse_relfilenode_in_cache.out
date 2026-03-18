@@ -1,0 +1,37 @@
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_add_global_key_provider_file('global-keyring', '/tmp/reuse_relfilenode_in_cache.per');
+ pg_tde_add_global_key_provider_file 
+-------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_create_key_using_global_key_provider('default-key', 'global-keyring');
+ pg_tde_create_key_using_global_key_provider 
+---------------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_set_default_key_using_global_key_provider('default-key', 'global-keyring');
+ pg_tde_set_default_key_using_global_key_provider 
+--------------------------------------------------
+ 
+(1 row)
+
+CREATE DATABASE conflict_db_template OID = 50000;
+CREATE EXTENSION pg_tde;
+CREATE TABLE large(id serial primary key, dataa text, datab text) USING tde_heap;
+INSERT INTO large(dataa, datab) SELECT g.i::text, 1 FROM generate_series(1, 4000) g(i);
+CREATE DATABASE conflict_db TEMPLATE conflict_db_template OID = 50001;
+CREATE EXTENSION pg_prewarm;
+CREATE TABLE replace_sb(data text);
+INSERT INTO replace_sb(data) SELECT random()::text FROM generate_series(1, 15000);
+UPDATE large SET datab = 1;
+DROP DATABASE conflict_db;
+CREATE DATABASE conflict_db TEMPLATE conflict_db_template OID = 50001;
+UPDATE large SET datab = 2;
+SELECT datab, count(*) FROM large GROUP BY 1 ORDER BY 1 LIMIT 10;
+ datab | count 
+-------+-------
+ 2     |  4000
+(1 row)
+
