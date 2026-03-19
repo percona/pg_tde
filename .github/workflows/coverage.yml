@@ -55,12 +55,20 @@ jobs:
       - name: Run pg_tde tests
         run: src/ci_scripts/test.sh
 
+      - name: Process coverage
+        run: |
+          geninfo -o coverage.info --no-external --rc lcov_branch_coverage=1 -i .
+          geninfo -o coverage.info --no-external --rc lcov_branch_coverage=1 .
+        working-directory: src
+
       - name: Upload coverage data to codecov.io
         uses: codecov/codecov-action@v5
         with:
           verbose: true
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+          disable_search: true
+          files: coverage.info
           working-directory: src
 
       - name: Report on test fail
