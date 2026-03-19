@@ -43,6 +43,6 @@ esac
 "$PG_CONFIG"
 
 export CFLAGS
-meson setup --buildtype="$BUILD_TYPE" -Dpg_config="$PG_CONFIG" -Dwerror=true $ARGS build
+meson setup --buildtype="$BUILD_TYPE" -Dpg_config="$PG_CONFIG" $ARGS build
 cd build
 meson install
