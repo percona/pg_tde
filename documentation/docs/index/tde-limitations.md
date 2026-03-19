@@ -1,5 +1,20 @@
 # Limitations of pg_tde
 
+## Known incompatibilities in Percona Server for PostgreSQL
+
+Some PostgreSQL extensions may not work with Percona Server for PostgreSQL due to internal changes required by `pg_tde`.
+
+These incompatibilities may occur even if `pg_tde` is not installed or enabled.
+
+### Distributed and extension-based systems
+
+!!! warning "Citus and TimescaleDB are not supported"
+    Percona Server for PostgreSQL is not compatible with distributed PostgreSQL extensions such as Citus or time-series extensions such as TimescaleDB.
+
+    This limitation is caused by internal PostgreSQL changes related to `pg_tde` and is not dependent on enabling the extension.
+
+## Limitations when using pg_tde
+
 Limitations of `pg_tde` {{release}}:
 
 * PostgreSQL’s internal system tables, which include statistics and metadata, are not encrypted.
@@ -44,13 +59,6 @@ Limitations of `pg_tde` {{release}}:
     As a safeguard, `pg_tde` blocks the operation if encrypted objects are detected in the default tablespace.
 
     Objects located outside the default tablespace are not affected by this command.
-
-## Distributed and extension-based systems
-
-!!! warning "Citus and TimescaleDB are not supported with `pg_tde`"
-    `pg_tde` is not compatible with distributed PostgreSQL extensions such as Citus or time-series extensions such as TimescaleDB.
-
-    Using `pg_tde` with these extensions is not currently supported.
 
 ## Currently unsupported WAL tools
 
