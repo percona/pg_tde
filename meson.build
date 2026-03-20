@@ -16,9 +16,17 @@ pkglibdir = run_command(pg_config, '--pkglibdir', check: true).stdout().strip()
 sharedir = run_command(pg_config, '--sharedir', check: true).stdout().strip()
 version = run_command(pg_config, '--version', check: true).stdout().strip()
 
-# TODO: Do something about flags?
-
 cc = meson.get_compiler('c')
+
+# To make sure we compile code taken from PostgreSQL the safely we need to use
+# the same fucntional flags.
+#
+# These are copied from common_functional_flags in meson.build in PostgreSQL 18.
+add_project_arguments(cc.get_supported_arguments([
+  '-fno-strict-aliasing',
+  '-fwrapv',
+  '-fexcess-precision=standard',
+]), language: ['c'])
 
 # TODO: Why does it seems like they sometimes are in pkglibdir and other times in libdir?
 pgport = cc.find_library('pgport', dirs: [pkglibdir, libdir], static: true)
