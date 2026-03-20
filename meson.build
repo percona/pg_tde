@@ -1,6 +1,7 @@
 project('pg_tde',
   ['c'],
   version: '2.1.2',
+  meson_version: '>=0.53',
 )
 
 fs = import('fs')
