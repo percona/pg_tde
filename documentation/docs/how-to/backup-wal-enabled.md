@@ -1,10 +1,15 @@
 # Backup with WAL encryption enabled
 
+!!! danger
+    Do not rotate encryption keys while a backup is running. This may result in an inconsistent backup and restore failure. This applies to all backup tools.
+
+    For more details, see [Limitations of pg_tde](../index/tde-limitations.md#limitations-when-using-pg_tde).
+
 To create a backup with WAL encryption enabled:
 
 1. Copy the `pg_tde` directory from the source server’s data directory, for example `/var/lib/postgresql/data/pg_tde/`, including the `wal_keys` and `1664_providers` files, to the backup destination directory where `pg_tde_basebackup` will write the backup.
 
-Also copy any external files referenced by your providers configuration (such as certificate or key files) into the same relative paths under the backup destination, so that they are located and validated by `pg_tde_basebackup -E`.
+    Also copy any external files referenced by your providers configuration (such as certificate or key files) into the same relative paths under the backup destination, so that they are located and validated by `pg_tde_basebackup -E`.
 
 2. Run:
 
@@ -23,19 +28,19 @@ Also copy any external files referenced by your providers configuration (such as
 
 ## Key rotation during backups
 
-!!! warning
-    Do not create, change, or rotate global key providers (or their keys) while `pg_tde_basebackup` is running. Standbys or standalone clusters created from such backups may fail to start during WAL replay and may also lead to the corruption of encrypted data (tables, indexes, and other relations).
+!!! danger
+    Do not rotate encryption keys while a backup is in progress. This applies to all backup tools.
 
-Creating, changing, or rotating global key providers (or their keys) during a base backup can leave the standby in an inconsistent state where it cannot retrieve the correct key history.
+    Backups created during key rotation may fail to start during WAL replay and may lead to corruption of encrypted data (tables, indexes, and other relations).
 
-For example, you may see errors such as:
+    For example, you may see errors such as:
 
-```sql
-FATAL: failed to retrieve principal key "database_keyXXXX" from key provider "providerYYYY"
-CONTEXT: WAL redo at ... ROTATE_PRINCIPAL_KEY ...
-```
+    ```sql
+    FATAL: failed to retrieve principal key "database_keyXXXX" from key provider "providerYYYY"
+    CONTEXT: WAL redo at ... ROTATE_PRINCIPAL_KEY ...
+    ```
 
-To ensure standby recoverability, plan key rotations outside backup windows or take a new full backup after rotation completes.
+    To ensure standby recoverability, plan key rotations outside backup windows or take a new full backup after rotation completes.
 
 ## Restore a backup created with WAL encryption
 
