@@ -9,8 +9,11 @@
  */
 #include "postgres_fe.h"
 
+#include <unistd.h>
+
 #include "catalog/pg_type_d.h"
 #include "common/connect.h"
+#include "common/file_perm.h"
 #include "file_ops.h"
 #include "filemap.h"
 #include "lib/stringinfo.h"
@@ -18,12 +21,19 @@
 #include "port/pg_bswap.h"
 #include "rewind_source.h"
 
+#include "pg_tde.h"
+#include "common/pg_tde_utils.h"
+#include "access/pg_tde_tdemap.h"
+
 /*
  * Files are fetched MAX_CHUNK_SIZE bytes at a time, and with a
  * maximum of MAX_CHUNKS_PER_QUERY chunks in a single query.
  */
 #define MAX_CHUNK_SIZE (1024 * 1024)
 #define MAX_CHUNKS_PER_QUERY 1000
+
+/* Dir for an operational copy of source's tde files (_keys, etc)  */
+static char tmpdir[MAXPGPATH] = "/tmp/pg_tde_rewindXXXXXX";
 
 /* represents a request to fetch a piece of a file from the source */
 typedef struct
@@ -99,6 +109,11 @@ init_libpq_source(PGconn *conn)
 	initStringInfo(&src->paths);
 	initStringInfo(&src->offsets);
 	initStringInfo(&src->lengths);
+
+	if (mkdtemp(tmpdir) == NULL)
+		pg_fatal("could not create temporary directory \"%s\": %m", tmpdir);
+
+	pg_log_debug("created tmp tde dir: %s", tmpdir);
 
 	return &src->common;
 }
@@ -282,6 +297,7 @@ libpq_traverse_files(rewind_source *source, process_file_callback_t callback)
 		bool		isdir;
 		char	   *link_target;
 		file_type_t type;
+		char		*tde_file_path;
 
 		if (PQgetisnull(res, i, 1))
 		{
@@ -314,6 +330,33 @@ libpq_traverse_files(rewind_source *source, process_file_callback_t callback)
 			type = FILE_TYPE_REGULAR;
 
 		callback(path, type, filesize, link_target);
+
+		tde_file_path = strstr(path, PG_TDE_DATA_DIR"/");
+		if (type == FILE_TYPE_REGULAR && tde_file_path != NULL)
+		{
+			int			fd;
+			char		*tde_file_buf;
+			size_t		size;
+			char		target_path[MAXPGPATH];
+
+			snprintf(target_path, MAXPGPATH, "%s/%s", tmpdir, tde_file_path + strlen(PG_TDE_DATA_DIR"/"));
+
+			tde_file_buf = libpq_fetch_file(source, path, &size);
+
+			fd = open(target_path, O_WRONLY | O_CREAT | PG_BINARY, pg_file_create_mode);
+			if (fd < 0)
+				pg_fatal("could not create temporary tde file \"%s\": %m", path);
+
+			if (write(fd, tde_file_buf, size) != size)
+				pg_fatal("could not write temporary tde file \"%s\": %m", path);
+
+			if (close(fd) != 0)
+				pg_fatal("could not close temporary tde file \"%s\": %m", path);
+
+			pg_log_debug("copied temporary source tde file \"%s\"", target_path);
+			
+			free(tde_file_buf);
+		}
 	}
 	PQclear(res);
 }
@@ -592,6 +635,53 @@ process_queued_fetch_requests(libpq_source *src)
 
 			open_target_file(filename, false);
 
+			{
+				RelFileLocator rlocator;
+				unsigned int 		segNo;
+				char		target_tde_path[MAXPGPATH];
+				InternalKey *target_key = NULL;
+				InternalKey *source_key = NULL;
+
+				if (path_rlocator(filename, &rlocator, &segNo))
+				{
+					pg_tde_set_data_dir(tmpdir);
+					source_key = pg_tde_get_smgr_key(rlocator);
+
+					snprintf(target_tde_path, sizeof(target_tde_path), "%s/%s", datadir_target, PG_TDE_DATA_DIR);
+					pg_tde_set_data_dir(target_tde_path);
+					target_key = pg_tde_get_smgr_key(rlocator);
+
+					if (source_key != NULL)
+					{
+						int	nblocks = chunksize / BLCKSZ;
+
+						Assert(chunksize % BLCKSZ == 0);
+
+						for (int i = 0; i < nblocks; i++)
+						{
+							BlockNumber blkno =  chunkoff / BLCKSZ + i + segNo * RELSEG_SIZE;
+							unsigned char *data = (unsigned char *) chunk + BLCKSZ * i;
+
+							tde_decrypt_smgr_block(source_key, MAIN_FORKNUM, blkno, data, data);
+
+							if (target_key == NULL)
+							{
+								InternalKey key;
+
+								pg_tde_generate_internal_key(&key, source_key->key_len);
+								pg_tde_save_smgr_key(rlocator, &key, false);
+
+								target_key = &key;
+							}
+
+							tde_encrypt_smgr_block(target_key, MAIN_FORKNUM, blkno, data, data);
+						}
+
+						pg_log_debug("re-encrypt chunks for \"%s\", offset %ld, size %d", filename, chunkoff, chunksize);
+					}
+				}
+			}
+
 			write_target_range(chunk, chunkoff, chunksize);
 		}
 
@@ -679,6 +769,9 @@ libpq_destroy(rewind_source *source)
 	pfree(src->offsets.data);
 	pfree(src->lengths.data);
 	pfree(src);
+
+	/* TODO: this is not reachable on error */
+	rmtree(tmpdir, true);
 
 	/* NOTE: we don't close the connection here, as it was not opened by us. */
 }

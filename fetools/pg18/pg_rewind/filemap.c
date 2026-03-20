@@ -147,9 +147,6 @@ static const char *const excludeDirContents[] =
 	/* Contents zeroed on startup, see StartupSUBTRANS(). */
 	"pg_subtrans",
 
-	/* pg_tde keys and providers */
-	"pg_tde",
-
 	/* end of list */
 	NULL
 };
@@ -722,8 +719,13 @@ decide_file_action(file_entry_t *entry)
 	if (strstr(path, ".DS_Store") != NULL)
 		return FILE_ACTION_NONE;
 
-	/* Skip pg_tde key data */
-	if (strstr(path, "pg_tde/") != NULL)
+	/* 
+	 * Skip pg_tde key data but WAL-related stuff as WAL being replaced by
+	 * source's. We will handle the rest while re-encrypting data.
+	 */
+	if (strstr(path, "pg_tde/") != NULL &&
+		strstr(path, "pg_tde/wal_keys") == NULL &&
+		strstr(path, "pg_tde/1664_providers") == NULL)
 		return FILE_ACTION_NONE;
 
 	/*
