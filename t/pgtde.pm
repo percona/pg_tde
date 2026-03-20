@@ -18,7 +18,12 @@ our $out_filename_with_path;
 our $debug_out_filename_with_path;
 
 my $expected_folder = "t/expected";
-my $results_folder = "t/results";
+my $results_folder;
+
+INIT
+{
+	$results_folder = "$PostgreSQL::Test::Utils::tmp_check/results";
+}
 
 sub psql
 {

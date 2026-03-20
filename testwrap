@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+TEST=$1
+SRCDIR=$2
+
+mkdir -p testrun
+rm -rf "testrun/$TEST"
+mkdir "testrun/$TEST"
+
+export TESTDATADIR=$(pwd)/testrun/$TEST/data
+export TESTLOGDIR=$(pwd)/testrun/$TEST/log
+
+cd "$SRCDIR"
+
+shift
+shift
+exec $@
