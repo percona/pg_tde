@@ -141,3 +141,67 @@ pg_tde_stream_crypt(const char *iv_prefix,
 		batch_no++;
 	}
 }
+
+/*
+ * The intialization vector of a block is its block number conmverted to a
+ * 128 bit big endian number plus the forknumber XOR the base IV of the
+ * relation file.
+ */
+static void
+CalcBlockIv(ForkNumber forknum, BlockNumber bn, const unsigned char *base_iv, unsigned char *iv)
+{
+	memset(iv, 0, 16);
+
+	/* The init fork is copied to the main fork so we must use the same IV */
+	iv[7] = forknum == INIT_FORKNUM ? MAIN_FORKNUM : forknum;
+
+	iv[12] = bn >> 24;
+	iv[13] = bn >> 16;
+	iv[14] = bn >> 8;
+	iv[15] = bn;
+
+	for (int i = 0; i < 16; i++)
+		iv[i] ^= base_iv[i];
+}
+
+void
+tde_decrypt_smgr_block(InternalKey *relKey, ForkNumber forknum, BlockNumber blocknum, const unsigned char *in, unsigned char *out)
+{
+	unsigned char iv[16];
+	bool		allZero = true;
+
+	/*
+	 * Detect unencrypted all-zero pages written by smgrzeroextend() by
+	 * looking at the first 32 bytes of the page.
+	 *
+	 * Not encrypting all-zero pages is safe because they are only written
+	 * at the end of the file when extending a table on disk so they tend
+	 * to be short lived plus they only leak a slightly more accurate
+	 * table size than one can glean from just the file size.
+	 */
+	for (int i = 0; i < 32; ++i)
+	{
+		if (in[i] != 0)
+		{
+				allZero = false;
+				break;
+		}
+	}
+
+	if (allZero)
+		return;
+
+	CalcBlockIv(forknum, blocknum, relKey->base_iv, iv);
+
+	AesDecrypt(relKey->key, relKey->key_len, iv, in, BLCKSZ, out);
+}
+
+void
+tde_encrypt_smgr_block(InternalKey *relKey, ForkNumber forknum, BlockNumber blocknum, const unsigned char *in, unsigned char *out)
+{
+	unsigned char iv[16];
+
+	CalcBlockIv(forknum, blocknum, relKey->base_iv, iv);
+
+	AesEncrypt(relKey->key, relKey->key_len, iv, in, BLCKSZ, out);
+}

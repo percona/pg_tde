@@ -82,8 +82,6 @@ static int	pg_tde_open_file_basic(const char *tde_filename, int fileFlags, bool 
 static int	pg_tde_open_file_read(const char *tde_filename, bool ignore_missing, off_t *curr_pos);
 static void pg_tde_file_header_read(const char *tde_filename, int fd, TDEFileHeader *fheader, off_t *bytes_read);
 static bool pg_tde_read_one_map_entry(int fd, TDEMapEntry *map_entry, off_t *offset);
-
-#ifndef FRONTEND
 static void pg_tde_write_one_map_entry(int fd, const TDEMapEntry *map_entry, off_t *offset, const char *db_map_path);
 static int	pg_tde_file_header_write(const char *tde_filename, int fd, const TDESignedPrincipalKeyInfo *signed_key_info, off_t *bytes_written);
 static void pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *principal_key, const RelFileLocator *rlocator, const InternalKey *rel_key_data);
@@ -168,6 +166,7 @@ pg_tde_save_smgr_key(RelFileLocator rel,
 	LWLockRelease(lock_pk);
 }
 
+#ifndef FRONTEND
 const char *
 tde_sprint_key(InternalKey *k)
 {
@@ -437,7 +436,6 @@ pg_tde_sign_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, const
 				  signed_key_info->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }
 
-#ifndef FRONTEND
 static void
 pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *principal_key, const RelFileLocator *rlocator, const InternalKey *rel_key_data)
 {
@@ -462,9 +460,7 @@ pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *princ
 				  map_entry->encrypted_key_data,
 				  map_entry->aead_tag, MAP_ENTRY_AEAD_TAG_SIZE);
 }
-#endif
 
-#ifndef FRONTEND
 static void
 pg_tde_write_one_map_entry(int fd, const TDEMapEntry *map_entry, off_t *offset, const char *db_map_path)
 {
@@ -487,7 +483,6 @@ pg_tde_write_one_map_entry(int fd, const TDEMapEntry *map_entry, off_t *offset, 
 
 	*offset += bytes_written;
 }
-#endif
 
 /*
  * Returns true if we find a valid match; e.g. type is not set to
@@ -643,7 +638,6 @@ pg_tde_open_file_read(const char *tde_filename, bool ignore_missing, off_t *curr
 	return fd;
 }
 
-#ifndef FRONTEND
 /*
  * Open for write and Validate File Header:
  * 		header: {Format Version, Principal Key Name}
@@ -677,7 +671,6 @@ pg_tde_open_file_write(const char *tde_filename, const TDESignedPrincipalKeyInfo
 	*curr_pos = bytes_read + bytes_written;
 	return fd;
 }
-#endif
 
 /*
  * Read TDE file header from a TDE file and fill in the fheader data structure.
@@ -701,7 +694,6 @@ pg_tde_file_header_read(const char *tde_filename, int fd, TDEFileHeader *fheader
 	}
 }
 
-#ifndef FRONTEND
 /*
  * Write TDE file header to a TDE file.
  */
@@ -734,7 +726,6 @@ pg_tde_file_header_write(const char *tde_filename, int fd, const TDESignedPrinci
 
 	return fd;
 }
-#endif
 
 /*
  * Returns true if a map entry if found or false if we have reached the end of

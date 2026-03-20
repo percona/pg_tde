@@ -599,6 +599,8 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 			iter = datapagemap_iterate(&entry->target_pages_to_overwrite);
 			while (datapagemap_next(iter, &blkno))
 			{
+				pg_log_debug("___COPY_BLOCKS \"%s\" offset: %lu, len: %lu", entry->path, entry->target_size, entry->source_size - entry->target_size);
+
 				offset = blkno * BLCKSZ;
 				source->queue_fetch_range(source, entry->path, offset, BLCKSZ);
 			}
@@ -623,6 +625,8 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 				source->queue_fetch_range(source, entry->path,
 										  entry->target_size,
 										  entry->source_size - entry->target_size);
+				pg_log_debug("___COPY_TAIL \"%s\" offset: %lu, len: %lu", entry->path, entry->target_size, entry->source_size - entry->target_size);
+
 				break;
 
 			case FILE_ACTION_REMOVE:

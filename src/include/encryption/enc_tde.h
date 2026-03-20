@@ -5,6 +5,9 @@
 #ifndef ENC_TDE_H
 #define ENC_TDE_H
 
+#include "common/relpath.h"
+#include "storage/block.h"
+
 #define TDE_KEY_NAME_LEN 256
 #define KEY_DATA_SIZE_128 16	/* 128 bit encryption */
 #define KEY_DATA_SIZE_256 32	/* 256 bit encryption */
@@ -38,4 +41,6 @@ extern void pg_tde_stream_crypt(const char *iv_prefix,
 								int key_len,
 								void **ctxPtr);
 
+extern void tde_decrypt_smgr_block(InternalKey *relKey, ForkNumber forknum, BlockNumber blocknum, const unsigned char *in, unsigned char *out);
+extern void tde_encrypt_smgr_block(InternalKey *relKey, ForkNumber forknum, BlockNumber blocknum, const unsigned char *in, unsigned char *out);
 #endif							/* ENC_TDE_H */
