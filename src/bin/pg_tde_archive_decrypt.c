@@ -58,8 +58,8 @@ write_decrypted_segment(const char *segpath, const char *segname, const char *tm
 		int			walsegsz = longhdr->xlp_seg_size;
 
 		if (walsegsz != fsize)
-			pg_fatal("mismatch of segment size in WAL file \"%s\" (header: %d bytes, file size: %ld bytes)",
-					 segname, walsegsz, fsize);
+			pg_fatal("mismatch of segment size in WAL file \"%s\" (header: %d bytes, file size: %lld bytes)",
+					 segname, walsegsz, (long long int) fsize);
 
 		if (!IsValidWalSegSize(walsegsz))
 		{
