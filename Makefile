@@ -3,7 +3,6 @@ MODULE_big = pg_tde
 EXTENSION = pg_tde
 DATA = pg_tde--2.0--2.1.sql pg_tde--1.0--2.0.sql pg_tde--1.0.sql
 
-REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_tde/pg_tde.conf
 REGRESS = \
 	access_control \
 	alter_index \
