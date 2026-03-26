@@ -129,7 +129,7 @@ PG_CPPFLAGS = -Isrc/include -Isrc/libkmip/libkmip/include -I$(FETOOLS)/include -
 include $(PGXS)
 
 SHLIB_LINK += -lcurl -lcrypto -lssl
-LDFLAGS_EX += -Lsrc/fe_utils -lcurl -lcrypto -lssl -lz -lzstd -llz4 -lpgfeutils $(libpq_pgport)
+LDFLAGS_EX += -lcurl -lcrypto -lssl -lz -lzstd -llz4 -lpgfeutils $(libpq_pgport)
 
 ifeq ($(MAJORVERSION),18)
 BBOBJS = \
