@@ -1051,7 +1051,8 @@ fetch_next_key_provider(int fd, off_t *curr_pos, KeyringProviderRecord *provider
 		ereport(ERROR,
 				errcode_for_file_access(),
 				errmsg("key provider info file is corrupted: %m"),
-				errdetail("invalid key provider record size %ld expected %lu", bytes_read, sizeof(KeyringProviderRecord)));
+				errdetail("invalid key provider record size %lld expected %lu",
+						  (long long int) bytes_read, sizeof(KeyringProviderRecord)));
 	}
 	return true;
 }
