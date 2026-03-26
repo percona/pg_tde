@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+# Fetches typedefs list for PostgreSQL core and merges it with typedefs
+# defined in this project.
+#
+# https://wiki.postgresql.org/wiki/Running_pgindent_on_non-core_code_or_development_code
 
 set -e
 
@@ -10,6 +15,8 @@ if ! test -f pg_tde.so; then
   exit 1
 fi
 
-../postgres/src/tools/find_typedef . > typedefs.list
-
-make update-typedefs
+(
+  ../postgres/src/tools/find_typedef .
+  wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_17_STABLE"
+  wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_18_STABLE"
+) | sort -u > typedefs.list

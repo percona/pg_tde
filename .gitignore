@@ -42,7 +42,6 @@ __pycache__
 /Release/
 /tmp_install/
 /portlock/
-/*.typedefs
 /regression.diffs
 /regression.out
 
@@ -67,4 +66,3 @@ __pycache__
 
 # Tool files
 /typedefs.list
-/typedefs-full.list
