@@ -55,6 +55,12 @@ incdirs = include_directories(
   pkgincludedir / 'internal',
 )
 
+backend_link_args = []
+
+if host_machine.system() == 'darwin'
+  backend_link_args += ['-bundle_loader', bindir / 'postgres']
+endif
+
 install_data(
   'pg_tde.control',
   'pg_tde--1.0.sql',
@@ -103,6 +109,7 @@ shared_module('pg_tde',
   dependencies: [crypto, ssl, curl],
   name_prefix: '',
   link_with: [kmip],
+  link_args: backend_link_args,
 )
 
 pg_tde_frontend = static_library('pg_tde_frontend',
