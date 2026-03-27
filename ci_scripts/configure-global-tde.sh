@@ -12,8 +12,6 @@ export PATH=$INSTALL_DIR/bin:$PATH
 export PGDATA="${1:-$DATA_DIR}"
 export PGPORT="${2:-5432}"
 
-PG_VERSION=$(pg_config --version | sed -n 's/PostgreSQL \([0-9]*\).*/\1/p')
-
 # Replace tools so that postgres' testsuite will use the modified ones
 cp "$INSTALL_DIR/bin/pg_tde_basebackup" "$INSTALL_DIR/bin/pg_basebackup"
 cp "$INSTALL_DIR/bin/pg_tde_checksums" "$INSTALL_DIR/bin/pg_checksums"
