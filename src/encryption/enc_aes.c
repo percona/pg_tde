@@ -32,26 +32,42 @@
  * 16 byte blocks.
  */
 
-static const EVP_CIPHER *cipher_cbc_128 = NULL;
 static const EVP_CIPHER *cipher_gcm_128 = NULL;
 static const EVP_CIPHER *cipher_ctr_ecb_128 = NULL;
 
-static const EVP_CIPHER *cipher_cbc_256 = NULL;
 static const EVP_CIPHER *cipher_gcm_256 = NULL;
 static const EVP_CIPHER *cipher_ctr_ecb_256 = NULL;
+
+static EVP_CIPHER_CTX *ctx_cbc_128 = NULL;
+static EVP_CIPHER_CTX *ctx_cbc_256 = NULL;
+
+static EVP_CIPHER_CTX *
+AesCbcInitCtx(const EVP_CIPHER *cipher, const char *name)
+{
+	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+
+	if (EVP_CipherInit_ex(ctx, cipher, NULL, NULL, NULL, 1) == 0)
+		ereport(ERROR,
+				errmsg("EVP_CipherInit_ex of %s failed. OpenSSL error: %s",
+					   name, ERR_error_string(ERR_get_error(), NULL)));
+
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+	return ctx;
+}
 
 void
 AesInit(void)
 {
 	OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
 
-	cipher_cbc_128 = EVP_aes_128_cbc();
 	cipher_gcm_128 = EVP_aes_128_gcm();
 	cipher_ctr_ecb_128 = EVP_aes_128_ecb();
+	ctx_cbc_128 = AesCbcInitCtx(EVP_aes_128_cbc(), "AES-128-CBC");
 
-	cipher_cbc_256 = EVP_aes_256_cbc();
 	cipher_gcm_256 = EVP_aes_256_gcm();
 	cipher_ctr_ecb_256 = EVP_aes_256_ecb();
+	ctx_cbc_256 = AesCbcInitCtx(EVP_aes_256_cbc(), "AES-256-CBC");
 }
 
 static void
@@ -63,10 +79,6 @@ AesEcbEncrypt(EVP_CIPHER_CTX **ctxPtr, const unsigned char *key, int key_len, co
 	Assert(key_len == 16 || key_len == 32);
 	cipher = key_len == 32 ? cipher_ctr_ecb_256 : cipher_ctr_ecb_128;
 
-	/*
-	 * TODO: Currently, only Ecb (WAL) use cached context. This caching was
-	 * done for optimisation. Do we need it anymore?
-	 */
 	if (*ctxPtr == NULL)
 	{
 		Assert(cipher != NULL);
@@ -89,27 +101,28 @@ AesEcbEncrypt(EVP_CIPHER_CTX **ctxPtr, const unsigned char *key, int key_len, co
 	Assert(out_len == in_len);
 }
 
+/*
+ * Used to encrypt or decrypt a page in shared buffers
+ *
+ * For performance reasons the cipher context is created once on startup and
+ * re-used with different key and IV.
+ */
 static void
 AesRunCbc(int enc, const unsigned char *key, int key_len, const unsigned char *iv, const unsigned char *in, int in_len, unsigned char *out)
 {
 	int			out_len;
 	int			out_len_final;
-	EVP_CIPHER_CTX *ctx = NULL;
-	const EVP_CIPHER *cipher;
+	EVP_CIPHER_CTX *ctx;
 
 	Assert(key_len == 16 || key_len == 32);
-	cipher = key_len == 32 ? cipher_cbc_256 : cipher_cbc_128;
+	ctx = key_len == 32 ? ctx_cbc_256 : ctx_cbc_128;
 
-	Assert(cipher != NULL);
-	Assert(in_len % EVP_CIPHER_block_size(cipher) == 0);
+	Assert(ctx != NULL);
+	Assert(in_len % EVP_CIPHER_CTX_block_size(ctx) == 0);
 
-	ctx = EVP_CIPHER_CTX_new();
-
-	if (EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, enc) == 0)
+	if (EVP_CipherInit_ex(ctx, NULL, NULL, key, iv, enc) == 0)
 		ereport(ERROR,
 				errmsg("EVP_CipherInit_ex failed. OpenSSL error: %s", ERR_error_string(ERR_get_error(), NULL)));
-
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
 
 	if (EVP_CipherUpdate(ctx, out, &out_len, in, in_len) == 0)
 		ereport(ERROR,
@@ -121,12 +134,10 @@ AesRunCbc(int enc, const unsigned char *key, int key_len, const unsigned char *i
 
 	/*
 	 * We encrypt one block (16 bytes) Our expectation is that the result
-	 * should also be 16 bytes, without any additional padding
+	 * should also be 16 bytes, without any additional padding.
 	 */
 	out_len += out_len_final;
 	Assert(in_len == out_len);
-
-	EVP_CIPHER_CTX_free(ctx);
 }
 
 void
