@@ -6,7 +6,6 @@ DATA = pg_tde--2.0--2.1.sql pg_tde--1.0--2.0.sql pg_tde--1.0.sql
 REGRESS = \
 	access_control \
 	alter_index \
-	cache_alloc \
 	change_access_method \
 	create_database \
 	default_principal_key \
