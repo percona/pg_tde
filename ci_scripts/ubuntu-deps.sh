@@ -41,7 +41,6 @@ DEPS=(
     zlib1g-dev
     zstd
     # pg_tde test dependencies
-    libhttp-server-simple-perl
     lcov
     perltidy
 )
