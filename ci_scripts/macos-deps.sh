@@ -23,7 +23,7 @@ DEPS=(
 brew update
 brew install ${DEPS[@]}
 
-pip3 install meson pykmip cryptography setuptools wheel
+pip3 install pykmip
 cpan -T IPC::Run JSON
 
 # OpenBao
