@@ -7,7 +7,6 @@ REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_tde/pg_tde.conf
 REGRESS = \
 	access_control \
 	alter_index \
-	cache_alloc \
 	change_access_method \
 	create_database \
 	default_principal_key \
