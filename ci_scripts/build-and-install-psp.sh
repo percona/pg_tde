@@ -26,7 +26,7 @@ case "$1" in
 
     coverage)
         echo "Building with coverage option"
-        ARGS+=" --enable-cassert --enable-injection-points --enable-coverage"
+        ARGS+=" --enable-injection-points --enable-coverage"
         INSTALL_INJECTION_POINTS=1
         ;;
 
