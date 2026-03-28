@@ -47,6 +47,9 @@
 
 #define GLOBAL_DATA_TDE_OID 1664
 
+/* Fix conflict with utils/elog.h */
+#undef ERRCODE_DATA_CORRUPTED
+
 #define ERRCODE_DATA_CORRUPTED	"XX001"
 
 #define KEY_DATA_SIZE_DEFAULT 1
