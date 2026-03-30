@@ -26,14 +26,14 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: src
           submodules: recursive
           ref: ${{ github.ref }}
 
       - name: Clone postgres repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: postgres
           repository: percona/postgres.git
@@ -63,7 +63,7 @@ jobs:
         run: tar -czf artifacts.tar src postgres pginst
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.artifact_name }}
           overwrite: true
@@ -79,7 +79,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.artifact_name }}
           path: .
@@ -108,7 +108,7 @@ jobs:
         run: src/ci_scripts/test.sh
 
       - name: Report on test fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
           name: log-test-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
@@ -132,7 +132,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.artifact_name }}
           path: .
@@ -153,7 +153,7 @@ jobs:
         run: src/ci_scripts/test-global-tde.sh --continue
 
       - name: Report on test fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
           name: log-test-global-tde-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
