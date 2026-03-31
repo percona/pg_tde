@@ -49,16 +49,15 @@ Limitations of `pg_tde` {{release}}:
 
     The `pg_upgrade` tool does not properly handle the internal encryption keys used by `pg_tde`, which prevents the upgraded cluster from decrypting encrypted relations.
 
-## Changing the database default tablespace
+## `ALTER DATABASE ... SET TABLESPACE`
 
-!!! warning "Changing the database default tablespace is not supported with `pg_tde`"
-    Changing the default tablespace of a database is currently not supported when using `pg_tde`.
+!!! warning "Changing a database tablespace has limited support with `pg_tde`"
+    The `ALTER DATABASE ... SET TABLESPACE` command bypasses PostgreSQL's storage manager (SMGR), which `pg_tde` relies on to enforce encryption.
 
-    This operation bypasses PostgreSQL's storage manager (SMGR), which is not supported by `pg_tde`.
+    - If encrypted objects exist in the database's default tablespace, the operation is refused.
+    - If no encrypted objects are present in the default tablespace, the operation is allowed.
 
-    As a safeguard, `pg_tde` blocks the operation if encrypted objects are detected in the default tablespace.
-
-    Objects located outside the default tablespace are not affected by this command.
+    Only objects in the default tablespace are checked. Objects in other tablespaces are not affected by this validation.
 
 ## Currently unsupported WAL tools
 
