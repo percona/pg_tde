@@ -89,7 +89,7 @@ You can find the tests in the `sql` and `t` directories.
     meson install
     ```
 
-3. Start Percona Server for PostgreSQL
+3. Start OpenBao and OpenKMIP
 
 4. Run the tests using the following command:
 
