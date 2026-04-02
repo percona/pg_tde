@@ -540,13 +540,6 @@ check_provider_record(KeyringProviderRecord *provider_record)
 	/* Validate that the provider record can be properly parsed. */
 	provider = load_keyring_provider_from_record(provider_record);
 
-	if (provider == NULL)
-	{
-		ereport(ERROR,
-				errcode(ERRCODE_DATA_EXCEPTION),
-				errmsg("Invalid provider options."));
-	}
-
 	KeyringValidate(provider);
 
 	if (provider->keyring_id != 0)
@@ -801,16 +794,13 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 		{
 			GenericKeyring *keyring = load_keyring_provider_from_record(&provider);
 
-			if (keyring)
-			{
 #ifndef FRONTEND
-				providers_list = lappend(providers_list, keyring);
+			providers_list = lappend(providers_list, keyring);
 #else
-				if (providers_list == NULL)
-					providers_list = palloc0_object(SimplePtrList);
-				simple_ptr_list_append(providers_list, keyring);
+			if (providers_list == NULL)
+				providers_list = palloc0_object(SimplePtrList);
+			simple_ptr_list_append(providers_list, keyring);
 #endif
-			}
 		}
 	}
 	CloseTransientFile(fd);
@@ -825,14 +815,11 @@ load_keyring_provider_from_record(KeyringProviderRecord *provider)
 
 	keyring = load_keyring_provider_options(provider->provider_type, provider->options);
 
-	if (keyring)
-	{
-		keyring->keyring_id = provider->provider_id;
-		memcpy(keyring->provider_name, provider->provider_name, sizeof(keyring->provider_name));
-		keyring->type = provider->provider_type;
-		memcpy(keyring->options, provider->options, sizeof(keyring->options));
-		debug_print_kerying(keyring);
-	}
+	keyring->keyring_id = provider->provider_id;
+	memcpy(keyring->provider_name, provider->provider_name, sizeof(keyring->provider_name));
+	keyring->type = provider->provider_type;
+	memcpy(keyring->options, provider->options, sizeof(keyring->options));
+	debug_print_kerying(keyring);
 
 	return keyring;
 }
@@ -849,7 +836,9 @@ load_keyring_provider_options(ProviderType provider_type, char *keyring_options)
 		case KMIP_KEY_PROVIDER:
 			return (GenericKeyring *) load_kmip_keyring_provider_options(keyring_options);
 		default:
-			return NULL;
+			ereport(ERROR,
+					errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("unknown key provider type: %d", provider_type));
 	}
 }
 
@@ -865,12 +854,11 @@ load_file_keyring_provider_options(char *keyring_options)
 
 	if (file_keyring->file_name == NULL || file_keyring->file_name[0] == '\0')
 	{
-		ereport(WARNING,
+		free_keyring((GenericKeyring *) file_keyring);
+
+		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("file path is missing in the keyring options"));
-
-		free_keyring((GenericKeyring *) file_keyring);
-		return NULL;
 	}
 
 	return file_keyring;
@@ -891,15 +879,14 @@ load_vaultV2_keyring_provider_options(char *keyring_options)
 		vaultV2_keyring->vault_url == NULL || vaultV2_keyring->vault_url[0] == '\0' ||
 		vaultV2_keyring->vault_mount_path == NULL || vaultV2_keyring->vault_mount_path[0] == '\0')
 	{
-		ereport(WARNING,
+		free_keyring((GenericKeyring *) vaultV2_keyring);
+
+		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("missing in the keyring options:%s%s%s",
 					   (vaultV2_keyring->vault_token_path != NULL && vaultV2_keyring->vault_token_path[0] != '\0') ? "" : " tokenPath",
 					   (vaultV2_keyring->vault_url != NULL && vaultV2_keyring->vault_url[0] != '\0') ? "" : " url",
 					   (vaultV2_keyring->vault_mount_path != NULL && vaultV2_keyring->vault_mount_path[0] != '\0') ? "" : " mountPath"));
-
-		free_keyring((GenericKeyring *) vaultV2_keyring);
-		return NULL;
 	}
 
 	/* TODO: the vault_token mem should be protected from paging to the swap */
@@ -924,7 +911,9 @@ load_kmip_keyring_provider_options(char *keyring_options)
 		kmip_keyring->kmip_cert_path == NULL || kmip_keyring->kmip_cert_path[0] == '\0' ||
 		kmip_keyring->kmip_key_path == NULL || kmip_keyring->kmip_key_path[0] == '\0')
 	{
-		ereport(WARNING,
+		free_keyring((GenericKeyring *) kmip_keyring);
+
+		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("missing in the keyring options:%s%s%s%s%s",
 					   (kmip_keyring->kmip_host != NULL && kmip_keyring->kmip_host[0] != '\0') ? "" : " host",
@@ -932,9 +921,6 @@ load_kmip_keyring_provider_options(char *keyring_options)
 					   (kmip_keyring->kmip_ca_path != NULL && kmip_keyring->kmip_ca_path[0] != '\0') ? "" : " caPath",
 					   (kmip_keyring->kmip_cert_path != NULL && kmip_keyring->kmip_cert_path[0] != '\0') ? "" : " certPath",
 					   (kmip_keyring->kmip_key_path != NULL && kmip_keyring->kmip_key_path[0] != '\0') ? "" : " keyPath"));
-
-		free_keyring((GenericKeyring *) kmip_keyring);
-		return NULL;
 	}
 
 	return kmip_keyring;
