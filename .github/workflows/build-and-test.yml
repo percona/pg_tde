@@ -107,24 +107,6 @@ jobs:
       - name: Test pg_tde
         run: src/ci_scripts/test.sh
 
-      - name: Test pg_tde 2
-        run: src/ci_scripts/test.sh
-
-      - name: Test pg_tde 3
-        run: src/ci_scripts/test.sh
-
-      - name: Test pg_tde 4
-        run: src/ci_scripts/test.sh
-
-      - name: Test pg_tde 5
-        run: src/ci_scripts/test.sh
-
-      - name: Test pg_tde 5
-        run: src/ci_scripts/test.sh
-
-      - name: Test pg_tde 5
-        run: src/ci_scripts/test.sh
-
       - name: Report on test fail
         uses: actions/upload-artifact@v7
         if: ${{ failure() }}
