@@ -54,7 +54,6 @@ static bool fetch_next_key_provider(int fd, off_t *curr_pos, KeyringProviderReco
 static inline void get_keyring_infofile_path(char *resPath, Oid dbOid);
 static FileKeyring *load_file_keyring_provider_options(char *keyring_options);
 static GenericKeyring *load_keyring_provider_from_record(KeyringProviderRecord *provider);
-static GenericKeyring *load_keyring_provider_options(ProviderType provider_type, char *keyring_options);
 static KmipKeyring *load_kmip_keyring_provider_options(char *keyring_options);
 static VaultV2Keyring *load_vaultV2_keyring_provider_options(char *keyring_options);
 static int	open_keyring_infofile(Oid dbOid, int flags);
@@ -813,7 +812,22 @@ load_keyring_provider_from_record(KeyringProviderRecord *provider)
 {
 	GenericKeyring *keyring;
 
-	keyring = load_keyring_provider_options(provider->provider_type, provider->options);
+	switch (provider->provider_type)
+	{
+		case FILE_KEY_PROVIDER:
+			keyring = (GenericKeyring *) load_file_keyring_provider_options(provider->options);
+			break;
+		case VAULT_V2_KEY_PROVIDER:
+			keyring = (GenericKeyring *) load_vaultV2_keyring_provider_options(provider->options);
+			break;
+		case KMIP_KEY_PROVIDER:
+			keyring = (GenericKeyring *) load_kmip_keyring_provider_options(provider->options);
+			break;
+		default:
+			ereport(ERROR,
+					errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("unknown key provider type: %d", provider->provider_type));
+	}
 
 	keyring->keyring_id = provider->provider_id;
 	memcpy(keyring->provider_name, provider->provider_name, sizeof(keyring->provider_name));
@@ -822,24 +836,6 @@ load_keyring_provider_from_record(KeyringProviderRecord *provider)
 	debug_print_kerying(keyring);
 
 	return keyring;
-}
-
-static GenericKeyring *
-load_keyring_provider_options(ProviderType provider_type, char *keyring_options)
-{
-	switch (provider_type)
-	{
-		case FILE_KEY_PROVIDER:
-			return (GenericKeyring *) load_file_keyring_provider_options(keyring_options);
-		case VAULT_V2_KEY_PROVIDER:
-			return (GenericKeyring *) load_vaultV2_keyring_provider_options(keyring_options);
-		case KMIP_KEY_PROVIDER:
-			return (GenericKeyring *) load_kmip_keyring_provider_options(keyring_options);
-		default:
-			ereport(ERROR,
-					errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					errmsg("unknown key provider type: %d", provider_type));
-	}
 }
 
 static FileKeyring *
