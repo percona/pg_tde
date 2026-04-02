@@ -67,7 +67,7 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
 To build `pg_tde` from source code, you require the following:
 
 * git
-* make
+* Meson or make
 * gcc or clang
 * Percona Server for PostgreSQL 17 or later
 
@@ -81,10 +81,12 @@ You can find the tests in the `sql` and `t` directories.
 
 1. Change the directory to `pg_tde`
 
-2. Build and install `pg_tde` with the following command:
+2. Build and install `pg_tde` with the following commands:
 
     ```sh
-    make PG_CONFIG=/path/to/postgresql/bin/pg_config install
+    meson setup -Dpg_config=/path/to/postgresql/bin/pg_config ./build
+    cd build
+    meson install
     ```
 
 3. Start Percona Server for PostgreSQL
@@ -92,7 +94,7 @@ You can find the tests in the `sql` and `t` directories.
 4. Run the tests using the following command:
 
     ```sh
-    make PG_CONFIG=/path/to/postgresql/bin/pg_config installcheck
+    meson install && meson test --print-errorlogs
     ```
 
 #### Run automatically
