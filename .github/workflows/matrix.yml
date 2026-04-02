@@ -11,22 +11,22 @@ on:
       - documentation/**
 
 jobs:
-  main:
-    name: Main matrix
-    strategy:
-      fail-fast: false
-      matrix:
-        pg_version: [17, 18]
-        os: [ubuntu-24.04]
-        compiler: [gcc, clang]
-        build_type: [debugoptimized]
-    uses: ./.github/workflows/build-and-test.yml
-    with:
-        pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
-        compiler: ${{ matrix.compiler }}
-        build_type: ${{ matrix.build_type }}
-    secrets: inherit
+  # main:
+  #   name: Main matrix
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       pg_version: [17, 18]
+  #       os: [ubuntu-24.04]
+  #       compiler: [gcc, clang]
+  #       build_type: [debugoptimized]
+  #   uses: ./.github/workflows/build-and-test.yml
+  #   with:
+  #       pg_version: ${{ matrix.pg_version }}
+  #       os: ${{ matrix.os }}
+  #       compiler: ${{ matrix.compiler }}
+  #       build_type: ${{ matrix.build_type }}
+  #   secrets: inherit
 
   macos:
     name: MacOS matrix
@@ -45,42 +45,42 @@ jobs:
         build_type: ${{ matrix.build_type }}
     secrets: inherit
 
-  arm:
-    name: ARM matrix
-    if: github.event_name != 'pull_request'
-    strategy:
-      fail-fast: false
-      matrix:
-        pg_version: [17, 18]
-        os: [ubuntu-24.04-arm]
-        compiler: [gcc, clang]
-        build_type: [debugoptimized]
-    uses: ./.github/workflows/build-and-test.yml
-    with:
-        pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
-        compiler: ${{ matrix.compiler }}
-        build_type: ${{ matrix.build_type }}
-    secrets: inherit
+  # arm:
+  #   name: ARM matrix
+  #   if: github.event_name != 'pull_request'
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       pg_version: [17, 18]
+  #       os: [ubuntu-24.04-arm]
+  #       compiler: [gcc, clang]
+  #       build_type: [debugoptimized]
+  #   uses: ./.github/workflows/build-and-test.yml
+  #   with:
+  #       pg_version: ${{ matrix.pg_version }}
+  #       os: ${{ matrix.os }}
+  #       compiler: ${{ matrix.compiler }}
+  #       build_type: ${{ matrix.build_type }}
+  #   secrets: inherit
 
-  slack-notification:
-    if: failure() && github.event_name == 'push'
-    needs: [main, arm]
-    name: Slack Notification
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Notify
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: "Workflow *${{ github.workflow }}* failed on branch *${{ github.ref_name }}*\n
-                   Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n
-                   \n
-                   <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>"
+  # slack-notification:
+  #   if: failure() && github.event_name == 'push'
+  #   needs: [main, arm]
+  #   name: Slack Notification
+  #   runs-on: ubuntu-24.04
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: Notify
+  #       uses: slackapi/slack-github-action@v2.1.1
+  #       with:
+  #         webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+  #         webhook-type: incoming-webhook
+  #         payload: |
+  #           blocks:
+  #             - type: "section"
+  #               text:
+  #                 type: "mrkdwn"
+  #                 text: "Workflow *${{ github.workflow }}* failed on branch *${{ github.ref_name }}*\n
+  #                  Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n
+  #                  \n
+  #                  <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>"

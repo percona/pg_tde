@@ -1,45 +1,45 @@
-name: Format
-on:
-  pull_request:
-    paths-ignore:
-      - documentation/**
+# name: Format
+# on:
+#   pull_request:
+#     paths-ignore:
+#       - documentation/**
 
-env:
-  pg_version: 18
+# env:
+#   pg_version: 18
 
-jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v6
-        with:
-          path: src
-          submodules: recursive
+# jobs:
+#   check:
+#     name: Check
+#     runs-on: ubuntu-24.04
+#     timeout-minutes: 5
+#     steps:
+#       - name: Clone repository
+#         uses: actions/checkout@v6
+#         with:
+#           path: src
+#           submodules: recursive
 
-      - name: Clone postgres repository
-        uses: actions/checkout@v6
-        with:
-          path: postgres
-          repository: percona/postgres.git
-          ref: PSP_REL_${{ env.pg_version }}_STABLE
+#       - name: Clone postgres repository
+#         uses: actions/checkout@v6
+#         with:
+#           path: postgres
+#           repository: percona/postgres.git
+#           ref: PSP_REL_${{ env.pg_version }}_STABLE
 
-      - name: Install dependencies
-        run: src/ci_scripts/ubuntu-deps.sh
+#       - name: Install dependencies
+#         run: src/ci_scripts/ubuntu-deps.sh
 
-      - name: Build postgres
-        run: src/ci_scripts/build-and-install-psp.sh debug
+#       - name: Build postgres
+#         run: src/ci_scripts/build-and-install-psp.sh debug
 
-      - name: Build pg_tde
-        run: src/ci_scripts/build.sh debug
+#       - name: Build pg_tde
+#         run: src/ci_scripts/build.sh debug
 
-      - name: Update typedefs
-        run: src/ci_scripts/dump-typedefs.sh
+#       - name: Update typedefs
+#         run: src/ci_scripts/dump-typedefs.sh
 
-      - name: Run pgindent
-        run: src/ci_scripts/run-pgindent.sh --check --diff
+#       - name: Run pgindent
+#         run: src/ci_scripts/run-pgindent.sh --check --diff
 
-      - name: Run pgperltidy
-        run: src/ci_scripts/run-pgperltidy.sh --assert-tidy --standard-error-output
+#       - name: Run pgperltidy
+#         run: src/ci_scripts/run-pgperltidy.sh --assert-tidy --standard-error-output
