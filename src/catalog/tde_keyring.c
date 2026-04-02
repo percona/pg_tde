@@ -782,7 +782,7 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 		}
 
 		ereport(LOG,
-				errmsg("read key provider ID=%d %s", provider.provider_id, provider.provider_name));
+				errmsg("read key provider ID=%d name=%s file=%s", provider.provider_id, provider.provider_name, kp_info_path));
 
 		if (scanType == PROVIDER_SCAN_BY_NAME)
 		{
@@ -822,11 +822,14 @@ static GenericKeyring *
 load_keyring_provider_from_record(KeyringProviderRecord *provider)
 {
 	GenericKeyring *keyring;
-
+	ereport(LOG,
+			errmsg("load keyring provider from record type=%d name=%s id=%d", provider->provider_type, provider->provider_name, provider->provider_id));
 	keyring = load_keyring_provider_options(provider->provider_type, provider->options);
 
 	if (keyring)
 	{
+		ereport(LOG,
+				errmsg("loaded keyring provider type=%d name=%s id=%d", provider->provider_type, provider->provider_name, provider->provider_id));
 		keyring->keyring_id = provider->provider_id;
 		memcpy(keyring->provider_name, provider->provider_name, sizeof(keyring->provider_name));
 		keyring->type = provider->provider_type;
@@ -840,6 +843,8 @@ load_keyring_provider_from_record(KeyringProviderRecord *provider)
 static GenericKeyring *
 load_keyring_provider_options(ProviderType provider_type, char *keyring_options)
 {
+	ereport(LOG,
+			errmsg("load keyring provider options type=%d options=%s", provider_type, keyring_options));
 	switch (provider_type)
 	{
 		case FILE_KEY_PROVIDER:
