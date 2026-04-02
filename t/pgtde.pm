@@ -127,14 +127,18 @@ sub backup
 		$backup_dir . '/pg_tde');
 
 	print "# Taking pg_basebackup $backup_name from node \"$name\"\n";
+	my $tmp_output_file = "/tmp/pg_tde_basebackup.out";
 	PostgreSQL::Test::Utils::system_or_bail(
-		'pg_tde_basebackup', '-D',
-		$backup_dir, '-h',
-		$node->host, '-p',
-		$node->port, '--checkpoint',
-		'fast', '--no-sync',
-		'-E', @{ $params{backup_options} });
-	print "# Backup finished\n";
+		[ 'pg_tde_basebackup', '-D',
+			$backup_dir, '-h',
+			$node->host, '-p',
+			$node->port, '--checkpoint',
+			'fast', '--no-sync',
+			'-E', @{ $params{backup_options} }
+		], 
+		'>', $tmp_output_file
+	);
+	print "# Backup finished, output stored in $tmp_output_file\n";
 	return;
 }
 
