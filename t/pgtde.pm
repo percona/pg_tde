@@ -134,9 +134,10 @@ sub backup
 			$node->host, '-p',
 			$node->port, '--checkpoint',
 			'fast', '--no-sync',
-			'-E', @{ $params{backup_options} }
+			'-E', @{ $params{backup_options} },
+			'>', $tmp_output_file
 		], 
-		'>', $tmp_output_file
+		
 	);
 	print "# Backup finished, output stored in $tmp_output_file\n";
 	return;
