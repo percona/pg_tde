@@ -16,6 +16,6 @@ fi
 
 ../pginst/bin/pg_ctl -D regress_install -l regress_install.log start
 
-make PG_CONFIG=../pginst/bin/pg_config installcheck
+make PG_CONFIG=../pginst/bin/pg_config installcheck PROVE_TESTS=t/pg_rewind_basic.pl
 
 ../pginst/bin/pg_ctl -D regress_install stop
