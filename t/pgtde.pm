@@ -5,6 +5,7 @@ use PostgreSQL::Test::Utils;
 
 use File::Basename;
 use File::Compare;
+use IPC::Run;
 use Test::More;
 use Time::HiRes qw(usleep);
 
@@ -128,17 +129,16 @@ sub backup
 
 	print "# Taking pg_basebackup $backup_name from node \"$name\"\n";
 	my $tmp_output_file = "/tmp/pg_tde_basebackup.out";
-	PostgreSQL::Test::Utils::system_or_bail(
-		[ 'pg_tde_basebackup', '-D',
-			$backup_dir, '-h',
-			$node->host, '-p',
-			$node->port, '--checkpoint',
-			'fast', '--no-sync',
-			'-E', @{ $params{backup_options} },
-			'>', $tmp_output_file
-		], 
-		
+	my @cmd = (
+		'pg_tde_basebackup', '-D',
+		$backup_dir, '-h',
+		$node->host, '-p',
+		$node->port, '--checkpoint',
+		'fast', '--no-sync',
+		'-E', @{ $params{backup_options} }
 	);
+	IPC::Run::run(\@cmd, '>', $tmp_output_file, '2>&1')
+		or BAIL_OUT("pg_tde_basebackup failed: $!");
 	print "# Backup finished, output stored in $tmp_output_file\n";
 	return;
 }
