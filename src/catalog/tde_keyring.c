@@ -63,7 +63,6 @@ static char *get_file_value(const char *path, const char *field_name);
 #ifdef FRONTEND
 
 static SimplePtrList *scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid);
-static void simple_list_free(SimplePtrList *list);
 
 #else
 
@@ -711,27 +710,11 @@ GetKeyProviderByID(int provider_id, Oid dbOid)
 	if (providers != NULL)
 	{
 		keyring = (GenericKeyring *) providers->head->ptr;
-		simple_list_free(providers);
+		simple_ptr_list_destroy(providers);
+		pfree(providers);
 	}
 
 	return keyring;
-}
-
-static void
-simple_list_free(SimplePtrList *list)
-{
-	SimplePtrListCell *cell = list->head;
-
-	while (cell != NULL)
-	{
-		SimplePtrListCell *next;
-
-		next = cell->next;
-		pfree(cell);
-		cell = next;
-	}
-
-	pfree(list);
 }
 #endif							/* FRONTEND */
 
@@ -1089,7 +1072,8 @@ GetKeyProviderByName(const char *provider_name, Oid dbOid)
 		list_free(providers);
 #else
 		keyring = (GenericKeyring *) providers->head->ptr;
-		simple_list_free(providers);
+		simple_ptr_list_destroy(providers);
+		pfree(providers);
 #endif
 	}
 	else
