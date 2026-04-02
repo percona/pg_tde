@@ -1,0 +1,56 @@
+
+(lldb) bt
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 3.1
+  * frame #0: 0x000000010000eec8 pg_tde_basebackup`scan_key_provider_file
+    frame #1: 0x000000010000e6c8 pg_tde_basebackup`GetKeyProviderByID + 84
+    frame #2: 0x0000000100016700 pg_tde_basebackup`get_principal_key_from_keyring + 96
+    frame #3: 0x000000010001668c pg_tde_basebackup`GetPrincipalKeyNoDefault + 28
+    frame #4: 0x000000010001665c pg_tde_basebackup`GetPrincipalKey + 32
+    frame #5: 0x00000001000072f0 pg_tde_basebackup`StartLogStreamer(startpos="0/C000060", timeline=<unavailable>, sysidentifier=<unavailable>, wal_compress_algorithm=<unavailable>, wal_compress_level=<unavailable>) at pg_basebackup.c:688:18
+    frame #6: 0x0000000100006a54 pg_tde_basebackup`BaseBackup(compression_algorithm=<unavailable>, compression_detail=<unavailable>, compressloc=<unavailable>, client_compress=0x000000016fdfe9f0, incremental_manifest=0x0000000000000000) at pg_basebackup.c:2191:3
+    frame #7: 0x0000000100005560 pg_tde_basebackup`main(argc=<unavailable>, argv=<unavailable>) at pg_basebackup.c:2986:2
+    frame #8: 0x0000000192185d54 dyld`start + 7184
+
+
+
+
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 3.1
+  * frame #0: 0x000000010000eec8 pg_tde_basebackup`scan_key_provider_file
+    frame #1: 0x000000010000e6c8 pg_tde_basebackup`GetKeyProviderByID + 84
+    frame #2: 0x0000000100016700 pg_tde_basebackup`get_principal_key_from_keyring + 96
+    frame #3: 0x000000010001668c pg_tde_basebackup`GetPrincipalKeyNoDefault + 28
+    frame #4: 0x000000010001665c pg_tde_basebackup`GetPrincipalKey + 32
+    frame #5: 0x0000000100013364 pg_tde_basebackup`pg_tde_read_last_wal_range + 48
+    frame #6: 0x000000010000b2ac pg_tde_basebackup`TDEXLogSmgrInitWrite + 28
+    frame #7: 0x0000000100007370 pg_tde_basebackup`StartLogStreamer(startpos="0/C000060", timeline=<unavailable>, sysidentifier=<unavailable>, wal_compress_algorithm=<unavailable>, wal_compress_level=<unavailable>) at pg_basebackup.c:713:3
+    frame #8: 0x0000000100006a54 pg_tde_basebackup`BaseBackup(compression_algorithm=<unavailable>, compression_detail=<unavailable>, compressloc=<unavailable>, client_compress=0x000000016fdfe9f0, incremental_manifest=0x0000000000000000) at pg_basebackup.c:2191:3
+    frame #9: 0x0000000100005560 pg_tde_basebackup`main(argc=<unavailable>, argv=<unavailable>) at pg_basebackup.c:2986:2
+    frame #10: 0x0000000192185d54 dyld`start + 7184
+
+(lldb) bt
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 3.1
+  * frame #0: 0x000000010000eec8 pg_tde_basebackup`scan_key_provider_file
+    frame #1: 0x000000010000e6c8 pg_tde_basebackup`GetKeyProviderByID + 84
+    frame #2: 0x0000000100016700 pg_tde_basebackup`get_principal_key_from_keyring + 96
+    frame #3: 0x000000010001668c pg_tde_basebackup`GetPrincipalKeyNoDefault + 28
+    frame #4: 0x000000010001665c pg_tde_basebackup`GetPrincipalKey + 32
+    frame #5: 0x0000000100013000 pg_tde_basebackup`pg_tde_create_wal_range + 36
+    frame #6: 0x000000010000b2d0 pg_tde_basebackup`TDEXLogSmgrInitWrite + 64
+    frame #7: 0x0000000100007370 pg_tde_basebackup`StartLogStreamer(startpos="0/C000060", timeline=<unavailable>, sysidentifier=<unavailable>, wal_compress_algorithm=<unavailable>, wal_compress_level=<unavailable>) at pg_basebackup.c:713:3
+    frame #8: 0x0000000100006a54 pg_tde_basebackup`BaseBackup(compression_algorithm=<unavailable>, compression_detail=<unavailable>, compressloc=<unavailable>, client_compress=0x000000016fdfe9f0, incremental_manifest=0x0000000000000000) at pg_basebackup.c:2191:3
+    frame #9: 0x0000000100005560 pg_tde_basebackup`main(argc=<unavailable>, argv=<unavailable>) at pg_basebackup.c:2986:2
+    frame #10: 0x0000000192185d54 dyld`start + 7184
+
+(lldb) bt
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 3.1
+  * frame #0: 0x000000010000eec8 pg_tde_basebackup`scan_key_provider_file
+    frame #1: 0x000000010000e6c8 pg_tde_basebackup`GetKeyProviderByID + 84
+    frame #2: 0x0000000100016700 pg_tde_basebackup`get_principal_key_from_keyring + 96
+    frame #3: 0x000000010001668c pg_tde_basebackup`GetPrincipalKeyNoDefault + 28
+    frame #4: 0x000000010001665c pg_tde_basebackup`GetPrincipalKey + 32
+    frame #5: 0x0000000100013ba8 pg_tde_basebackup`pg_tde_fetch_wal_keys + 64
+    frame #6: 0x000000010000b37c pg_tde_basebackup`TDEXLogSmgrInitWrite + 236
+    frame #7: 0x0000000100007370 pg_tde_basebackup`StartLogStreamer(startpos="0/C000060", timeline=<unavailable>, sysidentifier=<unavailable>, wal_compress_algorithm=<unavailable>, wal_compress_level=<unavailable>) at pg_basebackup.c:713:3
+    frame #8: 0x0000000100006a54 pg_tde_basebackup`BaseBackup(compression_algorithm=<unavailable>, compression_detail=<unavailable>, compressloc=<unavailable>, client_compress=0x000000016fdfe9f0, incremental_manifest=0x0000000000000000) at pg_basebackup.c:2191:3
+    frame #9: 0x0000000100005560 pg_tde_basebackup`main(argc=<unavailable>, argv=<unavailable>) at pg_basebackup.c:2986:2
+    frame #10: 0x0000000192185d54 dyld`start + 7184
