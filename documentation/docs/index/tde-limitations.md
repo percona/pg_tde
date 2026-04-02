@@ -57,7 +57,9 @@ Limitations of `pg_tde` {{release}}:
     - If encrypted objects exist in the database's default tablespace, the operation is refused.
     - If no encrypted objects are present in the default tablespace, the operation is allowed.
 
-    Only objects in the default tablespace are checked. Objects in other tablespaces are not affected by this validation.
+    Only objects in the default tablespace are checked. Objects in other tablespaces are not evaluated by `pg_tde`.
+
+  To move encrypted tables individually, use `ALTER TABLE ... SET TABLESPACE`.
 
 ## Currently unsupported WAL tools
 
