@@ -766,7 +766,7 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 	if (fd < 0)
 	{
 		LWLockRelease(tde_provider_info_lock());
-		ereport(DEBUG2,
+		ereport(LOG,
 				errcode_for_file_access(),
 				errmsg("could not open tde file \"%s\": %m", kp_info_path));
 		return providers_list;
@@ -781,7 +781,7 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 			continue;
 		}
 
-		ereport(DEBUG2,
+		ereport(LOG,
 				errmsg("read key provider ID=%d %s", provider.provider_id, provider.provider_name));
 
 		if (scanType == PROVIDER_SCAN_BY_NAME)
