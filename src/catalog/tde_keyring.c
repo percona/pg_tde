@@ -715,17 +715,16 @@ GetKeyProviderByID(int provider_id, Oid dbOid)
 		ereport(LOG, errmsg("FOUND KEYRING"));
 		ereport(LOG, errmsg("keyring id=%d", keyring->keyring_id));
 		ereport(LOG, errmsg("keyring name=%s", keyring->provider_name));
-		simple_list_free(providers);
-	}
-	SimplePtrListCell *cell;
-	if (providers != NULL)
-	{
+		
+		SimplePtrListCell *cell;
 		for (cell = providers->head; cell; cell = cell->next)
 		{
 			GenericKeyring *keyring = (GenericKeyring *) cell->ptr;
 			ereport(LOG, errmsg("keyring id=%d", keyring->keyring_id));
 			ereport(LOG, errmsg("keyring name=%s", keyring->provider_name));
 		}
+		
+		simple_list_free(providers);
 	}
 
 	return keyring;
