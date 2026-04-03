@@ -808,8 +808,11 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 #else
 				if (providers_list == NULL)
 					providers_list = palloc0_object(SimplePtrList);
+				ereport(LOG,
+						errmsg("adding keyring provider to list type=%d name=%s id=%d", provider->provider_type, provider->provider_name, provider->provider_id));
 				simple_ptr_list_append(providers_list, keyring);
 #endif
+			free_keyring(keyring);
 			}
 		}
 	}
@@ -978,30 +981,30 @@ get_file_value(const char *path, const char *field_name)
 static void
 debug_print_kerying(GenericKeyring *keyring)
 {
-	elog(DEBUG2, "Keyring type: %d", keyring->type);
-	elog(DEBUG2, "Keyring name: %s", keyring->provider_name);
-	elog(DEBUG2, "Keyring id: %d", keyring->keyring_id);
+	elog(LOG, "Keyring type: %d", keyring->type);
+	elog(LOG, "Keyring name: %s", keyring->provider_name);
+	elog(LOG, "Keyring id: %d", keyring->keyring_id);
 	switch (keyring->type)
 	{
 		case FILE_KEY_PROVIDER:
-			elog(DEBUG2, "File Keyring Path: %s", ((FileKeyring *) keyring)->file_name);
+			elog(LOG, "File Keyring Path: %s", ((FileKeyring *) keyring)->file_name);
 			break;
 		case VAULT_V2_KEY_PROVIDER:
-			elog(DEBUG2, "Vault Keyring Token Path: %s", ((VaultV2Keyring *) keyring)->vault_token_path);
-			elog(DEBUG2, "Vault Keyring URL: %s", ((VaultV2Keyring *) keyring)->vault_url);
-			elog(DEBUG2, "Vault Keyring Mount Path: %s", ((VaultV2Keyring *) keyring)->vault_mount_path);
-			elog(DEBUG2, "Vault Keyring CA Path: %s", ((VaultV2Keyring *) keyring)->vault_ca_path);
+			elog(LOG, "Vault Keyring Token Path: %s", ((VaultV2Keyring *) keyring)->vault_token_path);
+			elog(LOG, "Vault Keyring URL: %s", ((VaultV2Keyring *) keyring)->vault_url);
+			elog(LOG, "Vault Keyring Mount Path: %s", ((VaultV2Keyring *) keyring)->vault_mount_path);
+			elog(LOG, "Vault Keyring CA Path: %s", ((VaultV2Keyring *) keyring)->vault_ca_path);
 			if (((VaultV2Keyring *) keyring)->vault_namespace != NULL)
 			{
-				elog(DEBUG2, "Vault Keyring Namespace: %s", ((VaultV2Keyring *) keyring)->vault_namespace);
+				elog(LOG, "Vault Keyring Namespace: %s", ((VaultV2Keyring *) keyring)->vault_namespace);
 			}
 			break;
 		case KMIP_KEY_PROVIDER:
-			elog(DEBUG2, "KMIP Keyring Host: %s", ((KmipKeyring *) keyring)->kmip_host);
-			elog(DEBUG2, "KMIP Keyring Port: %s", ((KmipKeyring *) keyring)->kmip_port);
-			elog(DEBUG2, "KMIP Keyring CA Path: %s", ((KmipKeyring *) keyring)->kmip_ca_path);
-			elog(DEBUG2, "KMIP Keyring Cert Path: %s", ((KmipKeyring *) keyring)->kmip_cert_path);
-			elog(DEBUG2, "KMIP Keyring Key Path: %s", ((KmipKeyring *) keyring)->kmip_key_path);
+			elog(LOG, "KMIP Keyring Host: %s", ((KmipKeyring *) keyring)->kmip_host);
+			elog(LOG, "KMIP Keyring Port: %s", ((KmipKeyring *) keyring)->kmip_port);
+			elog(LOG, "KMIP Keyring CA Path: %s", ((KmipKeyring *) keyring)->kmip_ca_path);
+			elog(LOG, "KMIP Keyring Cert Path: %s", ((KmipKeyring *) keyring)->kmip_cert_path);
+			elog(LOG, "KMIP Keyring Key Path: %s", ((KmipKeyring *) keyring)->kmip_key_path);
 			break;
 		case UNKNOWN_KEY_PROVIDER:
 			break;
