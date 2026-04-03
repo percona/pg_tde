@@ -725,6 +725,9 @@ GetKeyProviderByID(int provider_id, Oid dbOid)
 		}
 		
 		simple_list_free(providers);
+	} else{
+		ereport(LOG,
+				errmsg("I was not there"));
 	}
 
 	if (keyring == NULL)
