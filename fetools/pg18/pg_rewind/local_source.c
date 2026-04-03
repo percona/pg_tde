@@ -177,7 +177,7 @@ local_queue_fetch_range(rewind_source *source, const char *path, off_t off,
 			pg_fatal("unexpected EOF while reading file \"%s\"", srcpath);
 
 		/* Re-encrypt blocks with a proper key if needed. */
-		tde_reencrypt_block((unsigned char *) buf.data, begin);
+		tde_reencrypt_block((unsigned char *) buf.data, begin, MAIN_FORKNUM);
 
 		write_target_range(buf.data, begin, readlen);
 		begin += readlen;
