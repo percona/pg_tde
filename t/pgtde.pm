@@ -128,7 +128,6 @@ sub backup
 		$backup_dir . '/pg_tde');
 
 	print "# Taking pg_basebackup $backup_name from node \"$name\"\n";
-	my $tmp_output_file = "/tmp/pg_tde_basebackup.out";
 	my @cmd = (
 		'pg_tde_basebackup', '-D',
 		$backup_dir, '-h',
@@ -137,8 +136,13 @@ sub backup
 		'fast', '--no-sync',
 		'-E', @{ $params{backup_options} }
 	);
-	IPC::Run::run(\@cmd, '>', $tmp_output_file, '2>&1')
-		or BAIL_OUT("pg_tde_basebackup failed: $!");
+	result = IPC::Run::run(\@cmd, '>', \$stdout, '2>&1')
+	print $result;
+	print $stdout;
+
+	if (!$result) {
+		BAIL_OUT("pg_tde_basebackup failed: $!");
+	}
 	print "# Backup finished, output stored in $tmp_output_file\n";
 	return;
 }
