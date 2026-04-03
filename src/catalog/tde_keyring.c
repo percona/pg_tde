@@ -707,11 +707,25 @@ GetKeyProviderByID(int provider_id, Oid dbOid)
 	Oid			realOid = provider_id < 0 ? GLOBAL_DATA_TDE_OID : dbOid;
 	GenericKeyring *keyring = NULL;
 	SimplePtrList *providers = scan_key_provider_file(PROVIDER_SCAN_BY_ID, &provider_id, realOid);
+	
 
 	if (providers != NULL)
 	{
 		keyring = (GenericKeyring *) providers->head->ptr;
+		ereport(LOG, errmsg("FOUND KEYRING"));
+		ereport(LOG, errmsg("keyring id=%d", keyring->keyring_id));
+		ereport(LOG, errmsg("keyring name=%s", keyring->provider_name));
 		simple_list_free(providers);
+	}
+	SimplePtrListCell *cell;
+	if (providers != NULL)
+	{
+		for (cell = providers->head; cell; cell = cell->next)
+		{
+			GenericKeyring *keyring = (GenericKeyring *) cell->ptr;
+			ereport(LOG, errmsg("keyring id=%d", keyring->keyring_id));
+			ereport(LOG, errmsg("keyring name=%s", keyring->provider_name));
+		}
 	}
 
 	return keyring;
@@ -812,7 +826,6 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 						errmsg("adding keyring provider to list type=%d name=%s id=%d", provider.provider_type, provider.provider_name, provider.provider_id));
 				simple_ptr_list_append(providers_list, keyring);
 #endif
-			//free_keyring(keyring);
 			}
 		}
 	}
