@@ -809,7 +809,7 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 				if (providers_list == NULL)
 					providers_list = palloc0_object(SimplePtrList);
 				ereport(LOG,
-						errmsg("adding keyring provider to list type=%d name=%s id=%d", provider->provider_type, provider->provider_name, provider->provider_id));
+						errmsg("adding keyring provider to list type=%d name=%s id=%d", provider.provider_type, provider.provider_name, provider.provider_id));
 				simple_ptr_list_append(providers_list, keyring);
 #endif
 			free_keyring(keyring);
