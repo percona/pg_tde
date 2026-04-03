@@ -625,7 +625,7 @@ process_queued_fetch_requests(libpq_source *src)
 				{
 					unsigned char *data = (unsigned char *) chunk + BLCKSZ * i;
 
-					encrypt_block(data, chunkoff + BLCKSZ * i);
+					encrypt_block(data, chunkoff + BLCKSZ * i, MAIN_FORKNUM);
 				}
 			}
 			write_target_range(chunk, chunkoff, chunksize);

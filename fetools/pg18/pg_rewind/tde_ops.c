@@ -35,11 +35,78 @@ static current_file_data current_tde_file =
 static char tde_tmp_scource[MAXPGPATH] = "/tmp/pg_tde_rewindXXXXXX";
 static bool source_has_tde = false;
 
+static void
+recrypt_fork(ForkNumber fork)
+{
+	int			srcfd;
+	int			trgfd;
+	char		srcpath[MAXPGPATH];
+	PGIOAlignedBlock buf;
+	size_t		written_len;
+	RelPathStr	rp = relpathperm(current_tde_file.rlocator, fork);
+
+	snprintf(srcpath, sizeof(srcpath), "%s/%s", datadir_target, rp.str);
+
+	/* check if fork exists, nothing to do if it does not */
+	if (access(srcpath, F_OK) != 0)
+		return;
+
+	srcfd = open(srcpath, O_RDONLY | PG_BINARY, 0);
+	if (srcfd < 0)
+	{
+		/*
+		 * Server can recover from wrecked VM/FSM, hence only warnings here
+		 * and in the rest of the function
+		 */
+		pg_log_warning("could not open file for reading \"%s\": %m", srcpath);
+		return;
+	}
+
+	trgfd = open(srcpath, O_WRONLY | PG_BINARY, 0);
+	if (trgfd < 0)
+	{
+		pg_log_warning("could not open file for writing \"%s\": %m", srcpath);
+		close(srcfd);
+		return;
+	}
+
+	written_len = 0;
+	for (;;)
+	{
+		ssize_t		read_len;
+
+		read_len = read(srcfd, buf.data, sizeof(buf));
+
+		if (read_len < 0)
+			pg_fatal("could not read file \"%s\": %m", srcpath);
+		else if (read_len == 0)
+			break;				/* EOF reached */
+
+		encrypt_block((unsigned char *) buf.data, written_len, fork);
+
+		if (write(trgfd, buf.data, read_len) != read_len)
+		{
+			pg_log_warning("could not write block to fork file \"%s\": %m", srcpath);
+			break;
+		}
+		written_len += read_len;
+	}
+
+	close(srcfd);
+	close(trgfd);
+}
+
+
 void
 flush_current_key(void)
 {
 	if (current_tde_file.source_key == NULL)
 		return;
+
+	pg_log_debug("ensure forks encryption for \"%s\"", current_tde_file.path);
+
+	recrypt_fork(FSM_FORKNUM);
+	recrypt_fork(VISIBILITYMAP_FORKNUM);
 
 	pg_log_debug("update internal key for \"%s\"", current_tde_file.path);
 	pg_tde_set_data_dir(tde_tmp_scource);
@@ -96,7 +163,7 @@ ensure_tde_keys(const char *relpath)
 }
 
 void
-encrypt_block(unsigned char *buf, off_t file_offset)
+encrypt_block(unsigned char *buf, off_t file_offset, ForkNumber fork)
 {
 	BlockNumber blkno;
 
@@ -109,8 +176,8 @@ encrypt_block(unsigned char *buf, off_t file_offset)
 	blkno = file_offset / BLCKSZ + current_tde_file.segNo * RELSEG_SIZE;
 
 	pg_log_debug("re-encrypt block in %s, offset: %ld, blockNum: %u", current_tde_file.path, (long) file_offset, blkno);
-	tde_decrypt_smgr_block(current_tde_file.source_key, MAIN_FORKNUM, blkno, buf, buf);
-	tde_encrypt_smgr_block(current_tde_file.target_key, MAIN_FORKNUM, blkno, buf, buf);
+	tde_decrypt_smgr_block(current_tde_file.source_key, fork, blkno, buf, buf);
+	tde_encrypt_smgr_block(current_tde_file.target_key, fork, blkno, buf, buf);
 }
 
 

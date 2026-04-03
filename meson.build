@@ -320,6 +320,7 @@ tap_tests = [
   't/pg_rewind_basic.pl',
   't/pg_rewind_databases.pl',
   't/pg_rewind_enc_copy_blocks.pl',
+  't/pg_rewind_enc_fsm.pl',
   't/pg_rewind_enc_unchanged_rel.pl',
   't/pg_rewind_extrafiles.pl',
   't/pg_rewind_growing_files.pl',
