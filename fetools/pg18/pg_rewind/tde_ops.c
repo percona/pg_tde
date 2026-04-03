@@ -32,6 +32,87 @@ static current_file_data current_tde_file = {0};
 static char tde_tmp_source[MAXPGPATH] = "";
 static bool source_has_tde = false;
 
+static void
+reencrypt_fork(ForkNumber fork)
+{
+	int			srcfd;
+	int			trgfd;
+	char		srcpath[MAXPGPATH];
+	PGIOAlignedBlock buf;
+	size_t		written_len;
+	RelPathStr	rp = relpathperm(current_tde_file.rlocator, fork);
+	static const char *const warning_hint = "Skipping the file, as the server can start and rebuild the broken VM/FSM file.";
+
+	snprintf(srcpath, sizeof(srcpath), "%s/%s", datadir_target, rp.str);
+
+	/* check if fork exists, nothing to do if it does not */
+	if (access(srcpath, F_OK) != 0)
+		return;
+
+	srcfd = open(srcpath, O_RDONLY | PG_BINARY, 0);
+	if (srcfd < 0)
+	{
+		/*
+		 * Server can recover from wrecked VM/FSM, hence only warnings here
+		 * and in the rest of the function
+		 */
+		pg_log_warning("could not open fork file for reading \"%s\": %m", srcpath);
+		pg_log_warning_hint("%s", warning_hint);
+		return;
+	}
+
+	trgfd = open(srcpath, O_WRONLY | PG_BINARY, 0);
+	if (trgfd < 0)
+	{
+		pg_log_warning("could not open fork file for writing \"%s\": %m", srcpath);
+		pg_log_warning_hint("%s", warning_hint);
+		close(srcfd);
+		return;
+	}
+
+	written_len = 0;
+	for (;;)
+	{
+		ssize_t		read_len;
+
+		read_len = read(srcfd, buf.data, sizeof(buf.data));
+
+		if ((read_len <= 0))
+		{
+			if (read_len < 0)
+			{
+				pg_log_warning("could not read block from fork file \"%s\": %m", srcpath);
+				pg_log_warning_hint("%s", warning_hint);
+			}
+
+			break;				/* EOF reached if read_len == 0 */
+		}
+
+		if (read_len != BLCKSZ)
+		{
+			pg_log_warning("unexpected read from fork file \"%s\"", srcpath);
+			pg_log_warning_detail("Expected %d bytes, but got %lu", BLCKSZ, read_len);
+			pg_log_warning_hint("%s", warning_hint);
+
+			break;
+		}
+
+		tde_reencrypt_block((unsigned char *) buf.data, written_len, fork);
+
+		if (write(trgfd, buf.data, read_len) != read_len)
+		{
+			pg_log_warning("could not write block to fork file \"%s\": %m", srcpath);
+			pg_log_warning_hint("%s", warning_hint);
+
+			break;
+		}
+		written_len += read_len;
+	}
+
+	close(srcfd);
+	close(trgfd);
+}
+
 /*
  * Write the recent internal key that was used to re-encrypt relation data (if
  * there is any).
@@ -41,6 +122,11 @@ flush_current_tde_rel_key(void)
 {
 	if (current_tde_file.source_key == NULL)
 		return;
+
+	pg_log_debug("ensure forks encryption for \"%s\"", current_tde_file.path);
+
+	reencrypt_fork(FSM_FORKNUM);
+	reencrypt_fork(VISIBILITYMAP_FORKNUM);
 
 	pg_log_debug("update internal key for \"%s\"", current_tde_file.path);
 	pg_tde_set_data_dir(tde_tmp_source);
@@ -97,7 +183,7 @@ ensure_tde_keys(const char *relpath)
 }
 
 void
-tde_reencrypt_block(unsigned char *buf, off_t file_offset)
+tde_reencrypt_block(unsigned char *buf, off_t file_offset, ForkNumber fork)
 {
 	BlockNumber blkno;
 
@@ -110,8 +196,8 @@ tde_reencrypt_block(unsigned char *buf, off_t file_offset)
 	blkno = file_offset / BLCKSZ + current_tde_file.segNo * RELSEG_SIZE;
 
 	pg_log_debug("re-encrypt block in %s, offset: %ld, blockNum: %u", current_tde_file.path, (long) file_offset, blkno);
-	tde_decrypt_smgr_block(current_tde_file.source_key, MAIN_FORKNUM, blkno, buf, buf);
-	tde_encrypt_smgr_block(current_tde_file.target_key, MAIN_FORKNUM, blkno, buf, buf);
+	tde_decrypt_smgr_block(current_tde_file.source_key, fork, blkno, buf, buf);
+	tde_encrypt_smgr_block(current_tde_file.target_key, fork, blkno, buf, buf);
 }
 
 static void
