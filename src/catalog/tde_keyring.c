@@ -727,6 +727,12 @@ GetKeyProviderByID(int provider_id, Oid dbOid)
 		simple_list_free(providers);
 	}
 
+	if (keyring == NULL)
+	{
+		ereport(LOG,
+				errmsg("no keyring found 1"));
+	}
+
 	return keyring;
 }
 
@@ -826,6 +832,9 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 				simple_ptr_list_append(providers_list, keyring);
 #endif
 			}
+		} else {
+			ereport(LOG,
+					errmsg("no match for keyring provider"));
 		}
 	}
 	CloseTransientFile(fd);
