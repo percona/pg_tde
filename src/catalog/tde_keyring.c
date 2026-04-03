@@ -812,7 +812,7 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 						errmsg("adding keyring provider to list type=%d name=%s id=%d", provider.provider_type, provider.provider_name, provider.provider_id));
 				simple_ptr_list_append(providers_list, keyring);
 #endif
-			free_keyring(keyring);
+			//free_keyring(keyring);
 			}
 		}
 	}
