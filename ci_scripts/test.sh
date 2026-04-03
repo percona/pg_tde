@@ -12,7 +12,7 @@ if [ "$1" = sanitize ]; then
     OPTS+=' --set max_stack_depth=8MB'
 fi
 
-for i in {1..5}; do
+for i in {1..10}; do
     make PG_CONFIG=../pginst/bin/pg_config installcheck PROVE_TESTS=t/pg_rewind_basic.pl
 done
 
