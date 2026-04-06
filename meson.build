@@ -330,6 +330,8 @@ tap_tests = [
   't/pg_basebackup.pl',
   't/pg_rewind_basic.pl',
   't/pg_rewind_databases.pl',
+  't/pg_rewind_enc_copy_blocks.pl',
+  't/pg_rewind_enc_ext_tablespace.pl',
   't/pg_rewind_extrafiles.pl',
   't/pg_rewind_growing_files.pl',
   't/pg_rewind_keep_recycled_wals.pl',
