@@ -487,6 +487,8 @@ action_to_str(file_action_t action)
 			return "CREATE";
 		case FILE_ACTION_REMOVE:
 			return "REMOVE";
+		case FILE_ACTION_ENSURE_TDE_KEY:
+			return "ENSURE_KEY";
 
 		default:
 			return "unknown";
@@ -591,7 +593,7 @@ isRelDataFile(const char *path)
 /*
  * Sets rlocator and segNo based on given path. Returns false if didn't find
  * a match.
- * 
+ *
  * Only concerned with files belonging to the main fork.
  */
 bool
@@ -719,13 +721,11 @@ decide_file_action(file_entry_t *entry)
 	if (strstr(path, ".DS_Store") != NULL)
 		return FILE_ACTION_NONE;
 
-	/* 
+	/*
 	 * Skip pg_tde key data but WAL-related stuff as WAL being replaced by
 	 * source's. We will handle the rest while re-encrypting data.
 	 */
-	if (strstr(path, "pg_tde/") != NULL &&
-		strstr(path, "pg_tde/wal_keys") == NULL &&
-		strstr(path, "pg_tde/1664_providers") == NULL)
+	if (strstr(path, "pg_tde/") != NULL)
 		return FILE_ACTION_NONE;
 
 	/*
@@ -847,14 +847,15 @@ decide_file_action(file_entry_t *entry)
 				 * in the target will be copied based on parsing the target
 				 * system's WAL, and any blocks modified in the source will be
 				 * updated after rewinding, when the source system's WAL is
-				 * replayed.
+				 * replayed. But we still have to sync source/target keys in
+				 * case it is encrypted.
 				 */
 				if (entry->target_size < entry->source_size)
 					return FILE_ACTION_COPY_TAIL;
 				else if (entry->target_size > entry->source_size)
 					return FILE_ACTION_TRUNCATE;
 				else
-					return FILE_ACTION_NONE;
+					return FILE_ACTION_ENSURE_TDE_KEY;
 			}
 			break;
 
