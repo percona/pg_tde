@@ -465,6 +465,8 @@ pg_tde_open_wal_key_file_write(const char *filename,
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
+	ereport(LOG,
+			errmsg("opening wal key file \"%s\" for write, file_flags=%d", filename, file_flags));
 	fd = pg_tde_open_wal_key_file_basic(filename, file_flags, false);
 
 	pg_tde_wal_key_file_header_read(filename, fd, &fheader, &bytes_read);
@@ -531,7 +533,7 @@ pg_tde_wal_key_file_header_write(const char *filename,
 				errmsg("could not fsync file \"%s\": %m", filename));
 	}
 
-	ereport(DEBUG2, errmsg("Wrote the header to %s", filename));
+	ereport(LOG, errmsg("Wrote the header to %s", filename));
 
 	return fd;
 }

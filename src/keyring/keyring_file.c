@@ -107,6 +107,8 @@ set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 				errmsg("Key with name %s already exists in keyring", key->name));
 	}
 
+	ereport(LOG,
+			errmsg("opening keyring222 file \"%s\" for write", file_keyring->file_name));
 	fd = OpenTransientFile(file_keyring->file_name, O_CREAT | O_RDWR | PG_BINARY);
 	if (fd < 0)
 	{
