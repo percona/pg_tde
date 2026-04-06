@@ -793,6 +793,8 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 				errmsg("could not open tde file \"%s\": %m", kp_info_path));
 		return providers_list;
 	}
+	ereport(LOG,
+			errmsg("opened tde file \"%s\"", kp_info_path));
 	while (fetch_next_key_provider(fd, &curr_pos, &provider))
 	{
 		bool		match = false;
@@ -1075,8 +1077,11 @@ fetch_next_key_provider(int fd, off_t *curr_pos, KeyringProviderRecord *provider
 	bytes_read = pg_pread(fd, provider, sizeof(KeyringProviderRecord), *curr_pos);
 	*curr_pos += bytes_read;
 
-	if (bytes_read == 0)
+	if (bytes_read == 0){
+		ereport(LOG,
+				errmsg("no more key providers found in the file"));
 		return false;
+	}
 	if (bytes_read != sizeof(KeyringProviderRecord))
 	{
 		/* Corrupt file */
