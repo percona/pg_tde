@@ -14,6 +14,5 @@ fi
 
 for i in {1..10}; do
     make PG_CONFIG=../pginst/bin/pg_config installcheck PROVE_TESTS=t/pg_rewind_basic.pl
-    hexdump -C /Users/runner/work/pg_tde/pg_tde/src/tmp_check/t_pg_rewind_basic_primary_archive_data/backup/my_backup/pg_tde/1664_providers
 done
 
