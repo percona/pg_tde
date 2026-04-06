@@ -134,7 +134,7 @@ sub backup
 		$backup_dir, '-h',
 		$node->host, '-p',
 		$node->port, '--checkpoint',
-		'fast',
+		'fast', '--verbose',
 		'-E', @{ $params{backup_options} }
 	);
 	my $stdout;
