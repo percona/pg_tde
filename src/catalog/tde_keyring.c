@@ -794,7 +794,7 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 		return providers_list;
 	}
 	ereport(LOG,
-			errmsg("opened tde file \"%s\"", kp_info_path));
+			errmsg("opened tde file \"%s\", curr_pos=%lld", kp_info_path, curr_pos));
 	while (fetch_next_key_provider(fd, &curr_pos, &provider))
 	{
 		bool		match = false;
@@ -1073,6 +1073,9 @@ fetch_next_key_provider(int fd, off_t *curr_pos, KeyringProviderRecord *provider
 
 	Assert(provider != NULL);
 	Assert(fd >= 0);
+
+	ereport(LOG,
+			errmsg("fetching next key provider from file at position %lld", *curr_pos));
 
 	bytes_read = pg_pread(fd, provider, sizeof(KeyringProviderRecord), *curr_pos);
 	*curr_pos += bytes_read;
