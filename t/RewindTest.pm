@@ -165,9 +165,20 @@ shared_preload_libraries = 'pg_tde'
 		"SELECT pg_tde_set_server_key_using_global_key_provider('global-db-principal-key', 'file-keyring-wal');"
 	);
 
+	$node_primary->safe_psql('postgres',
+		"SELECT pg_tde_add_database_key_provider_file('file-keyring','${tde_keyring_file}');"
+	);
+	$node_primary->safe_psql('postgres',
+		"SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-keyring');"
+	);
+	$node_primary->safe_psql('postgres',
+		"SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-keyring');"
+	);
+
 	$node_primary->append_conf(
 		'postgresql.conf', q{
 pg_tde.wal_encrypt = on
+default_table_access_method='tde_heap'
 });
 
 	$node_primary->stop;
@@ -201,13 +212,20 @@ sub start_primary
 
 sub create_standby
 {
-	my $extra_name = shift;
+	my ($extra_name, %params) = @_;
+
+	my @backup_options =
+	  exists $params{backup_options} ? @{ $params{backup_options} } : ();
 
 	$node_standby =
 	  PostgreSQL::Test::Cluster->new(
 		'standby' . ($extra_name ? "_${extra_name}" : ''));
-	PGTDE::backup($node_primary, 'my_backup');
-	$node_standby->init_from_backup($node_primary, 'my_backup');
+
+	PGTDE::backup($node_primary, 'my_backup',
+		backup_options => [@backup_options]);
+
+	$node_standby->init_from_backup($node_primary, 'my_backup',
+		tablespace_map => $params{tablespace_map});
 	my $connstr_primary = $node_primary->connstr();
 
 	$node_standby->append_conf(
