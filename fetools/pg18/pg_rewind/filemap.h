@@ -25,6 +25,9 @@ typedef enum
 								 * blocks based on the parsed WAL) */
 	FILE_ACTION_TRUNCATE,		/* truncate local file to 'newsize' bytes */
 	FILE_ACTION_REMOVE,			/* remove local file / directory / symlink */
+	FILE_ACTION_ENSURE_TDE_KEY, /* data file with no action, but we to check
+								 * if it is encrypted and sync source/target
+								 * keys */
 } file_action_t;
 
 typedef enum

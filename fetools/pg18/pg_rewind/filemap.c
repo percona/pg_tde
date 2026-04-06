@@ -487,6 +487,8 @@ action_to_str(file_action_t action)
 			return "CREATE";
 		case FILE_ACTION_REMOVE:
 			return "REMOVE";
+		case FILE_ACTION_ENSURE_TDE_KEY:
+			return "ENSURE_KEY";
 
 		default:
 			return "unknown";
@@ -852,14 +854,15 @@ decide_file_action(file_entry_t *entry)
 				 * in the target will be copied based on parsing the target
 				 * system's WAL, and any blocks modified in the source will be
 				 * updated after rewinding, when the source system's WAL is
-				 * replayed.
+				 * replayed. But we still have to sync source/target keys in
+				 * case it is encrypted.
 				 */
 				if (entry->target_size < entry->source_size)
 					return FILE_ACTION_COPY_TAIL;
 				else if (entry->target_size > entry->source_size)
 					return FILE_ACTION_TRUNCATE;
 				else
-					return FILE_ACTION_NONE;
+					return FILE_ACTION_ENSURE_TDE_KEY;
 			}
 			break;
 
