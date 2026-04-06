@@ -210,7 +210,7 @@ local_fetch_tde_keys(rewind_source *source)
 	if (!directory_exists(tde_source_dir))
 		return;
 
-	create_tde_tmp_dir();
+	init_tde();
 	copy_tmp_tde_files(tde_source_dir);
 }
 

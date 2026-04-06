@@ -15,6 +15,7 @@
 #include "pg_tde.h"
 
 static void copy_dir(const char *src, const char *dst);
+static void create_tde_tmp_dir(void);
 
 typedef struct
 {
@@ -32,6 +33,7 @@ static current_file_data current_tde_file =
 
 /* Dir for an operational copy of source's tde files (_keys, etc)  */
 static char tde_tmp_scource[MAXPGPATH] = "/tmp/pg_tde_rewindXXXXXX";
+static bool source_has_tde = false;
 
 void
 flush_current_key(void)
@@ -55,13 +57,18 @@ ensure_tde_keys(const char *relpath)
 	RelFileLocator rlocator;
 	unsigned int segNo;
 
+	/* no TDE on source, nothing to do */
+	if (!source_has_tde)
+		return;
+
 	/* the same file, nothing to do */
 	if (strcmp(current_tde_file.path, relpath) == 0)
 		return;
 
 	flush_current_key();
 
-	path_rlocator(relpath, &rlocator, &segNo);
+	if (!path_rlocator(relpath, &rlocator, &segNo))
+		return;
 
 	pg_tde_set_data_dir(tde_tmp_scource);
 	current_tde_file.source_key = pg_tde_get_smgr_key(rlocator);
@@ -107,13 +114,11 @@ encrypt_block(unsigned char *buf, off_t file_offset)
 }
 
 
-void
+static void
 create_tde_tmp_dir(void)
 {
 	if (mkdtemp(tde_tmp_scource) == NULL)
 		pg_fatal("could not create temporary directory \"%s\": %m", tde_tmp_scource);
-
-	atexit(destroy_tde_tmp_dir);
 
 	pg_log_debug("created temporary pg_tde directory: %s", tde_tmp_scource);
 }
@@ -196,6 +201,14 @@ copy_dir(const char *src, const char *dst)
 }
 
 void
+init_tde(void)
+{
+	source_has_tde = true;
+	create_tde_tmp_dir();
+	atexit(destroy_tde_tmp_dir);
+}
+
+void
 copy_tmp_tde_files(const char *from)
 {
 	copy_dir(from, tde_tmp_scource);
@@ -207,6 +220,9 @@ fetch_tde_dir(void)
 	char		target_tde_dir[MAXPGPATH];
 
 	if (dry_run)
+		return;
+
+	if (!source_has_tde)
 		return;
 
 	snprintf(target_tde_dir, MAXPGPATH, "%s/%s", datadir_target, PG_TDE_DATA_DIR);

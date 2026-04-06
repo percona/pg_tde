@@ -17,6 +17,9 @@
 #include "pg_rewind.h"
 #include "port/pg_bswap.h"
 #include "rewind_source.h"
+#include "tde_ops.h"
+
+#include "pg_tde.h"
 
 /*
  * Files are fetched MAX_CHUNK_SIZE bytes at a time, and with a
@@ -31,6 +34,7 @@ typedef struct
 	const char *path;			/* path relative to data directory root */
 	off_t		offset;
 	size_t		length;
+	bool		encrypt;
 } fetch_range_request;
 
 typedef struct
@@ -71,6 +75,10 @@ static char *libpq_fetch_file(rewind_source *source, const char *path,
 static XLogRecPtr libpq_get_current_wal_insert_lsn(rewind_source *source);
 static void libpq_destroy(rewind_source *source);
 
+static void libpq_queue_process_fetch_range(rewind_source *source, const char *path,
+											bool needs_encrypt, off_t off, size_t len);
+static void libpq_fetch_tde_keys(rewind_source *source);
+
 /*
  * Create a new libpq source.
  *
@@ -99,6 +107,8 @@ init_libpq_source(PGconn *conn)
 	initStringInfo(&src->paths);
 	initStringInfo(&src->offsets);
 	initStringInfo(&src->lengths);
+
+	libpq_fetch_tde_keys(&src->common);
 
 	return &src->common;
 }
@@ -345,7 +355,7 @@ libpq_queue_fetch_file(rewind_source *source, const char *path, size_t len)
 	 * fetch-requests are for a whole file.
 	 */
 	open_target_file(path, true);
-	libpq_queue_fetch_range(source, path, 0, Max(len, MAX_CHUNK_SIZE));
+	libpq_queue_process_fetch_range(source, path, false, 0, Max(len, MAX_CHUNK_SIZE));
 }
 
 /*
@@ -354,6 +364,17 @@ libpq_queue_fetch_file(rewind_source *source, const char *path, size_t len)
 static void
 libpq_queue_fetch_range(rewind_source *source, const char *path, off_t off,
 						size_t len)
+{
+	libpq_queue_process_fetch_range(source, path, true, off, len);
+}
+
+/*
+ * A workhorse for libpq_queue_fetch_range.
+ * `needs_encrypt` indicates if file's blocks may need re-encryption.
+ */
+static void
+libpq_queue_process_fetch_range(rewind_source *source, const char *path,
+								bool needs_encrypt, off_t off, size_t len)
 {
 	libpq_source *src = (libpq_source *) source;
 
@@ -406,6 +427,7 @@ libpq_queue_fetch_range(rewind_source *source, const char *path, off_t off,
 		src->request_queue[src->num_requests].path = path;
 		src->request_queue[src->num_requests].offset = off;
 		src->request_queue[src->num_requests].length = thislen;
+		src->request_queue[src->num_requests].encrypt = needs_encrypt;
 		src->num_requests++;
 
 		off += thislen;
@@ -420,6 +442,7 @@ static void
 libpq_finish_fetch(rewind_source *source)
 {
 	process_queued_fetch_requests((libpq_source *) source);
+	flush_current_key();
 }
 
 static void
@@ -592,6 +615,19 @@ process_queued_fetch_requests(libpq_source *src)
 
 			open_target_file(filename, false);
 
+			if (rq->encrypt)
+			{
+				Assert(chunksize % BLCKSZ == 0);
+
+				ensure_tde_keys(filename);
+
+				for (int i = 0; i < chunksize / BLCKSZ; i++)
+				{
+					unsigned char *data = (unsigned char *) chunk + BLCKSZ * i;
+
+					encrypt_block(data, chunkoff + BLCKSZ * i);
+				}
+			}
 			write_target_range(chunk, chunkoff, chunksize);
 		}
 
@@ -681,4 +717,53 @@ libpq_destroy(rewind_source *source)
 	pfree(src);
 
 	/* NOTE: we don't close the connection here, as it was not opened by us. */
+}
+
+static void
+libpq_fetch_tde_keys(rewind_source *source)
+{
+	PGconn	   *conn = ((libpq_source *) source)->conn;
+	PGresult   *res;
+
+	res = PQexec(conn, "SELECT pg_ls_dir('" PG_TDE_DATA_DIR "', true, false)");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		pg_fatal("could not fetch file list: %s",
+				 PQresultErrorMessage(res));
+
+	/* no tde dir, nothing to do */
+	if (PQnfields(res) == 0)
+	{
+		PQclear(res);
+		return;
+	}
+
+	init_tde();
+
+	for (int i = 0; i < PQntuples(res); i++)
+	{
+		char	   *path;
+		char	   *tde_file_buf;
+		size_t		size;
+		char		target_path[MAXPGPATH];
+
+		if (PQgetisnull(res, i, 0))
+		{
+			/*
+			 * The file was removed from the server while the query was
+			 * running. Ignore it.
+			 */
+			continue;
+		}
+
+		path = PQgetvalue(res, i, 0);
+
+		snprintf(target_path, MAXPGPATH, "%s/%s", PG_TDE_DATA_DIR, path);
+		tde_file_buf = libpq_fetch_file(source, target_path, &size);
+
+		write_tmp_source_file(path, tde_file_buf, size);
+		pg_free(tde_file_buf);
+	}
+
+	PQclear(res);
 }
