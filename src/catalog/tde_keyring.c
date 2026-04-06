@@ -9,6 +9,7 @@
 #include "access/xloginsert.h"
 #include "miscadmin.h"
 #include "storage/fd.h"
+#include <sys/stat.h>
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/lsyscache.h"
@@ -31,6 +32,7 @@
 #include "catalog/namespace.h"
 #include "executor/spi.h"
 #include "funcapi.h"
+#include <sys/types.h>
 #else
 #include "fe_utils/simple_list.h"
 #include "pg_tde_fe.h"
@@ -793,8 +795,18 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 				errmsg("could not open tde file \"%s\": %m", kp_info_path));
 		return providers_list;
 	}
+
 	ereport(LOG,
-			errmsg("opened tde file \"%s\", curr_pos=%lld", kp_info_path, curr_pos));
+		errmsg("opened tde file \"%s\", curr_pos=%lld", kp_info_path, curr_pos));
+
+
+	struct stat file_stat;
+	if (fstat(fd, &file_stat) == 0)
+	{
+		ereport(LOG,
+				errmsg("file modified time=%lld", (long long) file_stat.st_mtime));
+	}
+
 	while (fetch_next_key_provider(fd, &curr_pos, &provider))
 	{
 		bool		match = false;
@@ -1069,8 +1081,7 @@ open_keyring_infofile(Oid database_id, int flags)
 static bool
 fetch_next_key_provider(int fd, off_t *curr_pos, KeyringProviderRecord *provider)
 {
-	off_t		bytes_read;
-
+	ssize_t		bytes_read;
 	Assert(provider != NULL);
 	Assert(fd >= 0);
 
