@@ -804,7 +804,7 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 	if (fstat(fd, &file_stat) == 0)
 	{
 		ereport(LOG,
-				errmsg("file modified time=%lld", (long long) file_stat.st_mtime));
+				errmsg("file modified time=%lld, file size=%lld", (long long) file_stat.st_mtime, (long long) file_stat.st_size));
 	}
 
 	while (fetch_next_key_provider(fd, &curr_pos, &provider))
