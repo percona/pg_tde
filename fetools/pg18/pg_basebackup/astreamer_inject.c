@@ -296,6 +296,7 @@ astreamer_pg_tde_injector_content(astreamer *streamer,
 	{
 		case ASTREAMER_MEMBER_HEADER:
 
+			pg_log_info("astreamer_pg_tde_injector_content: member->pathname=%s", member->pathname);
 			/*
 			 * A streamed WAL is encrypted with the newly generated WAL key,
 			 * hence we have to prevent wal_keys from rewriting.

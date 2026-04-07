@@ -9,6 +9,7 @@
 #include "access/xloginsert.h"
 #include "miscadmin.h"
 #include "storage/fd.h"
+#include <sys/stat.h>
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/lsyscache.h"
@@ -31,6 +32,7 @@
 #include "catalog/namespace.h"
 #include "executor/spi.h"
 #include "funcapi.h"
+#include <sys/types.h>
 #else
 #include "fe_utils/simple_list.h"
 #include "pg_tde_fe.h"
@@ -707,11 +709,33 @@ GetKeyProviderByID(int provider_id, Oid dbOid)
 	Oid			realOid = provider_id < 0 ? GLOBAL_DATA_TDE_OID : dbOid;
 	GenericKeyring *keyring = NULL;
 	SimplePtrList *providers = scan_key_provider_file(PROVIDER_SCAN_BY_ID, &provider_id, realOid);
+	
 
 	if (providers != NULL)
 	{
 		keyring = (GenericKeyring *) providers->head->ptr;
+		ereport(LOG, errmsg("FOUND KEYRING"));
+		ereport(LOG, errmsg("keyring id=%d", keyring->keyring_id));
+		ereport(LOG, errmsg("keyring name=%s", keyring->provider_name));
+		
+		SimplePtrListCell *cell;
+		for (cell = providers->head; cell; cell = cell->next)
+		{
+			GenericKeyring *keyring = (GenericKeyring *) cell->ptr;
+			ereport(LOG, errmsg("keyring id=%d", keyring->keyring_id));
+			ereport(LOG, errmsg("keyring name=%s", keyring->provider_name));
+		}
+		
 		simple_list_free(providers);
+	} else{
+		ereport(LOG,
+				errmsg("I was not there"));
+	}
+
+	if (keyring == NULL)
+	{
+		ereport(LOG,
+				errmsg("no keyring found 1"));
 	}
 
 	return keyring;
@@ -766,11 +790,23 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 	if (fd < 0)
 	{
 		LWLockRelease(tde_provider_info_lock());
-		ereport(DEBUG2,
+		ereport(LOG,
 				errcode_for_file_access(),
 				errmsg("could not open tde file \"%s\": %m", kp_info_path));
 		return providers_list;
 	}
+
+	ereport(LOG,
+		errmsg("opened tde file \"%s\", curr_pos=%lld", kp_info_path, curr_pos));
+
+
+	struct stat file_stat;
+	if (fstat(fd, &file_stat) == 0)
+	{
+		ereport(LOG,
+				errmsg("file modified time=%lld, file size=%lld", (long long) file_stat.st_mtime, (long long) file_stat.st_size));
+	}
+
 	while (fetch_next_key_provider(fd, &curr_pos, &provider))
 	{
 		bool		match = false;
@@ -781,8 +817,8 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 			continue;
 		}
 
-		ereport(DEBUG2,
-				errmsg("read key provider ID=%d %s", provider.provider_id, provider.provider_name));
+		ereport(LOG,
+				errmsg("read key provider ID=%d name=%s file=%s", provider.provider_id, provider.provider_name, kp_info_path));
 
 		if (scanType == PROVIDER_SCAN_BY_NAME)
 		{
@@ -808,9 +844,14 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 #else
 				if (providers_list == NULL)
 					providers_list = palloc0_object(SimplePtrList);
+				ereport(LOG,
+						errmsg("adding keyring provider to list type=%d name=%s id=%d", provider.provider_type, provider.provider_name, provider.provider_id));
 				simple_ptr_list_append(providers_list, keyring);
 #endif
 			}
+		} else {
+			ereport(LOG,
+					errmsg("no match for keyring provider"));
 		}
 	}
 	CloseTransientFile(fd);
@@ -822,11 +863,14 @@ static GenericKeyring *
 load_keyring_provider_from_record(KeyringProviderRecord *provider)
 {
 	GenericKeyring *keyring;
-
+	ereport(LOG,
+			errmsg("load keyring provider from record type=%d name=%s id=%d", provider->provider_type, provider->provider_name, provider->provider_id));
 	keyring = load_keyring_provider_options(provider->provider_type, provider->options);
 
 	if (keyring)
 	{
+		ereport(LOG,
+				errmsg("loaded keyring provider type=%d name=%s id=%d", provider->provider_type, provider->provider_name, provider->provider_id));
 		keyring->keyring_id = provider->provider_id;
 		memcpy(keyring->provider_name, provider->provider_name, sizeof(keyring->provider_name));
 		keyring->type = provider->provider_type;
@@ -840,6 +884,8 @@ load_keyring_provider_from_record(KeyringProviderRecord *provider)
 static GenericKeyring *
 load_keyring_provider_options(ProviderType provider_type, char *keyring_options)
 {
+	ereport(LOG,
+			errmsg("load keyring provider options type=%d options=%s", provider_type, keyring_options));
 	switch (provider_type)
 	{
 		case FILE_KEY_PROVIDER:
@@ -973,30 +1019,30 @@ get_file_value(const char *path, const char *field_name)
 static void
 debug_print_kerying(GenericKeyring *keyring)
 {
-	elog(DEBUG2, "Keyring type: %d", keyring->type);
-	elog(DEBUG2, "Keyring name: %s", keyring->provider_name);
-	elog(DEBUG2, "Keyring id: %d", keyring->keyring_id);
+	elog(LOG, "Keyring type: %d", keyring->type);
+	elog(LOG, "Keyring name: %s", keyring->provider_name);
+	elog(LOG, "Keyring id: %d", keyring->keyring_id);
 	switch (keyring->type)
 	{
 		case FILE_KEY_PROVIDER:
-			elog(DEBUG2, "File Keyring Path: %s", ((FileKeyring *) keyring)->file_name);
+			elog(LOG, "File Keyring Path: %s", ((FileKeyring *) keyring)->file_name);
 			break;
 		case VAULT_V2_KEY_PROVIDER:
-			elog(DEBUG2, "Vault Keyring Token Path: %s", ((VaultV2Keyring *) keyring)->vault_token_path);
-			elog(DEBUG2, "Vault Keyring URL: %s", ((VaultV2Keyring *) keyring)->vault_url);
-			elog(DEBUG2, "Vault Keyring Mount Path: %s", ((VaultV2Keyring *) keyring)->vault_mount_path);
-			elog(DEBUG2, "Vault Keyring CA Path: %s", ((VaultV2Keyring *) keyring)->vault_ca_path);
+			elog(LOG, "Vault Keyring Token Path: %s", ((VaultV2Keyring *) keyring)->vault_token_path);
+			elog(LOG, "Vault Keyring URL: %s", ((VaultV2Keyring *) keyring)->vault_url);
+			elog(LOG, "Vault Keyring Mount Path: %s", ((VaultV2Keyring *) keyring)->vault_mount_path);
+			elog(LOG, "Vault Keyring CA Path: %s", ((VaultV2Keyring *) keyring)->vault_ca_path);
 			if (((VaultV2Keyring *) keyring)->vault_namespace != NULL)
 			{
-				elog(DEBUG2, "Vault Keyring Namespace: %s", ((VaultV2Keyring *) keyring)->vault_namespace);
+				elog(LOG, "Vault Keyring Namespace: %s", ((VaultV2Keyring *) keyring)->vault_namespace);
 			}
 			break;
 		case KMIP_KEY_PROVIDER:
-			elog(DEBUG2, "KMIP Keyring Host: %s", ((KmipKeyring *) keyring)->kmip_host);
-			elog(DEBUG2, "KMIP Keyring Port: %s", ((KmipKeyring *) keyring)->kmip_port);
-			elog(DEBUG2, "KMIP Keyring CA Path: %s", ((KmipKeyring *) keyring)->kmip_ca_path);
-			elog(DEBUG2, "KMIP Keyring Cert Path: %s", ((KmipKeyring *) keyring)->kmip_cert_path);
-			elog(DEBUG2, "KMIP Keyring Key Path: %s", ((KmipKeyring *) keyring)->kmip_key_path);
+			elog(LOG, "KMIP Keyring Host: %s", ((KmipKeyring *) keyring)->kmip_host);
+			elog(LOG, "KMIP Keyring Port: %s", ((KmipKeyring *) keyring)->kmip_port);
+			elog(LOG, "KMIP Keyring CA Path: %s", ((KmipKeyring *) keyring)->kmip_ca_path);
+			elog(LOG, "KMIP Keyring Cert Path: %s", ((KmipKeyring *) keyring)->kmip_cert_path);
+			elog(LOG, "KMIP Keyring Key Path: %s", ((KmipKeyring *) keyring)->kmip_key_path);
 			break;
 		case UNKNOWN_KEY_PROVIDER:
 			break;
@@ -1035,16 +1081,21 @@ open_keyring_infofile(Oid database_id, int flags)
 static bool
 fetch_next_key_provider(int fd, off_t *curr_pos, KeyringProviderRecord *provider)
 {
-	off_t		bytes_read;
-
+	ssize_t		bytes_read;
 	Assert(provider != NULL);
 	Assert(fd >= 0);
+
+	ereport(LOG,
+			errmsg("fetching next key provider from file at position %lld", *curr_pos));
 
 	bytes_read = pg_pread(fd, provider, sizeof(KeyringProviderRecord), *curr_pos);
 	*curr_pos += bytes_read;
 
-	if (bytes_read == 0)
+	if (bytes_read == 0){
+		ereport(LOG,
+				errmsg("no more key providers found in the file"));
 		return false;
+	}
 	if (bytes_read != sizeof(KeyringProviderRecord))
 	{
 		/* Corrupt file */

@@ -684,14 +684,16 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 		TDEXLogSmgrInit();
 
 		principalKey = GetPrincipalKey(GLOBAL_DATA_TDE_OID, NULL);
+		pg_log_info("getting principal key from keyring, principalKey=%p", principalKey);
 		if (!principalKey)
 		{
 			pg_log_error("could not find server principal key");
 			pg_log_error_hint("Copy PGDATA/pg_tde from the source to the backup destination dir.");
 			exit(1);
 		}
+		pg_log_info("saving server key to keyring, principalKey=%p", principalKey);
 		pg_tde_save_server_key(principalKey, false);
-
+		pg_log_info("saved server key to keyring, principalKey=%p", principalKey);
 		/*
 		 * If no cipher was specified then we try to get the key length from
 		 * the principal key. And keep 128 bit if no luck with that.

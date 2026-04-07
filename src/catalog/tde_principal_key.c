@@ -958,6 +958,12 @@ get_principal_key_from_keyring(Oid dbOid)
 
 	keyring = GetKeyProviderByID(principalKeyInfo->data.keyringId, dbOid);
 	if (keyring == NULL)
+	{
+		ereport(LOG,
+				errmsg("no keyring found 2"));
+	}
+
+	if (keyring == NULL)
 		ereport(ERROR,
 				errcode(ERRCODE_DATA_CORRUPTED),
 				errmsg("keyring lookup failed for principal key %s, unknown keyring with ID %d",

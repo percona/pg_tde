@@ -170,4 +170,5 @@ jobs:
             postgres/src/test/*/regression.out
             postgres/src/test/*/results
             postgres/src/test/*/tmp_check
+            /tmp/pg_tde_basebackup.out
           retention-days: 3
