@@ -8,6 +8,10 @@ program_help_ok('pg_tde_upgrade');
 program_version_ok('pg_tde_upgrade');
 program_options_handling_ok('pg_tde_upgrade');
 
+# Make sure delete_old_cluster.{sh,bat} is not generated in the source
+# directory.
+chdir $PostgreSQL::Test::Utils::tmp_check;
+
 my $oldnotde = PostgreSQL::Test::Cluster->new('oldnotde');
 $oldnotde->init;
 $oldnotde->start;
