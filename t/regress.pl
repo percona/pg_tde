@@ -66,7 +66,9 @@ sub bao_setup
 	$bao_pid = fork;
 	unless ($bao_pid)
 	{
-		exec('bao', 'server', '-dev', '-dev-tls',
+		exec(
+			'bao', 'server', '-dev', '-dev-tls',
+			"-dev-listen-address=127.0.0.1:$bao_port",
 			"-dev-cluster-json=$bao_temp/info");
 	}
 
@@ -74,6 +76,7 @@ sub bao_setup
 
 	my $bao_info = decode_json(slurp_file("$bao_temp/info"));
 
+	$ENV{'VAULT_ADDR'} = "https://127.0.0.1:$bao_port";
 	$ENV{'VAULT_CACERT'} = $bao_info->{ca_cert_path};
 
 	# We need to enable key/value version 1 engine for just for tests
