@@ -22,13 +22,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: src
           submodules: recursive
 
       - name: Clone postgres repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: postgres
           repository: percona/postgres.git
@@ -47,7 +47,7 @@ jobs:
         run: src/ci_scripts/build-and-install-psp.sh coverage
 
       - name: Build pg_tde
-        run: src/ci_scripts/build.sh debug
+        run: src/ci_scripts/build.sh coverage
 
       - name: Setup kmip and vault
         run: src/ci_scripts/setup-keyring-servers.sh
@@ -55,25 +55,32 @@ jobs:
       - name: Run pg_tde tests
         run: src/ci_scripts/test.sh
 
+      - name: Process coverage
+        run: |
+          geninfo -o coverage.info --rc lcov_branch_coverage=1 -i .
+          geninfo -o coverage.info --rc lcov_branch_coverage=1 .
+        working-directory: build
+
       - name: Upload coverage data to codecov.io
         uses: codecov/codecov-action@v5
         with:
           verbose: true
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+          disable_search: true
+          files: ../build/coverage.info
           working-directory: src
 
       - name: Report on test fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
           name: coverage-testlog
           path: |
-            src/regress_install
-            src/regress_install.log
-            src/regression.diffs
-            src/regression.out
-            src/results
-            src/t/results
-            src/tmp_check
+            build/meson-logs/testlog.txt
+            build/regress_install
+            build/regress_install.log
+            build/regression.diffs
+            build/results
+            build/testrun
           retention-days: 3

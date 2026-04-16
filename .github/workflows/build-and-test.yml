@@ -26,14 +26,14 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: src
           submodules: recursive
           ref: ${{ github.ref }}
 
       - name: Clone postgres repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: postgres
           repository: percona/postgres.git
@@ -60,10 +60,10 @@ jobs:
         run: src/ci_scripts/build.sh ${{ inputs.build_type }}
 
       - name: Add build and install to artifact tar file
-        run: tar -czf artifacts.tar src postgres pginst
+        run: tar -czf artifacts.tar src build postgres pginst
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.artifact_name }}
           overwrite: true
@@ -79,7 +79,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.artifact_name }}
           path: .
@@ -108,18 +108,17 @@ jobs:
         run: src/ci_scripts/test.sh
 
       - name: Report on test fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
           name: log-test-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
-            src/regress_install
-            src/regress_install.log
-            src/regression.diffs
-            src/regression.out
-            src/results
-            src/t/results
-            src/tmp_check
+            build/meson-logs/testlog.txt
+            build/regress_install
+            build/regress_install.log
+            build/regression.diffs
+            build/results
+            build/testrun
           retention-days: 3
 
   test-psp-with-tde:
@@ -132,7 +131,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.artifact_name }}
           path: .
@@ -153,7 +152,7 @@ jobs:
         run: src/ci_scripts/test-global-tde.sh --continue
 
       - name: Report on test fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
           name: log-test-global-tde-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}

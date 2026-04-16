@@ -26,7 +26,7 @@ case "$1" in
 
     coverage)
         echo "Building with coverage option"
-        ARGS+=" --enable-cassert --enable-injection-points --enable-coverage"
+        ARGS+=" --enable-injection-points --enable-coverage"
         INSTALL_INJECTION_POINTS=1
         ;;
 
@@ -37,7 +37,7 @@ case "$1" in
 
     *)
         echo "Unknown build type: $1"
-        echo "Please use one of the following: debug, debugoptimized, sanitize"
+        echo "Please use one of the following: debug, debugoptimized, coverage, sanitize"
         exit 1
         ;;
 esac

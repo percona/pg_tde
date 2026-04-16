@@ -3,24 +3,6 @@ MODULE_big = pg_tde
 EXTENSION = pg_tde
 DATA = pg_tde--2.0--2.1.sql pg_tde--1.0--2.0.sql pg_tde--1.0.sql
 
-REGRESS = \
-	access_control \
-	alter_index \
-	change_access_method \
-	create_database \
-	default_principal_key \
-	delete_principal_key \
-	insert_update_delete \
-	key_provider \
-	kmip_test \
-	partition_table \
-	pg_tde_is_encrypted \
-	recreate_storage \
-	relocate \
-	tablespace \
-	toast_decrypt \
-	vault_v2_test \
-	version
 TAP_TESTS = 1
 
 FETOOLS = fetools/pg$(MAJORVERSION)
@@ -191,14 +173,3 @@ libtde.a: $(TDE_OBJS)
 
 libtdexlog.a: $(TDE_XLOG_OBJS)
 	$(AR) $(AROPT) $@ $^
-
-# Fetches typedefs list for PostgreSQL core and merges it with typedefs defined in this project.
-# https://wiki.postgresql.org/wiki/Running_pgindent_on_non-core_code_or_development_code
-update-typedefs:
-	(wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_17_STABLE"; wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_18_STABLE") | cat - typedefs.list | sort -u > typedefs-full.list
-
-# Indents projects sources.
-indent:
-	pgindent --typedefs=typedefs-full.list --excludes=pgindent_excludes .
-
-.PHONY: update-typedefs indent

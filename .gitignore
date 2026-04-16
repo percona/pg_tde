@@ -42,14 +42,12 @@ __pycache__
 /Release/
 /tmp_install/
 /portlock/
-/*.typedefs
 /regression.diffs
 /regression.out
 
 # Generated subdirectories
 /log/
 /results/
-/t/results/
 /tmp_check/
 /regress_install/
 /regress_install.log
@@ -67,4 +65,3 @@ __pycache__
 
 # Tool files
 /typedefs.list
-/typedefs-full.list

@@ -67,40 +67,39 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
 To build `pg_tde` from source code, you require the following:
 
 * git
-* make
-* gcc
-* pg_config
+* Meson or make
+* gcc or clang
+* Percona Server for PostgreSQL 17 or later
 
 Refer to the [Building from source code](https://github.com/percona/pg_tde?tab=readme-ov-file#building-from-sources-for-community-postgresql) section for guidelines.
 
 ### Run tests
 
-When you work, you should periodically run tests to check that your changes don’t break existing code.
-
-You can find the tests in the `sql` directory.
+You can find the tests in the `sql` and `t` directories.
 
 #### Run manually
 
 1. Change the directory to `pg_tde`
 
-**NOTE**: Make sure `postgres` user is the owner of the `pg_tde` directory
+2. Build and install `pg_tde` with the following commands:
 
-2. Start the tests
-    1. If you built PostgreSQL from PGDG, use the following command:
+    ```sh
+    meson setup -Dpg_config=/path/to/postgresql/bin/pg_config ./build
+    cd build
+    meson install
+    ```
 
-        ```sh
-        make installcheck
-        ```
+3. Start OpenBao and OpenKMIP
 
-    2. If you installed PostgreSQL server  from Percona Distribution for PostgreSQL, use the following command:
+4. Run the tests using the following command:
 
-        ```sh
-        sudo su postgres bash -c 'make installcheck USE_PGXS=1'
-        ```
+    ```sh
+    meson install && meson test --print-errorlogs
+    ```
 
 #### Run automatically
 
-The tests are run automatically with GitHub actions once you commit and push your changes. Make sure all tests are successfully passed before you proceed.
+The tests are run automatically with GitHub actions once you create a pull request.
 
 ## Documentation contribution
 
