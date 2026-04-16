@@ -59,7 +59,7 @@ Limitations of `pg_tde` {{release}}:
 
     Only objects in the default tablespace are checked. Objects in other tablespaces are not evaluated by `pg_tde`.
 
-  To move encrypted tables individually, use `ALTER TABLE ... SET TABLESPACE`.
+    To move encrypted tables individually, use `ALTER TABLE ... SET TABLESPACE`, which operates through SMGR and is compatible with `pg_tde`.
 
 ## Currently unsupported WAL tools
 
