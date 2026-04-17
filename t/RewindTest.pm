@@ -165,6 +165,16 @@ shared_preload_libraries = 'pg_tde'
 		"SELECT pg_tde_set_server_key_using_global_key_provider('global-db-principal-key', 'file-keyring-wal');"
 	);
 
+	$node_primary->safe_psql('postgres',
+		"SELECT pg_tde_add_database_key_provider_file('file-keyring','${tde_keyring_file}');"
+	);
+	$node_primary->safe_psql('postgres',
+		"SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-keyring');"
+	);
+	$node_primary->safe_psql('postgres',
+		"SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-keyring');"
+	);
+
 	$node_primary->append_conf(
 		'postgresql.conf', q{
 pg_tde.wal_encrypt = on

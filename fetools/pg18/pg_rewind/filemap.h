@@ -25,6 +25,9 @@ typedef enum
 								 * blocks based on the parsed WAL) */
 	FILE_ACTION_TRUNCATE,		/* truncate local file to 'newsize' bytes */
 	FILE_ACTION_REMOVE,			/* remove local file / directory / symlink */
+	FILE_ACTION_ENSURE_TDE_KEY, /* data file with no action, but we to check
+								 * if it is encrypted and sync source/target
+								 * keys */
 } file_action_t;
 
 typedef enum
@@ -112,5 +115,7 @@ extern void print_filemap(filemap_t *filemap);
 
 extern void keepwal_init(void);
 extern void keepwal_add_entry(const char *path);
+
+extern bool path_rlocator(const char *path, RelFileLocator *rlocator, unsigned int *segNo);
 
 #endif							/* FILEMAP_H */

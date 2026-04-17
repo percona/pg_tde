@@ -31,6 +31,7 @@
 #include "pg_rewind.h"
 #include "rewind_source.h"
 #include "storage/bufpage.h"
+#include "tde_ops.h"
 
 #include "pg_tde.h"
 #include "access/pg_tde_fe_init.h"
@@ -600,6 +601,7 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 			while (datapagemap_next(iter, &blkno))
 			{
 				offset = blkno * BLCKSZ;
+
 				source->queue_fetch_range(source, entry->path, offset, BLCKSZ);
 			}
 			pg_free(iter);
@@ -611,12 +613,28 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 				/* nothing else to do */
 				break;
 
+			case FILE_ACTION_ENSURE_TDE_KEY:
+
+				/*
+				 * Partial rewrites will ensure the keys on their own.
+				 * Moreover, some partial updates, when the source is libpq,
+				 * may happen in the last turn, when source->finish_fetch() is
+				 * called. So running ensure_tde_keys for such files
+				 * prematurely will make them unreadable since the source key
+				 * would be updated before we use it to decrypt source data.
+				 */
+				if (entry->target_pages_to_overwrite.bitmapsize == 0)
+					ensure_tde_keys(entry->path);
+				break;
+
 			case FILE_ACTION_COPY:
 				source->queue_fetch_file(source, entry->path, entry->source_size);
 				break;
 
 			case FILE_ACTION_TRUNCATE:
 				truncate_target_file(entry->path, entry->source_size);
+				if (entry->target_pages_to_overwrite.bitmapsize == 0)
+					ensure_tde_keys(entry->path);
 				break;
 
 			case FILE_ACTION_COPY_TAIL:
@@ -643,6 +661,8 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 	source->finish_fetch(source);
 
 	close_target_file();
+
+	fetch_tde_dir();
 
 	progress_report(true);
 

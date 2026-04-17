@@ -10,11 +10,19 @@
 #include "postgres_fe.h"
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
+#include "catalog/pg_tablespace_d.h"
 #include "common/logging.h"
 #include "file_ops.h"
+#include "pg_rewind.h"
 #include "rewind_source.h"
+#include "tde_ops.h"
+
+#include "pg_tde.h"
+#include "common/pg_tde_utils.h"
+#include "access/pg_tde_tdemap.h"
 
 typedef struct
 {
@@ -34,6 +42,8 @@ static void local_queue_fetch_range(rewind_source *source, const char *path,
 static void local_finish_fetch(rewind_source *source);
 static void local_destroy(rewind_source *source);
 
+static void local_fetch_tde_keys(rewind_source *source);
+
 rewind_source *
 init_local_source(const char *datadir)
 {
@@ -50,6 +60,8 @@ init_local_source(const char *datadir)
 	src->common.destroy = local_destroy;
 
 	src->datadir = datadir;
+
+	local_fetch_tde_keys(&src->common);
 
 	return &src->common;
 }
@@ -145,6 +157,8 @@ local_queue_fetch_range(rewind_source *source, const char *path, off_t off,
 
 	open_target_file(path, false);
 
+	ensure_tde_keys(path);
+
 	while (end - begin > 0)
 	{
 		ssize_t		readlen;
@@ -162,6 +176,9 @@ local_queue_fetch_range(rewind_source *source, const char *path, off_t off,
 		else if (readlen == 0)
 			pg_fatal("unexpected EOF while reading file \"%s\"", srcpath);
 
+		/* Re-encrypt blocks with a proper key if neeed. */
+		encrypt_block((unsigned char *) buf.data, begin, MAIN_FORKNUM);
+
 		write_target_range(buf.data, begin, readlen);
 		begin += readlen;
 	}
@@ -170,12 +187,37 @@ local_queue_fetch_range(rewind_source *source, const char *path, off_t off,
 		pg_fatal("could not close file \"%s\": %m", srcpath);
 }
 
+static bool
+directory_exists(const char *dir)
+{
+	struct stat st;
+
+	if (stat(dir, &st) != 0)
+		return false;
+	if (S_ISDIR(st.st_mode))
+		return true;
+	return false;
+}
+
+static void
+local_fetch_tde_keys(rewind_source *source)
+{
+	char		tde_source_dir[MAXPGPATH];
+	const char *datadir = ((local_source *) source)->datadir;
+
+	snprintf(tde_source_dir, sizeof(tde_source_dir), "%s/%s", datadir, PG_TDE_DATA_DIR);
+
+	if (!directory_exists(tde_source_dir))
+		return;
+
+	init_tde();
+	copy_tmp_tde_files(tde_source_dir);
+}
+
 static void
 local_finish_fetch(rewind_source *source)
 {
-	/*
-	 * Nothing to do, local_queue_fetch_range() copies the ranges immediately.
-	 */
+	flush_current_key();
 }
 
 static void
