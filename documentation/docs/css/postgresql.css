@@ -1,22 +1,11 @@
 /* Overrides */
 
-:root {
-    --postgresql-brand: rgb(0, 94, 214);
-        /* Sidebar / repo nav strip — solid, no gradient */
-    --postgresql-brand-dark: rgb(40, 39, 39);
-    --md-primary-fg-color--dark: var(--postgresql-brand-dark);
-}
 .md-header,
 .md-tabs {
-    background: var(--postgresql-brand);
+    background: #005ed6;
 }
-@media screen and (max-width: 76.1875em) {
-    .md-nav--primary .md-nav__title[for="__drawer"],
-    .md-nav--primary .md-nav__title {
-        background: var(--postgresql-brand);
-    }
-}
+
 .superNav,
 .md-nav__source {
-    background-color: var(--postgresql-brand-dark);
+    background: #282727;
 }
