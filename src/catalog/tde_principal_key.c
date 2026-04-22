@@ -934,6 +934,13 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid)
 
 #endif							/* FRONTEND */
 
+#ifdef FRONTEND
+/*
+ * Process-local cache for the server (GLOBAL_DATA_TDE_OID) principal key.
+ */
+static TDEPrincipalKey *fe_server_principal_key_cache = NULL;
+#endif							/* FRONTEND */
+
 /*
  * Get principal key form the keyring.
  */
@@ -1036,6 +1043,17 @@ GetPrincipalKeyNoDefault(Oid dbOid, LWLockMode lockMode)
 	}
 #endif
 
+#ifdef FRONTEND
+	/* Only cache the server key; it is the only one used in WAL encryption */
+	if (dbOid == GLOBAL_DATA_TDE_OID && fe_server_principal_key_cache != NULL)
+	{
+		TDEPrincipalKey *copy = palloc_object(TDEPrincipalKey);
+
+		*copy = *fe_server_principal_key_cache;
+		return copy;
+	}
+#endif
+
 	principalKey = get_principal_key_from_keyring(dbOid);
 
 #ifndef FRONTEND
@@ -1049,6 +1067,15 @@ GetPrincipalKeyNoDefault(Oid dbOid, LWLockMode lockMode)
 		 */
 		pfree(principalKey);
 		principalKey = get_principal_key_from_cache(dbOid);
+	}
+#else
+	/* Cache on first successful read for GLOBAL_DATA_TDE_OID */
+	if (principalKey != NULL &&
+		dbOid == GLOBAL_DATA_TDE_OID &&
+		fe_server_principal_key_cache == NULL)
+	{
+		fe_server_principal_key_cache = palloc_object(TDEPrincipalKey);
+		*fe_server_principal_key_cache = *principalKey;
 	}
 #endif
 
