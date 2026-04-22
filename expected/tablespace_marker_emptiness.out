@@ -1,0 +1,125 @@
+-- Emptiness enforcement for pg_tde_mark_tablespace_{encrypted,decrypted}.
+--
+-- All cases start with the tablespace decrypted and put some storage in it,
+-- expecting mark_encrypted to fail with ERRCODE_OBJECT_IN_USE. After each DROP
+-- the per-dboid dir may linger with a pending-delete file; our implementation
+-- forces a CHECKPOINT + PROCSIGNAL_BARRIER_SMGRRELEASE to clear it, so the TS
+-- is considered empty again on the next mark.
+\! rm -f '/tmp/pg_tde_marker_empty.per'
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_add_database_key_provider_file('fv','/tmp/pg_tde_marker_empty.per');
+ pg_tde_add_database_key_provider_file 
+---------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_create_key_using_database_key_provider('k','fv');
+ pg_tde_create_key_using_database_key_provider 
+-----------------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_set_key_using_database_key_provider('k','fv');
+ pg_tde_set_key_using_database_key_provider 
+--------------------------------------------
+ 
+(1 row)
+
+SET allow_in_place_tablespaces = true;
+CREATE TABLESPACE empty_ts LOCATION '';
+-- 1. Empty: mark succeeds round-trip.
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ pg_tde_mark_tablespace_encrypted 
+----------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_mark_tablespace_decrypted('empty_ts');
+ pg_tde_mark_tablespace_decrypted 
+----------------------------------
+ 
+(1 row)
+
+-- 2. Heap table blocks encrypt toggle.
+CREATE TABLE t_heap (x int) TABLESPACE empty_ts;
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ERROR:  tablespace "empty_ts" is not empty
+HINT:  Drop all objects in the tablespace before changing its encryption mark.
+DROP TABLE t_heap;
+-- 3. Index only (table in pg_default, index in empty_ts).
+CREATE TABLE t_main (x int);
+CREATE INDEX ON t_main (x) TABLESPACE empty_ts;
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ERROR:  tablespace "empty_ts" is not empty
+HINT:  Drop all objects in the tablespace before changing its encryption mark.
+DROP TABLE t_main;
+-- 4. Materialized view.
+CREATE MATERIALIZED VIEW mv TABLESPACE empty_ts AS SELECT 1 AS x;
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ERROR:  tablespace "empty_ts" is not empty
+HINT:  Drop all objects in the tablespace before changing its encryption mark.
+DROP MATERIALIZED VIEW mv;
+-- 5. Sequence: skipped. Bare CREATE SEQUENCE ... TABLESPACE and ALTER
+--    SEQUENCE SET TABLESPACE are unsupported in PG 18 grammar. Owned
+--    sequences follow the owning table's tablespace and are already
+--    covered implicitly by case 2 (heap table in the tablespace).
+-- 6. Unlogged table (still has _init fork on disk).
+CREATE UNLOGGED TABLE t_unlogged (x int) TABLESPACE empty_ts;
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ERROR:  tablespace "empty_ts" is not empty
+HINT:  Drop all objects in the tablespace before changing its encryption mark.
+DROP TABLE t_unlogged;
+-- 7. Partition child (parent in pg_default, child in empty_ts; both
+--    tablespaces are decrypted so the parent/child encryption-match rule is
+--    satisfied).
+CREATE TABLE p (x int) PARTITION BY RANGE (x);
+CREATE TABLE p1 PARTITION OF p FOR VALUES FROM (0) TO (100) TABLESPACE empty_ts;
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ERROR:  tablespace "empty_ts" is not empty
+HINT:  Drop all objects in the tablespace before changing its encryption mark.
+DROP TABLE p;
+-- 8. Partitioned parent (no storage) in empty_ts — child inherits the parent
+--    tablespace so all storage is the leaf in empty_ts.
+CREATE TABLE pp (x int) PARTITION BY RANGE (x) TABLESPACE empty_ts;
+CREATE TABLE pp1 PARTITION OF pp FOR VALUES FROM (0) TO (100);
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ERROR:  tablespace "empty_ts" is not empty
+HINT:  Drop all objects in the tablespace before changing its encryption mark.
+DROP TABLE pp;
+-- 9. Drop leaves an empty per-dboid dir: mark should still succeed.
+CREATE TABLE t_ephemeral (x int) TABLESPACE empty_ts;
+DROP TABLE t_ephemeral;
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ pg_tde_mark_tablespace_encrypted 
+----------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_mark_tablespace_decrypted('empty_ts');
+ pg_tde_mark_tablespace_decrypted 
+----------------------------------
+ 
+(1 row)
+
+-- 10. Decrypt-direction failure: mark encrypted while empty, then populate,
+--     then attempt mark_decrypted -> must fail "not empty".
+SELECT pg_tde_mark_tablespace_encrypted('empty_ts');
+ pg_tde_mark_tablespace_encrypted 
+----------------------------------
+ 
+(1 row)
+
+CREATE TABLE t_block_decrypt (x int) TABLESPACE empty_ts;
+SELECT pg_tde_mark_tablespace_decrypted('empty_ts');
+ERROR:  tablespace "empty_ts" is not empty
+HINT:  Drop all objects in the tablespace before changing its encryption mark.
+DROP TABLE t_block_decrypt;
+SELECT pg_tde_mark_tablespace_decrypted('empty_ts');
+ pg_tde_mark_tablespace_decrypted 
+----------------------------------
+ 
+(1 row)
+
+-- 12. In-place tablespace path: already in use via allow_in_place_tablespaces.
+DROP TABLESPACE empty_ts;
+DROP EXTENSION pg_tde;

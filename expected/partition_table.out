@@ -59,7 +59,6 @@ SELECT pg_tde_is_encrypted('partition_q4_2024');
 (1 row)
 
 ALTER TABLE partitioned_table SET ACCESS METHOD heap;
-ERROR:  Recursive ALTER TABLE on a mix of encrypted and unencrypted relations is not supported
 ALTER TABLE partition_q1_2024 SET ACCESS METHOD heap;
 ALTER TABLE partition_q2_2024 SET ACCESS METHOD tde_heap;
 ALTER TABLE partition_q3_2024 SET ACCESS METHOD heap;
@@ -149,9 +148,9 @@ RESET default_table_access_method;
 CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a) USING heap;
 SET pg_tde.enforce_encryption = on;
 CREATE TABLE partition_child_inherit PARTITION OF partition_parent FOR VALUES FROM (0) TO (10);
-ERROR:  pg_tde.enforce_encryption is ON, only the tde_heap access method is allowed.
+ERROR:  pg_tde.enforce_encryption is ON; relation must use tde_heap or an encrypted tablespace
 CREATE TABLE partition_child_heap PARTITION OF partition_parent FOR VALUES FROM (11) TO (20) USING heap;
-ERROR:  pg_tde.enforce_encryption is ON, only the tde_heap access method is allowed.
+ERROR:  pg_tde.enforce_encryption is ON; relation must use tde_heap or an encrypted tablespace
 CREATE TABLE partition_child_tde_heap PARTITION OF partition_parent FOR VALUES FROM (11) TO (20) USING tde_heap;
 SELECT pg_tde_is_encrypted('partition_child_tde_heap');
  pg_tde_is_encrypted 
@@ -218,7 +217,6 @@ CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a);
 CREATE TABLE partition_child_heap PARTITION OF partition_parent FOR VALUES FROM (0) TO (9) USING heap;
 CREATE TABLE partition_child_tde_heap PARTITION OF partition_parent FOR VALUES FROM (10) TO (19) USING tde_heap;
 CREATE INDEX ON partition_parent (a);
-ERROR:  Recursive CREATE INDEX on a mix of encrypted and unencrypted relations is not supported
 DROP TABLE partition_parent;
 -- Index should also be encrypted for new partitionins
 CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a);

@@ -29,7 +29,7 @@ SELECT pg_tde_set_key_using_global_key_provider('test-db-key','file-provider');
 SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();
  provider_id | provider_name |  key_name   
 -------------+---------------+-------------
-          -3 | file-provider | test-db-key
+          -4 | file-provider | test-db-key
 (1 row)
 
 SELECT pg_tde_delete_key();
@@ -100,7 +100,7 @@ SELECT pg_tde_delete_key();
 SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();
  provider_id | provider_name |  key_name   
 -------------+---------------+-------------
-          -3 | file-provider | defalut-key
+          -4 | file-provider | defalut-key
 (1 row)
 
 -- Try to delete key when default key is used

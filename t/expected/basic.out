@@ -10,17 +10,18 @@ CREATE EXTENSION pg_tde;
 			(lanname = 'c' OR prosecdef) AND
 			(grantee IS NULL OR grantee = 0)
 		ORDER BY pg_proc.oid::regprocedure::text;
-              oid              
--------------------------------
+                 oid                 
+-------------------------------------
  pg_tde_is_encrypted(regclass)
+ pg_tde_tablespace_is_encrypted(oid)
  pg_tde_version()
-(2 rows)
+(3 rows)
 
 	
 SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_tde';
  extname | extversion 
 ---------+------------
- pg_tde  | 2.1
+ pg_tde  | 2.2
 (1 row)
 
 CREATE TABLE test_enc (id SERIAL, k INTEGER, PRIMARY KEY (id)) USING tde_heap;

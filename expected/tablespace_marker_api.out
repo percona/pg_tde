@@ -1,0 +1,134 @@
+-- Public API surface for pg_tde_mark_tablespace_{encrypted,decrypted}.
+\! rm -f '/tmp/pg_tde_marker_api.per'
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_add_database_key_provider_file('fv','/tmp/pg_tde_marker_api.per');
+ pg_tde_add_database_key_provider_file 
+---------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_create_key_using_database_key_provider('k','fv');
+ pg_tde_create_key_using_database_key_provider 
+-----------------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_set_key_using_database_key_provider('k','fv');
+ pg_tde_set_key_using_database_key_provider 
+--------------------------------------------
+ 
+(1 row)
+
+-- 1. Non-existent name.
+SELECT pg_tde_mark_tablespace_encrypted('does_not_exist');
+ERROR:  tablespace "does_not_exist" does not exist
+-- 2-4. pg_default / pg_global rejected (both variants).
+SELECT pg_tde_mark_tablespace_encrypted('pg_default');
+ERROR:  cannot mark the default tablespace
+SELECT pg_tde_mark_tablespace_encrypted('pg_global');
+ERROR:  cannot mark the global tablespace
+SELECT pg_tde_mark_tablespace_decrypted('pg_default');
+ERROR:  cannot mark the default tablespace
+SELECT pg_tde_mark_tablespace_decrypted('pg_global');
+ERROR:  cannot mark the global tablespace
+-- Setup: create an empty tablespace owned by the running user.
+SET allow_in_place_tablespaces = true;
+CREATE TABLESPACE marker_ts LOCATION '';
+-- 5. Inside transaction block — rejected.
+BEGIN;
+SELECT pg_tde_mark_tablespace_encrypted('marker_ts');
+ERROR:  pg_tde_mark_tablespace_encrypted cannot run inside a transaction block
+ROLLBACK;
+-- 6. Inside DO block (implicit tx) — rejected.
+DO $$ BEGIN PERFORM pg_tde_mark_tablespace_encrypted('marker_ts'); END $$;
+ERROR:  pg_tde_mark_tablespace_encrypted cannot run inside a transaction block
+CONTEXT:  SQL statement "SELECT pg_tde_mark_tablespace_encrypted('marker_ts')"
+PL/pgSQL function inline_code_block line 1 at PERFORM
+-- 6b. Inside CALL of a procedure body (nonatomic SPI ctx) — rejected.
+CREATE PROCEDURE marker_proc() LANGUAGE plpgsql AS $$
+BEGIN
+    PERFORM pg_tde_mark_tablespace_encrypted('marker_ts');
+END $$;
+CALL marker_proc();
+ERROR:  pg_tde_mark_tablespace_encrypted cannot run inside a transaction block
+CONTEXT:  SQL statement "SELECT pg_tde_mark_tablespace_encrypted('marker_ts')"
+PL/pgSQL function marker_proc() line 3 at PERFORM
+DROP PROCEDURE marker_proc();
+-- 7a. Non-owner, no EXECUTE grant: SQL-level EXECUTE check rejects.
+CREATE ROLE marker_norole;
+SET ROLE marker_norole;
+SELECT pg_tde_mark_tablespace_encrypted('marker_ts');  -- ERROR: permission denied for function
+ERROR:  permission denied for function pg_tde_mark_tablespace_encrypted
+RESET ROLE;
+-- 7b. Non-owner, WITH EXECUTE granted: C-level ownercheck rejects.
+GRANT EXECUTE ON FUNCTION pg_tde_mark_tablespace_encrypted(text) TO marker_norole;
+GRANT EXECUTE ON FUNCTION pg_tde_mark_tablespace_decrypted(text) TO marker_norole;
+SET ROLE marker_norole;
+SELECT pg_tde_mark_tablespace_encrypted('marker_ts');  -- ERROR: must be owner of tablespace
+ERROR:  must be owner of tablespace marker_ts
+RESET ROLE;
+REVOKE EXECUTE ON FUNCTION pg_tde_mark_tablespace_encrypted(text) FROM marker_norole;
+REVOKE EXECUTE ON FUNCTION pg_tde_mark_tablespace_decrypted(text) FROM marker_norole;
+-- 8-9. Owner (here superuser = owner by default) succeeds.
+SELECT pg_tde_mark_tablespace_encrypted('marker_ts');
+ pg_tde_mark_tablespace_encrypted 
+----------------------------------
+ 
+(1 row)
+
+-- 10. Idempotent NOTICE.
+SELECT pg_tde_mark_tablespace_encrypted('marker_ts');
+NOTICE:  tablespace "marker_ts" is already marked encrypted
+ pg_tde_mark_tablespace_encrypted 
+----------------------------------
+ 
+(1 row)
+
+-- 11. Round-trip back to decrypted.
+SELECT pg_tde_mark_tablespace_decrypted('marker_ts');
+ pg_tde_mark_tablespace_decrypted 
+----------------------------------
+ 
+(1 row)
+
+-- 12. Idempotent the other direction.
+SELECT pg_tde_mark_tablespace_decrypted('marker_ts');
+NOTICE:  tablespace "marker_ts" is already marked decrypted
+ pg_tde_mark_tablespace_decrypted 
+----------------------------------
+ 
+(1 row)
+
+-- 13. Probe via CREATE TABLE + pg_tde_is_encrypted.
+CREATE TABLE t_probe (x int) TABLESPACE marker_ts;
+SELECT pg_tde_is_encrypted('t_probe');
+ pg_tde_is_encrypted 
+---------------------
+ f
+(1 row)
+
+DROP TABLE t_probe;
+-- Mark encrypted and probe: should behave as encrypted tablespace.
+SELECT pg_tde_mark_tablespace_encrypted('marker_ts');
+ pg_tde_mark_tablespace_encrypted 
+----------------------------------
+ 
+(1 row)
+
+CREATE TABLE t_probe_enc (x int) TABLESPACE marker_ts;
+SELECT pg_tde_is_encrypted('t_probe_enc');
+ pg_tde_is_encrypted 
+---------------------
+ t
+(1 row)
+
+DROP TABLE t_probe_enc;
+SELECT pg_tde_mark_tablespace_decrypted('marker_ts');
+ pg_tde_mark_tablespace_decrypted 
+----------------------------------
+ 
+(1 row)
+
+DROP TABLESPACE marker_ts;
+DROP ROLE marker_norole;
+DROP EXTENSION pg_tde;

@@ -249,20 +249,18 @@ CREATE TABLE capitals (
   country      char(2) UNIQUE NOT NULL
 ) INHERITS (cities) USING tde_heap;
 ALTER TABLE cities ALTER COLUMN name TYPE TEXT;
-ERROR:  Recursive ALTER TABLE on a mix of encrypted and unencrypted relations is not supported
 -- Enforce the same for typed tables
 CREATE TYPE people_type AS (age int, name varchar(8), dob date);
 CREATE TABLE sales_staff OF people_type USING tde_heap;
 CREATE TABLE other_staff OF people_type USING heap;
 ALTER TYPE people_type ALTER ATTRIBUTE name TYPE text CASCADE;
-ERROR:  Recursive ALTER TABLE on a mix of encrypted and unencrypted relations is not supported
 -- If all tpyed tables are encrypted everything should work as usual
 ALTER TABLE other_staff SET ACCESS METHOD tde_heap;
 ALTER TYPE people_type ALTER ATTRIBUTE name TYPE text CASCADE;
 SELECT pg_tde_is_encrypted('pg_toast.pg_toast_' || 'sales_staff'::regclass::oid);
  pg_tde_is_encrypted 
 ---------------------
- t
+ f
 (1 row)
 
 SELECT pg_tde_is_encrypted('pg_toast.pg_toast_' || 'other_staff'::regclass::oid);

@@ -1,0 +1,97 @@
+\! rm -f '/tmp/cdbts_provider_global.per'
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_add_global_key_provider_file('global-vault','/tmp/cdbts_provider_global.per');
+ pg_tde_add_global_key_provider_file 
+-------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_create_key_using_global_key_provider('default-key','global-vault');
+ pg_tde_create_key_using_global_key_provider 
+---------------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_set_default_key_using_global_key_provider('default-key','global-vault');
+ pg_tde_set_default_key_using_global_key_provider 
+--------------------------------------------------
+ 
+(1 row)
+
+SET allow_in_place_tablespaces = true;
+CREATE TABLESPACE enc_ts LOCATION '';
+SELECT pg_tde_mark_tablespace_encrypted('enc_ts');
+ pg_tde_mark_tablespace_encrypted 
+----------------------------------
+ 
+(1 row)
+
+SELECT current_database() AS regress_database \gset
+CREATE DATABASE template_plain;
+\c template_plain
+CREATE EXTENSION pg_tde;
+CREATE TABLE t1 (id int PRIMARY KEY, x text);
+INSERT INTO t1 VALUES (1,'hello'),(2,'world');
+\c :regress_database
+-- Bug repro: plaintext template + encrypted target tablespace + FILE_COPY must ERROR.
+CREATE DATABASE bad_copy
+  TEMPLATE template_plain
+  TABLESPACE enc_ts
+  STRATEGY FILE_COPY;
+ERROR:  The FILE_COPY strategy cannot be used when the target tablespace is encrypted
+HINT:  Use the WAL_LOG strategy instead.
+-- WAL_LOG (default) into encrypted target tablespace from plaintext template:
+-- copy goes through buffer mgr -> smgr -> pg_tde, target writes get encrypted.
+CREATE DATABASE new_enc_db TEMPLATE template_plain TABLESPACE enc_ts;
+\c new_enc_db
+SELECT * FROM t1 ORDER BY id;
+ id |   x   
+----+-------
+  1 | hello
+  2 | world
+(2 rows)
+
+SELECT pg_tde_is_encrypted('t1') AS t1_enc_in_new_db;
+ t1_enc_in_new_db 
+------------------
+ t
+(1 row)
+
+INSERT INTO t1 VALUES (3,'after-copy');
+SELECT * FROM t1 ORDER BY id;
+ id |     x      
+----+------------
+  1 | hello
+  2 | world
+  3 | after-copy
+(3 rows)
+
+\c :regress_database
+-- Sanity: template untouched (still plaintext).
+\c template_plain
+SELECT pg_tde_is_encrypted('t1') AS t1_enc_in_template;
+ t1_enc_in_template 
+--------------------
+ f
+(1 row)
+
+\c :regress_database
+DROP DATABASE new_enc_db;
+-- Negative coverage: FILE_COPY without TABLESPACE on plaintext template still works.
+CREATE DATABASE ok_copy TEMPLATE template_plain STRATEGY FILE_COPY;
+DROP DATABASE ok_copy;
+DROP DATABASE template_plain;
+DROP TABLESPACE enc_ts;
+SELECT pg_tde_delete_default_key();
+ pg_tde_delete_default_key 
+---------------------------
+ 
+(1 row)
+
+SELECT pg_tde_delete_global_key_provider('global-vault');
+ pg_tde_delete_global_key_provider 
+-----------------------------------
+ 
+(1 row)
+
+DROP EXTENSION pg_tde;

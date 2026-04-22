@@ -15,6 +15,8 @@
 #define XLOG_TDE_INSTALL_EXTENSION		0x40
 #define XLOG_TDE_DELETE_RELATION_KEY	0x50
 #define XLOG_TDE_DELETE_PRINCIPAL_KEY	0x60
+#define XLOG_TDE_MARK_TABLESPACE_ENCRYPTED	0x70
+#define XLOG_TDE_MARK_TABLESPACE_DECRYPTED	0x80
 
 /* ID 140 is registered for Percona TDE extension: https://wiki.postgresql.org/wiki/CustomWALResourceManagers */
 #define RM_TDERMGR_ID	140

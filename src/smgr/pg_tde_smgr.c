@@ -13,6 +13,7 @@
 #include "encryption/enc_tde.h"
 #include "pg_tde_guc.h"
 #include "pg_tde_event_capture.h"
+#include "common/tde_tablespace.h"
 #include "smgr/pg_tde_smgr.h"
 #if PG_VERSION_NUM >= 180000
 #include "storage/aio.h"
@@ -172,7 +173,21 @@ tde_smgr_get_key(const RelFileLocatorBackend *smgr_rlocator)
 static bool
 tde_smgr_should_encrypt(const RelFileLocatorBackend *smgr_rlocator, RelFileLocator *old_locator)
 {
-	/* Do not try to encrypt/decrypt catalog tables */
+	/*
+	 * Prototype tablespace-based signal: if the destination tablespace is
+	 * marked encrypted, encrypt regardless of session mode or relation kind.
+	 * This deliberately runs before the catalog-relation skip below so that
+	 * per-database catalog relations created in an encrypted tablespace
+	 * (e.g. via CREATE DATABASE ... TEMPLATE ... TABLESPACE encrypted_ts)
+	 * are keyed and encrypted alongside user relations.
+	 */
+	if (tablespace_is_encrypted(smgr_rlocator->locator.spcOid))
+		return true;
+
+	/*
+	 * Outside encrypted tablespaces, do not try to encrypt/decrypt catalog
+	 * tables.
+	 */
 	if (IsCatalogRelationOid(smgr_rlocator->locator.relNumber))
 		return false;
 

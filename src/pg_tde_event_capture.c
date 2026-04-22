@@ -16,6 +16,7 @@
 #include "commands/defrem.h"
 #include "commands/event_trigger.h"
 #include "commands/sequence.h"
+#include "commands/tablespace.h"
 #include "fmgr.h"
 #include "funcapi.h"
 #include "miscadmin.h"
@@ -31,6 +32,7 @@
 #include "catalog/tde_global_space.h"
 #include "catalog/tde_principal_key.h"
 #include "common/pg_tde_utils.h"
+#include "common/tde_tablespace.h"
 #include "pg_tde_event_capture.h"
 #include "pg_tde_guc.h"
 
@@ -93,16 +95,19 @@ checkPrincipalKeyConfigured(void)
 }
 
 static void
-checkEncryptionStatus(void)
+checkEncryptionStatus(bool target_is_encrypted_tablespace)
 {
-	if (currentTdeEncryptMode() == TDE_ENCRYPT_MODE_ENCRYPT)
+	bool		will_encrypt = (currentTdeEncryptMode() == TDE_ENCRYPT_MODE_ENCRYPT)
+		|| target_is_encrypted_tablespace;
+
+	if (will_encrypt)
 	{
 		checkPrincipalKeyConfigured();
 	}
 	else if (EnforceEncryption)
 	{
 		ereport(ERROR,
-				errmsg("pg_tde.enforce_encryption is ON, only the tde_heap access method is allowed."));
+				errmsg("pg_tde.enforce_encryption is ON; relation must use tde_heap or an encrypted tablespace"));
 	}
 }
 
@@ -230,6 +235,26 @@ alter_table_encryption_mix(Oid relid)
 }
 
 /*
+ * Resolve the target tablespace OID for a CREATE statement. If the user did
+ * not specify TABLESPACE, fall back to the resolved default (respects the
+ * default_tablespace GUC and DB dattablespace).
+ */
+static Oid
+resolve_create_tablespace(const char *tablespacename, char relpersistence)
+{
+	if (tablespacename != NULL && tablespacename[0] != '\0')
+		return get_tablespace_oid(tablespacename, false);
+	return GetDefaultTablespace(relpersistence, false);
+}
+
+static void
+require_principal_key_for_encrypted_target(Oid target_ts)
+{
+	if (tablespace_is_encrypted(target_ts))
+		checkPrincipalKeyConfigured();
+}
+
+/*
  * pg_tde_ddl_command_start_capture is an event trigger function triggered
  * at the start of any DDL command execution.
  *
@@ -268,12 +293,15 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 			event.encryptMode = TDE_ENCRYPT_MODE_ENCRYPT;
 		else if (encmix == ENC_MIX_PLAIN)
 			event.encryptMode = TDE_ENCRYPT_MODE_PLAIN;
-		else if (encmix == ENC_MIX_UNKNOWN)
-			event.encryptMode = TDE_ENCRYPT_MODE_RETAIN;
 		else
-			ereport(ERROR,
-					errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-					errmsg("Recursive CREATE INDEX on a mix of encrypted and unencrypted relations is not supported"));
+			event.encryptMode = TDE_ENCRYPT_MODE_RETAIN;
+
+		if (stmt->tableSpace != NULL && stmt->tableSpace[0] != '\0')
+		{
+			Oid			target_ts = get_tablespace_oid(stmt->tableSpace, false);
+
+			require_principal_key_for_encrypted_target(target_ts);
+		}
 
 		push_event_stack(&event);
 	}
@@ -310,6 +338,7 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 			parentOid = RangeVarGetRelid(linitial(stmt->inhRelations),
 										 AccessExclusiveLock,
 										 false);
+
 			parentAmOid = get_rel_relam(parentOid);
 			foundAccessMethod = parentAmOid != InvalidOid;
 
@@ -330,8 +359,13 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 				event.encryptMode = TDE_ENCRYPT_MODE_PLAIN;
 		}
 
-		push_event_stack(&event);
-		checkEncryptionStatus();
+		{
+			Oid			target_ts = resolve_create_tablespace(stmt->tablespacename,
+															  stmt->relation->relpersistence);
+
+			push_event_stack(&event);
+			checkEncryptionStatus(tablespace_is_encrypted(target_ts));
+		}
 	}
 	else if (IsA(parsetree, CreateTableAsStmt))
 	{
@@ -343,8 +377,13 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 		else
 			event.encryptMode = TDE_ENCRYPT_MODE_PLAIN;
 
-		push_event_stack(&event);
-		checkEncryptionStatus();
+		{
+			Oid			target_ts = resolve_create_tablespace(stmt->into->tableSpaceName,
+															  stmt->into->rel->relpersistence);
+
+			push_event_stack(&event);
+			checkEncryptionStatus(tablespace_is_encrypted(target_ts));
+		}
 	}
 	else if (IsA(parsetree, AlterTableStmt))
 	{
@@ -358,6 +397,7 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 			TdeDdlEvent event = {.parsetree = parsetree};
 			EncryptionMix encmix;
 			Relation	rel;
+			bool		any_encrypted_setspace_target = false;
 
 			foreach(lcmd, stmt->cmds)
 			{
@@ -365,21 +405,27 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 
 				if (cmd->subtype == AT_SetAccessMethod)
 					setAccessMethod = cmd;
+
+				if (cmd->subtype == AT_SetTableSpace && stmt->objtype == OBJECT_INDEX)
+				{
+					Oid			new_ts = get_tablespace_oid(cmd->name, false);
+
+					require_principal_key_for_encrypted_target(new_ts);
+				}
+
+				if (cmd->subtype == AT_SetTableSpace && stmt->objtype == OBJECT_TABLE)
+				{
+					Oid			new_ts = get_tablespace_oid(cmd->name, false);
+
+					if (tablespace_is_encrypted(new_ts))
+					{
+						checkPrincipalKeyConfigured();
+						any_encrypted_setspace_target = true;
+					}
+				}
 			}
 
 			encmix = alter_table_encryption_mix(relid);
-
-			/*
-			 * This check is very braod and could be limited only to commands
-			 * which recurse to child tables or to those which may create new
-			 * relfilenodes, but this restrictive code is good enough for now.
-			 */
-			if (encmix == ENC_MIX_MIXED)
-			{
-				ereport(ERROR,
-						errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-						errmsg("Recursive ALTER TABLE on a mix of encrypted and unencrypted relations is not supported"));
-			}
 
 			rel = relation_open(relid, NoLock);
 
@@ -417,7 +463,7 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 			relation_close(rel, NoLock);
 
 			push_event_stack(&event);
-			checkEncryptionStatus();
+			checkEncryptionStatus(any_encrypted_setspace_target);
 		}
 	}
 	else if (IsA(parsetree, CreateSeqStmt))
@@ -614,6 +660,7 @@ pg_tde_proccess_utility(PlannedStmt *pstmt,
 						QueryCompletion *qc)
 {
 	Node	   *parsetree = pstmt->utilityStmt;
+	Oid			drop_tablespace_pending_oid = InvalidOid;
 
 	switch (nodeTag(parsetree))
 	{
@@ -623,6 +670,7 @@ pg_tde_proccess_utility(PlannedStmt *pstmt,
 				ListCell   *option;
 				char	   *dbtemplate = "template1";
 				char	   *strategy = "wal_log";
+				char	   *tablespacename = NULL;
 
 				foreach(option, stmt->options)
 				{
@@ -632,6 +680,8 @@ pg_tde_proccess_utility(PlannedStmt *pstmt,
 						dbtemplate = defGetString(defel);
 					else if (strcmp(defel->defname, "strategy") == 0)
 						strategy = defGetString(defel);
+					else if (strcmp(defel->defname, "tablespace") == 0)
+						tablespacename = defGetString(defel);
 				}
 
 				if (pg_strcasecmp(strategy, "file_copy") == 0)
@@ -652,6 +702,17 @@ pg_tde_proccess_utility(PlannedStmt *pstmt,
 									errmsg_plural("The FILE_COPY strategy cannot be used when there are encrypted objects in the template database: %d object found",
 												  "The FILE_COPY strategy cannot be used when there are encrypted objects in the template database: %d objects found",
 												  count, count),
+									errhint("Use the WAL_LOG strategy instead."));
+					}
+
+					if (tablespacename != NULL)
+					{
+						Oid			target_ts = get_tablespace_oid(tablespacename, false);
+
+						if (tablespace_is_encrypted(target_ts))
+							ereport(ERROR,
+									errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("The FILE_COPY strategy cannot be used when the target tablespace is encrypted"),
 									errhint("Use the WAL_LOG strategy instead."));
 					}
 				}
@@ -695,6 +756,50 @@ pg_tde_proccess_utility(PlannedStmt *pstmt,
 				}
 			}
 			break;
+		case T_DropTableSpaceStmt:
+			{
+				DropTableSpaceStmt *stmt = castNode(DropTableSpaceStmt, parsetree);
+				Oid			spcOid = get_tablespace_oid(stmt->tablespacename,
+														stmt->missing_ok);
+
+				/*
+				 * Defer the decrypt-mark emission until AFTER
+				 * standard_ProcessUtility successfully drops the
+				 * tablespace. DropTableSpace has several post-hook failure
+				 * paths (ownership check, IsPinnedObject,
+				 * checkSharedDependencies, and non-empty directory); running
+				 * the hook pre-drop would flush a WAL record that cannot be
+				 * rolled back, silently stripping the mark on both primary
+				 * and replica while the tablespace remains.
+				 *
+				 * pg_tde_tablespace_drop_hook no-ops under its exclusive
+				 * lock if the OID isn't marked, so we always call it
+				 * unconditionally — this also avoids the TOCTOU between a
+				 * tablespace_is_encrypted pre-check and the hook's own
+				 * locked check.
+				 */
+				if (OidIsValid(spcOid))
+					drop_tablespace_pending_oid = spcOid;
+			}
+			break;
+		case T_ReindexStmt:
+			{
+				ReindexStmt *stmt = castNode(ReindexStmt, parsetree);
+				ListCell   *lc;
+
+				foreach(lc, stmt->params)
+				{
+					DefElem    *opt = lfirst_node(DefElem, lc);
+
+					if (strcmp(opt->defname, "tablespace") == 0)
+					{
+						Oid			new_ts = get_tablespace_oid(defGetString(opt), false);
+
+						require_principal_key_for_encrypted_target(new_ts);
+					}
+				}
+			}
+			break;
 		default:
 			break;
 	}
@@ -707,6 +812,13 @@ pg_tde_proccess_utility(PlannedStmt *pstmt,
 		standard_ProcessUtility(pstmt, queryString, readOnlyTree,
 								context, params, queryEnv,
 								dest, qc);
+
+	/*
+	 * DROP TABLESPACE succeeded (otherwise standard_ProcessUtility would
+	 * have thrown). Now it's safe to emit the decrypt-mark WAL record.
+	 */
+	if (OidIsValid(drop_tablespace_pending_oid))
+		pg_tde_tablespace_drop_hook(drop_tablespace_pending_oid);
 }
 
 void

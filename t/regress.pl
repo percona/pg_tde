@@ -19,6 +19,7 @@ my @tests = qw(
   alter_index
   change_access_method
   create_database
+  create_database_tablespace
   default_principal_key
   delete_principal_key
   insert_update_delete
@@ -29,6 +30,16 @@ my @tests = qw(
   recreate_storage
   relocate
   tablespace
+  tablespace_marker_api
+  tablespace_marker_ddl_interaction
+  tablespace_marker_emptiness
+  tablespace_prototype
+  tablespace_prototype_alter_reindex
+  tablespace_prototype_alter_tablespace
+  tablespace_prototype_enforce
+  tablespace_prototype_index
+  tablespace_prototype_partition
+  tablespace_prototype_principal_key
   toast_decrypt
   vault_v2_test
   version

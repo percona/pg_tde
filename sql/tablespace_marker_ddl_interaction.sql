@@ -1,0 +1,65 @@
+-- Marker + existing DDL policing: confirm nothing weakened on top of the
+-- explicit-marker regime.
+
+\! rm -f '/tmp/pg_tde_marker_ddl.per'
+
+CREATE EXTENSION pg_tde;
+
+SET allow_in_place_tablespaces = true;
+CREATE TABLESPACE plain_ts LOCATION '';        -- never marked
+CREATE TABLESPACE enc_ts LOCATION '';
+SELECT pg_tde_mark_tablespace_encrypted('enc_ts');
+
+-- 1. Plain tablespace, no principal key: CREATE OK.
+CREATE TABLE t_plain_nokey (x int) TABLESPACE plain_ts;
+SELECT pg_tde_is_encrypted('t_plain_nokey');
+DROP TABLE t_plain_nokey;
+
+-- 2. Encrypted tablespace, no principal key: CREATE rejected.
+CREATE TABLE t_enc_nokey (x int) TABLESPACE enc_ts;
+
+-- Configure principal key, then retry.
+SELECT pg_tde_add_database_key_provider_file('fv','/tmp/pg_tde_marker_ddl.per');
+SELECT pg_tde_create_key_using_database_key_provider('k','fv');
+SELECT pg_tde_set_key_using_database_key_provider('k','fv');
+
+-- 3. Encrypted tablespace, principal key configured: CREATE OK.
+CREATE TABLE t_enc_withkey (x int) TABLESPACE enc_ts;
+SELECT pg_tde_is_encrypted('t_enc_withkey');
+
+-- 4. Cross-tablespace CREATE INDEX: rejected.
+CREATE INDEX ON t_enc_withkey (x) TABLESPACE plain_ts;
+
+-- 5. Mark -> emptied -> decrypted: CREATE behaves as plain.
+DROP TABLE t_enc_withkey;
+SELECT pg_tde_mark_tablespace_decrypted('enc_ts');
+CREATE TABLE t_decrypted (x int) TABLESPACE enc_ts;
+SELECT pg_tde_is_encrypted('t_decrypted');
+DROP TABLE t_decrypted;
+
+-- Restore marker for cases 6-8.
+SELECT pg_tde_mark_tablespace_encrypted('enc_ts');
+
+-- 6 & 7. enforce_encryption.
+SET pg_tde.enforce_encryption = on;
+
+-- 6. USING heap TABLESPACE plain_ts -- rejected.
+CREATE TABLE t_ee_bad (x int) USING heap TABLESPACE plain_ts;
+
+-- 7. USING heap TABLESPACE enc_ts -- accepted.
+CREATE TABLE t_ee_ok (x int) USING heap TABLESPACE enc_ts;
+SELECT pg_tde_is_encrypted('t_ee_ok');
+
+SET pg_tde.enforce_encryption = off;
+DROP TABLE t_ee_ok;
+
+-- 8. Partitioned parent in plain_ts, child in enc_ts -- rejected.
+CREATE TABLE t_parent (x int) PARTITION BY RANGE (x) TABLESPACE plain_ts;
+CREATE TABLE t_child PARTITION OF t_parent FOR VALUES FROM (0) TO (100) TABLESPACE enc_ts;
+DROP TABLE t_parent;
+
+-- Cleanup.
+SELECT pg_tde_mark_tablespace_decrypted('enc_ts');
+DROP TABLESPACE plain_ts;
+DROP TABLESPACE enc_ts;
+DROP EXTENSION pg_tde;

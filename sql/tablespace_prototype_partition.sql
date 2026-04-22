@@ -1,0 +1,41 @@
+-- Cross-tablespace partition DDL is allowed.
+-- pg_tde_list_mixed_encryption() reports the resulting mismatches.
+
+\! rm -f '/tmp/pg_tde_prototype_part.per'
+
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_add_database_key_provider_file('fv','/tmp/pg_tde_prototype_part.per');
+SELECT pg_tde_create_key_using_database_key_provider('k','fv');
+SELECT pg_tde_set_key_using_database_key_provider('k','fv');
+
+SET allow_in_place_tablespaces = true;
+CREATE TABLESPACE enc_ts LOCATION '';
+SELECT pg_tde_mark_tablespace_encrypted('enc_ts');
+
+CREATE TABLE parent_enc (x int) PARTITION BY RANGE (x) TABLESPACE enc_ts;
+CREATE TABLE parent_plain (x int) PARTITION BY RANGE (x);
+
+-- CREATE TABLE PARTITION OF: cross-side now succeeds.
+CREATE TABLE parent_enc_p_plain PARTITION OF parent_enc FOR VALUES FROM (0) TO (10) TABLESPACE pg_default;
+CREATE TABLE parent_plain_p_enc PARTITION OF parent_plain FOR VALUES FROM (0) TO (10) TABLESPACE enc_ts;
+
+-- ATTACH PARTITION with mismatched tablespace now succeeds.
+CREATE TABLE detached_plain (x int);
+CREATE TABLE detached_enc (x int) TABLESPACE enc_ts;
+ALTER TABLE parent_enc ATTACH PARTITION detached_plain FOR VALUES FROM (10) TO (20);
+ALTER TABLE parent_plain ATTACH PARTITION detached_enc FOR VALUES FROM (10) TO (20);
+
+-- Helper reports parent/child mismatches under both partitioned parents.
+SELECT parent, parent_encrypted, child, child_encrypted, relationship
+FROM pg_tde_list_mixed_encryption()
+WHERE parent::text IN ('parent_enc','parent_plain')
+ORDER BY parent::text, child::text;
+
+-- Cross-side SET TABLESPACE on partitioned parent now succeeds.
+ALTER TABLE parent_enc SET TABLESPACE pg_default;
+ALTER TABLE parent_plain SET TABLESPACE enc_ts;
+
+DROP TABLE parent_enc;
+DROP TABLE parent_plain;
+DROP TABLESPACE enc_ts;
+DROP EXTENSION pg_tde;

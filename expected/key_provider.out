@@ -85,8 +85,8 @@ SELECT pg_tde_add_global_key_provider_file('file-keyring2','/tmp/pg_tde_test_key
 SELECT id, name FROM pg_tde_list_all_global_key_providers();
  id |     name      
 ----+---------------
- -4 | file-keyring
- -5 | file-keyring2
+ -5 | file-keyring
+ -6 | file-keyring2
 (2 rows)
 
 -- fails
@@ -115,8 +115,8 @@ SELECT id, name FROM pg_tde_list_all_database_key_providers();
 SELECT id, name FROM pg_tde_list_all_global_key_providers();
  id |     name      
 ----+---------------
- -4 | file-keyring
- -5 | file-keyring2
+ -5 | file-keyring
+ -6 | file-keyring2
 (2 rows)
 
 SELECT pg_tde_set_key_using_global_key_provider('test-db-key', 'file-keyring');
@@ -131,8 +131,8 @@ ERROR:  cannot delete provider which is currently in use
 SELECT id, name FROM pg_tde_list_all_global_key_providers();
  id |     name      
 ----+---------------
- -4 | file-keyring
- -5 | file-keyring2
+ -5 | file-keyring
+ -6 | file-keyring2
 (2 rows)
 
 -- works
@@ -145,7 +145,7 @@ SELECT pg_tde_delete_global_key_provider('file-keyring2');
 SELECT id, name FROM pg_tde_list_all_global_key_providers();
  id |     name     
 ----+--------------
- -4 | file-keyring
+ -5 | file-keyring
 (1 row)
 
 -- Creating a file key provider fails if we can't open or create the file

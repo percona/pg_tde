@@ -1,0 +1,47 @@
+-- Fix 1+2 coverage: ALTER TABLE SET TABLESPACE interactions with principal key
+-- and enforce_encryption.
+CREATE EXTENSION pg_tde;
+SET allow_in_place_tablespaces = true;
+CREATE TABLESPACE alter_enc_ts LOCATION '';
+SELECT pg_tde_mark_tablespace_encrypted('alter_enc_ts');
+ pg_tde_mark_tablespace_encrypted 
+----------------------------------
+ 
+(1 row)
+
+-- (a) No principal key: ALTER into encrypted tablespace rejected at DDL time.
+CREATE TABLE t_alter_no_key (x int);  -- in pg_default, plain
+ALTER TABLE t_alter_no_key SET TABLESPACE alter_enc_ts;  -- expected ERROR principal key
+ERROR:  principal key not configured
+HINT:  Use pg_tde_set_key_using_database_key_provider() or pg_tde_set_key_using_global_key_provider() to configure one.
+-- Configure a key.
+\! rm -f '/tmp/pg_tde_prototype_alter_ts.per'
+SELECT pg_tde_add_database_key_provider_file('fv','/tmp/pg_tde_prototype_alter_ts.per');
+ pg_tde_add_database_key_provider_file 
+---------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_create_key_using_database_key_provider('k','fv');
+ pg_tde_create_key_using_database_key_provider 
+-----------------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_set_key_using_database_key_provider('k','fv');
+ pg_tde_set_key_using_database_key_provider 
+--------------------------------------------
+ 
+(1 row)
+
+-- (b) With key: ALTER into encrypted tablespace succeeds.
+ALTER TABLE t_alter_no_key SET TABLESPACE alter_enc_ts;
+-- (c) With key and enforce_encryption on: ALTER plain->encrypted still succeeds.
+CREATE TABLE t_alter_enforce (x int);  -- plain, in pg_default
+SET pg_tde.enforce_encryption = on;
+ALTER TABLE t_alter_enforce SET TABLESPACE alter_enc_ts;
+SET pg_tde.enforce_encryption = off;
+DROP TABLE t_alter_no_key;
+DROP TABLE t_alter_enforce;
+DROP TABLESPACE alter_enc_ts;
+DROP EXTENSION pg_tde;

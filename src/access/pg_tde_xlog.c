@@ -16,6 +16,7 @@
 #include "access/pg_tde_xlog.h"
 #include "catalog/tde_global_space.h"
 #include "catalog/tde_keyring.h"
+#include "common/tde_tablespace.h"
 #include "encryption/enc_tde.h"
 #include "pg_tde.h"
 #include "pg_tde_defines.h"
@@ -88,6 +89,18 @@ tdeheap_rmgr_redo(XLogReaderState *record)
 
 		extension_install_redo(xlrec);
 	}
+	else if (info == XLOG_TDE_MARK_TABLESPACE_ENCRYPTED)
+	{
+		Oid			spcOid = *(Oid *) XLogRecGetData(record);
+
+		pg_tde_tablespace_marker_redo(spcOid, true);
+	}
+	else if (info == XLOG_TDE_MARK_TABLESPACE_DECRYPTED)
+	{
+		Oid			spcOid = *(Oid *) XLogRecGetData(record);
+
+		pg_tde_tablespace_marker_redo(spcOid, false);
+	}
 	else
 	{
 		elog(PANIC, "pg_tde_redo: unknown op code %u", info);
@@ -141,6 +154,13 @@ tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record)
 
 		appendStringInfo(buf, "db: %u", xlrec->database_id);
 	}
+	else if (info == XLOG_TDE_MARK_TABLESPACE_ENCRYPTED ||
+			 info == XLOG_TDE_MARK_TABLESPACE_DECRYPTED)
+	{
+		Oid			spcOid = *(Oid *) XLogRecGetData(record);
+
+		appendStringInfo(buf, "spc: %u", spcOid);
+	}
 }
 
 static const char *
@@ -162,6 +182,10 @@ tdeheap_rmgr_identify(uint8 info)
 			return "WRITE_KEY_PROVIDER";
 		case XLOG_TDE_INSTALL_EXTENSION:
 			return "INSTALL_EXTENSION";
+		case XLOG_TDE_MARK_TABLESPACE_ENCRYPTED:
+			return "MARK_TABLESPACE_ENCRYPTED";
+		case XLOG_TDE_MARK_TABLESPACE_DECRYPTED:
+			return "MARK_TABLESPACE_DECRYPTED";
 		default:
 			return NULL;
 	}
