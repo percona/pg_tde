@@ -59,6 +59,9 @@ AesCbcInitCtx(const EVP_CIPHER *cipher, const char *name)
 void
 AesInit(void)
 {
+	/* Make sure we do not try to initialize crypto twice */
+	Assert(cipher_gcm_128 == NULL);
+
 	OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
 
 	cipher_gcm_128 = EVP_aes_128_gcm();
