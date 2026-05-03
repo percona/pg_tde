@@ -26,6 +26,8 @@ jobs:
     name: Run
     runs-on: ubuntu-22.04
     timeout-minutes: 15
+    env:
+      PG_TEST_REQUIRE_COSMIAN_KMS: '1'
     steps:
       - name: Clone repository
         uses: actions/checkout@v6
@@ -48,9 +50,6 @@ jobs:
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh sanitize
-
-      - name: Setup kmip and vault
-        run: src/ci_scripts/setup-keyring-servers.sh
 
       - name: Run pg_tde tests
         run: src/ci_scripts/test.sh sanitize

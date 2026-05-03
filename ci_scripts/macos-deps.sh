@@ -24,7 +24,6 @@ DEPS=(
 brew update
 brew install ${DEPS[@]}
 
-pip3 install pykmip
 cpan -T IPC::Run JSON
 
 # OpenBao
