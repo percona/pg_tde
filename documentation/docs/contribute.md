@@ -55,7 +55,6 @@ When you work, you should periodically run tests to check that your changes donâ
 To run the tests, use the following command:
 
 ```sh
-source ci_scripts/setup-keyring-servers.sh
 ci_scripts/test.sh all
 ```
 
