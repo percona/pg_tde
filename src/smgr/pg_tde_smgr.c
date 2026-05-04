@@ -77,7 +77,6 @@ static void tde_smgr_save_temp_key(const RelFileLocator *newrlocator, const Inte
 static InternalKey *tde_smgr_get_temp_key(const RelFileLocator *rel);
 static bool tde_smgr_has_temp_key(const RelFileLocator *rel);
 static void tde_smgr_delete_temp_key(const RelFileLocator *rel);
-static void CalcBlockIv(ForkNumber forknum, BlockNumber bn, const unsigned char *base_iv, unsigned char *iv);
 
 static void
 tde_smgr_log_create_key(const RelFileLocator *rlocator)
@@ -261,13 +260,10 @@ tde_mdwritev(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 		for (int i = 0; i < nblocks; ++i)
 		{
 			BlockNumber bn = blocknum + i;
-			unsigned char iv[16];
 
 			local_buffers[i] = &local_blocks[i * BLCKSZ];
 
-			CalcBlockIv(forknum, bn, tdereln->relKey.base_iv, iv);
-
-			AesEncrypt(tdereln->relKey.key, tdereln->relKey.key_len, iv, ((unsigned char **) buffers)[i], BLCKSZ, local_buffers[i]);
+			tde_encrypt_smgr_block(&tdereln->relKey, forknum, bn, ((unsigned char **) buffers)[i], local_buffers[i]);
 		}
 
 		mdwritev(reln, forknum, blocknum,
@@ -320,11 +316,8 @@ tde_mdextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 	else
 	{
 		unsigned char *local_blocks = palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, 0);
-		unsigned char iv[16];
 
-		CalcBlockIv(forknum, blocknum, tdereln->relKey.base_iv, iv);
-
-		AesEncrypt(tdereln->relKey.key, tdereln->relKey.key_len, iv, ((unsigned char *) buffer), BLCKSZ, local_blocks);
+		tde_encrypt_smgr_block(&tdereln->relKey, forknum, blocknum, ((unsigned char *) buffer), local_blocks);
 
 		mdextend(reln, forknum, blocknum, local_blocks, skipFsync);
 
@@ -347,33 +340,10 @@ tde_mdreadv(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 
 	for (int i = 0; i < nblocks; ++i)
 	{
-		bool		allZero = true;
 		BlockNumber bn = blocknum + i;
-		unsigned char iv[16];
+		unsigned char *buf = ((unsigned char **) buffers)[i];
 
-		/*
-		 * Detect unencrypted all-zero pages written by smgrzeroextend() by
-		 * looking at the first 32 bytes of the page.
-		 *
-		 * Not encrypting all-zero pages is safe because they are only written
-		 * at the end of the file when extending a table on disk so they tend
-		 * to be short lived plus they only leak a slightly more accurate
-		 * table size than one can glean from just the file size.
-		 */
-		for (int j = 0; j < 32; ++j)
-		{
-			if (((char **) buffers)[i][j] != 0)
-			{
-				allZero = false;
-				break;
-			}
-		}
-		if (allZero)
-			continue;
-
-		CalcBlockIv(forknum, bn, tdereln->relKey.base_iv, iv);
-
-		AesDecrypt(tdereln->relKey.key, tdereln->relKey.key_len, iv, ((unsigned char **) buffers)[i], BLCKSZ, ((unsigned char **) buffers)[i]);
+		tde_decrypt_smgr_block(&tdereln->relKey, forknum, bn, buf, buf);
 	}
 }
 
@@ -511,36 +481,12 @@ tde_readv_complete(PgAioHandle *ioh, PgAioResult prior_result, uint8 cb_data)
 	{
 		Buffer		buf = io_data[buf_off];
 		char	   *buf_ptr = BufferGetBlock(buf);
-		bool		allZero = true;
 		BlockNumber bn = td->smgr.blockNum + buf_off;
-		unsigned char iv[16];
 
 		if (prior_result.result <= buf_off)
 			break;
 
-		/*
-		 * Detect unencrypted all-zero pages written by smgrzeroextend() by
-		 * looking at the first 32 bytes of the page.
-		 *
-		 * Not encrypting all-zero pages is safe because they are only written
-		 * at the end of the file when extending a table on disk so they tend
-		 * to be short lived plus they only leak a slightly more accurate
-		 * table size than one can glean from just the file size.
-		 */
-		for (int i = 0; i < 32; i++)
-		{
-			if (buf_ptr[i] != 0)
-			{
-				allZero = false;
-				break;
-			}
-		}
-		if (allZero)
-			continue;
-
-		CalcBlockIv(td->smgr.forkNum, bn, int_key->base_iv, iv);
-
-		AesDecrypt(int_key->key, int_key->key_len, iv, ((unsigned char *) buf_ptr), BLCKSZ, ((unsigned char *) buf_ptr));
+		tde_decrypt_smgr_block(int_key, td->smgr.forkNum, bn, ((unsigned char *) buf_ptr), ((unsigned char *) buf_ptr));
 	}
 
 	return prior_result;
@@ -715,26 +661,4 @@ tde_smgr_delete_temp_key(const RelFileLocator *rel)
 {
 	Assert(TempRelKeys);
 	hash_search(TempRelKeys, rel, HASH_REMOVE, NULL);
-}
-
-/*
- * The intialization vector of a block is its block number conmverted to a
- * 128 bit big endian number plus the forknumber XOR the base IV of the
- * relation file.
- */
-static void
-CalcBlockIv(ForkNumber forknum, BlockNumber bn, const unsigned char *base_iv, unsigned char *iv)
-{
-	memset(iv, 0, 16);
-
-	/* The init fork is copied to the main fork so we must use the same IV */
-	iv[7] = forknum == INIT_FORKNUM ? MAIN_FORKNUM : forknum;
-
-	iv[12] = bn >> 24;
-	iv[13] = bn >> 16;
-	iv[14] = bn >> 8;
-	iv[15] = bn;
-
-	for (int i = 0; i < 16; i++)
-		iv[i] ^= base_iv[i];
 }
