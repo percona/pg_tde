@@ -31,6 +31,7 @@
 #include "pg_rewind.h"
 #include "rewind_source.h"
 #include "storage/bufpage.h"
+#include "tde_ops.h"
 
 #include "pg_tde.h"
 #include "access/pg_tde_fe_init.h"
@@ -643,6 +644,8 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 	source->finish_fetch(source);
 
 	close_target_file();
+
+	fetch_tde_dir();
 
 	progress_report(true);
 
