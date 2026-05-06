@@ -32,14 +32,14 @@ sub gen_certs
 	make_path($dir);
 
 	# CA
-	PostgreSQL::Test::Utils::system_or_bail(
+	system_or_bail(
 		'openssl', 'req', '-x509', '-newkey',
 		'rsa:2048', '-nodes', '-days', '1',
 		'-keyout', "$dir/ca.key", '-out', "$dir/ca.pem",
 		'-subj', '/CN=pg_tde-test-ca');
 
 	# Server CSR + signed cert
-	PostgreSQL::Test::Utils::system_or_bail(
+	system_or_bail(
 		'openssl', 'req',
 		'-newkey', 'rsa:2048',
 		'-nodes', '-keyout',
@@ -47,7 +47,7 @@ sub gen_certs
 		"$dir/server.csr", '-subj',
 		'/CN=127.0.0.1', '-addext',
 		'subjectAltName=IP:127.0.0.1');
-	PostgreSQL::Test::Utils::system_or_bail(
+	system_or_bail(
 		'openssl', 'x509',
 		'-req', '-in',
 		"$dir/server.csr", '-CA',
@@ -58,17 +58,17 @@ sub gen_certs
 		'-copy_extensions', 'copy');
 
 	# Server PKCS#12 bundle
-	PostgreSQL::Test::Utils::system_or_bail(
+	system_or_bail(
 		'openssl', 'pkcs12', '-export', '-out',
 		"$dir/server.p12", '-inkey', "$dir/server.key", '-in',
 		"$dir/server.pem", '-password', 'pass:test');
 
 	# Client CSR + signed cert
-	PostgreSQL::Test::Utils::system_or_bail(
+	system_or_bail(
 		'openssl', 'req', '-newkey', 'rsa:2048',
 		'-nodes', '-keyout', "$dir/client.key", '-out',
 		"$dir/client.csr", '-subj', '/CN=pg_tde-client');
-	PostgreSQL::Test::Utils::system_or_bail(
+	system_or_bail(
 		'openssl', 'x509',
 		'-req', '-in',
 		"$dir/client.csr", '-CA',
@@ -153,11 +153,9 @@ sub _spawn
 	return start(\@cmd, '>', '/dev/null', '2>', $stderr_ref);
 }
 
-sub start_with_free_port
+sub start_on_ports
 {
-	my ($bin, $dir) = @_;
-	my $kmip_port = PostgreSQL::Test::Cluster::get_free_port();
-	my $http_port = PostgreSQL::Test::Cluster::get_free_port();
+	my ($bin, $dir, $kmip_port, $http_port) = @_;
 
 	_write_toml($dir, $kmip_port, $http_port);
 
@@ -171,7 +169,17 @@ sub start_with_free_port
 		BAIL_OUT("cosmian_kms (kmip=$kmip_port http=$http_port) "
 			  . "readiness timed out\nstderr:\n$stderr");
 	}
-	return ($h, $kmip_port);
+	return $h;
+}
+
+sub start_with_free_port
+{
+	my ($bin, $dir) = @_;
+	my $kmip_port = PostgreSQL::Test::Cluster::get_free_port();
+	my $http_port = PostgreSQL::Test::Cluster::get_free_port();
+
+	my $h = start_on_ports($bin, $dir, $kmip_port, $http_port);
+	return ($h, $kmip_port, $http_port);
 }
 
 sub stop
