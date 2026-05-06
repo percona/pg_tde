@@ -27,7 +27,7 @@ unless ($cosmian_bin)
 # ---------------------------------------------------------------------------
 my $tmpdir = PostgreSQL::Test::Utils::tempdir();
 CosmianKms::gen_certs($tmpdir);
-my ($cosmian_h, $kmip_port) =
+my ($cosmian_h, $kmip_port, $http_port) =
   CosmianKms::start_with_free_port($cosmian_bin, $tmpdir);
 
 END
@@ -83,6 +83,28 @@ is($node->safe_psql('postgres', 'SELECT k FROM test_enc ORDER BY id;'),
 $node->restart;
 is($node->safe_psql('postgres', 'SELECT k FROM test_enc ORDER BY id;'),
 	"1\n2\n3\n4\n5", 'rows readable after restart following rotation');
+
+# ---------------------------------------------------------------------------
+# Negative path: swap in a fresh KMIP server (same TLS/port, empty DB) and
+# confirm encrypted reads fail because the principal key cannot be located.
+# ---------------------------------------------------------------------------
+{
+	$node->stop;
+
+	CosmianKms::stop($cosmian_h);
+	$cosmian_h =
+	  CosmianKms::start_on_ports($cosmian_bin, $tmpdir, $kmip_port,
+		$http_port);
+
+	$node->start;
+
+	my (undef, undef, $stderr) =
+	  $node->psql('postgres', 'SELECT k FROM test_enc ORDER BY id;');
+	like(
+		$stderr,
+		qr/not found in key provider/i,
+		'encrypted read fails when KMIP server has no matching key');
+}
 
 # ---------------------------------------------------------------------------
 # Negative path: pg_tde fails fast (<= 5s) when KMIP endpoint accepts TCP
