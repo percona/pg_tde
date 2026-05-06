@@ -7,6 +7,8 @@ use lib 't';
 use CosmianKms;
 use PostgreSQL::Test::Utils;
 use PostgreSQL::Test::Cluster;
+use IO::Socket::INET;
+use POSIX qw(:sys_wait_h);
 
 my $cosmian_bin = CosmianKms::find_binary();
 unless ($cosmian_bin)
@@ -81,6 +83,56 @@ is($node->safe_psql('postgres', 'SELECT k FROM test_enc ORDER BY id;'),
 $node->restart;
 is($node->safe_psql('postgres', 'SELECT k FROM test_enc ORDER BY id;'),
 	"1\n2\n3\n4\n5", 'rows readable after restart following rotation');
+
+# ---------------------------------------------------------------------------
+# Negative path: pg_tde fails fast (<= 5s) when KMIP endpoint accepts TCP
+# but immediately closes (no TLS, no KMIP).
+# ---------------------------------------------------------------------------
+sub _bind_and_fork_reject_listener
+{
+	my $srv = IO::Socket::INET->new(
+		LocalAddr => '127.0.0.1',
+		LocalPort => 0,
+		Proto => 'tcp',
+		Listen => 5,
+		ReuseAddr => 1,) or BAIL_OUT("negative-path bind: $!");
+	my $port = $srv->sockport;
+
+	my $pid = fork() // BAIL_OUT("negative-path fork: $!");
+	if ($pid == 0)
+	{
+		# Reset the SIGTERM/SIGINT handlers PostgreSQL::Test::Cluster
+		# installs (which `die` on signal). Otherwise the child's TERM
+		# would unwind through Perl's END blocks — including the
+		# cluster's END that runs `pg_ctl stop -m immediate`, killing
+		# the postgres server we are mid-test against.
+		$SIG{TERM} = $SIG{INT} = 'DEFAULT';
+		# Child: accept-then-close on the inherited socket until killed.
+		while (my $c = $srv->accept) { close $c }
+		POSIX::_exit(0);
+	}
+	# Parent: close our copy so only the child holds the socket.
+	close $srv;
+	return ($pid, $port);
+}
+
+{
+	my ($pid, $nope_port) = _bind_and_fork_reject_listener();
+
+	my (undef, undef, $stderr) = $node->psql('postgres', <<SQL);
+SELECT pg_tde_add_database_key_provider_kmip(
+    'will-not-work', '127.0.0.1', $nope_port,
+    '$tmpdir/client.pem', '$tmpdir/client.key', '$tmpdir/ca.pem');
+SQL
+
+	kill 'TERM', $pid;
+	waitpid($pid, 0);
+
+	like(
+		$stderr,
+		qr/SSL error|BIO_do_connect|handshake|EOF/i,
+		"negative path produced expected failure");
+}
 
 $node->stop;
 
