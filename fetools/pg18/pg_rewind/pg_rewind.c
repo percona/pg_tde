@@ -626,6 +626,10 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 					ensure_tde_keys(entry->path);
 				break;
 
+			case FILE_ACTION_ENSURE_WAL_SEG:
+				ensure_tde_wal_seg(entry->path);
+				break;
+
 			case FILE_ACTION_COPY:
 				source->queue_fetch_file(source, entry->path, entry->source_size);
 				break;

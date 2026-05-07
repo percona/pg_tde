@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 
+#include "access/xlog_internal.h"
 #include "catalog/pg_tablespace_d.h"
 #include "common/file_perm.h"
 
@@ -11,6 +12,8 @@
 #include "tde_ops.h"
 
 #include "access/pg_tde_tdemap.h"
+#include "access/pg_tde_xlog_keys.h"
+#include "access/pg_tde_xlog_smgr.h"
 #include "common/pg_tde_utils.h"
 #include "pg_tde.h"
 
@@ -135,6 +138,65 @@ flush_current_tde_rel_key(void)
 	pfree(current_tde_file.source_key);
 	pfree(current_tde_file.target_key);
 	memset(&current_tde_file, 0, sizeof(current_tde_file));
+}
+
+void
+ensure_tde_wal_seg(const char *relpath)
+{
+	char		target_tde_path[MAXPGPATH];
+	char		wal_path[MAXPGPATH];
+	PGAlignedXLogBlock buf;
+	int			fd;
+	ssize_t		read_len;
+	off_t		offset = 0;
+	XLogSegNo	segno;
+	TimeLineID	tli;
+	const char *segname = last_dir_separator(relpath);
+
+	pg_log_debug("re-encrypt target WAL segment %s", relpath);
+
+	segname = (segname != NULL) ? segname + 1 : relpath;
+	XLogFromFileName(segname, &tli, &segno, WalSegSz);
+
+	snprintf(wal_path, sizeof(wal_path), "%s/%s", datadir_target, relpath);
+
+	fd = open(wal_path, O_RDWR | PG_BINARY, 0);
+	if (fd < 0)
+	{
+		/*
+		 * A warning here and in further as the kept segment is not necessary
+		 * encrypted with the wrong key. Hence failing here still may result
+		 * in recoverable server.
+		 */
+		pg_log_warning("could not open WAL segment \"%s\": %m", wal_path);
+		return;
+	}
+
+	snprintf(target_tde_path, sizeof(target_tde_path), "%s/%s", datadir_target, PG_TDE_DATA_DIR);
+
+	/*
+	 * XXX: Should we slurp the whole segment and don't bother with switching
+	 * keys every XLOG_BLCKSZ?
+	 */
+	while ((read_len = pg_pread(fd, buf.data, sizeof(buf.data), offset)) > 0)
+	{
+		/* decrypt with target keys */
+		pg_tde_set_data_dir(target_tde_path);
+		TDEXLogCryptBuffer(buf.data, buf.data, read_len, offset, tli, segno, WalSegSz);
+
+		/* reencrypt with source keys */
+		pg_tde_set_data_dir(tde_tmp_source);
+		TDEXLogCryptBuffer(buf.data, buf.data, read_len, offset, tli, segno, WalSegSz);
+
+		if (pg_pwrite(fd, buf.data, read_len, offset) != read_len)
+		{
+			pg_log_warning("could not write WAL segment \"%s\": %m", wal_path);
+			break;
+		}
+		offset += read_len;
+	}
+
+	close(fd);
 }
 
 void
