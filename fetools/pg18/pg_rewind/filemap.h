@@ -28,6 +28,7 @@ typedef enum
 	FILE_ACTION_ENSURE_TDE_KEY, /* data file with no block-level action, but
 								 * we still need to check if it is encrypted
 								 * and sync source/target keys */
+	FILE_ACTION_ENSURE_WAL_SEG	/* kept WAL segment might need reencryption */
 } file_action_t;
 
 typedef enum

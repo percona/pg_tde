@@ -233,6 +233,11 @@ sub create_standby
 primary_conninfo='$connstr_primary'
 ));
 
+	foreach my $param_item (@{ $params{extra_conf} // [] })
+	{
+		$node_standby->append_conf('postgresql.conf', qq($param_item));
+	}
+
 	$node_standby->set_standby_mode();
 
 	# Start standby

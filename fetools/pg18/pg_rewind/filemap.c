@@ -489,6 +489,8 @@ action_to_str(file_action_t action)
 			return "REMOVE";
 		case FILE_ACTION_ENSURE_TDE_KEY:
 			return "ENSURE_KEY";
+		case FILE_ACTION_ENSURE_WAL_SEG:
+			return "ENSURE_WAL_SEG";
 
 		default:
 			return "unknown";
@@ -777,7 +779,7 @@ decide_file_action(file_entry_t *entry)
 		if (keepwal_entry_exists(path))
 		{
 			pg_log_debug("Not removing file \"%s\" because it is required for recovery", path);
-			return FILE_ACTION_NONE;
+			return FILE_ACTION_ENSURE_WAL_SEG;
 		}
 		return FILE_ACTION_REMOVE;
 	}
