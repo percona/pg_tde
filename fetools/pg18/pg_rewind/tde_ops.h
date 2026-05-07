@@ -4,6 +4,7 @@
 #include "common/relpath.h"
 
 extern void flush_current_tde_rel_key(void);
+extern void ensure_tde_wal_seg(const char *relpath);
 extern void ensure_tde_keys(const char *relpath);
 extern void tde_reencrypt_block(unsigned char *buf, off_t file_offset, ForkNumber fork);
 
