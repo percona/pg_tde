@@ -956,6 +956,13 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid)
  * Process-local cache for the server (GLOBAL_DATA_TDE_OID) principal key.
  */
 static TDEPrincipalKey *fe_server_principal_key_cache = NULL;
+
+void
+clean_fe_server_principal_key_cache()
+{
+	pfree(fe_server_principal_key_cache);
+	fe_server_principal_key_cache = NULL;
+}
 #endif							/* FRONTEND */
 
 /*

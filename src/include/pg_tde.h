@@ -6,6 +6,7 @@
 #define PG_TDE_VERSION_STRING PG_TDE_NAME " " PG_TDE_VERSION
 
 #define PG_TDE_DATA_DIR	"pg_tde"
+#define PG_TDE_WAL_KEY_FILE_NAME "wal_keys"
 
 #define TDE_TRANCHE_NAME "pg_tde_tranche"
 
