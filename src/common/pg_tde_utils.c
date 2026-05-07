@@ -1,5 +1,7 @@
 #include "postgres.h"
 
+#include "access/pg_tde_xlog_keys.h"
+#include "catalog/tde_principal_key.h"
 #include "common/pg_tde_utils.h"
 #include "pg_tde.h"
 
@@ -39,16 +41,44 @@ pg_tde_is_encrypted(PG_FUNCTION_ARGS)
 #endif							/* !FRONTEND */
 
 static char tde_data_dir[MAXPGPATH] = PG_TDE_DATA_DIR;
+static char wal_key_file_path[MAXPGPATH] = "";
 
+
+#ifdef FRONTEND
+/*
+ * Changes TDE data dir (keys location) and resets necessary caches.
+ *
+ * Currently, only frontend tools can change this. For backend it is always
+ * in PGDATA.
+ */
 void
 pg_tde_set_data_dir(const char *dir)
 {
 	Assert(dir != NULL);
+
+	memset(tde_data_dir, 0, sizeof(tde_data_dir));
 	strlcpy(tde_data_dir, dir, sizeof(tde_data_dir));
+
+	memset(wal_key_file_path, 0, sizeof(wal_key_file_path));
+	snprintf(wal_key_file_path, MAXPGPATH, "%s/" PG_TDE_WAL_KEY_FILE_NAME, tde_data_dir);
+
+	/* New dir, new keys. Reset caches */
+	pg_tde_free_wal_key_cache();
+	clean_fe_server_principal_key_cache();
 }
+#endif
 
 const char *
 pg_tde_get_data_dir(void)
 {
 	return tde_data_dir;
+}
+
+const char *
+get_wal_key_file_path(void)
+{
+	if (strlen(wal_key_file_path) == 0)
+		snprintf(wal_key_file_path, MAXPGPATH, "%s/" PG_TDE_WAL_KEY_FILE_NAME, tde_data_dir);
+
+	return wal_key_file_path;
 }

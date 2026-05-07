@@ -23,8 +23,6 @@
 #include "pg_tde_fe.h"
 #endif
 
-#define PG_TDE_WAL_KEY_FILE_NAME "wal_keys"
-
 typedef struct WalKeyFileHeader
 {
 	int32		file_version;
@@ -69,17 +67,6 @@ static int	pg_tde_wal_key_file_header_write(const char *filename, int fd, const 
 static void pg_tde_write_one_wal_key_file_entry(int fd, const WalKeyFileEntry *entry, off_t *offset, const char *db_map_path);
 static void pg_tde_write_wal_key_file_entry(const WalEncryptionRange *range, const TDEPrincipalKey *principal_key);
 
-static const char *
-get_wal_key_file_path(void)
-{
-	static char wal_key_file_path[MAXPGPATH] = "";
-
-	if (strlen(wal_key_file_path) == 0)
-		snprintf(wal_key_file_path, MAXPGPATH, "%s/" PG_TDE_WAL_KEY_FILE_NAME, pg_tde_get_data_dir());
-
-	return wal_key_file_path;
-}
-
 void
 pg_tde_free_wal_key_cache(void)
 {
@@ -89,6 +76,7 @@ pg_tde_free_wal_key_cache(void)
 	{
 		WALKeyCacheRec *next = rec->next;
 
+		EVP_CIPHER_CTX_free(rec->crypt_ctx);
 		pfree(rec);
 		rec = next;
 	}
