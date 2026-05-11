@@ -1,6 +1,6 @@
 project('pg_tde',
   ['c'],
-  version: '2.1.2',
+  version: '2.2.0',
   meson_version: '>=0.56',
 )
 
@@ -66,6 +66,7 @@ install_data(
   'pg_tde--1.0.sql',
   'pg_tde--1.0--2.0.sql',
   'pg_tde--2.0--2.1.sql',
+  'pg_tde--2.1--2.2.sql',
   install_dir: sharedir / 'extension',
 )
 

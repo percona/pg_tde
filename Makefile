@@ -1,7 +1,11 @@
 PGFILEDESC = "pg_tde access method"
 MODULE_big = pg_tde
 EXTENSION = pg_tde
-DATA = pg_tde--2.0--2.1.sql pg_tde--1.0--2.0.sql pg_tde--1.0.sql
+DATA = \
+	pg_tde--1.0.sql \
+	pg_tde--1.0--2.0.sql \
+	pg_tde--2.0--2.1.sql \
+	pg_tde--2.1--2.2.sql
 
 TAP_TESTS = 1
 
