@@ -7,6 +7,7 @@
 
 #include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
+#include "pg_tde.h"
 
 #include <signal.h>
 
@@ -192,9 +193,6 @@ main(int argc, char *argv[])
 	targetpath = argv[2];
 	command = argv[3];
 
-	pg_tde_fe_init("pg_tde");
-	TDEXLogSmgrInit();
-
 	sep = strrchr(targetpath, '/');
 
 	if (sep != NULL)
@@ -248,7 +246,29 @@ main(int argc, char *argv[])
 	free(command);
 
 	if (issegment)
+	{
+		/*
+		 * Init WAL keys. We expect pg_tde (if any) one level up from the
+		 * destination file dir. Hence we expect destination files in the
+		 * <pgdata>/pg_wal dir and keys in <pgdata>/pg_tde. No `sep` means no
+		 * dir in `targetpath`, hence our workdir is `pg_wal` itself,
+		 * therefore look at ../pg_tde.
+		 */
+		char		tdedir[MAXPGPATH] = "../" PG_TDE_DATA_DIR;
+
+		if (sep != NULL)
+		{
+			char		targetdir[MAXPGPATH];
+
+			strlcpy(targetdir, targetpath, sep - targetpath + 1);
+			snprintf(tdedir, sizeof(tdedir), "%s/../" PG_TDE_DATA_DIR, targetdir);
+		}
+
+		pg_tde_fe_init(tdedir);
+		TDEXLogSmgrInit();
+
 		write_encrypted_segment(targetpath, sourcename, tmppath);
+	}
 
 	return 0;
 }
