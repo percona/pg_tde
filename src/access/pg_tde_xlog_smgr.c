@@ -400,7 +400,7 @@ tde_ensure_xlog_key_location(WalLocation loc)
 	{
 		WALKeyCacheRec *last_key = pg_tde_get_last_wal_key();
 
-		if (last_key == NULL || last_key->range.start.lsn < loc.lsn)
+		if (last_key == NULL || wal_location_cmp(last_key->range.start, loc) < 0)
 		{
 			pg_tde_wal_last_range_set_location(loc);
 			CurrentWalEncryptionRange.start = loc;
