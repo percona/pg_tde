@@ -6,7 +6,7 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ## Release Highlights
 
-`pg_tde` now supports 256-bit AES encryption and reintroduces [`pg_tde_upgrade`](../command-line-tools/pg-tde-upgrade.md), a utility that simplifies the upgrades of encrypted clusters. For more details, see the [Changelog](#changelog).
+`pg_tde` now supports 256-bit AES encryption and introduces [`pg_tde_upgrade`](../command-line-tools/pg-tde-upgrade.md), a utility that simplifies the upgrades of encrypted clusters. For more details, see the [Changelog](#changelog).
 
 ### Documentation updates
 
@@ -47,7 +47,7 @@ Changes introduced in `pg_tde` 2.2.0:
 - [PG-1968](https://perconadev.atlassian.net/browse/PG-1968) - AES-256 encryption support, `pg_tde` now supports 256-bit AES encryption, providing stronger cryptographic protection for encrypted tablespaces.
 - [PG-2017](https://perconadev.atlassian.net/browse/PG-2017) - AES-256 compatibility for `pg_tde_resetwal`, the `pg_tde_resetwal` utility has been updated to work correctly with AES-256 encrypted data.
 - [PG-2018](https://perconadev.atlassian.net/browse/PG-2018) - AES-256 compatibility for `pg_tde_basebackup`, the `pg_tde_basebackup` utility now fully supports AES-256 encryption, ensuring consistent backup and restore behavior for databases using the new cipher.
-- [PG-2240](https://perconadev.atlassian.net/browse/PG-2240) - Reintroduced `pg_tde_upgrade`, a utility that automates the steps required to upgrade a `pg_tde`-enabled cluster, making the upgrade process more convenient.
+- [PG-2240](https://perconadev.atlassian.net/browse/PG-2240) - Introducing `pg_tde_upgrade`, a utility that automates the steps required to upgrade a `pg_tde`-enabled cluster, making the upgrade process more convenient.
 
 ### Improvements
 
