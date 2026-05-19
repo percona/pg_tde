@@ -1030,8 +1030,11 @@ pg_tde_migrate_smgr_keys_file(void)
 		old_fd = pg_tde_open_file_basic(db_map_path, O_RDONLY | PG_BINARY, false);
 		pg_tde_file_header_read(db_map_path, old_fd, &fheader, &read_pos);
 
-		/* check if we have anything to do */
-		if (fheader.file_version == PG_TDE_SMGR_FILE_MAGIC)
+		/*
+		 * Check if we have anything to do. read_pos == 0 means the file had
+		 * no header because it was empty.
+		 */
+		if (read_pos == 0 || fheader.file_version == PG_TDE_SMGR_FILE_MAGIC)
 		{
 			CloseTransientFile(old_fd);
 			continue;
