@@ -989,8 +989,6 @@ pg_tde_migrate_smgr_keys_file(void)
 	DIR		   *dir;
 	LWLock	   *lock_pk = tde_lwlock_enc_keys();
 	struct dirent *file;
-	TDEPrincipalKey *principal_key = NULL;
-	TDESignedPrincipalKeyInfo signed_key_info;
 
 	/*
 	 * No real need in lock here as the func should be called only on the
@@ -1016,6 +1014,8 @@ pg_tde_migrate_smgr_keys_file(void)
 		TDEFileHeader fheader;
 		MapFromDiskEntry read_map_entry;
 		TDEMapEntry new_entry;
+		TDEPrincipalKey *principal_key;
+		TDESignedPrincipalKeyInfo signed_key_info;
 
 
 		dbOid = strtoul(file->d_name, &suffix, 10);
@@ -1047,17 +1047,14 @@ pg_tde_migrate_smgr_keys_file(void)
 		 * The old file exists and it's not empty, hence a principal key
 		 * should exist as well.
 		 */
+		principal_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
 		if (principal_key == NULL)
 		{
-			principal_key = GetPrincipalKey(dbOid, LW_EXCLUSIVE);
-			if (principal_key == NULL)
-			{
-				ereport(ERROR,
-						errmsg("could not get server principal key"),
-						errdetail("Failed to migrate the keys file of %u database.", dbOid));
-			}
-			pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
+			ereport(ERROR,
+					errmsg("failed to retrieve principal key for database %u", dbOid),
+					errdetail("Failed to migrate the keys file of database %u.", dbOid));
 		}
+		pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
 
 		new_fd = pg_tde_open_file_write(tmp_db_map_path, &signed_key_info, true, &write_pos);
 
