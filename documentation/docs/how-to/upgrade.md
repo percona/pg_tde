@@ -21,6 +21,3 @@ The version of `pg_tde` available to you depends on your version of Percona Dist
     ```sql
         ALTER EXTENSION pg_tde UPDATE;
     ```
-
-    !!! note
-        This needs to be run in each database where `pg_tde` is installed.
