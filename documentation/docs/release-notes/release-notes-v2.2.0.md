@@ -8,6 +8,9 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 `pg_tde` now supports 256-bit AES encryption and introduces [`pg_tde_upgrade`](../command-line-tools/pg-tde-upgrade.md), a utility that simplifies the upgrades of encrypted clusters. For more details, see the [Changelog](#changelog).
 
+!!! warning
+    `pg_tde` 2.2.0 is not compatible with Percona Distribution for PostgreSQL older than 17.10 or 18.4.
+
 ### Documentation updates
 
 * The [Limitations of pg_tde](../index/tde-limitations.md) topic is updated to include a new section on known incompatibilities with Citus and TimescaleDB, and a clarification of the `ALTER DATABASE ... SET TABLESPACE` behavior, the command can be used but with restrictions when `pg_tde` is active.
