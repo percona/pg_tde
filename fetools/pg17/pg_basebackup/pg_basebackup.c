@@ -38,7 +38,7 @@
 #include "receivelog.h"
 #include "streamutil.h"
 
-#include "access/pg_tde_fe_init.h"
+#include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/pg_tde_xlog_keys.h"
 #include "access/xlog_smgr.h"

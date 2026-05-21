@@ -5,7 +5,7 @@
 #include "common/logging.h"
 #include "common/percentrepl.h"
 
-#include "access/pg_tde_fe_init.h"
+#include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
 
 #include <signal.h>

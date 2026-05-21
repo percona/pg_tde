@@ -137,6 +137,7 @@ shared_module('pg_tde',
 
 pg_tde_frontend = static_library('pg_tde_frontend',
   files(
+    'src/pg_tde_fe.c',
     'src/access/pg_tde_tdemap.c',
     'src/access/pg_tde_xlog_keys.c',
     'src/catalog/tde_keyring.c',
