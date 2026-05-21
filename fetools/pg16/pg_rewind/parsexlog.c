@@ -24,6 +24,9 @@
 #include "filemap.h"
 #include "pg_rewind.h"
 
+#include "access/pg_tde_xlog_smgr.h"
+#include "access/xlog_smgr.h"
+
 /*
  * RmgrNames is an array of the built-in resource manager names, to make error
  * messages a bit nicer.
@@ -357,14 +360,10 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 	Assert(xlogreadfd != -1);
 
 	/* Read the requested page */
-	if (lseek(xlogreadfd, (off_t) targetPageOff, SEEK_SET) < 0)
-	{
-		pg_log_error("could not seek in file \"%s\": %m", xlogfpath);
-		return -1;
-	}
+	r = xlog_smgr->seg_read(xlogreadfd, readBuf, XLOG_BLCKSZ, (off_t) targetPageOff,
+							targetHistory[private->tliIndex].tli,
+							xlogreadsegno, WalSegSz);
 
-
-	r = read(xlogreadfd, readBuf, XLOG_BLCKSZ);
 	if (r != XLOG_BLCKSZ)
 	{
 		if (r < 0)

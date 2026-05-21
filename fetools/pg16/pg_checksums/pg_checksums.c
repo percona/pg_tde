@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "access/xlog_internal.h"
+#include "catalog/pg_tablespace_d.h"
 #include "common/controldata_utils.h"
 #include "common/file_perm.h"
 #include "common/file_utils.h"
@@ -32,6 +32,9 @@
 #include "storage/checksum.h"
 #include "storage/checksum_impl.h"
 
+#include "pg_tde.h"
+#include "access/pg_tde_fe_init.h"
+#include "access/pg_tde_tdemap.h"
 
 static int64 files_scanned = 0;
 static int64 files_written = 0;
@@ -124,6 +127,17 @@ static const struct exclude_list_item skip[] = {
 	{NULL, false}
 };
 
+/* Support for skipping encrypted files */
+static void
+pg_tde_init(const char *datadir)
+{
+	char		tdedir[MAXPGPATH];
+
+	snprintf(tdedir, sizeof(tdedir), "%s/%s", datadir, PG_TDE_DATA_DIR);
+
+	pg_tde_fe_init(tdedir);
+}
+
 /*
  * Report current progress status.  Parts borrowed from
  * src/bin/pg_basebackup/pg_basebackup.c.
@@ -181,7 +195,7 @@ skipfile(const char *fn)
 }
 
 static void
-scan_file(const char *fn, int segmentno)
+scan_file(const char *fn, Oid spcOid, Oid dbOid, RelFileNumber relNumber, ForkNumber forknum, int segmentno)
 {
 	PGIOAlignedBlock buf;
 	PageHeader	header = (PageHeader) buf.data;
@@ -189,6 +203,8 @@ scan_file(const char *fn, int segmentno)
 	BlockNumber blockno;
 	int			flags;
 	int64		blocks_written_in_file = 0;
+	RelFileLocator locator = {.spcOid = spcOid,.dbOid = dbOid,.relNumber = relNumber};
+	InternalKey *key = NULL;
 
 	Assert(mode == PG_MODE_ENABLE ||
 		   mode == PG_MODE_CHECK);
@@ -200,6 +216,10 @@ scan_file(const char *fn, int segmentno)
 		pg_fatal("could not open file \"%s\": %m", fn);
 
 	files_scanned++;
+
+	/* Unknown fork type so assume it is not encrypted */
+	if (forknum != InvalidForkNumber)
+		key = pg_tde_get_smgr_key(locator);
 
 	for (blockno = 0;; blockno++)
 	{
@@ -226,6 +246,10 @@ scan_file(const char *fn, int segmentno)
 		 * calculated using those counters may not reach 100%.
 		 */
 		current_size += r;
+
+		if (key)
+			tde_decrypt_smgr_block(key, forknum, blockno + segmentno * RELSEG_SIZE,
+								   (unsigned char *) buf.data, (unsigned char *) buf.data);
 
 		/* New pages have no checksum yet */
 		if (PageIsNew(buf.data))
@@ -258,6 +282,10 @@ scan_file(const char *fn, int segmentno)
 			/* Set checksum in page header */
 			header->pd_checksum = csum;
 
+			if (key)
+				tde_encrypt_smgr_block(key, forknum, blockno + segmentno * RELSEG_SIZE,
+									   (unsigned char *) buf.data, (unsigned char *) buf.data);
+
 			/* Seek back to beginning of block */
 			if (lseek(f, -BLCKSZ, SEEK_CUR) < 0)
 				pg_fatal("seek failed for block %u in file \"%s\": %m", blockno, fn);
@@ -278,6 +306,9 @@ scan_file(const char *fn, int segmentno)
 		if (showprogress)
 			progress_report(false);
 	}
+
+	if (key)
+		pfree(key);
 
 	if (verbose)
 	{
@@ -305,7 +336,7 @@ scan_file(const char *fn, int segmentno)
  * the total size of the data directory for progress reports.
  */
 static int64
-scan_directory(const char *basedir, const char *subdir, bool sizeonly)
+scan_directory(const char *basedir, const char *subdir, Oid tablespace, bool sizeonly)
 {
 	int64		dirsize = 0;
 	char		path[MAXPGPATH];
@@ -350,9 +381,12 @@ scan_directory(const char *basedir, const char *subdir, bool sizeonly)
 			char	   *forkpath,
 					   *segmentpath;
 			int			segmentno = 0;
+			ForkNumber	forknum = MAIN_FORKNUM;
 
 			if (skipfile(de->d_name))
 				continue;
+
+			Assert(tablespace != InvalidOid);
 
 			/*
 			 * Cut off at the segment boundary (".") to get the segment number
@@ -379,6 +413,9 @@ scan_directory(const char *basedir, const char *subdir, bool sizeonly)
 				/* filenode not to be included */
 				continue;
 
+			if (forkpath != NULL)
+				forknum = forkname_to_number(forkpath);
+
 			dirsize += st.st_size;
 
 			/*
@@ -386,7 +423,7 @@ scan_directory(const char *basedir, const char *subdir, bool sizeonly)
 			 * the items in the data folder.
 			 */
 			if (!sizeonly)
-				scan_file(fn, segmentno);
+				scan_file(fn, tablespace, atooid(subdir), atooid(fnonly), forknum, segmentno);
 		}
 		else if (S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode))
 		{
@@ -425,11 +462,12 @@ scan_directory(const char *basedir, const char *subdir, bool sizeonly)
 				/* Looks like a valid tablespace location */
 				dirsize += scan_directory(tblspc_path,
 										  TABLESPACE_VERSION_DIRECTORY,
+										  atooid(de->d_name),
 										  sizeonly);
 			}
 			else
 			{
-				dirsize += scan_directory(path, de->d_name, sizeonly);
+				dirsize += scan_directory(path, de->d_name, tablespace, sizeonly);
 			}
 		}
 	}
@@ -584,6 +622,8 @@ main(int argc, char *argv[])
 		mode == PG_MODE_ENABLE)
 		pg_fatal("data checksums are already enabled in cluster");
 
+	pg_tde_init(DataDir);
+
 	/* Operate on all files if checking or enabling checksums */
 	if (mode == PG_MODE_CHECK || mode == PG_MODE_ENABLE)
 	{
@@ -594,14 +634,14 @@ main(int argc, char *argv[])
 		 */
 		if (showprogress)
 		{
-			total_size = scan_directory(DataDir, "global", true);
-			total_size += scan_directory(DataDir, "base", true);
-			total_size += scan_directory(DataDir, "pg_tblspc", true);
+			total_size = scan_directory(DataDir, "global", GLOBALTABLESPACE_OID, true);
+			total_size += scan_directory(DataDir, "base", DEFAULTTABLESPACE_OID, true);
+			total_size += scan_directory(DataDir, "pg_tblspc", InvalidOid, true);
 		}
 
-		(void) scan_directory(DataDir, "global", false);
-		(void) scan_directory(DataDir, "base", false);
-		(void) scan_directory(DataDir, "pg_tblspc", false);
+		(void) scan_directory(DataDir, "global", GLOBALTABLESPACE_OID, false);
+		(void) scan_directory(DataDir, "base", DEFAULTTABLESPACE_OID, false);
+		(void) scan_directory(DataDir, "pg_tblspc", InvalidOid, false);
 
 		if (showprogress)
 			progress_report(true);
