@@ -34,7 +34,7 @@
 #include "storage/checksum_impl.h"
 
 #include "pg_tde.h"
-#include "access/pg_tde_fe_init.h"
+#include "pg_tde_fe.h"
 #include "access/pg_tde_tdemap.h"
 
 static int64 files_scanned = 0;

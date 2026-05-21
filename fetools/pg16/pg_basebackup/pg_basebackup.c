@@ -38,12 +38,12 @@
 #include "receivelog.h"
 #include "streamutil.h"
 
-#include "access/pg_tde_fe_init.h"
+#include "pg_tde.h"
+#include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/pg_tde_xlog_keys.h"
 #include "access/xlog_smgr.h"
 #include "catalog/tde_principal_key.h"
-#include "pg_tde.h"
 
 #define GLOBAL_DATA_TDE_OID 1664
 

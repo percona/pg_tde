@@ -90,6 +90,9 @@ static int	tde_fe_error_level = 0;
 #define pg_fsync(fd) fsync(fd)
 
 #define pg_read_barrier() NULL
+
+extern void pg_tde_fe_init(const char *kring_dir);
+
 #endif							/* FRONTEND */
 
 #endif							/* PG_TDE_EREPORT_H */

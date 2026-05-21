@@ -60,7 +60,7 @@
 #include "storage/large_object.h"
 
 #include "pg_tde.h"
-#include "access/pg_tde_fe_init.h"
+#include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/xlog_smgr.h"
 
