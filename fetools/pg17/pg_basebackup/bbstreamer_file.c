@@ -220,6 +220,10 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 		case BBSTREAMER_MEMBER_HEADER:
 			Assert(mystreamer->file == NULL);
 
+			if (!path_is_safe_for_extraction(member->pathname))
+				pg_fatal("tar member has unsafe path name: \"%s\"",
+						 member->pathname);
+
 			/* Prepend basepath. */
 			snprintf(mystreamer->filename, sizeof(mystreamer->filename),
 					 "%s/%s", mystreamer->basepath, member->pathname);
@@ -238,6 +242,14 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 
 				if (mystreamer->link_map)
 					linktarget = mystreamer->link_map(linktarget);
+
+				if (!is_absolute_path(linktarget) &&
+					!path_is_safe_for_extraction(member->linktarget))
+				{
+					pg_fatal("link target has unsafe path name: \"%s\"",
+							 member->linktarget);
+				}
+
 				extract_link(mystreamer->filename, linktarget);
 			}
 			else
@@ -285,7 +297,9 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 		case BBSTREAMER_MEMBER_TRAILER:
 			if (mystreamer->file == NULL)
 				break;
-			fclose(mystreamer->file);
+			if (fclose(mystreamer->file) != 0)
+				pg_fatal("could not close file \"%s\": %m",
+						 mystreamer->filename);
 			mystreamer->file = NULL;
 			break;
 

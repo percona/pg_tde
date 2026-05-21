@@ -32,7 +32,7 @@ body:
     attributes:
       label: Version
       description: What version of pg_tde and Percona Server PostgreSQL are you running?
-      placeholder: pg_tde 2.1, Percona Server for PostgreSQL 18.0
+      placeholder: pg_tde 2.2, Percona Server for PostgreSQL 18.0
     validations:
       required: true
   - type: textarea
