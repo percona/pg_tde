@@ -25,6 +25,11 @@
 #include "receivelog.h"
 #include "streamutil.h"
 
+#include "access/pg_tde_fe_init.h"
+#include "access/pg_tde_xlog_smgr.h"
+#include "access/xlog_smgr.h"
+#include "catalog/tde_global_space.h"
+
 /* currently open WAL file */
 static Walfile *walfile = NULL;
 static bool reportFlushPosition = false;
@@ -1044,6 +1049,7 @@ ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 	int			bytes_left;
 	int			bytes_written;
 	int			hdr_len;
+	XLogSegNo	segno;
 
 	/*
 	 * Once we've decided we don't want to receive any more, just ignore any
@@ -1070,6 +1076,8 @@ ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 
 	/* Extract WAL location for this block */
 	xlogoff = XLogSegmentOffset(*blockpos, WalSegSz);
+
+	XLByteToSeg(*blockpos, segno, WalSegSz);
 
 	/*
 	 * Verify that the initial location in the stream matches where we think
@@ -1119,6 +1127,17 @@ ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 				/* Error logged by open_walfile */
 				return false;
 			}
+		}
+
+		if (stream->encrypt)
+		{
+			void	   *enc_buf = copybuf + hdr_len + bytes_written;
+			WalLocation loc = {.tli = stream->timeline};
+
+			XLogSegNoOffsetToRecPtr(segno, xlogoff, WalSegSz, loc.lsn);
+			tde_ensure_xlog_key_location(loc);
+			TDEXLogCryptBuffer(enc_buf, enc_buf, bytes_to_write,
+							   xlogoff, stream->timeline, segno, WalSegSz);
 		}
 
 		if (stream->walmethod->ops->write(walfile,
