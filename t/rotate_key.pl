@@ -2,180 +2,189 @@
 
 use strict;
 use warnings;
-use File::Basename;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 use Test::More;
-use lib 't';
-use pgtde;
 
-PGTDE::setup_files_dir(basename($0));
+my ($stdout, $stderr);
 
-unlink('/tmp/rotate_key.per');
-unlink('/tmp/rotate_key_2.per');
-unlink('/tmp/rotate_key_2g.per');
-unlink('/tmp/rotate_key_3.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
 $node->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
 $node->start;
 
-PGTDE::psql($node, 'postgres', 'CREATE EXTENSION pg_tde;');
+$node->safe_psql(
+	'postgres', qq(
+	CREATE EXTENSION pg_tde;
+	SELECT pg_tde_add_database_key_provider_file('file-vault', '$keydir/db1.keys');
+	SELECT pg_tde_add_database_key_provider_file('file-2', '$keydir/db2.keys');
+	SELECT pg_tde_add_global_key_provider_file('file-2', '$keydir/global2.keys');
+	SELECT pg_tde_add_global_key_provider_file('file-3', '$keydir/global3.keys');
+));
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_database_key_provider_file('file-vault', '/tmp/rotate_key.per');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_database_key_provider_file('file-2', '/tmp/rotate_key_2.per');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_global_key_provider_file('file-2', '/tmp/rotate_key_2g.per');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_global_key_provider_file('file-3', '/tmp/rotate_key_3.per');"
-);
+$stdout = $node->safe_psql('postgres',
+	'SELECT pg_tde_list_all_database_key_providers();');
+is( $stdout,
+	qq((1,file-vault,file,"{""path"" : ""$keydir/db1.keys""}")\n(2,file-2,file,"{""path"" : ""$keydir/db2.keys""}")),
+	'lists all database providers');
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_list_all_database_key_providers();");
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-vault');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');"
-);
+$node->safe_psql(
+	'postgres', qq(
+	SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-vault');
+	SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');
 
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_enc (id SERIAL, k INTEGER, PRIMARY KEY (id)) USING tde_heap;'
-);
+	CREATE TABLE test_enc (id SERIAL, k INTEGER, PRIMARY KEY (id)) USING tde_heap;
+	INSERT INTO test_enc (k) VALUES (5), (6);
+));
 
-PGTDE::psql($node, 'postgres', 'INSERT INTO test_enc (k) VALUES (5), (6);');
-
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can read data');
 
 # Rotate key
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('rotated-key1', 'file-vault');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('rotated-key1', 'file-vault');"
-);
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+$node->safe_psql(
+	'postgres', qq(
+	SELECT pg_tde_create_key_using_database_key_provider('rotated-key1', 'file-vault');
+	SELECT pg_tde_set_key_using_database_key_provider('rotated-key1', 'file-vault');
+));
 
-PGTDE::append_to_result_file("-- server restart");
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can still read data');
+
 $node->restart;
 
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();");
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();"
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();');
+is($stdout, '1|file-vault|rotated-key1', 'key changed');
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();'
 );
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, '||', 'server key was not affected');
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can still read data');
 
 # Again rotate key
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('rotated-key2', 'file-2');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('rotated-key2', 'file-2');"
-);
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+$node->safe_psql(
+	'postgres', qq(
+	SELECT pg_tde_create_key_using_database_key_provider('rotated-key2', 'file-2');
+	SELECT pg_tde_set_key_using_database_key_provider('rotated-key2', 'file-2');
+));
 
-PGTDE::append_to_result_file("-- server restart");
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can still read data');
+
 $node->restart;
 
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();");
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();"
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();');
+is($stdout, '2|file-2|rotated-key2', 'key changed');
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();'
 );
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, '||', 'server key was not affected');
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can still read data');
 
 # Again rotate key
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('rotated-key', 'file-3');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_key_using_global_key_provider('rotated-key', 'file-3');"
-);
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+$node->safe_psql(
+	'postgres', qq(
+	SELECT pg_tde_create_key_using_global_key_provider('rotated-key', 'file-3');
+	SELECT pg_tde_set_key_using_global_key_provider('rotated-key', 'file-3');
+));
 
-PGTDE::append_to_result_file("-- server restart");
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can still read data');
+
 $node->restart;
 
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();");
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();"
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();');
+is($stdout, '-2|file-3|rotated-key', 'key changed');
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();'
 );
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, '||', 'server key was not affected');
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can still read data');
 
 # TODO: add method to query current info
 # And maybe debug tools to show what's in a file keyring?
 
 # Again rotate key
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('rotated-keyX', 'file-2');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_key_using_global_key_provider('rotated-keyX', 'file-2');"
-);
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+$node->safe_psql(
+	'postgres', qq(
+	SELECT pg_tde_create_key_using_global_key_provider('rotated-keyX', 'file-2');
+	SELECT pg_tde_set_key_using_global_key_provider('rotated-keyX', 'file-2');
+));
 
-PGTDE::append_to_result_file("-- server restart");
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can still read data');
+
 $node->restart;
 
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();");
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();"
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();');
+is($stdout, '-1|file-2|rotated-keyX', 'key changed');
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();'
 );
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, '||', 'server key was not affected');
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|5\n2|6", 'can still read data');
 
-PGTDE::psql($node, 'postgres',
+$node->safe_psql('postgres',
 	'ALTER SYSTEM SET pg_tde.inherit_global_providers = off;');
 
 # Things still work after a restart
-PGTDE::append_to_result_file("-- server restart");
 $node->restart;
 
 # But now can't be changed to another global provider
-PGTDE::psql($node, 'postgres',
+(undef, undef, $stderr) = $node->psql('postgres',
 	"SELECT pg_tde_create_key_using_global_key_provider('rotated-keyX2', 'file-2');"
 );
-PGTDE::psql($node, 'postgres',
+like(
+	$stderr,
+	qr/ERROR:  usage of global key providers is disabled/,
+	'not allowed to generate global keys');
+
+(undef, undef, $stderr) = $node->psql('postgres',
 	"SELECT pg_tde_set_key_using_global_key_provider('rotated-keyX2', 'file-2');"
 );
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();");
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();"
-);
+like(
+	$stderr,
+	qr/ERROR:  usage of global key providers is disabled/,
+	'not allowed to configure global keys');
 
-PGTDE::psql($node, 'postgres',
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();');
+is($stdout, '-1|file-2|rotated-keyX', 'key did not change');
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();'
+);
+is($stdout, '||', 'server key was not affected');
+
+$node->safe_psql('postgres',
 	"SELECT pg_tde_set_key_using_database_key_provider('rotated-key2', 'file-2');"
 );
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();");
-PGTDE::psql($node, 'postgres',
-	"SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();"
+
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_key_info();');
+is($stdout, '2|file-2|rotated-key2', 'key changed');
+$stdout = $node->safe_psql('postgres',
+	'SELECT provider_id, provider_name, key_name FROM pg_tde_server_key_info();'
 );
+is($stdout, '||', 'server key was not affected');
 
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc;');
+$node->safe_psql('postgres', 'DROP TABLE test_enc;');
 
-PGTDE::psql($node, 'postgres',
+$node->safe_psql('postgres',
 	'ALTER SYSTEM RESET pg_tde.inherit_global_providers;');
 
-PGTDE::append_to_result_file("-- server restart");
 $node->restart;
 
-PGTDE::psql($node, 'postgres', 'DROP EXTENSION pg_tde CASCADE;');
+$node->safe_psql('postgres', 'DROP EXTENSION pg_tde CASCADE;');
 
 $node->stop;
-
-# Compare the expected and out file
-my $compare = PGTDE->compare_results();
-
-is($compare, 0,
-	"Compare Files: $PGTDE::expected_filename_with_path and $PGTDE::out_filename_with_path files."
-);
 
 done_testing();

@@ -2,42 +2,59 @@
 
 use strict;
 use warnings;
-use File::Basename;
 use Fcntl 'SEEK_CUR';
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 use Test::More;
-use lib 't';
-use pgtde;
 
-PGTDE::setup_files_dir(basename($0));
+my $stderr;
 
-unlink('/tmp/pg_tde_test_key_validation.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
 $node->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
 $node->start;
 
-PGTDE::psql($node, 'postgres', 'CREATE EXTENSION pg_tde;');
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_database_key_provider_file('test-file-provider', '/tmp/pg_tde_test_key_validation.per');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('key1', 'test-file-provider');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('key2', 'test-file-provider');"
-);
+$node->safe_psql(
+	'postgres', qq(
+	CREATE EXTENSION pg_tde;
+	SELECT pg_tde_add_database_key_provider_file('test-file-provider', '$keydir/db.keys');
+	SELECT pg_tde_create_key_using_database_key_provider('key1', 'test-file-provider');
+	SELECT pg_tde_create_key_using_database_key_provider('key2', 'test-file-provider');
+));
 
+corrupt_key_file("$keydir/db.keys");
 
-corrupt_key_file('/tmp/pg_tde_test_key_validation.per');
-
-
-PGTDE::psql($node, 'postgres',
+(undef, undef, $stderr) = $node->psql('postgres',
 	"SELECT pg_tde_set_key_using_database_key_provider('key1', 'test-file-provider');"
 );
-PGTDE::psql($node, 'postgres',
+
+like(
+	$stderr,
+	qr/WARNING:  invalid key: data length is zero/,
+	'gets data length warning');
+like(
+	$stderr,
+	qr/ERROR:  failed to retrieve principal key "key1" from key provider "test-file-provider"\nDETAIL:  Invalid key/,
+	'gets error');
+
+(undef, undef, $stderr) = $node->psql('postgres',
 	"SELECT pg_tde_set_key_using_database_key_provider('key2', 'test-file-provider');"
 );
+
+like(
+	$stderr,
+	qr/WARNING:  invalid key: unsupported key length "4294967295"/,
+	'gets data length warning');
+like(
+	$stderr,
+	qr/ERROR:  failed to retrieve principal key "key2" from key provider "test-file-provider"\nDETAIL:  Invalid key/,
+	'gets error');
+
+$node->stop;
+
+done_testing();
 
 sub corrupt_key_file
 {
@@ -64,14 +81,3 @@ sub corrupt_key_file
 	close($fh)
 	  or BAIL_OUT("close failed: $!");
 }
-
-$node->stop;
-
-# Compare the expected and out file
-my $compare = PGTDE->compare_results();
-
-is($compare, 0,
-	"Compare Files: $PGTDE::expected_filename_with_path and $PGTDE::out_filename_with_path files."
-);
-
-done_testing();
