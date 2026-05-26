@@ -2,55 +2,41 @@
 
 use strict;
 use warnings;
-use File::Basename;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 use Test::More;
 use lib 't';
 use pgtde;
 
-PGTDE::setup_files_dir(basename($0));
-
-unlink('/tmp/unlogged_tables.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
 $node->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
 $node->start;
 
-PGTDE::psql($node, 'postgres', 'CREATE EXTENSION pg_tde;');
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_database_key_provider_file('file-vault', '/tmp/unlogged_tables.per');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('test-key', 'file-vault');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('test-key', 'file-vault');"
-);
+$node->safe_psql(
+	'postgres', qq(
+    CREATE EXTENSION pg_tde;
+	SELECT pg_tde_add_database_key_provider_file('file-vault', '$keydir/db.keys');
+	SELECT pg_tde_create_key_using_database_key_provider('test-key', 'file-vault');
+	SELECT pg_tde_set_key_using_database_key_provider('test-key', 'file-vault');
 
-PGTDE::psql($node, 'postgres',
-	"CREATE UNLOGGED TABLE t (x int PRIMARY KEY) USING tde_heap;");
+	CREATE UNLOGGED TABLE t (x int PRIMARY KEY) USING tde_heap;
+	INSERT INTO t SELECT generate_series(1, 4);
 
-PGTDE::psql($node, 'postgres', "INSERT INTO t SELECT generate_series(1, 4);");
+	CHECKPOINT;
+));
 
-PGTDE::psql($node, 'postgres', "CHECKPOINT;");
-
-PGTDE::append_to_result_file("-- kill -9");
 $node->kill9;
 
-PGTDE::append_to_result_file("-- server start");
 PGTDE::poll_start($node);
 
-PGTDE::psql($node, 'postgres', "TABLE t;");
+my $stdout = $node->safe_psql('postgres', 'TABLE t;');
+is($stdout, "", "table is empty");
 
-PGTDE::psql($node, 'postgres', "INSERT INTO t SELECT generate_series(1, 4);");
+$node->safe_psql('postgres', 'INSERT INTO t SELECT generate_series(1, 4);');
 
 $node->stop;
-
-# Compare the expected and out file
-my $compare = PGTDE->compare_results();
-
-is($compare, 0,
-	"Compare Files: $PGTDE::expected_filename_with_path and $PGTDE::out_filename_with_path files."
-);
 
 done_testing();
