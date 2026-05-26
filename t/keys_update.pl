@@ -8,11 +8,9 @@
 
 use strict;
 use warnings;
-use File::Basename;
-use Test::More;
-use lib 't';
-use pgtde;
+use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
+use Test::More;
 
 # Pre-created data dir was generated on PG18
 my $pg_version = `pg_config --version`;
@@ -20,8 +18,6 @@ if ($pg_version !~ /PostgreSQL 18/)
 {
 	plan skip_all => 'PostgreSQL 18 required';
 }
-
-PGTDE::setup_files_dir(basename($0));
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 my $port = $node->port;
