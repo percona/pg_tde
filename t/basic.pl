@@ -2,25 +2,23 @@
 
 use strict;
 use warnings;
-use File::Basename;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 use Test::More;
-use lib 't';
-use pgtde;
 
-PGTDE::setup_files_dir(basename($0));
+my ($stdout, $stderr);
 
-unlink('/tmp/pg_tde_test_001_basic.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
 $node->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
 $node->start;
 
-PGTDE::psql($node, 'postgres', 'CREATE EXTENSION pg_tde;');
+$node->safe_psql('postgres', 'CREATE EXTENSION pg_tde;');
 
-# Only whitelisted C or security definer functions are granted to public by default
-PGTDE::psql(
-	$node, 'postgres',
+$stdout = $node->safe_psql(
+	'postgres',
 	q{
 		SELECT
 			pg_proc.oid::regprocedure
@@ -34,68 +32,67 @@ PGTDE::psql(
 			(grantee IS NULL OR grantee = 0)
 		ORDER BY pg_proc.oid::regprocedure::text;
 	});
+is( $stdout,
+	"pg_tde_is_encrypted(regclass)\npg_tde_version()",
+	'only whitelisted functions are callable by public');
 
-PGTDE::psql($node, 'postgres',
+$stdout = $node->safe_psql('postgres',
 	"SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_tde';");
+is($stdout, 'pg_tde|2.2', 'is installed with right version');
 
-PGTDE::psql($node, 'postgres',
+(undef, undef, $stderr) = $node->psql('postgres',
 	'CREATE TABLE test_enc (id SERIAL, k INTEGER, PRIMARY KEY (id)) USING tde_heap;'
 );
+like(
+	$stderr,
+	qr/ERROR:  principal key not configured/,
+	'complains about key not being set');
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_database_key_provider_file('file-vault', '/tmp/pg_tde_test_001_basic.per');"
-);
+$node->safe_psql(
+	'postgres', qq(
+	SELECT pg_tde_add_database_key_provider_file('file-vault', '$keydir/db.keys');
+	SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-vault');
+	SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-vault');"
-);
+	CREATE TABLE test_enc (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;
+	INSERT INTO test_enc (k) VALUES ('foobar'), ('barfoo');
+));
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');"
-);
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|foobar\n2|barfoo", 'can read encrypted table');
 
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_enc (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;'
-);
-
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc (k) VALUES ('foobar'), ('barfoo');");
-
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
-
-PGTDE::append_to_result_file("-- server restart");
 $node->restart;
 
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc ORDER BY id;');
+$stdout = $node->safe_psql('postgres', 'SELECT * FROM test_enc ORDER BY id;');
+is($stdout, "1|foobar\n2|barfoo", 'can read encrypted table after restart');
 
 # Verify that we can't see the data in the file
-my $tablefile = $node->data_dir . '/'
-  . $node->safe_psql('postgres', "SELECT pg_relation_filepath('test_enc');");
-
-PGTDE::append_to_result_file(
-	'TABLEFILE FOUND: ' . (-f $tablefile ? 'yes' : 'no'));
-
-my $strings = 'CONTAINS FOO (should be empty): ';
-$strings .= `strings $tablefile | grep foo`;
-PGTDE::append_to_result_file($strings);
-
+unlike(slurp_relfile('test_enc'), qr/foo/, 'should not find plain text');
 
 # An encrypted table can be dropped even if we don't have access to the principal key.
 $node->stop;
-unlink('/tmp/pg_tde_test_001_basic.per');
+unlink("$keydir/db.keys");
 $node->start;
-PGTDE::psql($node, 'postgres', 'SELECT pg_tde_verify_key()');
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc;');
+(undef, undef, $stderr) =
+  $node->psql('postgres', 'SELECT pg_tde_verify_key()');
+like(
+	$stderr,
+	qr/ERROR:  key "test-db-key" not found in key provider "file-vault"/,
+	'complains about missing key');
+$node->safe_psql('postgres', 'DROP TABLE test_enc;');
 
-PGTDE::psql($node, 'postgres', 'DROP EXTENSION pg_tde;');
+$node->safe_psql('postgres', 'DROP EXTENSION pg_tde;');
 
 $node->stop;
 
-# Compare the expected and out file
-my $compare = PGTDE->compare_results();
-
-is($compare, 0,
-	"Compare Files: $PGTDE::expected_filename_with_path and $PGTDE::out_filename_with_path files."
-);
-
 done_testing();
+
+sub slurp_relfile
+{
+	my ($table) = @_;
+
+	my $file =
+	  $node->safe_psql('postgres', "SELECT pg_relation_filepath('$table');");
+
+	return slurp_file($node->data_dir . '/' . $file);
+}

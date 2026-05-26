@@ -2,190 +2,186 @@
 
 use strict;
 use warnings;
-use File::Basename;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 use Test::More;
-use lib 't';
-use pgtde;
 
-PGTDE::setup_files_dir(basename($0));
+my $stdout;
 
-unlink('/tmp/tde_heap_aes_256.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
 $node->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
 $node->start;
 
-PGTDE::psql($node, 'postgres', 'CREATE EXTENSION pg_tde;');
+$node->safe_psql(
+	'postgres', qq(
+	CREATE EXTENSION pg_tde;
+	SELECT pg_tde_add_database_key_provider_file('file-vault', '$keydir/db.keys');
+	SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-vault');
+	SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');
+));
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_database_key_provider_file('file-vault', '/tmp/tde_heap_aes_256.per');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-vault');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');"
-);
+# test_enc0 (simple create table w tde_heap and aes_128 and then add data when changed key size)
+$node->safe_psql(
+	'postgres', qq(
+	CREATE TABLE test_enc0 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;
+	INSERT INTO test_enc0 (k) VALUES ('multitude'), ('multitudinous');
+));
 
-######################### test_enc0 (simple create table w tde_heap and aes_128 and then add data when changed key size)
-
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_enc0 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;'
-);
-
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc0 (k) VALUES ('multitude'), ('multitudinous');");
-
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc0');
 
 $node->append_conf('postgresql.conf', "pg_tde.cipher = 'aes_256'");
 $node->restart;
 
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can still read test_enc0');
 
-PGTDE::psql($node, 'postgres',
+$node->safe_psql('postgres',
 	"INSERT INTO test_enc0 (k) VALUES ('multitudinously'), ('multitudinousness');"
 );
 
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc0 ORDER BY id;');
+is( $stdout,
+	"1|multitude\n2|multitudinous\n3|multitudinously\n4|multitudinousness",
+	'can still read test_enc0');
 
+# test_enc1 (simple create table w tde_heap)
+$node->safe_psql(
+	'postgres', qq(
+	CREATE TABLE test_enc1 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;
+	INSERT INTO test_enc1 (k) VALUES ('multitude'), ('multitudinous');
+));
 
-######################### test_enc1 (simple create table w tde_heap)
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc1 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc1');
 
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_enc1 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;'
-);
+# test_enc2 (create heap + alter to tde_heap)
+$node->safe_psql(
+	'postgres', qq(
+	CREATE TABLE test_enc2 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id));
+	INSERT INTO test_enc2 (k) VALUES ('multitude'), ('multitudinous');
+	ALTER TABLE test_enc2 SET ACCESS METHOD tde_heap;
+));
 
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc1 (k) VALUES ('multitude'), ('multitudinous');");
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc2 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc2');
 
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc1 ORDER BY id;');
+# test_enc3 (default_table_access_method)
+$node->safe_psql(
+	'postgres', qq(
+	SET default_table_access_method = "tde_heap";
+	CREATE TABLE test_enc3 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id));
+	INSERT INTO test_enc3 (k) VALUES ('multitude'), ('multitudinous');
+));
 
-######################### test_enc2 (create heap + alter to tde_heap)
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc3 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc3');
 
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_enc2 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id));');
+# test_enc4 (create heap + alter default)
+$node->safe_psql(
+	'postgres', qq(
+	CREATE TABLE test_enc4 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;
+	INSERT INTO test_enc4 (k) VALUES ('multitude'), ('multitudinous');
+	SET default_table_access_method = "tde_heap";
+	ALTER TABLE test_enc4 SET ACCESS METHOD DEFAULT;
+));
 
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc2 (k) VALUES ('multitude'), ('multitudinous');");
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc4 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc4');
 
-PGTDE::psql($node, 'postgres',
-	'ALTER TABLE test_enc2 SET ACCESS METHOD tde_heap;');
+# test_enc5 (create tde_heap + truncate)
+$node->safe_psql(
+	'postgres', qq(
+	CREATE TABLE test_enc5 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;
+	INSERT INTO test_enc5 (k) VALUES ('multitude'), ('multitudinous');
+	CHECKPOINT;
+	TRUNCATE test_enc5;
+	INSERT INTO test_enc5 (k) VALUES ('multitude'), ('multitudinous');
+));
 
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc2 ORDER BY id;');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc5 ORDER BY id;');
+is($stdout, "3|multitude\n4|multitudinous", 'can read test_enc5');
 
-######################### test_enc3 (default_table_access_method)
+# test_enc6 (unencrypted table to cross check verify_table())
+$node->safe_psql(
+	'postgres', qq(
+	CREATE TABLE test_enc6 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;
+	INSERT INTO test_enc6 (k) VALUES ('multitude'), ('multitudinous');
+));
 
-PGTDE::psql($node, 'postgres',
-	'SET default_table_access_method = "tde_heap"; CREATE TABLE test_enc3 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id));'
-);
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc6 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc6');
 
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc3 (k) VALUES ('multitude'), ('multitudinous');");
-
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc3 ORDER BY id;');
-
-######################### test_enc4 (create heap + alter default)
-
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_enc4 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;'
-);
-
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc4 (k) VALUES ('multitude'), ('multitudinous');");
-
-PGTDE::psql($node, 'postgres',
-	'SET default_table_access_method = "tde_heap"; ALTER TABLE test_enc4 SET ACCESS METHOD DEFAULT;'
-);
-
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc4 ORDER BY id;');
-
-######################### test_enc5 (create tde_heap + truncate)
-
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_enc5 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING tde_heap;'
-);
-
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc5 (k) VALUES ('multitude'), ('multitudinous');");
-
-PGTDE::psql($node, 'postgres', 'CHECKPOINT;');
-
-PGTDE::psql($node, 'postgres', 'TRUNCATE test_enc5;');
-
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc5 (k) VALUES ('multitude'), ('multitudinous');");
-
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc5 ORDER BY id;');
-
-######################### test_enc6 (unencrypted table to cross check verify_table())
-
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_enc6 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;'
-);
-
-PGTDE::psql($node, 'postgres',
-	"INSERT INTO test_enc6 (k) VALUES ('multitude'), ('multitudinous');");
-
-PGTDE::psql($node, 'postgres', 'SELECT * FROM test_enc6 ORDER BY id;');
-
-PGTDE::append_to_result_file("-- server restart");
 $node->restart;
 
-sub verify_table
-{
-	PGTDE::append_to_result_file('###########################');
+# Verify that we still can read all tables
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc1 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc1');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc2 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc2');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc3 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc3');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc4 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc4');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc5 ORDER BY id;');
+is($stdout, "3|multitude\n4|multitudinous", 'can read test_enc5');
+$stdout =
+  $node->safe_psql('postgres', 'SELECT * FROM test_enc6 ORDER BY id;');
+is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc6');
 
-	my ($table) = @_;
+# Verify if we can see the data in the files
+unlike(slurp_relfile('test_enc1'),
+	qr/multitud/, 'should not find plain text in test_enc1');
+unlike(slurp_relfile('test_enc2'),
+	qr/multitud/, 'should not find plain text in test_enc2');
+unlike(slurp_relfile('test_enc3'),
+	qr/multitud/, 'should not find plain text in test_enc3');
+unlike(slurp_relfile('test_enc4'),
+	qr/multitud/, 'should not find plain text in test_enc4');
+unlike(slurp_relfile('test_enc5'),
+	qr/multitud/, 'should not find plain text in test_enc5');
+like(slurp_relfile('test_enc6'),
+	qr/multitud/, 'should find plain text in test_enc6');
 
-	my $tablefile =
-	  $node->data_dir . '/'
-	  . $node->safe_psql('postgres',
-		"SELECT pg_relation_filepath('" . $table . "');");
-
-	PGTDE::psql($node, 'postgres',
-		'SELECT * FROM ' . $table . ' ORDER BY id;');
-
-	PGTDE::append_to_result_file('TABLEFILE FOR '
-		  . $table
-		  . ' FOUND: '
-		  . (-f $tablefile ? 'yes' : 'no'));
-
-	my $shouldnot = $table eq 'test_enc6' ? 'NOT ' : '';
-
-	my $strings =
-	  'CONTAINS "multitud*" (should ' . $shouldnot . 'be empty): ';
-	$strings .= `strings $tablefile | grep multitud`;
-	PGTDE::append_to_result_file($strings);
-}
-
-# Verify that we can't see the data in the files
-verify_table('test_enc0');
-verify_table('test_enc1');
-verify_table('test_enc2');
-verify_table('test_enc3');
-verify_table('test_enc4');
-verify_table('test_enc5');
-verify_table('test_enc6');
-
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc0;');
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc1;');
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc2;');
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc3;');
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc4;');
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc5;');
-PGTDE::psql($node, 'postgres', 'DROP TABLE test_enc6;');
-
-PGTDE::psql($node, 'postgres', 'DROP EXTENSION pg_tde;');
+$node->safe_psql(
+	'postgres', qq(
+	DROP TABLE test_enc0;
+	DROP TABLE test_enc1;
+	DROP TABLE test_enc2;
+	DROP TABLE test_enc3;
+	DROP TABLE test_enc4;
+	DROP TABLE test_enc5;
+	DROP TABLE test_enc6;
+	DROP EXTENSION pg_tde;
+));
 
 $node->stop;
 
-# Compare the expected and out file
-my $compare = PGTDE->compare_results();
-
-is($compare, 0,
-	"Compare Files: $PGTDE::expected_filename_with_path and $PGTDE::out_filename_with_path files."
-);
-
 done_testing();
+
+sub slurp_relfile
+{
+	my ($table) = @_;
+
+	my $file =
+	  $node->safe_psql('postgres', "SELECT pg_relation_filepath('$table');");
+
+	return slurp_file($node->data_dir . '/' . $file);
+}
