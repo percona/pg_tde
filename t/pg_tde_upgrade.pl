@@ -44,7 +44,7 @@ is($newnotde->safe_psql('postgres', "SELECT * FROM test_plain"),
 	"1\n2", 'can read tables');
 $newnotde->stop;
 
-unlink('/tmp/pg_tde_test_pg_upgrade.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $old = PostgreSQL::Test::Cluster->new('old');
 $old->init;
@@ -54,7 +54,7 @@ $old->safe_psql(
 	'postgres', "
 CREATE EXTENSION pg_tde;
 
-SELECT pg_tde_add_global_key_provider_file('file-vault', '/tmp/pg_tde_test_pg_upgrade.per');
+SELECT pg_tde_add_global_key_provider_file('file-vault', '$keydir/global.keys');
 SELECT pg_tde_create_key_using_global_key_provider('server-key', 'file-vault');
 SELECT pg_tde_set_key_using_global_key_provider('server-key', 'file-vault');
 SELECT pg_tde_set_server_key_using_global_key_provider('server-key', 'file-vault');

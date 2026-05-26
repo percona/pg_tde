@@ -30,8 +30,7 @@ sub configure_and_reload
 	return;
 }
 
-unlink('/tmp/pg_global_keyring.file');
-unlink('/tmp/pg_local_keyring.file');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 # Set up two nodes, which will alternately be primary and replication standby.
 
@@ -52,7 +51,7 @@ $node_london->start;
 # Create and enable tde extension
 $node_london->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_london->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/pg_global_keyring.file');"
+	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '$keydir/global.keys');"
 );
 $node_london->safe_psql('postgres',
 	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key', 'global_key_provider');"
@@ -61,7 +60,7 @@ $node_london->safe_psql('postgres',
 	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key', 'global_key_provider');"
 );
 $node_london->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/pg_local_keyring.file');"
+	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '$keydir/db.keys');"
 );
 $node_london->safe_psql('postgres',
 	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key', 'local_key_provider');"
