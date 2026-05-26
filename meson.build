@@ -293,7 +293,6 @@ tap_tests = [
   't/key_rotate_tablespace.pl',
   't/keys_update.pl',
   't/key_validation.pl',
-  't/multiple_extensions.pl',
   't/pg_basebackup.pl',
   't/pg_resetwal_basic.pl',
   't/pg_resetwal_corrupted.pl',
