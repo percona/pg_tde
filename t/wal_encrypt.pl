@@ -2,14 +2,13 @@
 
 use strict;
 use warnings;
-use File::Basename;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 use Test::More;
-use lib 't';
-use pgtde;
 
-PGTDE::setup_files_dir(basename($0));
+my ($stdout, $stderr);
 
-unlink('/tmp/wal_encrypt.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
@@ -19,88 +18,106 @@ $node->append_conf('postgresql.conf', "wal_level = 'logical'");
 #$node->append_conf('postgresql.conf', "pg_tde.wal_encrypt = 1");
 $node->start;
 
-PGTDE::psql($node, 'postgres', "CREATE EXTENSION pg_tde;");
+$node->safe_psql(
+	'postgres', qq(
+	CREATE EXTENSION pg_tde;
+	SELECT pg_tde_add_global_key_provider_file('file-keyring-010', '$keydir/global.keys')
+));
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_add_global_key_provider_file('file-keyring-010', '/tmp/wal_encrypt.per');"
-);
+(undef, undef, $stderr) =
+  $node->psql('postgres', 'SELECT pg_tde_verify_server_key();');
+like(
+	$stderr,
+	qr/ERROR:  principal key not configured for current database/,
+	'should not have a valid key');
 
-PGTDE::psql($node, 'postgres', 'SELECT pg_tde_verify_server_key();');
-
-PGTDE::psql($node, 'postgres',
+$stdout = $node->safe_psql('postgres',
 	'SELECT key_name, provider_name, provider_id FROM pg_tde_server_key_info();'
 );
+is($stdout, '||', 'should not show a valid key');
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('server-key', 'file-keyring-010');"
-);
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('server-key', 'file-keyring-010');"
-);
+$node->safe_psql(
+	'postgres', qq(
+	SELECT pg_tde_create_key_using_global_key_provider('server-key', 'file-keyring-010');
+	SELECT pg_tde_set_server_key_using_global_key_provider('server-key', 'file-keyring-010');
+));
 
-PGTDE::psql($node, 'postgres', 'SELECT pg_tde_verify_server_key();');
+$node->safe_psql('postgres', 'SELECT pg_tde_verify_server_key();');
 
-PGTDE::psql($node, 'postgres',
+$stdout = $node->safe_psql('postgres',
 	'SELECT key_name, provider_name, provider_id FROM pg_tde_server_key_info();'
 );
+is($stdout, 'server-key|file-keyring-010|-1', 'should show a valid keys');
 
-PGTDE::psql($node, 'postgres', 'ALTER SYSTEM SET pg_tde.wal_encrypt = on;');
+$node->safe_psql('postgres', 'ALTER SYSTEM SET pg_tde.wal_encrypt = on;');
 
-PGTDE::append_to_result_file("-- server restart with wal encryption");
 $node->restart;
 
-PGTDE::psql($node, 'postgres', "SHOW pg_tde.wal_encrypt;");
+$stdout = $node->safe_psql('postgres', 'SHOW pg_tde.wal_encrypt;');
+is($stdout, 'on', 'wal_encrypt should be enabled');
 
-PGTDE::psql($node, 'postgres',
+$stdout = $node->safe_psql('postgres',
 	"SELECT slot_name FROM pg_create_logical_replication_slot('tde_slot', 'test_decoding');"
 );
+is($stdout, 'tde_slot', 'should find our replication slot');
 
-PGTDE::psql($node, 'postgres',
-	'CREATE TABLE test_wal (id SERIAL, k INTEGER, PRIMARY KEY (id));');
+$node->safe_psql(
+	'postgres', qq(
+	CREATE TABLE test_wal (id SERIAL, k INTEGER, PRIMARY KEY (id));
+	INSERT INTO test_wal (k) VALUES (1), (2);
+));
 
-PGTDE::psql($node, 'postgres', 'INSERT INTO test_wal (k) VALUES (1), (2);');
+$node->safe_psql('postgres', 'ALTER SYSTEM SET pg_tde.wal_encrypt = off;');
 
-PGTDE::psql($node, 'postgres', 'ALTER SYSTEM SET pg_tde.wal_encrypt = off;');
-
-PGTDE::append_to_result_file("-- server restart without wal encryption");
 $node->restart;
 
-PGTDE::psql($node, 'postgres', "SHOW pg_tde.wal_encrypt;");
+$stdout = $node->safe_psql('postgres', "SHOW pg_tde.wal_encrypt;");
+is($stdout, 'off', 'wal_encrypt should be disabled');
 
-PGTDE::psql($node, 'postgres', 'INSERT INTO test_wal (k) VALUES (3), (4);');
+$node->safe_psql('postgres', 'INSERT INTO test_wal (k) VALUES (3), (4);');
 
-PGTDE::psql($node, 'postgres', 'ALTER SYSTEM SET pg_tde.wal_encrypt = on;');
+$node->safe_psql('postgres', 'ALTER SYSTEM SET pg_tde.wal_encrypt = on;');
 
-PGTDE::append_to_result_file("-- server restart with wal encryption");
 $node->restart;
 
-PGTDE::psql($node, 'postgres', "SHOW pg_tde.wal_encrypt;");
+$stdout = $node->safe_psql('postgres', "SHOW pg_tde.wal_encrypt;");
+is($stdout, 'on', 'wal_encrypt should be enabled');
 
-PGTDE::psql($node, 'postgres', 'INSERT INTO test_wal (k) VALUES (5), (6);');
+$node->safe_psql('postgres', 'INSERT INTO test_wal (k) VALUES (5), (6);');
 
-PGTDE::append_to_result_file("-- server restart with still wal encryption");
 $node->restart;
 
-PGTDE::psql($node, 'postgres', "SHOW pg_tde.wal_encrypt;");
+$stdout = $node->safe_psql('postgres', "SHOW pg_tde.wal_encrypt;");
+is($stdout, 'on', 'wal_encrypt should be enabled');
 
-PGTDE::psql($node, 'postgres', 'INSERT INTO test_wal (k) VALUES (7), (8);');
+$node->safe_psql('postgres', 'INSERT INTO test_wal (k) VALUES (7), (8);');
 
-PGTDE::psql($node, 'postgres',
+$stdout = $node->safe_psql('postgres',
 	"SELECT data FROM pg_logical_slot_get_changes('tde_slot', NULL, NULL, 'include-xids', '0');"
 );
+is( $stdout, q(BEGIN
+COMMIT
+BEGIN
+table public.test_wal: INSERT: id[integer]:1 k[integer]:1
+table public.test_wal: INSERT: id[integer]:2 k[integer]:2
+COMMIT
+BEGIN
+table public.test_wal: INSERT: id[integer]:3 k[integer]:3
+table public.test_wal: INSERT: id[integer]:4 k[integer]:4
+COMMIT
+BEGIN
+table public.test_wal: INSERT: id[integer]:5 k[integer]:5
+table public.test_wal: INSERT: id[integer]:6 k[integer]:6
+COMMIT
+BEGIN
+table public.test_wal: INSERT: id[integer]:7 k[integer]:7
+table public.test_wal: INSERT: id[integer]:8 k[integer]:8
+COMMIT), 'should have generated the expected WAL');
 
-PGTDE::psql($node, 'postgres',
-	"SELECT pg_drop_replication_slot('tde_slot');");
+$node->safe_psql('postgres', "SELECT pg_drop_replication_slot('tde_slot');");
 
-PGTDE::psql($node, 'postgres', 'DROP EXTENSION pg_tde;');
+$node->safe_psql('postgres', 'DROP EXTENSION pg_tde;');
 
 $node->stop;
-
-# Compare the expected and out file
-my $compare = PGTDE->compare_results();
-
-is($compare, 0,
-	"Compare Files: $PGTDE::expected_filename_with_path and $PGTDE::out_filename_with_path files."
-);
 
 done_testing();
