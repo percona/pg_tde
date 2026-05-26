@@ -29,7 +29,7 @@ sub get_block_lsn
 	return ($lsn_hi, $lsn_lo);
 }
 
-unlink('/tmp/pg_waldump_fullpage.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
@@ -44,7 +44,7 @@ $node->start;
 
 $node->safe_psql('postgres', "CREATE EXTENSION pg_tde;");
 $node->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('file-keyring-wal', '/tmp/pg_waldump_fullpage.per');"
+	"SELECT pg_tde_add_global_key_provider_file('file-keyring-wal', '$keydir/global.keys');"
 );
 $node->safe_psql('postgres',
 	"SELECT pg_tde_create_key_using_global_key_provider('server-key', 'file-keyring-wal');"

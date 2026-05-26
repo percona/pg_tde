@@ -8,7 +8,7 @@ use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
 
-unlink('/tmp/pg_resetwal_basic.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
@@ -23,7 +23,7 @@ shared_preload_libraries = 'pg_tde'
 $node->start;
 $node->safe_psql('postgres', "CREATE EXTENSION pg_tde;");
 $node->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('file-keyring-wal', '/tmp/pg_resetwal_basic.per');"
+	"SELECT pg_tde_add_global_key_provider_file('file-keyring-wal', '$keydir/global.keys');"
 );
 $node->safe_psql('postgres',
 	"SELECT pg_tde_create_key_using_global_key_provider('server-key', 'file-keyring-wal');"
