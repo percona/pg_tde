@@ -3,8 +3,6 @@
 # be ignored locally using $GIT_DIR/info/exclude or ~/.gitexclude.
 
 # Global excludes across all subdirectories
-*.vcproj
-*.vcxproj
 .vscode
 __pycache__
 
