@@ -67,7 +67,7 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
 To build `pg_tde` from source code, you require the following:
 
 * git
-* Meson or make
+* Meson
 * gcc or clang
 * Percona Server for PostgreSQL 17 or later
 
