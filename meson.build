@@ -314,7 +314,6 @@ tap_tests = [
   't/replication.pl',
   't/reuse_relfilenode_in_cache.pl',
   't/rotate_key.pl',
-  't/stream_rep.pl',
   't/tde_heap_aes_256.pl',
   't/tde_heap.pl',
   't/unlogged_tables.pl',
