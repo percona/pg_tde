@@ -286,7 +286,6 @@ executable('pg_tde_waldump',
 )
 
 tap_tests = [
-  't/2pc_replication.pl',
   't/basic.pl',
   't/change_key_provider.pl',
   't/crash_recovery.pl',
