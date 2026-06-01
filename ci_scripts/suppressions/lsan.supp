@@ -88,3 +88,6 @@ leak:HandleSlashCmds
 
 #pg_restore
 leak:RestoreArchive
+
+#pg_tde_checksums
+leak:get_principal_key_from_keyring
