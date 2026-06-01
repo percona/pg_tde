@@ -307,6 +307,7 @@ tap_tests = [
   't/pg_rewind_pg_xlog_symlink.pl',
   't/pg_rewind_same_timeline.pl',
   't/pg_tde_change_key_provider.pl',
+  't/pg_tde_checksums.pl',
   't/pg_tde_upgrade.pl',
   't/pg_waldump_basic.pl',
   't/pg_waldump_fullpage.pl',
