@@ -197,7 +197,7 @@ scan_file(const char *fn, Oid spcOid, Oid dbOid, RelFileNumber relNumber, ForkNu
 	int			flags;
 	int64		blocks_written_in_file = 0;
 	RelFileLocator locator = {.spcOid = spcOid,.dbOid = dbOid,.relNumber = relNumber};
-	InternalKey *key;
+	InternalKey *key = NULL;
 
 	Assert(mode == PG_MODE_ENABLE ||
 		   mode == PG_MODE_CHECK);
@@ -210,7 +210,9 @@ scan_file(const char *fn, Oid spcOid, Oid dbOid, RelFileNumber relNumber, ForkNu
 
 	files_scanned++;
 
-	key = pg_tde_get_smgr_key(locator);
+	/* Unknown fork type so assume it is not encrypted */
+	if (forknum != InvalidForkNumber)
+		key = pg_tde_get_smgr_key(locator);
 
 	for (blockno = 0;; blockno++)
 	{

@@ -891,6 +891,11 @@ pg_tde_get_smgr_key(RelFileLocator rel)
 				errhint("Create a new principal key and set it instead of the current one."));
 	}
 
+#ifdef FRONTEND
+	/* There is no principal key cache in the frontend. */
+	pfree(principal_key);
+#endif
+
 	return rel_key;
 }
 
