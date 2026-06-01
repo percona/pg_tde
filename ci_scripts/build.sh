@@ -29,6 +29,8 @@ case "$1" in
         BUILD_TYPE=debug
         ARGS+=" -Dc_args=['-fsanitize=address','-fsanitize=undefined','-fno-omit-frame-pointer','-fno-inline-functions']"
         ARGS+=" -Dc_link_args=['-fsanitize=address','-fsanitize=undefined']"
+        ARGS+=" -Dcpp_args=['-fsanitize=address','-fsanitize=undefined','-fno-omit-frame-pointer','-fno-inline-functions']"
+        ARGS+=" -Dcpp_link_args=['-fsanitize=address','-fsanitize=undefined']"
         ;;
 
     *)

@@ -8,3 +8,7 @@ __pycache__
 
 # Tool files
 /typedefs.list
+
+# Meson subproject artifacts
+/subprojects/.wraplock
+/subprojects/packagecache

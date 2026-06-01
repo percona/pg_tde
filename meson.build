@@ -1,10 +1,11 @@
 project('pg_tde',
-  ['c'],
+  ['c', 'cpp'],
   version: '2.2.0',
   meson_version: '>=0.56',
 )
 
 fs = import('fs')
+cmake = import('cmake')
 
 pg_config = find_program(get_option('pg_config'))
 shsplit = find_program(files('shsplit'))
@@ -69,7 +70,6 @@ fetools = 'fetools/pg@0@'.format(major_version)
 
 incdirs = include_directories(
   'src/include',
-  'src/libkmip/libkmip/include',
   fetools / 'include',
   includedir_server,
   includedir,
@@ -92,16 +92,21 @@ install_data(
   install_dir: sharedir / 'extension',
 )
 
-kmip = static_library('kmip',
-  files(
-    'src/libkmip/libkmip/src/kmip.c',
-    'src/libkmip/libkmip/src/kmip_bio.c',
-    'src/libkmip/libkmip/src/kmip_locate.c',
-    'src/libkmip/libkmip/src/kmip_memset.c',
-  ),
-  c_args: ['-w'], # This is a 3rd party, disable warnings completely
-  include_directories: incdirs,
-)
+kmip_cmake_opts = cmake.subproject_options()
+kmip_cmake_opts.add_cmake_defines({
+  'BUILD_TESTS': false,
+  'BUILD_KMIP_TESTS': false,
+  'BUILD_DOCS': false,
+})
+kmip_cmake_opts.set_install(false)
+# libkmip is a vendored external dependency. Don't impose our -Dwerror=true on
+# it: its own warnings (e.g. -Woverloaded-virtual on newer compilers) must not
+# fail our build. -Wno-error is appended after meson's injected -Werror.
+kmip_cmake_opts.append_compile_args('c', '-Wno-error')
+kmip_cmake_opts.append_compile_args('cpp', '-Wno-error')
+kmip_subproject = cmake.subproject('libkmip', options: kmip_cmake_opts)
+kmipclient_dep = kmip_subproject.dependency('kmipclient')
+kmipcore_dep = kmip_subproject.dependency('kmipcore')
 
 shared_module('pg_tde',
   files(
@@ -118,21 +123,21 @@ shared_module('pg_tde',
     'src/keyring/keyring_api.c',
     'src/keyring/keyring_curl.c',
     'src/keyring/keyring_file.c',
-    'src/keyring/keyring_kmip.c',
-    'src/keyring/keyring_kmip_impl.c',
+    'src/keyring/keyring_kmip.cpp',
     'src/keyring/keyring_vault.c',
     'src/pg_tde.c',
     'src/pg_tde_event_capture.c',
     'src/pg_tde_guc.c',
     'src/smgr/pg_tde_smgr.c',
   ),
+  override_options: ['cpp_std=c++20'],
   include_directories: incdirs,
   install: true,
   install_dir: pkglibdir,
-  dependencies: [crypto, ssl, curl],
+  dependencies: [crypto, ssl, curl, kmipclient_dep, kmipcore_dep],
   name_prefix: '',
-  link_with: [kmip],
   link_args: backend_link_args,
+  link_language: 'cpp',
 )
 
 pg_tde_frontend = static_library('pg_tde_frontend',
@@ -149,14 +154,14 @@ pg_tde_frontend = static_library('pg_tde_frontend',
     'src/keyring/keyring_api.c',
     'src/keyring/keyring_curl.c',
     'src/keyring/keyring_file.c',
-    'src/keyring/keyring_kmip.c',
-    'src/keyring/keyring_kmip_impl.c',
+    'src/keyring/keyring_kmip.cpp',
     'src/keyring/keyring_vault.c',
   ),
   c_args: ['-DFRONTEND'],
-  dependencies: [pgfeutils, pgcommon, pgport, curl, crypto, ssl],
+  cpp_args: ['-DFRONTEND'],
+  override_options: ['cpp_std=c++20'],
+  dependencies: [pgfeutils, pgcommon, pgport, curl, crypto, ssl, kmipclient_dep, kmipcore_dep],
   include_directories: incdirs,
-  link_with: [kmip],
 )
 
 pg_tde_frontend_xlog = static_library('pg_tde_frontend_xlog',
@@ -167,7 +172,6 @@ pg_tde_frontend_xlog = static_library('pg_tde_frontend_xlog',
   dependencies: [lz4, zstd],
   c_args: ['-DFRONTEND'],
   include_directories: incdirs,
-  link_with: [kmip],
 )
 
 executable('pg_tde_change_key_provider',
@@ -177,6 +181,7 @@ executable('pg_tde_change_key_provider',
   install_dir: bindir,
   link_with: [pg_tde_frontend],
   link_args: frontend_link_args,
+  link_language: 'cpp',
 )
 
 executable('pg_tde_archive_decrypt',
@@ -186,6 +191,7 @@ executable('pg_tde_archive_decrypt',
   install_dir: bindir,
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
   link_args: frontend_link_args,
+  link_language: 'cpp',
 )
 
 executable('pg_tde_restore_encrypt',
@@ -195,6 +201,7 @@ executable('pg_tde_restore_encrypt',
   install_dir: bindir,
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
   link_args: frontend_link_args,
+  link_language: 'cpp',
 )
 
 executable('pg_tde_upgrade',
@@ -237,6 +244,7 @@ executable('pg_tde_basebackup',
   dependencies: [pq, z],
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
   link_args: frontend_link_args,
+  link_language: 'cpp',
 )
 
 executable('pg_tde_checksums',
@@ -248,6 +256,7 @@ executable('pg_tde_checksums',
   install_dir: bindir,
   link_with: [pg_tde_frontend],
   link_args: frontend_link_args,
+  link_language: 'cpp',
 )
 
 executable('pg_tde_resetwal',
@@ -259,6 +268,7 @@ executable('pg_tde_resetwal',
   install_dir: bindir,
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
   link_args: frontend_link_args,
+  link_language: 'cpp',
 )
 
 executable('pg_tde_rewind',
@@ -278,6 +288,7 @@ executable('pg_tde_rewind',
   dependencies: [pq],
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
   link_args: frontend_link_args,
+  link_language: 'cpp',
 )
 
 executable('pg_tde_waldump',
@@ -315,6 +326,7 @@ executable('pg_tde_waldump',
   c_args: ['-DFRONTEND'],
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
   link_args: frontend_link_args,
+  link_language: 'cpp',
 )
 
 tap_tests = [
