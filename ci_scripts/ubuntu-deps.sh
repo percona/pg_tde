@@ -61,6 +61,6 @@ sudo chmod 0755 /usr/sbin/cosmian_kms
 sudo chmod 0755 /usr/local/cosmian/lib/ossl-modules/legacy.so
 
 # OpenBao
-OPENBAO_VERSION=2.4.3
-wget https://github.com/openbao/openbao/releases/download/v$OPENBAO_VERSION/bao_${OPENBAO_VERSION}_linux_$(dpkg --print-architecture).deb
-sudo dpkg -i bao_${OPENBAO_VERSION}_linux_$(dpkg --print-architecture).deb
+OPENBAO_VERSION=2.5.4
+wget https://github.com/openbao/openbao/releases/download/v$OPENBAO_VERSION/openbao_${OPENBAO_VERSION}_linux_$(dpkg --print-architecture).deb
+sudo dpkg -i openbao_${OPENBAO_VERSION}_linux_$(dpkg --print-architecture).deb
