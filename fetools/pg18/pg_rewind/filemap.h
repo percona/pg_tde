@@ -116,7 +116,11 @@ extern void print_filemap(filemap_t *filemap);
 
 extern void keepwal_init(void);
 extern void keepwal_add_entry(const char *path);
+extern bool keepwal_entry_exists(const char *path);
 
 extern bool path_rlocator(const char *path, RelFileLocator *rlocator, unsigned int *segNo);
+
+extern void ensure_tde_archive_wal();
+extern void archive_wal_segments_add_entry(const char *path);
 
 #endif							/* FILEMAP_H */

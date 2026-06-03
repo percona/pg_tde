@@ -349,8 +349,14 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 			if (xlogreadfd < 0)
 				return -1;
 			else
+			{
+				char		xlogdirfname[MAXFNAMELEN];
+
+				snprintf(xlogdirfname, MAXPGPATH, XLOGDIR "/%s", xlogfname);
+				archive_wal_segments_add_entry(xlogdirfname);
 				pg_log_debug("using file \"%s\" restored from archive",
 							 xlogfpath);
+			}
 		}
 	}
 

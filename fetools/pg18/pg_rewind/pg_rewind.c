@@ -667,7 +667,11 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 
 	close_target_file();
 
+	/* ensure (re-encrypt) desitination's segmets recovered from the archive */
+	ensure_tde_archive_wal();
+
 	flush_rel_keys();
+
 	fetch_tde_dir();
 
 	progress_report(true);

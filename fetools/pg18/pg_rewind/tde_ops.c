@@ -5,6 +5,7 @@
 #include "access/xlog_internal.h"
 #include "catalog/pg_tablespace_d.h"
 #include "common/file_perm.h"
+#include "fe_utils/simple_list.h"
 
 #include "file_ops.h"
 #include "filemap.h"
@@ -20,6 +21,14 @@
 
 static void copy_dir(const char *src, const char *dst);
 static void create_tde_tmp_dir(void);
+
+SimplePtrList archive_wal_segments = {NULL, NULL};
+
+void
+archive_wal_segments_add_entry(const char *path)
+{
+	simple_ptr_list_append(&archive_wal_segments, pstrdup(path));
+}
 
 typedef struct
 {
@@ -220,6 +229,29 @@ reencrypt_fork(ForkNumber fork)
 
 	close(srcfd);
 	close(trgfd);
+}
+
+void
+ensure_tde_archive_wal()
+{
+	SimplePtrListCell *cell;
+
+	for (cell = archive_wal_segments.head; cell; cell = cell->next)
+	{
+		char		wal_path[MAXPGPATH];
+		char	   *segpath = (char *) cell->ptr;
+
+		/* should have been already re-encrypted */
+		if (keepwal_entry_exists(segpath))
+			continue;
+
+		snprintf(wal_path, sizeof(wal_path), "%s/%s", datadir_target, segpath);
+
+		if (access(wal_path, F_OK) != 0)
+			continue;
+
+		ensure_tde_wal_seg(segpath);
+	}
 }
 
 void
