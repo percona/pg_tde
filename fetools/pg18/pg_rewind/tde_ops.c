@@ -5,6 +5,7 @@
 #include "access/xlog_internal.h"
 #include "catalog/pg_tablespace_d.h"
 #include "common/file_perm.h"
+#include "fe_utils/simple_list.h"
 
 #include "file_ops.h"
 #include "filemap.h"
@@ -19,6 +20,18 @@
 
 static void copy_dir(const char *src, const char *dst);
 static void create_tde_tmp_dir(void);
+
+/*
+ * Keep track of destination segments retrieved from the archive. These files
+ * might need re-encryption.
+ */
+SimplePtrList archive_wal_segments = {NULL, NULL};
+
+void
+archive_wal_segments_add_entry(const char *path)
+{
+	simple_ptr_list_append(&archive_wal_segments, pstrdup(path));
+}
 
 typedef struct
 {
@@ -138,6 +151,33 @@ flush_current_tde_rel_key(void)
 	pfree(current_tde_file.source_key);
 	pfree(current_tde_file.target_key);
 	memset(&current_tde_file, 0, sizeof(current_tde_file));
+}
+
+void
+ensure_tde_archive_wal()
+{
+	SimplePtrListCell *cell;
+
+	for (cell = archive_wal_segments.head; cell; cell = cell->next)
+	{
+		char		wal_path[MAXPGPATH];
+		char	   *segpath = (char *) cell->ptr;
+
+		/*
+		 * All "kept" WAL segments are re-encrypted regardless of their
+		 * origins. Hence, by this time, such files have already been
+		 * processed, and additional re-encryption will corrupt them.
+		 */
+		if (keepwal_entry_exists(segpath))
+			continue;
+
+		snprintf(wal_path, sizeof(wal_path), "%s/%s", datadir_target, segpath);
+
+		if (access(wal_path, F_OK) != 0)
+			continue;
+
+		ensure_tde_wal_seg(segpath);
+	}
 }
 
 void
