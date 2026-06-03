@@ -333,6 +333,7 @@ tap_tests = [
   't/pg_rewind_enc_copy_blocks.pl',
   't/pg_rewind_enc_ext_tablespace.pl',
   't/pg_rewind_enc_fsm.pl',
+  't/pg_rewind_enc_keep_archive_wal.pl',
   't/pg_rewind_enc_keep_wal_seg.pl',
   't/pg_rewind_enc_unchanged_rel.pl',
   't/pg_rewind_extrafiles.pl',
