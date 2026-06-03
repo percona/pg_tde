@@ -87,7 +87,6 @@ typedef struct keepwal_entry
 
 
 static keepwal_hash *keepwal = NULL;
-static bool keepwal_entry_exists(const char *path);
 
 static int	final_filemap_cmp(const void *a, const void *b);
 
@@ -263,7 +262,7 @@ keepwal_add_entry(const char *path)
 }
 
 /* Return true if file is marked as not to be removed, false otherwise */
-static bool
+bool
 keepwal_entry_exists(const char *path)
 {
 	return keepwal_lookup(keepwal, path) != NULL;

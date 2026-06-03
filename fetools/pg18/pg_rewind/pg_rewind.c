@@ -665,6 +665,9 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 
 	close_target_file();
 
+	/* ensure (re-encrypt) destination's segments recovered from the archive */
+	ensure_tde_archive_wal();
+
 	fetch_tde_dir();
 
 	progress_report(true);
