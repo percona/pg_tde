@@ -1,0 +1,76 @@
+\! rm -f '/tmp/pg_tde_test_keyring.per'
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_add_database_key_provider_file('file-vault','/tmp/pg_tde_test_keyring.per');
+ pg_tde_add_database_key_provider_file 
+---------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_create_key_using_database_key_provider('test-db-key','file-vault');
+ pg_tde_create_key_using_database_key_provider 
+-----------------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_set_key_using_database_key_provider('test-db-key','file-vault');
+ pg_tde_set_key_using_database_key_provider 
+--------------------------------------------
+ 
+(1 row)
+
+CREATE TABLE test_enc (
+  id SERIAL,
+  PRIMARY KEY (id)
+) USING tde_heap;
+CREATE TABLE test_norm (
+  id SERIAL,
+  PRIMARY KEY (id)
+) USING heap;
+CREATE TABLE test_part (
+  id SERIAL,
+  PRIMARY KEY (id)
+) PARTITION BY RANGE (id) USING tde_heap;
+ERROR:  specifying a table access method is not supported on a partitioned table
+CREATE TEMP TABLE test_temp_enc (
+  id SERIAL,
+  PRIMARY KEY (id)
+) USING tde_heap;
+CREATE TEMP TABLE test_temp_norm (
+  id SERIAL,
+  PRIMARY KEY (id)
+) USING heap;
+SELECT relname, amname FROM pg_class JOIN pg_am ON pg_am.oid = pg_class.relam WHERE relname IN ('test_enc', 'test_norm', 'test_part', 'test_temp_enc', 'test_temp_norm') ORDER BY relname;
+    relname     |  amname  
+----------------+----------
+ test_enc       | tde_heap
+ test_norm      | heap
+ test_temp_enc  | tde_heap
+ test_temp_norm | heap
+(4 rows)
+
+SELECT relname, pg_tde_is_encrypted(relname) FROM (VALUES ('test_enc'), ('test_norm'), ('test_part'), ('test_temp_enc'), ('test_temp_norm')) AS r (relname) ORDER BY relname;
+ERROR:  relation "test_part" does not exist
+SELECT relname, pg_tde_is_encrypted(relname) FROM (VALUES ('test_enc_id_seq'), ('test_norm_id_seq'), ('test_part_id_seq'), ('test_temp_enc'), ('test_temp_norm')) AS r (relname) ORDER BY relname;
+ERROR:  relation "test_part_id_seq" does not exist
+SELECT relname, pg_tde_is_encrypted(relname) FROM (VALUES ('test_enc_pkey'), ('test_norm_pkey'), ('test_part_pkey'), ('test_temp_enc'), ('test_temp_norm')) AS r (relname) ORDER BY relname;
+ERROR:  relation "test_part_pkey" does not exist
+SELECT pg_tde_is_encrypted(NULL);
+ pg_tde_is_encrypted 
+---------------------
+ 
+(1 row)
+
+SELECT provider_id, provider_name, key_name
+    FROM pg_tde_key_info();
+ provider_id | provider_name |  key_name   
+-------------+---------------+-------------
+           1 | file-vault    | test-db-key
+(1 row)
+
+DROP TABLE test_temp_norm;
+DROP TABLE test_temp_enc;
+DROP TABLE test_part;
+ERROR:  table "test_part" does not exist
+DROP TABLE test_norm;
+DROP TABLE test_enc;
+DROP EXTENSION pg_tde;
