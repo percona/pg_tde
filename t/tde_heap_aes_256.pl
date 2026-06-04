@@ -87,17 +87,20 @@ $stdout =
 is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc3');
 
 # test_enc4 (create heap + alter default)
-$node->safe_psql(
-	'postgres', qq(
-	CREATE TABLE test_enc4 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;
-	INSERT INTO test_enc4 (k) VALUES ('multitude'), ('multitudinous');
-	SET default_table_access_method = "tde_heap";
-	ALTER TABLE test_enc4 SET ACCESS METHOD DEFAULT;
-));
+if ($node->pg_version >= 17)
+{
+	$node->safe_psql(
+		'postgres', qq(
+		CREATE TABLE test_enc4 (id SERIAL, k VARCHAR(32), PRIMARY KEY (id)) USING heap;
+		INSERT INTO test_enc4 (k) VALUES ('multitude'), ('multitudinous');
+		SET default_table_access_method = "tde_heap";
+		ALTER TABLE test_enc4 SET ACCESS METHOD DEFAULT;
+	));
 
-$stdout =
-  $node->safe_psql('postgres', 'SELECT * FROM test_enc4 ORDER BY id;');
-is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc4');
+	$stdout =
+	  $node->safe_psql('postgres', 'SELECT * FROM test_enc4 ORDER BY id;');
+	is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc4');
+}
 
 # test_enc5 (create tde_heap + truncate)
 $node->safe_psql(
@@ -136,9 +139,12 @@ is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc2');
 $stdout =
   $node->safe_psql('postgres', 'SELECT * FROM test_enc3 ORDER BY id;');
 is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc3');
-$stdout =
-  $node->safe_psql('postgres', 'SELECT * FROM test_enc4 ORDER BY id;');
-is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc4');
+if ($node->pg_version >= 17)
+{
+	$stdout =
+	  $node->safe_psql('postgres', 'SELECT * FROM test_enc4 ORDER BY id;');
+	is($stdout, "1|multitude\n2|multitudinous", 'can read test_enc4');
+}
 $stdout =
   $node->safe_psql('postgres', 'SELECT * FROM test_enc5 ORDER BY id;');
 is($stdout, "3|multitude\n4|multitudinous", 'can read test_enc5');
@@ -153,24 +159,15 @@ unlike(slurp_relfile('test_enc2'),
 	qr/multitud/, 'should not find plain text in test_enc2');
 unlike(slurp_relfile('test_enc3'),
 	qr/multitud/, 'should not find plain text in test_enc3');
-unlike(slurp_relfile('test_enc4'),
-	qr/multitud/, 'should not find plain text in test_enc4');
+if ($node->pg_version >= 17)
+{
+	unlike(slurp_relfile('test_enc4'),
+		qr/multitud/, 'should not find plain text in test_enc4');
+}
 unlike(slurp_relfile('test_enc5'),
 	qr/multitud/, 'should not find plain text in test_enc5');
 like(slurp_relfile('test_enc6'),
 	qr/multitud/, 'should find plain text in test_enc6');
-
-$node->safe_psql(
-	'postgres', qq(
-	DROP TABLE test_enc0;
-	DROP TABLE test_enc1;
-	DROP TABLE test_enc2;
-	DROP TABLE test_enc3;
-	DROP TABLE test_enc4;
-	DROP TABLE test_enc5;
-	DROP TABLE test_enc6;
-	DROP EXTENSION pg_tde;
-));
 
 $node->stop;
 
