@@ -442,7 +442,6 @@ static void
 libpq_finish_fetch(rewind_source *source)
 {
 	process_queued_fetch_requests((libpq_source *) source);
-	flush_current_tde_rel_key();
 }
 
 static void

@@ -213,8 +213,10 @@ local_fetch_tde_keys(rewind_source *source)
 static void
 local_finish_fetch(rewind_source *source)
 {
-	/* Ensure the recent key used to process data is on the disk  */
-	flush_current_tde_rel_key();
+	/*
+	 * Noop for the local source as it doesn't fetch files in batches. Hence
+	 * everything is processed by now.
+	 */
 }
 
 static void
