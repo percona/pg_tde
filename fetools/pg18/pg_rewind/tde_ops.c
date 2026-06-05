@@ -46,6 +46,9 @@ reencrypt_fork(ForkNumber fork)
 	RelPathStr	rp = relpathperm(current_tde_file.rlocator, fork);
 	static const char *const warning_hint = "Skipping the file, as the server can start and rebuild the broken VM/FSM file.";
 
+	if (dry_run)
+		return;
+
 	snprintf(srcpath, sizeof(srcpath), "%s/%s", datadir_target, rp.str);
 
 	/* check if fork exists, nothing to do if it does not */
@@ -154,6 +157,9 @@ ensure_tde_wal_seg(const char *relpath)
 	const char *segname = last_dir_separator(relpath);
 
 	pg_log_debug("re-encrypt target WAL segment %s", relpath);
+
+	if (dry_run)
+		return;
 
 	segname = (segname != NULL) ? segname + 1 : relpath;
 	XLogFromFileName(segname, &tli, &segno, WalSegSz);
