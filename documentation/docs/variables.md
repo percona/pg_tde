@@ -19,9 +19,6 @@ This variable only controls new writes to the WAL, it doesn't affect existing WA
 
 Enabling WAL encryption requires a configured global principal key. Refer to the [WAL encryption configuration](wal-encryption.md) topic for more information.
 
-!!! warning
-    The WAL encryption feature is currently in beta and is not effective unless explicitly enabled. It is not yet production ready. **Do not enable this feature in production environments**.
-
 ## pg_tde.enforce_encryption
 
 **Type** - boolean <br>
