@@ -55,7 +55,7 @@ jobs:
         working-directory: build
 
       - name: Upload coverage data to codecov.io
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           verbose: true
           fail_ci_if_error: true
