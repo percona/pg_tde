@@ -17,7 +17,7 @@ These tools are introduced exclusively by `pg_tde` to support key rotation and W
 
 These tools are modified versions of standard PostgreSQL utilities that include `pg_tde` support. You must use the `pg_tde_*` variants when working with encrypted WAL or tables:
 
-* [pg_tde_checksums](./pg-tde-checksums.md): verify data checksums (non-encrypted files only)
+* [pg_tde_checksums](./pg-tde-checksums.md): verify data checksums
 * [pg_tde_waldump](./pg-tde-waldump.md): inspect and decrypt WAL files
 * [pg_tde_basebackup](../how-to/backup-wal-enabled.md): create base backups that include encrypted data
 * pg_tde_resetwal: reset the WAL for clusters using `pg_tde`
