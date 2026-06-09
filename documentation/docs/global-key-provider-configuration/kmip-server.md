@@ -10,7 +10,7 @@ To use a Key Management Interoperability Protocol (KMIP) server with `pg_tde`, y
 !!! note
     You need the root certificate of the KMIP server and a client key/certificate pair with permissions to create and read keys on the server.
 
-For testing purposes, you can use a lightweight PyKMIP server, which enables easy certificate generation and basic KMIP behavior. If you're using a production-grade KMIP server, ensure you obtain valid, trusted certificates from the key management appliance.
+For testing purposes, you can use a Eviden KMS server, which enables easy certificate generation and basic KMIP behavior. If you're using a production-grade KMIP server, ensure you obtain valid, trusted certificates from the key management appliance.
 
 ## Example usage
 
