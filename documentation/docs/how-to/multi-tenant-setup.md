@@ -63,7 +63,7 @@ You must do these steps for every database where you have created the extension.
 
         Make sure you have obtained the root certificate for the KMIP server and the keypair for the client. The client key needs permissions to create / read keys on the server. Find the [configuration guidelines for the HashiCorp Vault Enterprise KMIP Secrets Engine :octicons-link-external-16:](https://developer.hashicorp.com/vault/tutorials/enterprise/kmip-engine).
 
-        For testing purposes, you can use the Cosmian server which enables you to set up required certificates. To use a real KMIP server, make sure to obtain the valid certificates issued by the key management appliance.
+        For testing purposes, you can use the Eviden KMS server which enables you to set up required certificates. To use a real KMIP server, make sure to obtain the valid certificates issued by the key management appliance.
 
         ```sql
         SELECT pg_tde_add_database_key_provider_kmip(
