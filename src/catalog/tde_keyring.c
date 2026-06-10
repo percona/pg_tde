@@ -775,9 +775,6 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 			continue;
 		}
 
-		ereport(DEBUG2,
-				errmsg("read key provider ID=%d %s", provider.provider_id, provider.provider_name));
-
 		if (scanType == PROVIDER_SCAN_BY_NAME)
 		{
 			if (strcasecmp(provider.provider_name, (char *) scanKey) == 0)
@@ -957,6 +954,7 @@ get_file_value(const char *path, const char *field_name)
 static void
 debug_print_kerying(GenericKeyring *keyring)
 {
+#ifdef KEYRING_DEBUG
 	elog(DEBUG2, "Keyring type: %d", keyring->type);
 	elog(DEBUG2, "Keyring name: %s", keyring->provider_name);
 	elog(DEBUG2, "Keyring id: %d", keyring->keyring_id);
@@ -985,6 +983,7 @@ debug_print_kerying(GenericKeyring *keyring)
 		case UNKNOWN_KEY_PROVIDER:
 			break;
 	}
+#endif							/* KEYRING_DEBUG */
 }
 
 static inline void
