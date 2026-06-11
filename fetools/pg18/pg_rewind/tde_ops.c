@@ -38,11 +38,10 @@ static bool source_has_tde = false;
 static void
 reencrypt_fork(ForkNumber fork)
 {
-	int			srcfd;
-	int			trgfd;
+	int			fd;
 	char		srcpath[MAXPGPATH];
 	PGIOAlignedBlock buf;
-	size_t		written_len;
+	off_t		offset;
 	RelPathStr	rp = relpathperm(current_tde_file.rlocator, fork);
 	static const char *const warning_hint = "Skipping the file, as the server can start and rebuild the broken VM/FSM file.";
 
@@ -55,33 +54,24 @@ reencrypt_fork(ForkNumber fork)
 	if (access(srcpath, F_OK) != 0)
 		return;
 
-	srcfd = open(srcpath, O_RDONLY | PG_BINARY, 0);
-	if (srcfd < 0)
+	fd = open(srcpath, O_RDWR | PG_BINARY, 0);
+	if (fd < 0)
 	{
 		/*
 		 * Server can recover from wrecked VM/FSM, hence only warnings here
 		 * and in the rest of the function
 		 */
-		pg_log_warning("could not open fork file for reading \"%s\": %m", srcpath);
+		pg_log_warning("could not open fork file \"%s\": %m", srcpath);
 		pg_log_warning_hint("%s", warning_hint);
 		return;
 	}
 
-	trgfd = open(srcpath, O_WRONLY | PG_BINARY, 0);
-	if (trgfd < 0)
-	{
-		pg_log_warning("could not open fork file for writing \"%s\": %m", srcpath);
-		pg_log_warning_hint("%s", warning_hint);
-		close(srcfd);
-		return;
-	}
-
-	written_len = 0;
+	offset = 0;
 	for (;;)
 	{
 		ssize_t		read_len;
 
-		read_len = read(srcfd, buf.data, sizeof(buf.data));
+		read_len = pg_pread(fd, buf.data, sizeof(buf.data), offset);
 
 		if ((read_len <= 0))
 		{
@@ -103,20 +93,19 @@ reencrypt_fork(ForkNumber fork)
 			break;
 		}
 
-		tde_reencrypt_block((unsigned char *) buf.data, written_len, fork);
+		tde_reencrypt_block((unsigned char *) buf.data, offset, fork);
 
-		if (write(trgfd, buf.data, read_len) != read_len)
+		if (pg_pwrite(fd, buf.data, read_len, offset) != read_len)
 		{
 			pg_log_warning("could not write block to fork file \"%s\": %m", srcpath);
 			pg_log_warning_hint("%s", warning_hint);
 
 			break;
 		}
-		written_len += read_len;
+		offset += read_len;
 	}
 
-	close(srcfd);
-	close(trgfd);
+	close(fd);
 }
 
 /*
@@ -322,25 +311,25 @@ write_tmp_source_file(const char *fname, char *buf, size_t size)
 static void
 copy_dir(const char *src, const char *dst)
 {
-	DIR		   *xldir;
-	struct dirent *xlde;
+	DIR		   *dir;
+	struct dirent *de;
 	char		src_path[MAXPGPATH];
 	char		dst_path[MAXPGPATH];
 
-	xldir = opendir(src);
-	if (xldir == NULL)
+	dir = opendir(src);
+	if (dir == NULL)
 		pg_fatal("could not open directory \"%s\": %m", src);
 
-	while (errno = 0, (xlde = readdir(xldir)) != NULL)
+	while (errno = 0, (de = readdir(dir)) != NULL)
 	{
 		struct stat fst;
 
-		if (strcmp(xlde->d_name, ".") == 0 ||
-			strcmp(xlde->d_name, "..") == 0)
+		if (strcmp(de->d_name, ".") == 0 ||
+			strcmp(de->d_name, "..") == 0)
 			continue;
 
-		snprintf(src_path, sizeof(src_path), "%s/%s", src, xlde->d_name);
-		snprintf(dst_path, sizeof(dst_path), "%s/%s", dst, xlde->d_name);
+		snprintf(src_path, sizeof(src_path), "%s/%s", src, de->d_name);
+		snprintf(dst_path, sizeof(dst_path), "%s/%s", dst, de->d_name);
 
 		if (lstat(src_path, &fst) < 0)
 			pg_fatal("could not stat file \"%s\": %m", src_path);
@@ -350,7 +339,7 @@ copy_dir(const char *src, const char *dst)
 			char	   *buf;
 			size_t		size;
 
-			buf = slurpFile(src, xlde->d_name, &size);
+			buf = slurpFile(src, de->d_name, &size);
 
 			write_file(dst_path, buf, size);
 			pg_free(buf);
@@ -360,7 +349,7 @@ copy_dir(const char *src, const char *dst)
 	if (errno)
 		pg_fatal("could not read directory \"%s\": %m", src);
 
-	if (closedir(xldir))
+	if (closedir(dir))
 		pg_fatal("could not close directory \"%s\": %m", src);
 }
 

@@ -8,6 +8,7 @@
 #include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "pg_tde.h"
+#include "pg_tde_fe_archive_common.h"
 
 #include <signal.h>
 
@@ -227,23 +228,10 @@ main(int argc, char *argv[])
 											   "ARCHIVE-COMMAND", "fp",
 											   targetname, tmppath);
 
-		/*
-		 * Init WAL keys. We expect pg_tde (if any) one level up from the
-		 * destination file dir. Hence we expect destination files in the
-		 * <pgdata>/pg_wal dir and keys in <pgdata>/pg_tde. No `sep`, means no
-		 * dir in `sourcepath`, hence our workdir is `pg_wal` itself,
-		 * therefore look at ../pg_tde.
-		 */
 		{
-			char		tdedir[MAXPGPATH] = "../" PG_TDE_DATA_DIR;
+			char		tdedir[MAXPGPATH];
 
-			if (sep != NULL)
-			{
-				char		sourcedir[MAXPGPATH];
-
-				strlcpy(sourcedir, sourcepath, sep - sourcepath + 1);
-				snprintf(tdedir, sizeof(tdedir), "%s/../" PG_TDE_DATA_DIR, sourcedir);
-			}
+			derive_tde_dir_from_segment_path(sourcepath, sep, tdedir, sizeof(tdedir));
 
 			pg_tde_fe_init(tdedir);
 			TDEXLogSmgrInit();

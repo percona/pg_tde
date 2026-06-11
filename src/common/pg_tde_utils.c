@@ -56,10 +56,8 @@ pg_tde_set_data_dir(const char *dir)
 {
 	Assert(dir != NULL);
 
-	memset(tde_data_dir, 0, sizeof(tde_data_dir));
 	strlcpy(tde_data_dir, dir, sizeof(tde_data_dir));
 
-	memset(wal_key_file_path, 0, sizeof(wal_key_file_path));
 	snprintf(wal_key_file_path, MAXPGPATH, "%s/" PG_TDE_WAL_KEY_FILE_NAME, tde_data_dir);
 
 	/* New dir, new keys. Reset caches */
