@@ -958,7 +958,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid)
 static TDEPrincipalKey *fe_server_principal_key_cache = NULL;
 
 void
-clean_fe_server_principal_key_cache()
+clean_fe_server_principal_key_cache(void)
 {
 	pfree(fe_server_principal_key_cache);
 	fe_server_principal_key_cache = NULL;
