@@ -187,23 +187,16 @@ local_queue_fetch_range(rewind_source *source, const char *path, off_t off,
 		pg_fatal("could not close file \"%s\": %m", srcpath);
 }
 
-static bool
-directory_exists(const char *dir)
-{
-	struct stat st;
-
-	return stat(dir, &st) == 0 && S_ISDIR(st.st_mode);
-}
-
 static void
 local_fetch_tde_keys(rewind_source *source)
 {
 	char		tde_source_dir[MAXPGPATH];
+	struct stat st;
 	const char *datadir = ((local_source *) source)->datadir;
 
 	snprintf(tde_source_dir, sizeof(tde_source_dir), "%s/%s", datadir, PG_TDE_DATA_DIR);
 
-	if (!directory_exists(tde_source_dir))
+	if (stat(tde_source_dir, &st) != 0 || !S_ISDIR(st.st_mode))
 		return;
 
 	init_tde();

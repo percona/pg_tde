@@ -41,10 +41,10 @@ extern void pg_tde_stream_crypt(const char *iv_prefix,
 								int key_len,
 								void **ctxPtr);
 
-extern void tde_decrypt_smgr_block(InternalKey *relKey, ForkNumber forknum,
+extern void tde_decrypt_smgr_block(InternalKey *rel_key, ForkNumber forknum,
 								   BlockNumber blocknum, const unsigned char *in,
 								   unsigned char *out);
-extern void tde_encrypt_smgr_block(InternalKey *relKey, ForkNumber forknum,
+extern void tde_encrypt_smgr_block(InternalKey *rel_key, ForkNumber forknum,
 								   BlockNumber blocknum, const unsigned char *in,
 								   unsigned char *out);
 #endif							/* ENC_TDE_H */
