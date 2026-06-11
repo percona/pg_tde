@@ -36,8 +36,9 @@ sub run_test
 	RewindTest::promote_standby();
 
 
-	# Makes an index relation to remain unchanged on target. So test that we
-	# preserve a target's internal key for this rel
+	# The CHECKPOINT on the standby leaves the unchanged index relation files
+	# flushed; we then verify pg_rewind preserves the target's internal key
+	# for them.
 	standby_psql("CHECKPOINT");
 
 
@@ -54,7 +55,7 @@ sub run_test
 	return;
 }
 
-# Run the test in both modes
+# Run the test in all source modes plus local aes_256
 run_test('local');
 run_test('remote');
 run_test('archive');

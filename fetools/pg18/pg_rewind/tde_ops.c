@@ -159,9 +159,9 @@ ensure_tde_wal_seg(const char *relpath)
 	if (fd < 0)
 	{
 		/*
-		 * A warning here and in further as the kept segment is not necessary
-		 * encrypted with the wrong key. Hence failing here still may result
-		 * in recoverable server.
+		 * A warning here and in further as the kept segment is not
+		 * necessarily encrypted with the wrong key. Hence failing here still
+		 * may result in recoverable server.
 		 */
 		pg_log_warning("could not open WAL segment \"%s\": %m", wal_path);
 		return;
@@ -226,7 +226,7 @@ ensure_tde_keys(const char *relpath)
 		/*
 		 * If there ever was a source_key, it must be a target_key for this
 		 * rlocator. `ALTER TABLE ... SET ACCESS METHOD heap` would create a
-		 * new rlocator, hence it would not be a range chage.
+		 * new rlocator, hence it would not be a range change.
 		 *
 		 * XXX: should be an elog FATAL instead?
 		 */

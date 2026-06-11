@@ -1,6 +1,6 @@
-# Make rewind to keep some WAL segments on taget and archive restore_command to
-# generate new WAL keys wile creating replica. So kept WAl segments shuld be
-# re-encrypted by rewind.
+# Make pg_rewind keep some WAL segments on the target and use archive
+# restore_command to generate new WAL keys while creating the replica.
+# The kept WAL segments should then be re-encrypted by pg_rewind.
 #
 use strict;
 use warnings FATAL => 'all';
@@ -59,11 +59,11 @@ sub run_test
 
 	RewindTest::promote_standby();
 
-	# # Makes pg_rewind to copy some blocks of the relation
-	# # (mixing data encrypted with different keys on the target).
+	# Makes pg_rewind copy some blocks of the relation
+	# (mixing data encrypted with different keys on the target).
 	primary_psql("UPDATE block_t SET f1='YYYYYYY' WHERE id % 10 = 0;");
 
-	# Insert some data making rewind to copy the tail of this relation
+	# Insert some data making rewind copy the tail of this relation
 	# (mixing data encrypted with different keys on the target).
 	standby_psql(
 		"INSERT INTO tail_t (f1) SELECT repeat('ghijk', 100) FROM generate_series(1, 1000)"
@@ -89,7 +89,7 @@ sub run_test
 	return;
 }
 
-# Run the test in both modes
+# Run the test in all source modes plus local aes_256
 run_test('local');
 run_test('remote');
 run_test('archive');

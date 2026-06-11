@@ -90,7 +90,7 @@ sub run_test
 	return;
 }
 
-# Run the test in both modes
+# Run the test in all source modes plus local aes_256
 run_test('local');
 run_test('remote');
 run_test('archive');
