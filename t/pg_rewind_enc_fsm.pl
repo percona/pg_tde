@@ -1,3 +1,6 @@
+# Verify pg_rewind re-encrypts FSM/VM fork blocks of encrypted relations
+# so the server does not zero them out on startup.
+#
 use strict;
 use warnings FATAL => 'all';
 use PostgreSQL::Test::Utils;
@@ -54,7 +57,7 @@ sub run_test
 	return;
 }
 
-# Run the test in both modes
+# Run the test in all source modes plus local aes_256
 run_test('local');
 run_test('remote');
 run_test('archive');
