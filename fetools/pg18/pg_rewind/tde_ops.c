@@ -277,7 +277,7 @@ write_file(const char *path, char *buf, size_t size)
 {
 	int			fd;
 
-	fd = open(path, O_WRONLY | O_CREAT | PG_BINARY, pg_file_create_mode);
+	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | PG_BINARY, pg_file_create_mode);
 	if (fd < 0)
 		pg_fatal("could not create temporary tde file \"%s\": %m", path);
 
