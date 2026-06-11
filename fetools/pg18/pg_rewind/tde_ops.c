@@ -32,7 +32,7 @@ typedef struct
 static current_file_data current_tde_file = {0};
 
 /* Dir for an operational copy of source's tde files (_keys, etc)  */
-static char tde_tmp_source[MAXPGPATH] = "/tmp/pg_tde_rewindXXXXXX";
+static char tde_tmp_source[MAXPGPATH] = "";
 static bool source_has_tde = false;
 
 static void
@@ -271,6 +271,14 @@ tde_reencrypt_block(unsigned char *buf, off_t file_offset, ForkNumber fork)
 static void
 create_tde_tmp_dir(void)
 {
+	const char *tmpdir = getenv("TMPDIR");
+
+	if (tmpdir == NULL || tmpdir[0] == '\0')
+		tmpdir = "/tmp";
+
+	snprintf(tde_tmp_source, sizeof(tde_tmp_source),
+			 "%s/pg_tde_rewindXXXXXX", tmpdir);
+
 	if (mkdtemp(tde_tmp_source) == NULL)
 		pg_fatal("could not create temporary directory \"%s\": %m", tde_tmp_source);
 
@@ -280,6 +288,8 @@ create_tde_tmp_dir(void)
 void
 destroy_tde_tmp_dir(void)
 {
+	if (tde_tmp_source[0] == '\0')
+		return;
 	rmtree(tde_tmp_source, true);
 }
 
