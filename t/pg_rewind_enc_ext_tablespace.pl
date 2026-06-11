@@ -34,11 +34,15 @@ sub run_test
 
 	primary_psql("CREATE TABLESPACE ts1 LOCATION '$primary_tblspc'");
 
+	my $ts1_oid = $RewindTest::node_primary->safe_psql('postgres',
+		"SELECT oid FROM pg_tablespace WHERE spcname = 'ts1'");
+	chomp $ts1_oid;
+
 	RewindTest::create_standby(
 		$cluster_name,
 		backup_options =>
 		  [ '--tablespace-mapping', "$primary_tblspc=$primary_tblspc_bcp" ],
-		tablespace_map => { 16433 => $standby_tblspc });
+		tablespace_map => { $ts1_oid => $standby_tblspc });
 
 	primary_psql(
 		"CREATE TABLE tail_t (id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, f1 TEXT) USING tde_heap TABLESPACE ts1"
