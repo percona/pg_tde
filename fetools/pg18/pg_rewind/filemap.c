@@ -734,7 +734,7 @@ decide_file_action(file_entry_t *entry)
 	 * Skip pg_tde key data. This is handled separately by combining the
 	 * source and target keys when processing relation files.
 	 */
-	if (strstr(path, "pg_tde/") != NULL)
+	if (strncmp(path, "pg_tde/", 7) == 0)
 		return FILE_ACTION_NONE;
 
 	/*
