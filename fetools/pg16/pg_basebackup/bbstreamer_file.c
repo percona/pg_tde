@@ -36,7 +36,7 @@ typedef struct bbstreamer_extractor
 	void		(*report_output_file) (const char *);
 	char		filename[MAXPGPATH];
 	FILE	   *file;
-	bool		encryped_wal;
+	bool		encrypted_wal;
 } bbstreamer_extractor;
 
 static void bbstreamer_plain_writer_content(bbstreamer *streamer,
@@ -196,7 +196,7 @@ bbstreamer_extractor_new(const char *basepath,
 	streamer->basepath = pstrdup(basepath);
 	streamer->link_map = link_map;
 	streamer->report_output_file = report_output_file;
-	streamer->encryped_wal = encrypted_wal;
+	streamer->encrypted_wal = encrypted_wal;
 
 	return &streamer->base;
 }
@@ -260,7 +260,7 @@ bbstreamer_extractor_content(bbstreamer *streamer, bbstreamer_member *member,
 				 */
 				if (strcmp(member->pathname, "pg_tde/wal_keys") == 0)
 				{
-					if (mystreamer->encryped_wal)
+					if (mystreamer->encrypted_wal)
 						break;
 					else
 					{
