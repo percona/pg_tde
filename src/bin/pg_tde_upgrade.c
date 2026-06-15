@@ -6,7 +6,7 @@
 
 #include "common/file_utils.h"
 #include "common/logging.h"
-#include "pg_getopt.h"
+#include "getopt_long.h"
 
 static char tmpdir[MAXPGPATH] = "/tmp/pg_tde_upgradeXXXXXX";
 
