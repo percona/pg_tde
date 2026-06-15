@@ -4,7 +4,7 @@ import shlex
 import subprocess
 import sys
 
-sp = subprocess.run(sys.argv[1:], stdout=subprocess.PIPE, text=True)
+sp = subprocess.run(sys.argv[1:], stdout=subprocess.PIPE, universal_newlines=True)
 if sp.returncode != 0:
 	sys.exit(sp.returncode)
 
