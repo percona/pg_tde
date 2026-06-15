@@ -3,7 +3,6 @@
 use strict;
 use warnings;
 use Test::More;
-use lib 't';
 use CosmianKms;
 use PostgreSQL::Test::Utils;
 use PostgreSQL::Test::Cluster;
