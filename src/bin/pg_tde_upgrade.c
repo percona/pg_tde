@@ -2,7 +2,11 @@
 
 #include <signal.h>
 #include <sys/stat.h>
+#ifndef WIN32
 #include <sys/wait.h>
+#else
+#include <process.h>
+#endif
 
 #include "common/file_utils.h"
 #include "common/logging.h"
@@ -195,7 +199,9 @@ main(int argc, char *argv[])
 	char	   *new_pgdata = NULL;
 	char	   *pg_upgrade_path;
 	char	  **pg_upgrade_argv;
+#ifndef WIN32
 	pid_t		child;
+#endif
 	int			exitstatus;
 
 	/* Copy argv before getopt_long() modifies it. */
@@ -273,6 +279,7 @@ main(int argc, char *argv[])
 	pg_upgrade_argv[argc + 1] = tmpdir;
 	pg_upgrade_argv[argc + 2] = NULL;
 
+#ifndef WIN32
 	child = fork();
 	if (child == 0)
 	{
@@ -294,4 +301,14 @@ main(int argc, char *argv[])
 	else if (WIFSIGNALED(exitstatus))
 		pg_fatal("pg_upgrade (PID %d) was terminated by signal %d: %s",
 				 child, WTERMSIG(exitstatus), pg_strsignal(WTERMSIG(exitstatus)));
+#else
+	signal(SIGTERM, trapsig);
+	signal(SIGINT, trapsig);
+	atexit(cleanup_tmpdir);
+
+	exitstatus = (int) _spawnv(_P_WAIT, pg_upgrade_path, pg_upgrade_argv);
+	if (exitstatus < 0)
+		pg_fatal("could not run pg_upgrade executable: %m");
+	exit(exitstatus);
+#endif
 }
