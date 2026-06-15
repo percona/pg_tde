@@ -777,7 +777,7 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 
 		if (scanType == PROVIDER_SCAN_BY_NAME)
 		{
-			if (strcasecmp(provider.provider_name, (char *) scanKey) == 0)
+			if (pg_strcasecmp(provider.provider_name, (char *) scanKey) == 0)
 				match = true;
 		}
 		else if (scanType == PROVIDER_SCAN_BY_ID)
