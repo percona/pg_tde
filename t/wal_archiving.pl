@@ -2,9 +2,9 @@
 
 use strict;
 use warnings;
-use Test::More;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
+use Test::More;
 
 # Test CLI tools directly
 
