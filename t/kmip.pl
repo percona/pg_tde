@@ -2,12 +2,12 @@
 
 use strict;
 use warnings;
-use Test::More;
 use CosmianKms;
-use PostgreSQL::Test::Utils;
-use PostgreSQL::Test::Cluster;
 use IO::Socket::INET;
 use POSIX qw(:sys_wait_h);
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
+use Test::More;
 
 my $cosmian_bin = CosmianKms::find_binary();
 unless ($cosmian_bin)

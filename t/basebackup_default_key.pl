@@ -8,10 +8,10 @@
 
 use strict;
 use warnings;
-use Test::More;
 use PostgreSQL::Test::Cluster;
-use PostgreSQL::Test::Utils;
 use PostgreSQL::Test::RecursiveCopy;
+use PostgreSQL::Test::Utils;
+use Test::More;
 
 my $keydir = PostgreSQL::Test::Utils::tempdir;
 
