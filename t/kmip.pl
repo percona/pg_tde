@@ -1,5 +1,5 @@
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use CosmianKms;
 use IO::Socket::INET;
 use POSIX qw(:sys_wait_h);

@@ -5,7 +5,7 @@
 # configured cluster would fail with "could not find server principal key".
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::RecursiveCopy;
 use PostgreSQL::Test::Utils;

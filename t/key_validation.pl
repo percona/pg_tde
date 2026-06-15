@@ -1,5 +1,5 @@
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use Fcntl 'SEEK_CUR';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
