@@ -1,5 +1,3 @@
-#!/usr/bin/perl
-
 # Tests that pg_tde_basebackup -E works after setting just a default
 # principal key, without first restarting the primary. Before the fix,
 # the server (WAL) principal key was only materialized lazily on the
