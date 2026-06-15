@@ -4,7 +4,17 @@
 
 #include "postgres.h"
 
+#ifdef WIN32
+#include <windows.h>
+/*
+ * Windows has no mlock(); VirtualLock pins pages in the process working
+ * set, which matches the intent (keep the principal key out of the swap
+ * file). VirtualLock returns nonzero on success, so translate to 0/-1.
+ */
+#define mlock(addr, len) (VirtualLock((addr), (len)) ? 0 : -1)
+#else
 #include <sys/mman.h>
+#endif
 #include <sys/time.h>
 
 #include "access/xlog.h"
