@@ -2,7 +2,7 @@
 
 #include "common/controldata_utils.h"
 #include "common/logging.h"
-#include "pg_getopt.h"
+#include "getopt_long.h"
 
 #include "catalog/tde_global_space.h"
 #include "catalog/tde_keyring.h"
