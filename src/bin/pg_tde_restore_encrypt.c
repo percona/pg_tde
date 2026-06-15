@@ -206,14 +206,10 @@ main(int argc, char *argv[])
 
 	if (issegment)
 	{
-		char	   *s;
-
 		if (mkdtemp(tmpdir) == NULL)
 			pg_fatal("could not create temporary directory \"%s\": %m", tmpdir);
 
-		s = stpcpy(tmppath, tmpdir);
-		s = stpcpy(s, "/");
-		stpcpy(s, targetname);
+		snprintf(tmppath, sizeof(tmppath), "%s/%s", tmpdir, targetname);
 
 		/* There is a mostly harmless race condition with creating the dir */
 		signal(SIGTERM, trapsig);
