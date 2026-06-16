@@ -635,6 +635,10 @@ RegisterStorageMgr(void)
 	OurSMgrId = smgr_register(&tde_smgr, sizeof(TDESMgrRelation));
 	storage_manager_id = OurSMgrId;
 
+#if PERCONA_API_VERSION >= 3
+	percona_allow_upstream_smgr_api = false;
+#endif
+
 #if PG_VERSION_NUM >= 180000
 	PGAIO_HCB_TDE_READV = pgaio_io_register_callback_entry(&aio_tde_readv_cb, "aio_tde_readv_cb");
 #endif
