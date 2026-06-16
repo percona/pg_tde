@@ -16,6 +16,7 @@
 #include "access/pg_tde_xlog_keys.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "common/pg_tde_utils.h"
+#include "common/hashfn.h"
 #include "pg_tde.h"
 
 static void copy_dir(const char *src, const char *dst);
@@ -44,9 +45,111 @@ typedef struct
 
 static current_file_data current_tde_file = {0};
 
+typedef struct flushkey_entry
+{
+	RelFileLocator rloc;
+	InternalKey *target_key;
+
+	uint32		status;			/* used by hash table */
+} flushkey_entry;
+
+#define SH_PREFIX				flushkey
+#define SH_ELEMENT_TYPE			flushkey_entry
+#define SH_KEY_TYPE				RelFileLocator
+#define SH_KEY					rloc
+#define SH_HASH_KEY(tb, key)	hash_combine(hash_combine(hash_bytes_uint32((key).spcOid), \
+											 hash_bytes_uint32((key).dbOid)), \
+										 hash_bytes_uint32((key).relNumber))
+#define SH_EQUAL(tb, a, b)		RelFileLocatorEquals(a, b)
+#define SH_SCOPE				static inline
+#define SH_RAW_ALLOCATOR		pg_malloc0
+#define SH_DECLARE
+#define SH_DEFINE
+#include "lib/simplehash.h"
+
+#define FLUSHKEY_INIT_SIZE 1000
+
+static flushkey_hash *flushkey = NULL;
+
 /* Dir for an operational copy of source's tde files (_keys, etc)  */
 static char tde_tmp_source[MAXPGPATH] = "";
 static bool source_has_tde = false;
+
+static void reencrypt_fork(ForkNumber fork);
+
+/* Initialise hashtabe for re-encryption keys */
+void
+tde_flushkey_init(void)
+{
+	flushkey = flushkey_create(FLUSHKEY_INIT_SIZE, NULL);
+}
+
+/*
+ * Add a key that was used for relation re-encryption to the hash. We will
+ * write all such keys later to the source key files at the end of rewind.
+ */
+static void
+flushkey_add_entry(RelFileLocator rloc, InternalKey *key)
+{
+	flushkey_entry *entry;
+	bool		found;
+
+	Assert(key != NULL);
+	Assert(flushkey != NULL);
+
+	entry = flushkey_insert(flushkey, rloc, &found);
+
+	if (!found)
+	{
+		entry->rloc = rloc;
+		entry->target_key = key;
+
+		Assert(current_tde_file.source_key != NULL);
+
+		/* TODO: should this be moved to flush_rel_keys()? */
+		reencrypt_fork(FSM_FORKNUM);
+		reencrypt_fork(VISIBILITYMAP_FORKNUM);
+
+		/* free only the source key, as we need the target's one for later */
+		pfree(current_tde_file.source_key);
+		memset(&current_tde_file, 0, sizeof(current_tde_file));
+	}
+}
+
+/*
+ * Write all destination internal key that was used to re-encrypt relation data
+ * to the sorce (if there is any).
+ */
+void
+flush_rel_keys(void)
+{
+	flushkey_iterator iter;
+	flushkey_entry *entry;
+
+	if (flushkey == NULL)
+		return;
+
+	/* add keys for the last file, if there are any */
+	if (current_tde_file.source_key != NULL)
+		flushkey_add_entry(current_tde_file.rlocator, current_tde_file.target_key);
+
+	pg_tde_set_data_dir(tde_tmp_source);
+	flushkey_start_iterate(flushkey, &iter);
+
+	while ((entry = flushkey_iterate(flushkey, &iter)) != NULL)
+	{
+		RelPathStr	rp = relpathperm(entry->rloc, MAIN_FORKNUM);
+
+		Assert(entry->target_key != NULL);
+
+		pg_log_debug("update internal key for \"%s\"", rp.str);
+
+		if (!dry_run)
+			pg_tde_save_smgr_key(entry->rloc, entry->target_key, true);
+
+		pfree(entry->target_key);
+	}
+}
 
 static void
 reencrypt_fork(ForkNumber fork)
@@ -119,30 +222,6 @@ reencrypt_fork(ForkNumber fork)
 	}
 
 	close(fd);
-}
-
-/*
- * Write the recent internal key that was used to re-encrypt relation data (if
- * there is any).
- */
-void
-flush_current_tde_rel_key(void)
-{
-	if (current_tde_file.source_key == NULL)
-		return;
-
-	pg_log_debug("ensure forks encryption for \"%s\"", current_tde_file.path);
-
-	reencrypt_fork(FSM_FORKNUM);
-	reencrypt_fork(VISIBILITYMAP_FORKNUM);
-
-	pg_log_debug("update internal key for \"%s\"", current_tde_file.path);
-	pg_tde_set_data_dir(tde_tmp_source);
-	pg_tde_save_smgr_key(current_tde_file.rlocator, current_tde_file.target_key, true);
-
-	pfree(current_tde_file.source_key);
-	pfree(current_tde_file.target_key);
-	memset(&current_tde_file, 0, sizeof(current_tde_file));
 }
 
 void
@@ -245,14 +324,15 @@ ensure_tde_keys(const char *relpath)
 	if (!source_has_tde)
 		return;
 
-	/* the same file, nothing to do */
-	if (strcmp(current_tde_file.path, relpath) == 0)
-		return;
-
-	flush_current_tde_rel_key();
-
 	if (!path_rlocator(relpath, &rlocator, &segNo))
 		return;
+
+	/* the same relation, nothing to do */
+	if (RelFileLocatorEquals(rlocator, current_tde_file.rlocator))
+		return;
+
+	if (current_tde_file.source_key != NULL)
+		flushkey_add_entry(current_tde_file.rlocator, current_tde_file.target_key);
 
 	pg_tde_set_data_dir(tde_tmp_source);
 	current_tde_file.source_key = pg_tde_get_smgr_key(rlocator);

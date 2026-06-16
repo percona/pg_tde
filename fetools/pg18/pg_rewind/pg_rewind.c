@@ -578,6 +578,8 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 	size_t		size;
 	char	   *buffer;
 
+	tde_flushkey_init();
+
 	/*
 	 * Execute the actions in the file map, fetching data from the source
 	 * system as needed.
@@ -668,6 +670,7 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 	/* ensure (re-encrypt) destination's segments recovered from the archive */
 	ensure_tde_archive_wal();
 
+	flush_rel_keys();
 	fetch_tde_dir();
 
 	progress_report(true);
