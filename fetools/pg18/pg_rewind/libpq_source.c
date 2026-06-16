@@ -618,13 +618,13 @@ process_queued_fetch_requests(libpq_source *src)
 			{
 				Assert(chunksize % BLCKSZ == 0);
 
-				ensure_tde_keys(filename);
+				ensure_tde_keys_for_rel(filename);
 
 				for (int i = 0; i < chunksize / BLCKSZ; i++)
 				{
 					unsigned char *data = (unsigned char *) chunk + BLCKSZ * i;
 
-					tde_reencrypt_block(data, chunkoff + BLCKSZ * i, MAIN_FORKNUM);
+					tde_reencrypt_block_in_current_file(data, chunkoff + BLCKSZ * i, MAIN_FORKNUM);
 				}
 			}
 			write_target_range(chunk, chunkoff, chunksize);

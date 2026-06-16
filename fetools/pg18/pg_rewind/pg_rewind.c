@@ -620,12 +620,12 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 				 * Partial rewrites will ensure the keys on their own.
 				 * Moreover, some partial updates, when the source is libpq,
 				 * may happen in the last turn, when source->finish_fetch() is
-				 * called. So running ensure_tde_keys for such files
+				 * called. So running ensure_tde_keys_for_rel for such files
 				 * prematurely will make them unreadable since the source key
 				 * would be updated before we use it to decrypt source data.
 				 */
 				if (entry->target_pages_to_overwrite.bitmapsize == 0)
-					ensure_tde_keys(entry->path);
+					ensure_tde_keys_for_rel(entry->path);
 				break;
 
 			case FILE_ACTION_ENSURE_WAL_SEG:
@@ -639,7 +639,7 @@ perform_rewind(filemap_t *filemap, rewind_source *source,
 			case FILE_ACTION_TRUNCATE:
 				truncate_target_file(entry->path, entry->source_size);
 				if (entry->target_pages_to_overwrite.bitmapsize == 0)
-					ensure_tde_keys(entry->path);
+					ensure_tde_keys_for_rel(entry->path);
 				break;
 
 			case FILE_ACTION_COPY_TAIL:

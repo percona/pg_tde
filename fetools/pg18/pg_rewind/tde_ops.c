@@ -49,6 +49,7 @@ typedef struct flushkey_entry
 {
 	RelFileLocator rloc;
 	InternalKey *target_key;
+	InternalKey *source_key;	/* needed for fork re-encryption */
 
 	uint32		status;			/* used by hash table */
 } flushkey_entry;
@@ -75,7 +76,8 @@ static flushkey_hash *flushkey = NULL;
 static char tde_tmp_source[MAXPGPATH] = "";
 static bool source_has_tde = false;
 
-static void reencrypt_fork(ForkNumber fork);
+static void reencrypt_rel(RelFileLocator rloc, ForkNumber fork, InternalKey *source_key, InternalKey *target_key);
+static void reencrypt_block(unsigned char *buf, off_t file_offset, ForkNumber fork, unsigned int segNo, InternalKey *source_key, InternalKey *target_key, const char *path);
 
 /* Initialise hashtabe for re-encryption keys */
 void
@@ -87,14 +89,15 @@ tde_flushkey_init(void)
 /*
  * Add a key that was used for relation re-encryption to the hash. We will
  * write all such keys later to the source key files at the end of rewind.
+ * It will make copy of the keys so they can/should be freed by the caller.
  */
 static void
-flushkey_add_entry(RelFileLocator rloc, InternalKey *key)
+flushkey_add_entry(RelFileLocator rloc, InternalKey *source_key, InternalKey *target_key)
 {
 	flushkey_entry *entry;
 	bool		found;
 
-	Assert(key != NULL);
+	Assert(source_key != NULL && target_key != NULL);
 	Assert(flushkey != NULL);
 
 	entry = flushkey_insert(flushkey, rloc, &found);
@@ -102,17 +105,20 @@ flushkey_add_entry(RelFileLocator rloc, InternalKey *key)
 	if (!found)
 	{
 		entry->rloc = rloc;
-		entry->target_key = key;
 
-		Assert(current_tde_file.source_key != NULL);
-
-		/* TODO: should this be moved to flush_rel_keys()? */
-		reencrypt_fork(FSM_FORKNUM);
-		reencrypt_fork(VISIBILITYMAP_FORKNUM);
-
-		/* free only the source key, as we need the target's one for later */
-		pfree(current_tde_file.source_key);
-		memset(&current_tde_file, 0, sizeof(current_tde_file));
+		/*
+		 * A copying here does the extra allocations, but simplifies the key's
+		 * freeing logic for the caller.
+		 */
+		entry->source_key = pg_malloc(sizeof(InternalKey));
+		entry->target_key = pg_malloc(sizeof(InternalKey));
+		*entry->target_key = *target_key;
+		*entry->source_key = *source_key;
+	}
+	else
+	{
+		Assert(memcmp(entry->source_key, source_key, sizeof(InternalKey)) == 0);
+		Assert(memcmp(entry->target_key, target_key, sizeof(InternalKey)) == 0);
 	}
 }
 
@@ -131,7 +137,7 @@ flush_rel_keys(void)
 
 	/* add keys for the last file, if there are any */
 	if (current_tde_file.source_key != NULL)
-		flushkey_add_entry(current_tde_file.rlocator, current_tde_file.target_key);
+		flushkey_add_entry(current_tde_file.rlocator, current_tde_file.source_key, current_tde_file.target_key);
 
 	pg_tde_set_data_dir(tde_tmp_source);
 	flushkey_start_iterate(flushkey, &iter);
@@ -145,83 +151,109 @@ flush_rel_keys(void)
 		pg_log_debug("update internal key for \"%s\"", rp.str);
 
 		if (!dry_run)
+		{
+			reencrypt_rel(entry->rloc, FSM_FORKNUM, entry->source_key, entry->target_key);
+			reencrypt_rel(entry->rloc, VISIBILITYMAP_FORKNUM, entry->source_key, entry->target_key);
 			pg_tde_save_smgr_key(entry->rloc, entry->target_key, true);
+		}
 
-		pfree(entry->target_key);
+		pg_free(entry->source_key);
+		pg_free(entry->target_key);
 	}
+
+	flushkey_destroy(flushkey);
+	flushkey = NULL;
+
+	if (current_tde_file.source_key != NULL)
+		pg_free(current_tde_file.source_key);
+
+	if (current_tde_file.target_key != NULL)
+		pg_free(current_tde_file.target_key);
 }
 
+/*
+ * Re-encrypt whole relation including segment files. Currently used to
+ * re-encrypt VM/FSM forks of relations that rewrote key.
+ */
 static void
-reencrypt_fork(ForkNumber fork)
+reencrypt_rel(RelFileLocator rloc, ForkNumber fork, InternalKey *source_key, InternalKey *target_key)
 {
 	int			fd;
 	char		srcpath[MAXPGPATH];
 	PGIOAlignedBlock buf;
-	off_t		offset;
-	RelPathStr	rp = relpathperm(current_tde_file.rlocator, fork);
-	static const char *const warning_hint = "Skipping the file, as the server can start and rebuild the broken VM/FSM file.";
+	size_t		offset;
+	RelPathStr	rp = relpathperm(rloc, fork);
+	const char *warning_hint = _("Skipping the file, as the server can start and rebuild the broken VM/FSM file.");
 
 	if (dry_run)
 		return;
 
-	snprintf(srcpath, sizeof(srcpath), "%s/%s", datadir_target, rp.str);
-
-	/* check if fork exists, nothing to do if it does not */
-	if (access(srcpath, F_OK) != 0)
-		return;
-
-	fd = open(srcpath, O_RDWR | PG_BINARY, 0);
-	if (fd < 0)
+	for (unsigned int segno = 0;; segno++)
 	{
-		/*
-		 * Server can recover from wrecked VM/FSM, hence only warnings here
-		 * and in the rest of the function
-		 */
-		pg_log_warning("could not open fork file \"%s\": %m", srcpath);
-		pg_log_warning_hint("%s", warning_hint);
-		return;
-	}
+		if (segno == 0)
+			snprintf(srcpath, sizeof(srcpath), "%s/%s", datadir_target, rp.str);
+		else
+			snprintf(srcpath, sizeof(srcpath), "%s/%s.%u", datadir_target, rp.str, segno);
 
-	offset = 0;
-	for (;;)
-	{
-		ssize_t		read_len;
+		/* file does not exist, nothing to do */
+		if (access(srcpath, F_OK) != 0)
+			return;
 
-		read_len = pg_pread(fd, buf.data, sizeof(buf.data), offset);
-
-		if ((read_len <= 0))
+		fd = open(srcpath, O_RDWR | PG_BINARY, 0);
+		if (fd < 0)
 		{
-			if (read_len < 0)
+			/*
+			 * Server can recover from wrecked VM/FSM, hence only warnings
+			 * here and in the rest of the function.
+			 */
+			pg_log_warning("could not open fork file for reading \"%s\": %m", srcpath);
+			pg_log_warning_hint("%s", warning_hint);
+			return;
+		}
+
+		pg_log_debug("re-encrypt fork file %s", srcpath);
+
+		offset = 0;
+		for (;;)
+		{
+			ssize_t		read_len;
+
+			read_len = pg_pread(fd, buf.data, sizeof(buf.data), offset);
+
+			if ((read_len <= 0))
 			{
-				pg_log_warning("could not read block from fork file \"%s\": %m", srcpath);
-				pg_log_warning_hint("%s", warning_hint);
+				if (read_len < 0)
+				{
+					pg_log_warning("could not read block from fork file \"%s\": %m", srcpath);
+					pg_log_warning_hint("%s", warning_hint);
+				}
+
+				break;			/* EOF reached if read_len == 0 */
 			}
 
-			break;				/* EOF reached if read_len == 0 */
+			if (read_len != BLCKSZ)
+			{
+				pg_log_warning("unexpected read from fork file \"%s\"", srcpath);
+				pg_log_warning_detail("Expected %d bytes, but got %lu", BLCKSZ, read_len);
+				pg_log_warning_hint("%s", warning_hint);
+
+				break;
+			}
+
+			reencrypt_block((unsigned char *) buf.data, offset, fork, segno, source_key, target_key, srcpath);
+
+			if (pg_pwrite(fd, buf.data, read_len, offset) != read_len)
+			{
+				pg_log_warning("could not write block to fork file \"%s\": %m", srcpath);
+				pg_log_warning_hint("%s", warning_hint);
+
+				break;
+			}
+			offset += read_len;
 		}
 
-		if (read_len != BLCKSZ)
-		{
-			pg_log_warning("unexpected read from fork file \"%s\"", srcpath);
-			pg_log_warning_detail("Expected %d bytes, but got %lu", BLCKSZ, read_len);
-			pg_log_warning_hint("%s", warning_hint);
-
-			break;
-		}
-
-		tde_reencrypt_block((unsigned char *) buf.data, offset, fork);
-
-		if (pg_pwrite(fd, buf.data, read_len, offset) != read_len)
-		{
-			pg_log_warning("could not write block to fork file \"%s\": %m", srcpath);
-			pg_log_warning_hint("%s", warning_hint);
-
-			break;
-		}
-		offset += read_len;
+		close(fd);
 	}
-
-	close(fd);
 }
 
 void
@@ -313,8 +345,13 @@ ensure_tde_wal_seg(const char *relpath)
 	close(fd);
 }
 
+/*
+ * Checks if a given file has to be re-encrypted (relation has keys). And
+ * [re]sets rel keys in the internal state so they will be used in following
+ * calls of tde_reencrypt_block_in_current_file()
+ */
 void
-ensure_tde_keys(const char *relpath)
+ensure_tde_keys_for_rel(const char *relpath)
 {
 	char		target_tde_path[MAXPGPATH];
 	RelFileLocator rlocator;
@@ -331,8 +368,17 @@ ensure_tde_keys(const char *relpath)
 	if (RelFileLocatorEquals(rlocator, current_tde_file.rlocator))
 		return;
 
+	/*
+	 * This is a new relation. Save keys for later processing.
+	 */
 	if (current_tde_file.source_key != NULL)
-		flushkey_add_entry(current_tde_file.rlocator, current_tde_file.target_key);
+	{
+		flushkey_add_entry(current_tde_file.rlocator, current_tde_file.source_key, current_tde_file.target_key);
+
+		pg_free(current_tde_file.source_key);
+		pg_free(current_tde_file.target_key);
+		memset(&current_tde_file, 0, sizeof(current_tde_file));
+	}
 
 	pg_tde_set_data_dir(tde_tmp_source);
 	current_tde_file.source_key = pg_tde_get_smgr_key(rlocator);
@@ -359,22 +405,33 @@ ensure_tde_keys(const char *relpath)
 	}
 }
 
-void
-tde_reencrypt_block(unsigned char *buf, off_t file_offset, ForkNumber fork)
+static void
+reencrypt_block(unsigned char *buf, off_t file_offset, ForkNumber fork, unsigned int segNo, InternalKey *source_key, InternalKey *target_key, const char *path)
 {
 	BlockNumber blkno;
 
+	Assert(file_offset % BLCKSZ == 0);
+
+	blkno = file_offset / BLCKSZ + segNo * RELSEG_SIZE;
+
+	pg_log_debug("re-encrypt block in %s, offset: %ld, blockNum: %u", path, (long) file_offset, blkno);
+
+	tde_decrypt_smgr_block(source_key, fork, blkno, buf, buf);
+	tde_encrypt_smgr_block(target_key, fork, blkno, buf, buf);
+}
+
+/*
+ * Re-encrypt a BLCKSZ block at the given offset in the relation set by
+ * ensure_tde_keys_for_rel(). Noop if the relation is not encrypted.
+ */
+void
+tde_reencrypt_block_in_current_file(unsigned char *buf, off_t file_offset, ForkNumber fork)
+{
 	/* not a tde file, nothing do to */
 	if (current_tde_file.source_key == NULL)
 		return;
 
-	Assert(file_offset % BLCKSZ == 0);
-
-	blkno = file_offset / BLCKSZ + current_tde_file.segNo * RELSEG_SIZE;
-
-	pg_log_debug("re-encrypt block in %s, offset: %ld, blockNum: %u", current_tde_file.path, (long) file_offset, blkno);
-	tde_decrypt_smgr_block(current_tde_file.source_key, fork, blkno, buf, buf);
-	tde_encrypt_smgr_block(current_tde_file.target_key, fork, blkno, buf, buf);
+	reencrypt_block(buf, file_offset, fork, current_tde_file.segNo, current_tde_file.source_key, current_tde_file.target_key, current_tde_file.path);
 }
 
 static void
