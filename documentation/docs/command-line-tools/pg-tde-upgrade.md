@@ -8,3 +8,5 @@
 
 !!! note
     Ensure that `pg_tde` is included in `shared_preload_libraries` and that you have the right setting for [`pg_tde.wal_encrypt`](../variables.md#pg_tdewal_encrypt) in the new cluster.
+
+For more information on how to perform the upgrade, see [Upgrade pg_tde](../how-to/upgrade.md).
