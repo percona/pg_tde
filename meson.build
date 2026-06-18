@@ -1,12 +1,13 @@
 project('pg_tde',
   ['c'],
-  version: '2.1.2',
+  version: '2.2.0',
   meson_version: '>=0.56',
 )
 
 fs = import('fs')
 
 pg_config = find_program(get_option('pg_config'))
+shsplit = find_program(files('shsplit'))
 
 bindir = run_command(pg_config, '--bindir', check: true).stdout().strip()
 includedir = run_command(pg_config, '--includedir', check: true).stdout().strip()
@@ -15,7 +16,27 @@ libdir = run_command(pg_config, '--libdir', check: true).stdout().strip()
 pkgincludedir = run_command(pg_config, '--pkgincludedir', check: true).stdout().strip()
 pkglibdir = run_command(pg_config, '--pkglibdir', check: true).stdout().strip()
 sharedir = run_command(pg_config, '--sharedir', check: true).stdout().strip()
+ldflags = run_command(shsplit, pg_config.full_path(), '--ldflags', check: true).stdout()
+ldflags_ex = run_command(shsplit, pg_config.full_path(), '--ldflags_ex', check: true).stdout()
+ldflags_sl = run_command(shsplit, pg_config.full_path(), '--ldflags_sl', check: true).stdout()
 version = run_command(pg_config, '--version', check: true).stdout().strip()
+
+# Handle empty string until we can use splitlines in Meson 1.2.0
+if ldflags == ''
+  ldflags = []
+else
+  ldflags = ldflags.strip().split('\n')
+endif
+if ldflags_ex == ''
+  ldflags_ex = []
+else
+  ldflags_ex = ldflags_ex.strip().split('\n')
+endif
+if ldflags_sl == ''
+  ldflags_sl = []
+else
+  ldflags_sl = ldflags_sl.strip().split('\n')
+endif
 
 cc = meson.get_compiler('c')
 
@@ -55,7 +76,8 @@ incdirs = include_directories(
   pkgincludedir / 'internal',
 )
 
-backend_link_args = []
+backend_link_args = ldflags + ldflags_sl
+frontend_link_args = ldflags + ldflags_ex
 
 if host_machine.system() == 'darwin'
   backend_link_args += ['-bundle_loader', bindir / 'postgres']
@@ -66,6 +88,7 @@ install_data(
   'pg_tde--1.0.sql',
   'pg_tde--1.0--2.0.sql',
   'pg_tde--2.0--2.1.sql',
+  'pg_tde--2.1--2.2.sql',
   install_dir: sharedir / 'extension',
 )
 
@@ -114,6 +137,7 @@ shared_module('pg_tde',
 
 pg_tde_frontend = static_library('pg_tde_frontend',
   files(
+    'src/pg_tde_fe.c',
     'src/access/pg_tde_tdemap.c',
     'src/access/pg_tde_xlog_keys.c',
     'src/catalog/tde_keyring.c',
@@ -152,6 +176,7 @@ executable('pg_tde_change_key_provider',
   install: true,
   install_dir: bindir,
   link_with: [pg_tde_frontend],
+  link_args: frontend_link_args,
 )
 
 executable('pg_tde_archive_decrypt',
@@ -160,6 +185,7 @@ executable('pg_tde_archive_decrypt',
   install: true,
   install_dir: bindir,
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
+  link_args: frontend_link_args,
 )
 
 executable('pg_tde_restore_encrypt',
@@ -168,6 +194,7 @@ executable('pg_tde_restore_encrypt',
   install: true,
   install_dir: bindir,
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
+  link_args: frontend_link_args,
 )
 
 executable('pg_tde_upgrade',
@@ -176,6 +203,7 @@ executable('pg_tde_upgrade',
   install: true,
   install_dir: bindir,
   dependencies: [pgcommon, pgport],
+  link_args: frontend_link_args,
 )
 
 if major_version == 18
@@ -208,6 +236,7 @@ executable('pg_tde_basebackup',
   install_dir: bindir,
   dependencies: [pq, z],
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
+  link_args: frontend_link_args,
 )
 
 executable('pg_tde_checksums',
@@ -218,6 +247,7 @@ executable('pg_tde_checksums',
   install: true,
   install_dir: bindir,
   link_with: [pg_tde_frontend],
+  link_args: frontend_link_args,
 )
 
 executable('pg_tde_resetwal',
@@ -228,6 +258,7 @@ executable('pg_tde_resetwal',
   install: true,
   install_dir: bindir,
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
+  link_args: frontend_link_args,
 )
 
 executable('pg_tde_rewind',
@@ -246,6 +277,7 @@ executable('pg_tde_rewind',
   install_dir: bindir,
   dependencies: [pq],
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
+  link_args: frontend_link_args,
 )
 
 executable('pg_tde_waldump',
@@ -282,20 +314,19 @@ executable('pg_tde_waldump',
   install_dir: bindir,
   c_args: ['-DFRONTEND'],
   link_with: [pg_tde_frontend, pg_tde_frontend_xlog],
+  link_args: frontend_link_args,
 )
 
 tap_tests = [
-  't/2pc_replication.pl',
   't/basic.pl',
   't/change_key_provider.pl',
   't/crash_recovery.pl',
+  't/default_principal_key.pl',
   't/key_rotate_tablespace.pl',
   't/keys_update.pl',
   't/key_validation.pl',
-  't/multiple_extensions.pl',
+  't/kmip.pl',
   't/pg_basebackup.pl',
-  't/pg_resetwal_basic.pl',
-  't/pg_resetwal_corrupted.pl',
   't/pg_rewind_basic.pl',
   't/pg_rewind_databases.pl',
   't/pg_rewind_extrafiles.pl',
@@ -306,6 +337,7 @@ tap_tests = [
   't/pg_rewind_pg_xlog_symlink.pl',
   't/pg_rewind_same_timeline.pl',
   't/pg_tde_change_key_provider.pl',
+  't/pg_tde_checksums.pl',
   't/pg_tde_upgrade.pl',
   't/pg_waldump_basic.pl',
   't/pg_waldump_fullpage.pl',
@@ -313,7 +345,6 @@ tap_tests = [
   't/replication.pl',
   't/reuse_relfilenode_in_cache.pl',
   't/rotate_key.pl',
-  't/stream_rep.pl',
   't/tde_heap_aes_256.pl',
   't/tde_heap.pl',
   't/unlogged_tables.pl',

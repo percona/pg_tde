@@ -123,9 +123,11 @@ We advise encrypting the whole database only if all your data is sensitive, like
 
 ## What cipher mechanisms are used by pg_tde?
 
-`pg_tde` currently uses a AES-CBC-128 algorithm. First the internal keys in the datafile are encrypted using the principal key with AES-CBC-128, then the file data itself is again encrypted using AES-CBC-128 with the internal key.
+`pg_tde` currently uses the following encryption algorithms:
 
-For WAL encryption, AES-CTR-128 is used.
+* `AES-128-CBC`, `AES-256-CBC` for encrypting database files; encrypted with internal keys
+* `AES-128-CTR`, `AES-256-CTR` for WAL encryption; encrypted with internal keys
+* `AES-128-GCM`, `AES-256-GCM` for encrypting internal keys; encrypted with the principal key
 
 ## Is post-quantum encryption supported?
 

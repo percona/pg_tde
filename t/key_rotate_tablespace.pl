@@ -2,79 +2,71 @@
 
 use strict;
 use warnings;
-use File::Basename;
+use PostgreSQL::Test::Cluster;
+use PostgreSQL::Test::Utils;
 use Test::More;
-use lib 't';
-use pgtde;
 
-PGTDE::setup_files_dir(basename($0));
+my $stdout;
 
-unlink('/tmp/key_rotate_tablespace.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
 $node->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde'");
 $node->start;
 
-PGTDE::psql($node, 'postgres',
-	"SET allow_in_place_tablespaces = true; CREATE TABLESPACE test_tblspace LOCATION '';"
-);
-PGTDE::psql($node, 'postgres',
-	'CREATE DATABASE tbc TABLESPACE = test_tblspace;');
+$node->safe_psql(
+	'postgres', qq(
+	SET allow_in_place_tablespaces = true;
+	CREATE TABLESPACE test_tblspace LOCATION '';
+	CREATE DATABASE tbc TABLESPACE = test_tblspace;
+));
 
-PGTDE::psql($node, 'tbc', 'CREATE EXTENSION pg_tde;');
-PGTDE::psql($node, 'tbc',
-	"SELECT pg_tde_add_database_key_provider_file('file-vault', '/tmp/key_rotate_tablespace.per');"
-);
-PGTDE::psql($node, 'tbc',
-	"SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-vault');"
-);
-PGTDE::psql($node, 'tbc',
-	"SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');"
-);
+$node->safe_psql(
+	'tbc', qq(
+	CREATE EXTENSION pg_tde;
+	SELECT pg_tde_add_database_key_provider_file('file-vault', '$keydir/db.keys');
+	SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'file-vault');
+	SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'file-vault');
 
-PGTDE::psql(
-	$node, 'tbc', "
-CREATE TABLE country_table (
-     country_id   serial primary key,
-     country_name text unique not null,
-     continent    text not null
-) USING tde_heap;
-");
+	CREATE TABLE country_table (
+	     country_id   serial primary key,
+	     country_name text unique not null,
+	     continent    text not null
+	) USING tde_heap;
 
-PGTDE::psql(
-	$node, 'tbc', "
-INSERT INTO country_table (country_name, continent)
-     VALUES ('Japan', 'Asia'),
-            ('UK', 'Europe'),
-            ('USA', 'North America');
-");
+	INSERT INTO country_table (country_name, continent)
+	     VALUES ('Japan', 'Asia'),
+	            ('UK', 'Europe'),
+	            ('USA', 'North America');
+));
 
-PGTDE::psql($node, 'tbc', 'SELECT * FROM country_table;');
-PGTDE::psql($node, 'tbc',
-	"SELECT pg_tde_create_key_using_database_key_provider('new-k', 'file-vault');"
-);
-PGTDE::psql($node, 'tbc',
-	"SELECT pg_tde_set_key_using_database_key_provider('new-k', 'file-vault');"
-);
+$stdout = $node->safe_psql('tbc', 'SELECT * FROM country_table;');
+is( $stdout,
+	"1|Japan|Asia\n2|UK|Europe\n3|USA|North America",
+	'can read table');
 
-PGTDE::append_to_result_file("-- server restart");
+$node->safe_psql(
+	'tbc', qq(
+	SELECT pg_tde_create_key_using_database_key_provider('new-k', 'file-vault');
+	SELECT pg_tde_set_key_using_database_key_provider('new-k', 'file-vault');
+));
+
 $node->restart;
 
-PGTDE::psql($node, 'tbc', 'SELECT * FROM country_table;');
+$stdout = $node->safe_psql('tbc', 'SELECT * FROM country_table;');
+is( $stdout,
+	"1|Japan|Asia\n2|UK|Europe\n3|USA|North America",
+	'can still read table');
 
-PGTDE::psql($node, 'tbc', 'DROP EXTENSION pg_tde CASCADE;');
+$node->safe_psql('tbc', 'DROP EXTENSION pg_tde CASCADE;');
 
-PGTDE::psql($node, 'postgres', 'DROP DATABASE tbc;');
-PGTDE::psql($node, 'postgres', 'DROP TABLESPACE test_tblspace;');
+$node->safe_psql(
+	'postgres', qq(
+	DROP DATABASE tbc;
+	DROP TABLESPACE test_tblspace;
+));
 
 $node->stop;
-
-# Compare the expected and out file
-my $compare = PGTDE->compare_results();
-
-is($compare, 0,
-	"Compare Files: $PGTDE::expected_filename_with_path and $PGTDE::out_filename_with_path files."
-);
 
 done_testing();

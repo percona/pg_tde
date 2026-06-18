@@ -42,13 +42,6 @@ Limitations of `pg_tde` {{release}}:
     ERROR: 16 invalid pages among blocks 15..30 of relation "base/16384/16438"
     ```
 
-## `pg_upgrade` and encrypted relations
-
-!!! danger "`pg_upgrade` is not supported with `pg_tde`"
-    PostgreSQL clusters that use `pg_tde` cannot currently be upgraded using `pg_upgrade`.
-
-    The `pg_upgrade` tool does not properly handle the internal encryption keys used by `pg_tde`, which prevents the upgraded cluster from decrypting encrypted relations.
-
 ## `ALTER DATABASE ... SET TABLESPACE`
 
 !!! warning "Changing a database tablespace has limited support with `pg_tde`"

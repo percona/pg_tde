@@ -67,7 +67,7 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
 To build `pg_tde` from source code, you require the following:
 
 * git
-* Meson or make
+* Meson
 * gcc or clang
 * Percona Server for PostgreSQL 17 or later
 
@@ -89,7 +89,7 @@ You can find the tests in the `sql` and `t` directories.
     meson install
     ```
 
-3. Start OpenBao and OpenKMIP
+3. Start OpenKMIP
 
 4. Run the tests using the following command:
 

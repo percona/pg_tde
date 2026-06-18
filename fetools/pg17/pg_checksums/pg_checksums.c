@@ -34,7 +34,7 @@
 #include "storage/checksum_impl.h"
 
 #include "pg_tde.h"
-#include "access/pg_tde_fe_init.h"
+#include "pg_tde_fe.h"
 #include "access/pg_tde_tdemap.h"
 
 static int64 files_scanned = 0;
@@ -131,14 +131,6 @@ pg_tde_init(const char *datadir)
 	pg_tde_fe_init(tdedir);
 }
 
-static bool
-is_pg_tde_encypted(Oid spcOid, Oid dbOid, RelFileNumber relNumber)
-{
-	RelFileLocator locator = {.spcOid = spcOid,.dbOid = dbOid,.relNumber = relNumber};
-
-	return pg_tde_has_smgr_key(locator);
-}
-
 /*
  * Report current progress status.  Parts borrowed from
  * src/bin/pg_basebackup/pg_basebackup.c.
@@ -196,7 +188,7 @@ skipfile(const char *fn)
 }
 
 static void
-scan_file(const char *fn, int segmentno)
+scan_file(const char *fn, Oid spcOid, Oid dbOid, RelFileNumber relNumber, ForkNumber forknum, int segmentno)
 {
 	PGIOAlignedBlock buf;
 	PageHeader	header = (PageHeader) buf.data;
@@ -204,6 +196,8 @@ scan_file(const char *fn, int segmentno)
 	BlockNumber blockno;
 	int			flags;
 	int64		blocks_written_in_file = 0;
+	RelFileLocator locator = {.spcOid = spcOid,.dbOid = dbOid,.relNumber = relNumber};
+	InternalKey *key = NULL;
 
 	Assert(mode == PG_MODE_ENABLE ||
 		   mode == PG_MODE_CHECK);
@@ -215,6 +209,10 @@ scan_file(const char *fn, int segmentno)
 		pg_fatal("could not open file \"%s\": %m", fn);
 
 	files_scanned++;
+
+	/* Unknown fork type so assume it is not encrypted */
+	if (forknum != InvalidForkNumber)
+		key = pg_tde_get_smgr_key(locator);
 
 	for (blockno = 0;; blockno++)
 	{
@@ -241,6 +239,10 @@ scan_file(const char *fn, int segmentno)
 		 * calculated using those counters may not reach 100%.
 		 */
 		current_size += r;
+
+		if (key)
+			tde_decrypt_smgr_block(key, forknum, blockno + segmentno * RELSEG_SIZE,
+								   (unsigned char *) buf.data, (unsigned char *) buf.data);
 
 		/* New pages have no checksum yet */
 		if (PageIsNew(buf.data))
@@ -273,6 +275,10 @@ scan_file(const char *fn, int segmentno)
 			/* Set checksum in page header */
 			header->pd_checksum = csum;
 
+			if (key)
+				tde_encrypt_smgr_block(key, forknum, blockno + segmentno * RELSEG_SIZE,
+									   (unsigned char *) buf.data, (unsigned char *) buf.data);
+
 			/* Seek back to beginning of block */
 			if (lseek(f, -BLCKSZ, SEEK_CUR) < 0)
 				pg_fatal("seek failed for block %u in file \"%s\": %m", blockno, fn);
@@ -293,6 +299,9 @@ scan_file(const char *fn, int segmentno)
 		if (showprogress)
 			progress_report(false);
 	}
+
+	if (key)
+		pfree(key);
 
 	if (verbose)
 	{
@@ -365,6 +374,7 @@ scan_directory(const char *basedir, const char *subdir, Oid tablespace, bool siz
 			char	   *forkpath,
 					   *segmentpath;
 			int			segmentno = 0;
+			ForkNumber	forknum = MAIN_FORKNUM;
 
 			if (skipfile(de->d_name))
 				continue;
@@ -396,21 +406,17 @@ scan_directory(const char *basedir, const char *subdir, Oid tablespace, bool siz
 				/* filenode not to be included */
 				continue;
 
-			dirsize += st.st_size;
+			if (forkpath != NULL)
+				forknum = forkname_to_number(forkpath);
 
-			if (is_pg_tde_encypted(tablespace, atooid(subdir), atooid(fnonly)))
-			{
-				if (!sizeonly)
-					pg_log_info("skipped pg_tde encrypted file \"%s\"", fn);
-				continue;
-			}
+			dirsize += st.st_size;
 
 			/*
 			 * No need to work on the file when calculating only the size of
 			 * the items in the data folder.
 			 */
 			if (!sizeonly)
-				scan_file(fn, segmentno);
+				scan_file(fn, tablespace, atooid(subdir), atooid(fnonly), forknum, segmentno);
 		}
 		else if (S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode))
 		{

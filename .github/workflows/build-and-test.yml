@@ -39,12 +39,6 @@ jobs:
           repository: percona/postgres.git
           ref: PSP_REL_${{ inputs.pg_version }}_STABLE
 
-      # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
-      - name: Downgrade python to 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.11
-
       - name: Install dependencies for Ubuntu
         if: startsWith(inputs.os, 'ubuntu-')
         run: src/ci_scripts/ubuntu-deps.sh
@@ -76,6 +70,9 @@ jobs:
     runs-on: ${{ inputs.os }}
     needs: build
     timeout-minutes: 20
+    env:
+      # No cosmian_kms package on macOS; let kmip.pl skip_all there.
+      PG_TEST_REQUIRE_COSMIAN_KMS: ${{ startsWith(inputs.os, 'macos-') && '0' || '1' }}
 
     steps:
       - name: Download build artifacts
@@ -87,12 +84,6 @@ jobs:
       - name: Extract artifact file
         run: tar -xzf artifacts.tar
 
-      # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
-      - name: Downgrade python to 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.11
-
       - name: Install dependencies for Ubuntu
         if: startsWith(inputs.os, 'ubuntu-')
         run: src/ci_scripts/ubuntu-deps.sh
@@ -100,9 +91,6 @@ jobs:
       - name: Install dependencies for MacOS
         if: startsWith(inputs.os,  'macos-')
         run: src/ci_scripts/macos-deps.sh
-
-      - name: Setup kmip and vault
-        run: src/ci_scripts/setup-keyring-servers.sh
 
       - name: Test pg_tde
         run: src/ci_scripts/test.sh
@@ -138,12 +126,6 @@ jobs:
 
       - name: Extract artifact file
         run: tar -xzf artifacts.tar
-
-      # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
-      - name: Downgrade python to 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.11
 
       - name: Install dependencies for Ubuntu
         run: src/ci_scripts/ubuntu-deps.sh

@@ -5,6 +5,8 @@
 
 #include "postgres.h"
 
+#include <unistd.h>
+
 #include "access/tableam.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"

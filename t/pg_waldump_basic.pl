@@ -7,7 +7,7 @@ use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
 
-unlink('/tmp/pg_waldump_basic.per');
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 $node->init;
@@ -30,7 +30,7 @@ $node->start;
 
 $node->safe_psql('postgres', "CREATE EXTENSION pg_tde;");
 $node->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('file-keyring-wal', '/tmp/pg_waldump_basic.per');"
+	"SELECT pg_tde_add_global_key_provider_file('file-keyring-wal', '$keydir/global.keys');"
 );
 $node->safe_psql('postgres',
 	"SELECT pg_tde_create_key_using_global_key_provider('server-key', 'file-keyring-wal');"
@@ -224,7 +224,14 @@ command_fails_like(
 		'--start', $new_start, $node->data_dir . '/pg_wal/' . $start_walfile);
 	$result = IPC::Run::run \@cmd, '>', \$stdout, '2>', \$stderr;
 	ok($result, "runs with start segment and start LSN specified");
-	like($stderr, qr/first record is after/, 'info message printed');
+	if ($node->pg_version >= 17)
+	{
+		like($stderr, qr/first record is after/, 'info message printed');
+	}
+	else
+	{
+		like($stdout, qr/first record is after/, 'info message printed');
+	}
 }
 
 

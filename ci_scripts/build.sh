@@ -38,6 +38,9 @@ case "$1" in
         ;;
 esac
 
+echo "# pg_config"
+"$PG_CONFIG"
+
 cd "$SCRIPT_DIR/.."
 meson setup --buildtype="$BUILD_TYPE" -Dpg_config="$PG_CONFIG" -Dwerror=true $ARGS ../build
 meson install -C ../build

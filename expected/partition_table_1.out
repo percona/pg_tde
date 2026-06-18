@@ -1,0 +1,230 @@
+\! rm -f '/tmp/pg_tde_keyring.per'
+CREATE EXTENSION pg_tde;
+SELECT pg_tde_add_database_key_provider_file('database_keyring_provider','/tmp/pg_tde_keyring.per');
+ pg_tde_add_database_key_provider_file 
+---------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_create_key_using_database_key_provider('table_key','database_keyring_provider');
+ pg_tde_create_key_using_database_key_provider 
+-----------------------------------------------
+ 
+(1 row)
+
+SELECT pg_tde_set_key_using_database_key_provider('table_key','database_keyring_provider');
+ pg_tde_set_key_using_database_key_provider 
+--------------------------------------------
+ 
+(1 row)
+
+CREATE TABLE IF NOT EXISTS partitioned_table (
+    id SERIAL,
+    data TEXT,
+    created_at DATE NOT NULL,
+    PRIMARY KEY (id, created_at)
+    ) PARTITION BY RANGE (created_at) USING tde_heap;
+ERROR:  specifying a table access method is not supported on a partitioned table
+CREATE TABLE partition_q1_2024 PARTITION OF partitioned_table FOR VALUES FROM ('2024-01-01') TO ('2024-04-01') USING tde_heap;
+ERROR:  relation "partitioned_table" does not exist
+CREATE TABLE partition_q2_2024 PARTITION OF partitioned_table FOR VALUES FROM ('2024-04-01') TO ('2024-07-01') USING heap;
+ERROR:  relation "partitioned_table" does not exist
+CREATE TABLE partition_q3_2024 PARTITION OF partitioned_table FOR VALUES FROM ('2024-07-01') TO ('2024-10-01') USING tde_heap;
+ERROR:  relation "partitioned_table" does not exist
+CREATE TABLE partition_q4_2024 PARTITION OF partitioned_table FOR VALUES FROM ('2024-10-01') TO ('2025-01-01') USING heap;
+ERROR:  relation "partitioned_table" does not exist
+SELECT pg_tde_is_encrypted('partitioned_table');
+ERROR:  relation "partitioned_table" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partitioned_table');
+                                   ^
+SELECT pg_tde_is_encrypted('partition_q1_2024');
+ERROR:  relation "partition_q1_2024" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_q1_2024');
+                                   ^
+SELECT pg_tde_is_encrypted('partition_q2_2024');
+ERROR:  relation "partition_q2_2024" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_q2_2024');
+                                   ^
+SELECT pg_tde_is_encrypted('partition_q3_2024');
+ERROR:  relation "partition_q3_2024" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_q3_2024');
+                                   ^
+SELECT pg_tde_is_encrypted('partition_q4_2024');
+ERROR:  relation "partition_q4_2024" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_q4_2024');
+                                   ^
+ALTER TABLE partitioned_table SET ACCESS METHOD heap;
+ERROR:  relation "partitioned_table" does not exist
+ALTER TABLE partition_q1_2024 SET ACCESS METHOD heap;
+ERROR:  relation "partition_q1_2024" does not exist
+ALTER TABLE partition_q2_2024 SET ACCESS METHOD tde_heap;
+ERROR:  relation "partition_q2_2024" does not exist
+ALTER TABLE partition_q3_2024 SET ACCESS METHOD heap;
+ERROR:  relation "partition_q3_2024" does not exist
+ALTER TABLE partition_q4_2024 SET ACCESS METHOD tde_heap;
+ERROR:  relation "partition_q4_2024" does not exist
+SELECT pg_tde_is_encrypted('partitioned_table');
+ERROR:  relation "partitioned_table" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partitioned_table');
+                                   ^
+SELECT pg_tde_is_encrypted('partition_q1_2024');
+ERROR:  relation "partition_q1_2024" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_q1_2024');
+                                   ^
+SELECT pg_tde_is_encrypted('partition_q2_2024');
+ERROR:  relation "partition_q2_2024" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_q2_2024');
+                                   ^
+SELECT pg_tde_is_encrypted('partition_q3_2024');
+ERROR:  relation "partition_q3_2024" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_q3_2024');
+                                   ^
+SELECT pg_tde_is_encrypted('partition_q4_2024');
+ERROR:  relation "partition_q4_2024" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_q4_2024');
+                                   ^
+-- Does not care about parent AM as long as all children with storage use the same
+ALTER TABLE partition_q1_2024 SET ACCESS METHOD tde_heap;
+ERROR:  relation "partition_q1_2024" does not exist
+ALTER TABLE partition_q2_2024 SET ACCESS METHOD tde_heap;
+ERROR:  relation "partition_q2_2024" does not exist
+ALTER TABLE partition_q3_2024 SET ACCESS METHOD tde_heap;
+ERROR:  relation "partition_q3_2024" does not exist
+ALTER TABLE partition_q4_2024 SET ACCESS METHOD tde_heap;
+ERROR:  relation "partition_q4_2024" does not exist
+ALTER TABLE partitioned_table SET ACCESS METHOD heap;
+ERROR:  relation "partitioned_table" does not exist
+DROP TABLE partitioned_table;
+ERROR:  table "partitioned_table" does not exist
+-- Partition inherits encryption status from parent table if default is heap and parent is tde_heap
+SET default_table_access_method = "heap";
+CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a) USING tde_heap;
+ERROR:  specifying a table access method is not supported on a partitioned table
+CREATE TABLE partition_child PARTITION OF partition_parent FOR VALUES FROM (0) TO (9);
+ERROR:  relation "partition_parent" does not exist
+SELECT pg_tde_is_encrypted('partition_child');
+ERROR:  relation "partition_child" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_child');
+                                   ^
+DROP TABLE partition_parent;
+ERROR:  table "partition_parent" does not exist
+RESET default_table_access_method;
+-- Partition inherits encryption status from parent table if default is tde_heap and parent is heap
+SET default_table_access_method = "tde_heap";
+CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a) USING heap;
+ERROR:  specifying a table access method is not supported on a partitioned table
+CREATE TABLE partition_child PARTITION OF partition_parent FOR VALUES FROM (0) TO (9);
+ERROR:  relation "partition_parent" does not exist
+SELECT pg_tde_is_encrypted('partition_child');
+ERROR:  relation "partition_child" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_child');
+                                   ^
+DROP TABLE partition_parent;
+ERROR:  table "partition_parent" does not exist
+RESET default_table_access_method;
+-- Partition uses default access method to determine encryption status if neither parent nor child have an access method set
+CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a);
+SET default_table_access_method = "tde_heap";
+CREATE TABLE partition_child_tde PARTITION OF partition_parent FOR VALUES FROM (0) TO (9);
+SELECT pg_tde_is_encrypted('partition_child_tde');
+ pg_tde_is_encrypted 
+---------------------
+ t
+(1 row)
+
+SET default_table_access_method = "heap";
+CREATE TABLE partition_child_heap PARTITION OF partition_parent FOR VALUES FROM (10) TO (19);
+SELECT pg_tde_is_encrypted('partition_child_heap');
+ pg_tde_is_encrypted 
+---------------------
+ f
+(1 row)
+
+DROP TABLE partition_parent;
+RESET default_table_access_method;
+-- Enforce encryption GUC is respected when creating partitions even if parent is plain text
+CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a) USING heap;
+ERROR:  specifying a table access method is not supported on a partitioned table
+SET pg_tde.enforce_encryption = on;
+CREATE TABLE partition_child_inherit PARTITION OF partition_parent FOR VALUES FROM (0) TO (10);
+ERROR:  relation "partition_parent" does not exist
+CREATE TABLE partition_child_heap PARTITION OF partition_parent FOR VALUES FROM (11) TO (20) USING heap;
+ERROR:  pg_tde.enforce_encryption is ON, only the tde_heap access method is allowed.
+CREATE TABLE partition_child_tde_heap PARTITION OF partition_parent FOR VALUES FROM (11) TO (20) USING tde_heap;
+ERROR:  relation "partition_parent" does not exist
+SELECT pg_tde_is_encrypted('partition_child_tde_heap');
+ERROR:  relation "partition_child_tde_heap" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_child_tde_heap');
+                                   ^
+DROP TABLE partition_parent;
+ERROR:  table "partition_parent" does not exist
+RESET pg_tde.enforce_encryption;
+-- Does not change encryption of child tables when rewriting and changing AM
+CREATE TABLE partition_parent (a int, b int) PARTITION BY RANGE (a) USING tde_heap;
+ERROR:  specifying a table access method is not supported on a partitioned table
+CREATE TABLE partition_child PARTITION OF partition_parent FOR VALUES FROM (0) TO (9) USING tde_heap;
+ERROR:  relation "partition_parent" does not exist
+SELECT pg_tde_is_encrypted('partition_child');
+ERROR:  relation "partition_child" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_child');
+                                   ^
+ALTER TABLE partition_parent SET ACCESS METHOD heap, ALTER b TYPE bigint;
+ERROR:  relation "partition_parent" does not exist
+SELECT relname, amname FROM pg_class JOIN pg_am ON pg_am.oid = pg_class.relam WHERE relname IN ('partition_parent', 'partition_child') ORDER BY relname;
+ relname | amname 
+---------+--------
+(0 rows)
+
+SELECT pg_tde_is_encrypted('partition_child');
+ERROR:  relation "partition_child" does not exist
+LINE 1: SELECT pg_tde_is_encrypted('partition_child');
+                                   ^
+DROP TABLE partition_parent;
+ERROR:  table "partition_parent" does not exist
+-- Partitioned indexes should be encrypted
+CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a);
+CREATE TABLE partition_child PARTITION OF partition_parent FOR VALUES FROM (0) TO (9) USING tde_heap;
+CREATE INDEX ON partition_parent (a);
+SELECT pg_tde_is_encrypted('partition_parent_a_idx'); -- Also check that the parent index is NULL
+ pg_tde_is_encrypted 
+---------------------
+ 
+(1 row)
+
+SELECT pg_tde_is_encrypted('partition_child_a_idx');
+ pg_tde_is_encrypted 
+---------------------
+ t
+(1 row)
+
+DROP TABLE partition_parent;
+-- Partitioned indexes should be not encrypted with heap
+CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a);
+CREATE TABLE partition_child PARTITION OF partition_parent FOR VALUES FROM (0) TO (9) USING heap;
+CREATE INDEX ON partition_parent (a);
+SELECT pg_tde_is_encrypted('partition_child_a_idx');
+ pg_tde_is_encrypted 
+---------------------
+ f
+(1 row)
+
+DROP TABLE partition_parent;
+-- We refuse to create an index when the inheritance heirarchy has mixed statuses
+CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a);
+CREATE TABLE partition_child_heap PARTITION OF partition_parent FOR VALUES FROM (0) TO (9) USING heap;
+CREATE TABLE partition_child_tde_heap PARTITION OF partition_parent FOR VALUES FROM (10) TO (19) USING tde_heap;
+CREATE INDEX ON partition_parent (a);
+ERROR:  Recursive CREATE INDEX on a mix of encrypted and unencrypted relations is not supported
+DROP TABLE partition_parent;
+-- Index should also be encrypted for new partitionins
+CREATE TABLE partition_parent (a int) PARTITION BY RANGE (a);
+CREATE INDEX ON partition_parent (a);
+CREATE TABLE partition_child PARTITION OF partition_parent FOR VALUES FROM (10) TO (19) USING tde_heap;
+SELECT pg_tde_is_encrypted('partition_child_a_idx');
+ pg_tde_is_encrypted 
+---------------------
+ t
+(1 row)
+
+DROP TABLE partition_parent;
+DROP EXTENSION pg_tde;

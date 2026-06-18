@@ -8,14 +8,12 @@
 
 use strict;
 use warnings;
-use File::Basename;
 use Test::More;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use PostgreSQL::Test::RecursiveCopy;
 
-my $keyfile = '/tmp/basebackup_default_key.per';
-unlink($keyfile);
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 my $primary = PostgreSQL::Test::Cluster->new('primary');
 $primary->init(allows_streaming => 1);
@@ -25,7 +23,7 @@ $primary->start;
 
 $primary->safe_psql('postgres', 'CREATE EXTENSION pg_tde;');
 $primary->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('file-provider','$keyfile');"
+	"SELECT pg_tde_add_global_key_provider_file('file-provider','$keydir/global.keys');"
 );
 $primary->safe_psql('postgres',
 	"SELECT pg_tde_create_key_using_global_key_provider('key1','file-provider');"

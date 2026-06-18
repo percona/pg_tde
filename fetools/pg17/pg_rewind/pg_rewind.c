@@ -33,7 +33,7 @@
 #include "storage/bufpage.h"
 
 #include "pg_tde.h"
-#include "access/pg_tde_fe_init.h"
+#include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "catalog/tde_global_space.h"
 
@@ -370,7 +370,7 @@ main(int argc, char **argv)
 					 ControlFile_target.checkPointCopy.ThisTimeLineID);
 
 	{
-		/* TDOD: tde_path setup should be moved to the pg_tde side? */
+		/* TODO: tde_path setup should be moved to the pg_tde side? */
 		char		tde_path[MAXPGPATH];
 
 		snprintf(tde_path, sizeof(tde_path), "%s/%s", datadir_target, PG_TDE_DATA_DIR);

@@ -224,8 +224,9 @@ astreamer_inject_file(astreamer *streamer, char *pathname, char *data,
 	strlcpy(member.pathname, pathname, MAXPGPATH);
 	member.size = len;
 	member.mode = pg_file_create_mode;
+	member.is_regular = true;
 	member.is_directory = false;
-	member.is_link = false;
+	member.is_symlink = false;
 	member.linktarget[0] = '\0';
 
 	/*
@@ -252,7 +253,7 @@ typedef struct astreamer_pg_tde_injector
 {
 	astreamer	base;
 	bool		skip_file;
-	bool		encryped_wal;
+	bool		encrypted_wal;
 } astreamer_pg_tde_injector;
 
 static void astreamer_pg_tde_injector_content(astreamer *streamer,
@@ -269,7 +270,7 @@ static const astreamer_ops astreamer_pg_tde_injector_ops = {
 };
 
 astreamer *
-astreamer_pg_tde_injector_new(astreamer *next, bool encryped_wal)
+astreamer_pg_tde_injector_new(astreamer *next, bool encrypted_wal)
 {
 	astreamer_pg_tde_injector *streamer;
 
@@ -277,7 +278,7 @@ astreamer_pg_tde_injector_new(astreamer *next, bool encryped_wal)
 	*((const astreamer_ops **) &streamer->base.bbs_ops) =
 		&astreamer_pg_tde_injector_ops;
 	streamer->base.bbs_next = next;
-	streamer->encryped_wal = encryped_wal;
+	streamer->encrypted_wal = encrypted_wal;
 
 	return &streamer->base;
 }
@@ -302,7 +303,7 @@ astreamer_pg_tde_injector_content(astreamer *streamer,
 			 */
 			if (strcmp(member->pathname, "pg_tde/wal_keys") == 0)
 			{
-				if (mystreamer->encryped_wal)
+				if (mystreamer->encrypted_wal)
 				{
 					mystreamer->skip_file = true;
 					return;
@@ -316,7 +317,7 @@ astreamer_pg_tde_injector_content(astreamer *streamer,
 			}
 			else if ((strcmp(member->pathname, "pg_tde") == 0 ||
 					  strcmp(member->pathname, "pg_tde/") == 0) &&
-					 mystreamer->encryped_wal)
+					 mystreamer->encrypted_wal)
 			{
 				mystreamer->skip_file = true;
 				return;

@@ -32,7 +32,7 @@
 #include "rmgrdesc.h"
 #include "storage/bufpage.h"
 
-#include "access/pg_tde_fe_init.h"
+#include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/xlog_smgr.h"
 #include "catalog/tde_global_space.h"
@@ -165,7 +165,7 @@ create_fullpage_directory(char *path)
 static void
 split_path(const char *path, char **dir, char **fname)
 {
-	char	   *sep;
+	const char *sep;
 
 	/* split filepath into directory & filename */
 	sep = strrchr(path, '/');
@@ -255,9 +255,9 @@ search_directory(const char *directory, const char *fname)
 
 		/*
 		 * WalSegSz extracted from the first page header but it might be
-		 * encrypted. But we need to know the segment seize to decrypt it
-		 * (it's required for encryption offset calculations). So we get the
-		 * segment size from the file's actual size.
+		 * encrypted. But we need to know the segment size to decrypt it (it's
+		 * required for encryption offset calculations). So we get the segment
+		 * size from the file's actual size.
 		 * XLogLongPageHeaderData->xlp_seg_size there is "just as a
 		 * cross-check" anyway.
 		 */

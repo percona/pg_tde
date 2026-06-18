@@ -20,6 +20,8 @@ jobs:
     name: Collect and upload
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      PG_TEST_REQUIRE_COSMIAN_KMS: '1'
     steps:
       - name: Clone repository
         uses: actions/checkout@v6
@@ -34,12 +36,6 @@ jobs:
           repository: percona/postgres.git
           ref: PSP_REL_${{ env.pg_version }}_STABLE
 
-      # KMIP server don't support Python 3.12 for now: https://github.com/OpenKMIP/PyKMIP/pull/707
-      - name: Downgrade python to 3.11
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.11
-
       - name: Install dependencies
         run: src/ci_scripts/ubuntu-deps.sh
 
@@ -48,9 +44,6 @@ jobs:
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh coverage
-
-      - name: Setup kmip and vault
-        run: src/ci_scripts/setup-keyring-servers.sh
 
       - name: Run pg_tde tests
         run: src/ci_scripts/test.sh
@@ -62,7 +55,7 @@ jobs:
         working-directory: build
 
       - name: Upload coverage data to codecov.io
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           verbose: true
           fail_ci_if_error: true

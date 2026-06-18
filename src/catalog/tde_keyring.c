@@ -4,6 +4,8 @@
 
 #include "postgres.h"
 
+#include <unistd.h>
+
 #include "access/skey.h"
 #include "access/xlog.h"
 #include "access/xloginsert.h"

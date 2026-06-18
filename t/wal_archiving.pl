@@ -2,13 +2,9 @@
 
 use strict;
 use warnings;
-use File::Basename;
 use Test::More;
-use lib 't';
-use pgtde;
+use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
-
-unlink('/tmp/wal_archiving.per');
 
 # Test CLI tools directly
 
@@ -19,6 +15,7 @@ if ($^O ne 'linux')
 	exit 0;
 }
 
+my $keydir = PostgreSQL::Test::Utils::tempdir;
 
 command_like(
 	[ 'pg_tde_archive_decrypt', '--help' ],
@@ -109,7 +106,7 @@ $primary->start;
 $primary->safe_psql('postgres', "CREATE EXTENSION pg_tde;");
 
 $primary->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('keyring', '/tmp/wal_archiving.per');"
+	"SELECT pg_tde_add_global_key_provider_file('keyring', '$keydir/global.keys');"
 );
 $primary->safe_psql('postgres',
 	"SELECT pg_tde_create_key_using_global_key_provider('server-key', 'keyring');"
