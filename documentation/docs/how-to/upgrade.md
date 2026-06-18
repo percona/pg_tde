@@ -1,8 +1,10 @@
 # Upgrade pg_tde
 
-The version of `pg_tde` available to you depends on your version of Percona Distribution for PostgreSQL. To get a newer version of `pg_tde`, upgrade your Percona Distribution for PostgreSQL to the version that includes it. For more information, see [Upgrading Percona Distribution for PostgreSQL from 17 to 18 :octicons-link-external-16:](https://docs.percona.com/postgresql/18/major-upgrade.html).
+The version of `pg_tde` available to you depends on your version of Percona Distribution for PostgreSQL.
 
-This topic covers upgrading the `pg_tde` extension to a newer version within the **same** PostgreSQL major version.
+To use a newer `pg_tde` release, first ensure that your Percona Distribution for PostgreSQL version includes it.
+
+This document describes upgrading the `pg_tde` extension within the same PostgreSQL major version. For PostgreSQL major version upgrades on clusters that use `pg_tde`, use [pg_tde_upgrade](../command-line-tools/pg-tde-upgrade.md).
 
 ## Before you start
 
@@ -10,7 +12,7 @@ This topic covers upgrading the `pg_tde` extension to a newer version within the
     `pg_tde` 2.2.0 is not compatible with Percona Distribution for PostgreSQL older than 17.10 or 18.4. Upgrade your distribution first before upgrading `pg_tde`.
 
 !!! warning
-    When doing a major version upgrade from Percona Distribution for PostgreSQL 17, if your cluster uses `pg_tde`, you **must** use [`pg_tde_upgrade` :octicons-link-external-16:](../command-line-tools/pg-tde-upgrade.md) instead of `pg_upgrade`. Using `pg_upgrade` on an encrypted cluster is not supported and will result in data corruption. The server may start successfully but queries against encrypted tables will fail.
+    Using `pg_upgrade` on an encrypted cluster is not supported and will result in data corruption. The server may start successfully but queries against encrypted tables will fail.
 
 ## Procedure
 
