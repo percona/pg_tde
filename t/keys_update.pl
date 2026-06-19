@@ -1,5 +1,3 @@
-#!/usr/bin/perl
-
 # Test migration older format of pg_tde/*_keys files. It starts a cluster
 # from preexising PGDATA. This PGDATA is the result of:
 # - Created and run cluster with pg_tde 2.1.1 and encrypted WAL
@@ -7,7 +5,7 @@
 # - Crashed server (kill -9)
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;

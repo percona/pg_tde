@@ -1,10 +1,8 @@
-#!/usr/bin/perl
-
 use strict;
-use warnings;
-use Test::More;
+use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
+use Test::More;
 
 # Test CLI tools directly
 

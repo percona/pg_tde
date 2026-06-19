@@ -1,12 +1,9 @@
-#!/usr/bin/perl
-
 use strict;
-use warnings;
+use warnings FATAL => 'all';
+use pgtde;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
-use lib 't';
-use pgtde;
 
 my $keydir = PostgreSQL::Test::Utils::tempdir;
 

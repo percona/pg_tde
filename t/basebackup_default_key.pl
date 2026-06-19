@@ -1,5 +1,3 @@
-#!/usr/bin/perl
-
 # Tests that pg_tde_basebackup -E works after setting just a default
 # principal key, without first restarting the primary. Before the fix,
 # the server (WAL) principal key was only materialized lazily on the
@@ -7,11 +5,11 @@
 # configured cluster would fail with "could not find server principal key".
 
 use strict;
-use warnings;
-use Test::More;
+use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
-use PostgreSQL::Test::Utils;
 use PostgreSQL::Test::RecursiveCopy;
+use PostgreSQL::Test::Utils;
+use Test::More;
 
 my $keydir = PostgreSQL::Test::Utils::tempdir;
 

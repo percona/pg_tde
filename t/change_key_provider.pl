@@ -1,7 +1,5 @@
-#!/usr/bin/perl
-
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use File::Copy;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
