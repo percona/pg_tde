@@ -73,6 +73,7 @@ jobs:
     env:
       # No cosmian_kms package on macOS; let kmip.pl skip_all there.
       PG_TEST_REQUIRE_COSMIAN_KMS: ${{ startsWith(inputs.os, 'macos-') && '0' || '1' }}
+      PG_TEST_REQUIRE_OPENBAO: '1'
 
     steps:
       - name: Download build artifacts

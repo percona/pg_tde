@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 15
     env:
       PG_TEST_REQUIRE_COSMIAN_KMS: '1'
+      PG_TEST_REQUIRE_OPENBAO: '1'
     steps:
       - name: Clone repository
         uses: actions/checkout@v6
