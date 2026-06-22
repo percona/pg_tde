@@ -72,7 +72,7 @@
         // MODAL CONTENT
         script.setAttribute(
             "data-modal-disclaimer",
-            "The **Percona AI Assistant** helps you find simple, clear answers to your Percona questions using [official documentation](https://docs.percona.com/), resolved [forum posts](https://forums.percona.com/) and [blog posts](https://www.percona.com/blog/). Note, do not enter personal or confidential information. Before using Percona AI assistant, read the [Legal Notice](https://docs.percona.com/valkey/legal-notice.html)."
+            "The **Percona AI Assistant** helps you find simple, clear answers to your Percona questions using [official documentation](https://docs.percona.com/), resolved [forum posts](https://forums.percona.com/) and [blog posts](https://www.percona.com/blog/). Note, do not enter personal or confidential information. Before using Percona AI assistant, read the [Legal Notice](https://docs.percona.com/pg-tde/legal-notice.html)."
         );
 
         script.setAttribute(
@@ -82,7 +82,7 @@
 
         script.setAttribute(
             "data-project-logo",
-            "https://docs.percona.com/valkey/_static/percona-logomark-one-color-dark.png"
+            "https://docs.percona.com/pg-tde/_static/percona-logomark-one-color-dark.png"
         );
 
         document.head.appendChild(script);
