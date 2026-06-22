@@ -77,7 +77,7 @@
 
         script.setAttribute(
             "data-modal-example-questions",
-            "What is Valkey and how does it differ from Redis?, How do I install Valkey?, How do I connect to and use Valkey?, How do I deploy Valkey in production?"
+            "What is pg_tde?, How do I install pg_tde?, How do I connect to and use pg_tde?, How do I deploy pg_tde in production?"
         );
 
         script.setAttribute(
