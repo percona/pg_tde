@@ -77,12 +77,12 @@
 
         script.setAttribute(
             "data-modal-example-questions",
-            "What is pg_tde?, How do I install pg_tde?, How do I connect to and use pg_tde?, How do I deploy pg_tde in production?"
+            "What is pg_tde?, How do I install pg_tde?, How do I use pg_tde?, How do I deploy pg_tde in production?"
         );
 
         script.setAttribute(
             "data-project-logo",
-            "https://docs.percona.com/pg-tde/_static/percona-logomark-one-color-dark.png"
+            "https://docs.percona.com/pg-tde/documentation/docs/_static/percona-logomark-one-color-dark.png"
         );
 
         document.head.appendChild(script);
