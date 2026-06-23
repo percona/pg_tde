@@ -11,6 +11,15 @@ use lib $FindBin::RealBin;
 
 use RewindTest;
 
+# Skip test if PG16
+# Handling of tablespaces by PostgreSQL::Test::Cluster::init_from_backup was
+# added in PG17 (6bf5c42b5546984df29289918f952e6211069c54).
+my $pg_version = `pg_config --version`;
+if ($pg_version =~ /PostgreSQL 16/)
+{
+	plan skip_all => 'Test skipped on PostgreSQL 16';
+}
+
 sub run_test
 {
 	my $test_mode = shift;
