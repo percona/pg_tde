@@ -4,11 +4,11 @@ site_name: Percona Transparent Data Encryption for PostgreSQL
 site_description: Documentation
 site_author: Percona LLC
 copyright: >
-  <a href="https://www.percona.com/about">Percona LLC</a> and/or its affiliates © 2025 — <a href="#__consent">Cookie Consent</a>
+  <a href="https://www.percona.com/about">Percona LLC</a> and/or its affiliates © 2026 — <a href="#__consent">Cookie Consent</a>
 
-repo_name: percona/postgres
-repo_url: https://github.com/percona/postgres
-edit_uri: edit/TDE_REL_17_STABLE/contrib/pg_tde/documentation/docs
+repo_name: percona/pg_tde
+repo_url: https://github.com/percona/pg_tde
+edit_uri: edit/main/documentation/docs
 
 use_directory_urls: false
 
