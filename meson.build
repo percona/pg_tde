@@ -1,6 +1,6 @@
 project('pg_tde',
   ['c'],
-  version: '2.2.0',
+  version: '2.2.1',
   meson_version: '>=0.56',
 )
 
