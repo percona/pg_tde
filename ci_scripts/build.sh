@@ -29,6 +29,11 @@ case "$1" in
         BUILD_TYPE=debug
         ARGS+=" -Dc_args=['-fsanitize=address','-fsanitize=undefined','-fno-omit-frame-pointer','-fno-inline-functions']"
         ARGS+=" -Dc_link_args=['-fsanitize=address','-fsanitize=undefined']"
+        # vptr's UBSan runtime lives in the C++-only ubsan_standalone_cxx library,
+        # which the C postgres backend that dlopens pg_tde.so does not link, so it
+        # is disabled here to avoid an undefined __ubsan_vptr_type_cache at load.
+        ARGS+=" -Dcpp_args=['-fsanitize=address','-fsanitize=undefined','-fno-sanitize=vptr','-fno-omit-frame-pointer','-fno-inline-functions']"
+        ARGS+=" -Dcpp_link_args=['-fsanitize=address','-fsanitize=undefined']"
         ;;
 
     *)
