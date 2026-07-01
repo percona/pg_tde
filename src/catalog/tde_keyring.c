@@ -849,8 +849,6 @@ load_file_keyring_provider_options(char *keyring_options)
 
 	if (file_keyring->file_name == NULL || file_keyring->file_name[0] == '\0')
 	{
-		free_keyring((GenericKeyring *) file_keyring);
-
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("file path is missing in the keyring options"));
@@ -874,8 +872,6 @@ load_vaultV2_keyring_provider_options(char *keyring_options)
 		vaultV2_keyring->vault_url == NULL || vaultV2_keyring->vault_url[0] == '\0' ||
 		vaultV2_keyring->vault_mount_path == NULL || vaultV2_keyring->vault_mount_path[0] == '\0')
 	{
-		free_keyring((GenericKeyring *) vaultV2_keyring);
-
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("missing in the keyring options:%s%s%s",
@@ -906,8 +902,6 @@ load_kmip_keyring_provider_options(char *keyring_options)
 		kmip_keyring->kmip_cert_path == NULL || kmip_keyring->kmip_cert_path[0] == '\0' ||
 		kmip_keyring->kmip_key_path == NULL || kmip_keyring->kmip_key_path[0] == '\0')
 	{
-		free_keyring((GenericKeyring *) kmip_keyring);
-
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("missing in the keyring options:%s%s%s%s%s",
