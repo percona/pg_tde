@@ -63,9 +63,26 @@ jobs:
         build_type: ${{ matrix.build_type }}
     secrets: inherit
 
+  exec-backend:
+    name: EXEC_BACKEND matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        pg_version: [16, 17, 18]
+        os: [ubuntu-24.04]
+        compiler: [gcc]
+        build_type: [exec-backend]
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+        pg_version: ${{ matrix.pg_version }}
+        os: ${{ matrix.os }}
+        compiler: ${{ matrix.compiler }}
+        build_type: ${{ matrix.build_type }}
+    secrets: inherit
+
   slack-notification:
     if: failure() && github.event_name == 'push'
-    needs: [main, arm]
+    needs: [main, arm, exec-backend]
     name: Slack Notification
     runs-on: ubuntu-24.04
     timeout-minutes: 5
