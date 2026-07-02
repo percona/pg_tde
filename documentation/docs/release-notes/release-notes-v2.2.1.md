@@ -6,7 +6,7 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ## Release Highlights
 
-`pg_tde` now supports 256-bit AES encryption and introduces [`pg_tde_upgrade`](../command-line-tools/pg-tde-upgrade.md), a utility that simplifies the upgrades of encrypted clusters. For more details, see the [Changelog](#changelog).
+`pg_tde` 2.2.1 focuses on stability and compatibility improvements. This release improves `pg_rewind` reliability and Microsoft Visual C++ (MSVC) compatibility. For more details, see the [Changelog](#changelog).
 
 !!! warning
     `pg_tde` 2.2.1 is not compatible with Percona Distribution for PostgreSQL older than 17.10 or 18.4.
@@ -40,10 +40,7 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 Changes introduced in `pg_tde` 2.2.1:
 
-### New Features
-
-### Improvements
-
 ### Bug Fixes
 
-### Documentation updates
+- [PG-2473](https://perconadev.atlassian.net/browse/PG-2473) - Fixed build and runtime compatibility issues for Microsoft Visual C++ (MSVC) on Windows.
+- [PG-2407](https://perconadev.atlassian.net/browse/PG-2407) - Fixed multiple issues affecting `pg_rewind` for `pg_tde` clusters, improving reliability during rewind and recovery operations.
