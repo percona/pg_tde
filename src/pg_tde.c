@@ -22,6 +22,7 @@
 #include "access/pg_tde_xlog.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "catalog/tde_global_space.h"
+#include "catalog/tde_keyring.h"
 #include "catalog/tde_principal_key.h"
 #include "encryption/enc_aes.h"
 #include "keyring/keyring_api.h"
@@ -62,6 +63,7 @@ tde_shmem_request(void)
 {
 	Size		sz = 0;
 
+	sz = add_size(sz, KeyProviderShmemSize());
 	sz = add_size(sz, PrincipalKeyShmemSize());
 	sz = add_size(sz, TDESmgrShmemSize());
 	sz = add_size(sz, TDEXLogSmgrShmemSize());

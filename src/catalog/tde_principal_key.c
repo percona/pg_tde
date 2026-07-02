@@ -135,23 +135,23 @@ PrincipalKeyShmemInit(void)
 	bool		found;
 	char	   *free_start;
 	Size		required_shmem_size = PrincipalKeyShmemSize();
+	TdePrincipalKeySharedState *sharedState;
 
 	Assert(LWLockHeldByMeInMode(AddinShmemInitLock, LW_EXCLUSIVE));
 
 	/* Create or attach to the shared memory state */
 	ereport(NOTICE, errmsg("PrincipalKeyShmemInit: requested %ld bytes", required_shmem_size));
 	free_start = ShmemInitStruct("pg_tde", required_shmem_size, &found);
+	sharedState = (TdePrincipalKeySharedState *) free_start;
 
 	if (!found)
 	{
-		TdePrincipalKeySharedState *sharedState;
 		Size		sz;
 		Size		dsa_area_size;
 		dsa_area   *dsa;
 		dshash_table *dsh;
 
 		/* Now place shared state structure */
-		sharedState = (TdePrincipalKeySharedState *) free_start;
 		sz = MAXALIGN(sizeof(TdePrincipalKeySharedState));
 		free_start += sz;
 		Assert(sz <= required_shmem_size);
@@ -179,11 +179,12 @@ PrincipalKeyShmemInit(void)
 		sharedState->hashHandle = dshash_get_hash_table_handle(dsh);
 		sharedState->rawDsaArea = free_start;
 
-		principalKeyLocalState.sharedPrincipalKeyState = sharedState;
-		principalKeyLocalState.sharedHash = NULL;
-
 		dshash_detach(dsh);
 	}
+
+	/* Set in both paths: EXEC_BACKEND children don't inherit the static. */
+	principalKeyLocalState.sharedPrincipalKeyState = sharedState;
+	principalKeyLocalState.sharedHash = NULL;
 }
 
 /*

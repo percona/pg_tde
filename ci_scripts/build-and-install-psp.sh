@@ -37,9 +37,16 @@ case "$1" in
         export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-inline-functions"
         ;;
 
+    exec-backend)
+        echo "Building with exec-backend option"
+        export CPPFLAGS="-DEXEC_BACKEND"
+        ARGS+=" --enable-cassert"
+        INSTALL_INJECTION_POINTS=1
+        ;;
+
     *)
         echo "Unknown build type: $1"
-        echo "Please use one of the following: debug, debugoptimized, coverage, sanitize"
+        echo "Please use one of the following: debug, debugoptimized, coverage, sanitize, exec-backend"
         exit 1
         ;;
 esac
