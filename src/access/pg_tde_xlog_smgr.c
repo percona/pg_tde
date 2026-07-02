@@ -603,11 +603,13 @@ TDEXLogCryptBuffer(const void *buf, void *out_buf, size_t count, off_t offset,
 	}
 }
 
+#ifdef __SIZEOF_INT128__
 union u128cast
 {
 	char		a[16];
 	unsigned	__int128 i;
 };
+#endif
 
 /*
  * Calculate the start IV for an XLog segmenet.
@@ -622,6 +624,7 @@ union u128cast
 static void
 CalcXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, const unsigned char *base_iv, char *iv_prefix)
 {
+#ifdef __SIZEOF_INT128__
 	union u128cast base;
 	union u128cast iv;
 	unsigned	__int128 offset;
@@ -645,5 +648,45 @@ CalcXLogPageIVPrefix(TimeLineID tli, XLogRecPtr lsn, const unsigned char *base_i
 		iv_prefix[i] = iv.a[i];
 #else
 		iv_prefix[i] = iv.a[15 - i];
+#endif
+#else
+	/*
+	 * Fallback for compilers without __int128 (MSVC): emulate the 128-bit add
+	 * with two uint64 halves plus carry, byte-identical to the path above.
+	 * Little-endian only; no big-endian platform lacks __int128.
+	 */
+#ifdef WORDS_BIGENDIAN
+#error "pg_tde: the __int128-free XLog IV fallback is little-endian only"
+#endif
+	unsigned char base[16];
+	unsigned char iv[16];
+	uint64		base_lo,
+				base_hi,
+				offset_lo,
+				offset_hi,
+				iv_lo,
+				iv_hi,
+				carry;
+
+	for (int i = 0; i < 16; i++)
+		base[i] = base_iv[15 - i];
+
+	memcpy(&base_lo, &base[0], 8);
+	memcpy(&base_hi, &base[8], 8);
+
+	base_lo &= ~((uint64) 1 << 32);
+
+	offset_lo = (uint64) lsn << 32;
+	offset_hi = ((uint64) lsn >> 32) | ((uint64) (tli & 0xFFFF) << 48);
+
+	iv_lo = base_lo + offset_lo;
+	carry = (iv_lo < base_lo) ? 1 : 0;
+	iv_hi = base_hi + offset_hi + carry;
+
+	memcpy(&iv[0], &iv_lo, 8);
+	memcpy(&iv[8], &iv_hi, 8);
+
+	for (int i = 0; i < 16; i++)
+		iv_prefix[i] = iv[15 - i];
 #endif
 }

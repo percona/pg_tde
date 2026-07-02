@@ -79,7 +79,7 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 							  (long long int) bytes_read, sizeof(KeyInfo)));
 			return NULL;
 		}
-		if (strncasecmp(key->name, key_name, sizeof(key->name)) == 0)
+		if (pg_strncasecmp(key->name, key_name, sizeof(key->name)) == 0)
 		{
 			CloseTransientFile(fd);
 			return key;
