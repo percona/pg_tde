@@ -4,7 +4,17 @@
 
 #include "postgres.h"
 
+#ifdef WIN32
+#include <windows.h>
+/*
+ * Windows has no mlock(); VirtualLock pins pages in the process working
+ * set, which matches the intent (keep the principal key out of the swap
+ * file). VirtualLock returns nonzero on success, so translate to 0/-1.
+ */
+#define mlock(addr, len) (VirtualLock((addr), (len)) ? 0 : -1)
+#else
 #include <sys/mman.h>
+#endif
 #include <sys/time.h>
 
 #include "access/xlog.h"
@@ -978,6 +988,13 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid)
  * Process-local cache for the server (GLOBAL_DATA_TDE_OID) principal key.
  */
 static TDEPrincipalKey *fe_server_principal_key_cache = NULL;
+
+void
+clean_fe_server_principal_key_cache(void)
+{
+	pfree(fe_server_principal_key_cache);
+	fe_server_principal_key_cache = NULL;
+}
 #endif							/* FRONTEND */
 
 /*

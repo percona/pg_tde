@@ -47,6 +47,8 @@ extern bool pg_tde_principal_key_configured(Oid databaseId);
 extern TDEPrincipalKey *GetPrincipalKey(Oid dbOid, LWLockMode lockMode);
 #else
 extern TDEPrincipalKey *GetPrincipalKey(Oid dbOid, void *lockMode);
+
+extern void clean_fe_server_principal_key_cache(void);
 #endif
 
 extern void xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec);

@@ -7,36 +7,86 @@
 
 #ifdef FRONTEND
 
+#include <stdarg.h>
+
 #include "postgres_fe.h"
 #include "common/logging.h"
 #include "common/file_perm.h"
 #include "utils/elog.h"
 
+#ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wunused-macros"
 #pragma GCC diagnostic ignored "-Wunused-value"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wextra"
+#endif
 
 /*
  * Errors handling
  * ----------------------------------------
  */
 
-#define tde_fe_errlog(_type, ...) \
-	({		\
-		if (tde_fe_error_level >= ERROR)		\
-			pg_log_error##_type(__VA_ARGS__);		\
-		else if (tde_fe_error_level >= WARNING)		\
-			pg_log_warning##_type(__VA_ARGS__);		\
-		else if (tde_fe_error_level >= LOG)		\
-			pg_log_info##_type(__VA_ARGS__);		\
-		else		\
-			pg_log_debug##_type(__VA_ARGS__);		\
-	})
+static int	tde_fe_error_level = 0;
 
-#define errmsg(...) tde_fe_errlog(, __VA_ARGS__)
-#define errhint(...) tde_fe_errlog(_hint, __VA_ARGS__)
-#define errdetail(...) tde_fe_errlog(_detail, __VA_ARGS__)
+static inline enum pg_log_level
+tde_fe_log_level(void)
+{
+	if (tde_fe_error_level >= ERROR)
+		return PG_LOG_ERROR;
+	else if (tde_fe_error_level >= WARNING)
+		return PG_LOG_WARNING;
+	else if (tde_fe_error_level >= LOG)
+		return PG_LOG_INFO;
+	else
+		return PG_LOG_DEBUG;
+}
+
+static inline int
+tde_fe_errlog_v(enum pg_log_part part, const char *fmt, va_list ap)
+{
+	pg_log_generic_v(tde_fe_log_level(), part, fmt, ap);
+	return 0;
+}
+
+static inline int tde_fe_errmsg(const char *fmt,...) pg_attribute_printf(1, 2);
+static inline int
+tde_fe_errmsg(const char *fmt,...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	tde_fe_errlog_v(PG_LOG_PRIMARY, fmt, ap);
+	va_end(ap);
+	return 0;
+}
+
+static inline int tde_fe_errdetail(const char *fmt,...) pg_attribute_printf(1, 2);
+static inline int
+tde_fe_errdetail(const char *fmt,...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	tde_fe_errlog_v(PG_LOG_DETAIL, fmt, ap);
+	va_end(ap);
+	return 0;
+}
+
+static inline int tde_fe_errhint(const char *fmt,...) pg_attribute_printf(1, 2);
+static inline int
+tde_fe_errhint(const char *fmt,...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	tde_fe_errlog_v(PG_LOG_HINT, fmt, ap);
+	va_end(ap);
+	return 0;
+}
+
+#define errmsg(...) tde_fe_errmsg(__VA_ARGS__)
+#define errdetail(...) tde_fe_errdetail(__VA_ARGS__)
+#define errhint(...) tde_fe_errhint(__VA_ARGS__)
 
 #define errcode_for_file_access() NULL
 #define errcode(e) NULL
@@ -64,8 +114,6 @@
 		__VA_ARGS__;					\
 		tde_error_handle_exit(elevel);	\
 	} while(0)
-
-static int	tde_fe_error_level = 0;
 
 #define data_sync_elevel(elevel) (elevel)
 

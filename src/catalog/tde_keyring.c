@@ -775,12 +775,9 @@ scan_key_provider_file(ProviderScanType scanType, void *scanKey, Oid dbOid)
 			continue;
 		}
 
-		ereport(DEBUG2,
-				errmsg("read key provider ID=%d %s", provider.provider_id, provider.provider_name));
-
 		if (scanType == PROVIDER_SCAN_BY_NAME)
 		{
-			if (strcasecmp(provider.provider_name, (char *) scanKey) == 0)
+			if (pg_strcasecmp(provider.provider_name, (char *) scanKey) == 0)
 				match = true;
 		}
 		else if (scanType == PROVIDER_SCAN_BY_ID)
@@ -852,8 +849,6 @@ load_file_keyring_provider_options(char *keyring_options)
 
 	if (file_keyring->file_name == NULL || file_keyring->file_name[0] == '\0')
 	{
-		free_keyring((GenericKeyring *) file_keyring);
-
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("file path is missing in the keyring options"));
@@ -877,8 +872,6 @@ load_vaultV2_keyring_provider_options(char *keyring_options)
 		vaultV2_keyring->vault_url == NULL || vaultV2_keyring->vault_url[0] == '\0' ||
 		vaultV2_keyring->vault_mount_path == NULL || vaultV2_keyring->vault_mount_path[0] == '\0')
 	{
-		free_keyring((GenericKeyring *) vaultV2_keyring);
-
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("missing in the keyring options:%s%s%s",
@@ -909,8 +902,6 @@ load_kmip_keyring_provider_options(char *keyring_options)
 		kmip_keyring->kmip_cert_path == NULL || kmip_keyring->kmip_cert_path[0] == '\0' ||
 		kmip_keyring->kmip_key_path == NULL || kmip_keyring->kmip_key_path[0] == '\0')
 	{
-		free_keyring((GenericKeyring *) kmip_keyring);
-
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("missing in the keyring options:%s%s%s%s%s",
@@ -957,6 +948,7 @@ get_file_value(const char *path, const char *field_name)
 static void
 debug_print_kerying(GenericKeyring *keyring)
 {
+#ifdef KEYRING_DEBUG
 	elog(DEBUG2, "Keyring type: %d", keyring->type);
 	elog(DEBUG2, "Keyring name: %s", keyring->provider_name);
 	elog(DEBUG2, "Keyring id: %d", keyring->keyring_id);
@@ -985,6 +977,7 @@ debug_print_kerying(GenericKeyring *keyring)
 		case UNKNOWN_KEY_PROVIDER:
 			break;
 	}
+#endif							/* KEYRING_DEBUG */
 }
 
 static inline void

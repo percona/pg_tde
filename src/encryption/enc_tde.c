@@ -13,6 +13,7 @@
 #define AES_BLOCK_SIZE 		        16
 #define NUM_AES_BLOCKS_IN_BATCH     200
 #define DATA_BYTES_PER_AES_BATCH    (NUM_AES_BLOCKS_IN_BATCH * AES_BLOCK_SIZE)
+#define TDE_BLOCK_IV_LEN            16
 
 #ifdef ENCRYPTION_DEBUG
 static void
@@ -150,7 +151,7 @@ pg_tde_stream_crypt(const char *iv_prefix,
 static void
 CalcBlockIv(ForkNumber forknum, BlockNumber bn, const unsigned char *base_iv, unsigned char *iv)
 {
-	memset(iv, 0, 16);
+	memset(iv, 0, TDE_BLOCK_IV_LEN);
 
 	/* The init fork is copied to the main fork so we must use the same IV */
 	iv[7] = forknum == INIT_FORKNUM ? MAIN_FORKNUM : forknum;
@@ -160,14 +161,14 @@ CalcBlockIv(ForkNumber forknum, BlockNumber bn, const unsigned char *base_iv, un
 	iv[14] = bn >> 8;
 	iv[15] = bn;
 
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < TDE_BLOCK_IV_LEN; i++)
 		iv[i] ^= base_iv[i];
 }
 
 void
-tde_decrypt_smgr_block(InternalKey *relKey, ForkNumber forknum, BlockNumber blocknum, const unsigned char *in, unsigned char *out)
+tde_decrypt_smgr_block(InternalKey *rel_key, ForkNumber forknum, BlockNumber blocknum, const unsigned char *in, unsigned char *out)
 {
-	unsigned char iv[16];
+	unsigned char iv[TDE_BLOCK_IV_LEN];
 	bool		allZero = true;
 
 	/*
@@ -191,17 +192,17 @@ tde_decrypt_smgr_block(InternalKey *relKey, ForkNumber forknum, BlockNumber bloc
 	if (allZero)
 		return;
 
-	CalcBlockIv(forknum, blocknum, relKey->base_iv, iv);
+	CalcBlockIv(forknum, blocknum, rel_key->base_iv, iv);
 
-	AesDecrypt(relKey->key, relKey->key_len, iv, in, BLCKSZ, out);
+	AesDecrypt(rel_key->key, rel_key->key_len, iv, in, BLCKSZ, out);
 }
 
 void
-tde_encrypt_smgr_block(InternalKey *relKey, ForkNumber forknum, BlockNumber blocknum, const unsigned char *in, unsigned char *out)
+tde_encrypt_smgr_block(InternalKey *rel_key, ForkNumber forknum, BlockNumber blocknum, const unsigned char *in, unsigned char *out)
 {
-	unsigned char iv[16];
+	unsigned char iv[TDE_BLOCK_IV_LEN];
 
-	CalcBlockIv(forknum, blocknum, relKey->base_iv, iv);
+	CalcBlockIv(forknum, blocknum, rel_key->base_iv, iv);
 
-	AesEncrypt(relKey->key, relKey->key_len, iv, in, BLCKSZ, out);
+	AesEncrypt(rel_key->key, rel_key->key_len, iv, in, BLCKSZ, out);
 }

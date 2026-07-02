@@ -7,6 +7,8 @@
 
 #include "pg_tde_fe.h"
 #include "access/pg_tde_xlog_smgr.h"
+#include "pg_tde.h"
+#include "pg_tde_fe_archive_common.h"
 
 #include <signal.h>
 
@@ -197,9 +199,6 @@ main(int argc, char *argv[])
 	sourcepath = argv[2];
 	command = argv[3];
 
-	pg_tde_fe_init("pg_tde");
-	TDEXLogSmgrInit();
-
 	sep = strrchr(sourcepath, '/');
 
 	if (sep != NULL)
@@ -211,14 +210,10 @@ main(int argc, char *argv[])
 
 	if (issegment)
 	{
-		char	   *s;
-
 		if (mkdtemp(tmpdir) == NULL)
 			pg_fatal("could not create temporary directory \"%s\": %m", tmpdir);
 
-		s = stpcpy(tmppath, tmpdir);
-		s = stpcpy(s, "/");
-		stpcpy(s, sourcename);
+		snprintf(tmppath, sizeof(tmppath), "%s/%s", tmpdir, sourcename);
 
 		/* There is a mostly harmless race condition with creating the dir */
 		signal(SIGTERM, trapsig);
@@ -228,6 +223,15 @@ main(int argc, char *argv[])
 		command = replace_percent_placeholders(command,
 											   "ARCHIVE-COMMAND", "fp",
 											   targetname, tmppath);
+
+		{
+			char		tdedir[MAXPGPATH];
+
+			derive_tde_dir_from_segment_path(sourcepath, sep, tdedir, sizeof(tdedir));
+
+			pg_tde_fe_init(tdedir);
+			TDEXLogSmgrInit();
+		}
 
 		write_decrypted_segment(sourcepath, targetname, tmppath);
 	}

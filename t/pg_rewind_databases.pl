@@ -20,24 +20,25 @@ sub run_test
 
 	# Create a database in primary with a table.
 	primary_psql('CREATE DATABASE inprimary');
-	primary_psql('CREATE TABLE inprimary_tab (a int)', 'inprimary');
+	primary_psql('CREATE TABLE inprimary_tab (a int) USING heap',
+		'inprimary');
 
 	RewindTest::create_standby($test_mode);
 
 	# Create another database with another table, the creation is
 	# replicated to the standby.
 	primary_psql('CREATE DATABASE beforepromotion');
-	primary_psql('CREATE TABLE beforepromotion_tab (a int)',
+	primary_psql('CREATE TABLE beforepromotion_tab (a int) USING heap',
 		'beforepromotion');
 
 	RewindTest::promote_standby();
 
 	# Create databases in the old primary and the new promoted standby.
 	primary_psql('CREATE DATABASE primary_afterpromotion');
-	primary_psql('CREATE TABLE primary_promotion_tab (a int)',
+	primary_psql('CREATE TABLE primary_promotion_tab (a int) USING heap',
 		'primary_afterpromotion');
 	standby_psql('CREATE DATABASE standby_afterpromotion');
-	standby_psql('CREATE TABLE standby_promotion_tab (a int)',
+	standby_psql('CREATE TABLE standby_promotion_tab (a int) USING heap',
 		'standby_afterpromotion');
 
 	# The clusters are now diverged.
