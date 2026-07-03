@@ -69,7 +69,31 @@ pg_tde_generate_internal_key(InternalKey *int_key, int key_len)
 }
 
 /*
- * Encrypts/decrypts `data` with a given `key`. The result is written to `out`.
+ * XOR n bytes of data with keystream into out.
+ *
+ * The distinct variant's restrict qualifiers let the compiler
+ * auto-vectorize the XOR, but require non-overlapping buffers.
+ * The plain variant is used for in-place operation (out == data).
+ */
+static inline void
+tde_xor_stream(char *out, const char *data, const unsigned char *keystream, uint32 n)
+{
+	for (uint32 i = 0; i < n; i++)
+		out[i] = data[i] ^ keystream[i];
+}
+
+static inline void
+tde_xor_stream_distinct(char *restrict out, const char *restrict data,
+						const unsigned char *restrict keystream, uint32 n)
+{
+	Assert(((uintptr_t) out + n <= (uintptr_t) data) || ((uintptr_t) out > (uintptr_t) data + n));
+	for (uint32 i = 0; i < n; i++)
+		out[i] = data[i] ^ keystream[i];
+}
+
+/*
+ * Encrypts/decrypts data with a given key. The result is written to out,
+ * which may alias data (in-place operation is supported).
  *
  * start_offset: is the absolute location of start of data in the file.
  */
@@ -89,11 +113,18 @@ pg_tde_stream_crypt(const char *iv_prefix,
 	uint32		batch_no = 0;
 	uint32		data_index = 0;
 
+	/*
+	 * Our callers pass either fully overlapping (out == data, in-place) or
+	 * fully disjoint buffers, never partial overlap.
+	 */
+	const bool	in_place = (out == data);
+
 	/* do max NUM_AES_BLOCKS_IN_BATCH blocks at a time */
 	for (uint64 batch_start_block = aes_start_block; batch_start_block < aes_end_block; batch_start_block += NUM_AES_BLOCKS_IN_BATCH)
 	{
 		unsigned char enc_key[DATA_BYTES_PER_AES_BATCH];
 		uint32		current_batch_bytes;
+		uint32		key_offset;
 		uint64		batch_end_block = Min(batch_start_block + NUM_AES_BLOCKS_IN_BATCH, aes_end_block);
 
 		AesCtrEncryptedZeroBlocks(ctxPtr, key, key_len, iv_prefix, batch_start_block, batch_end_block, enc_key);
@@ -111,34 +142,28 @@ pg_tde_stream_crypt(const char *iv_prefix,
 
 		current_batch_bytes = ((batch_end_block - batch_start_block) * AES_BLOCK_SIZE)
 			- (batch_no > 0 ? 0 : aes_block_no);	/* first batch skips
-													 * `aes_block_no`-th bytes
+													 * aes_block_no-th bytes
 													 * of enc_key */
 		if ((data_index + current_batch_bytes) > data_len)
 			current_batch_bytes = data_len - data_index;
 
-		for (uint32 i = 0; i < current_batch_bytes; ++i)
-		{
-			/*
-			 * As the size of enc_key always is a multiple of 16 we start from
-			 * `aes_block_no`-th index of the enc_key[] so N-th will be
-			 * crypted with the same enc_key byte despite what start_offset
-			 * the function was called with. For example start_offset = 10;
-			 * MAX_AES_ENC_BATCH_KEY_SIZE = 6: data:                 [10 11 12
-			 * 13 14 15 16] encKey: [...][0 1 2 3  4  5][0  1  2  3  4  5] so
-			 * the 10th data byte is encoded with the 4th byte of the 2nd
-			 * enc_key etc. We need this shift so each byte will be coded the
-			 * same despite the initial offset. Let's see the same data but
-			 * sent to the func starting from the offset 0: data:    [0 1 2 3
-			 * 4 5 6 7 8 9 10 11 12 13 14 15 16] encKey: [0 1 2 3 4 5][0 1 2 3
-			 * 4 5][ 0 1  2  3  4  5] again, the 10th data byte is encoded
-			 * with the 4th byte of the 2nd enc_key etc.
-			 */
-			uint32		enc_key_index = i + (batch_no > 0 ? 0 : aes_block_no);
+		/*
+		 * The key stream is tied to the absolute file position, so byte N
+		 * must use the same key stream byte regardless of start_offset.
+		 * enc_key is block-aligned, so the first batch starts reading it at
+		 * aes_block_no (= start_offset % AES_BLOCK_SIZE); later batches start
+		 * at 0.
+		 */
+		key_offset = (batch_no > 0 ? 0 : aes_block_no);
 
-			out[data_index] = data[data_index] ^ enc_key[enc_key_index];
+		if (in_place)
+			tde_xor_stream(out + data_index, data + data_index,
+						   enc_key + key_offset, current_batch_bytes);
+		else
+			tde_xor_stream_distinct(out + data_index, data + data_index,
+									enc_key + key_offset, current_batch_bytes);
 
-			data_index++;
-		}
+		data_index += current_batch_bytes;
 		batch_no++;
 	}
 }

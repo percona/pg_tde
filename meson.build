@@ -50,6 +50,15 @@ add_project_arguments(cc.get_supported_arguments([
   '-fexcess-precision=standard',
 ]), language: ['c'])
 
+# On Linux EXEC_BACKEND comes from CFLAGS, not headers. Match the server: read
+# it from pg_config and apply to every pg_tde target.
+pg_cflags = run_command(pg_config, '--cflags', check: true).stdout().split()
+pg_cppflags = run_command(pg_config, '--cppflags', check: true).stdout().split()
+if '-DEXEC_BACKEND' in pg_cflags or '-DEXEC_BACKEND' in pg_cppflags
+  message('PostgreSQL was built with EXEC_BACKEND; enabling it for pg_tde')
+  add_project_arguments('-DEXEC_BACKEND', language: ['c'])
+endif
+
 # TODO: Why does it seems like they sometimes are in pkglibdir and other times in libdir?
 pgport = cc.find_library('pgport', dirs: [pkglibdir, libdir], static: true)
 pgcommon = cc.find_library('pgcommon', dirs: [pkglibdir, libdir], static: true)
