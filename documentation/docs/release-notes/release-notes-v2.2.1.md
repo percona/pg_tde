@@ -13,20 +13,6 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ## Known issues
 
-* `pg_rewind` and `pg_tde_rewind`
-
-    Using `pg_rewind` or `pg_tde_rewind` between diverged nodes in clusters that use `pg_tde` may lead to corrupted tables or indexes due to internal encryption key differences between clusters.
-
-    Queries may fail with:
-
-    ```bash
-    ERROR: invalid page in block 0 of relation "base/..."
-    ```
-
-    This behavior is a known issue.
-
-    For more information, see [pg_tde limitations](../index/tde-limitations.md).
-
 * The default `mlock` limit on Rocky Linux 8 for ARM64-based architectures equals the memory page size and is 64 Kb. This results in the child process with `pg_tde` failing to allocate another memory page because the max memory limit is reached by the parent process.
 
     To prevent this, you can change the `mlock` limit to be at least twice the memory page size:
