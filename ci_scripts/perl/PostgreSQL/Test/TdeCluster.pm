@@ -40,6 +40,10 @@ my %smgr_skip = (
 	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
 	'src/bin/pg_upgrade/t/006_transfer_modes.pl' =>
 	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/007_multixact_conversion.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/008_extension_control_path.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
 	'src/bin/scripts/t/020_createdb.pl' =>
 	  'tries to use FILE_COPY strategy for database creation with encrypted objects in the template',
 	'src/test/recovery/t/016_min_consistency.pl' =>
@@ -63,7 +67,11 @@ my %wal_skip = (
 	  'copies WAL directly to archive without using archive_command',
 	'src/bin/pg_rewind/t/011_wal_copy.pl' =>
 	  'debug output changed due to us re-encrypting WAL',
+	'src/bin/pg_verifybackup/t/008_untar.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
 	'src/bin/pg_verifybackup/t/009_extract.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_verifybackup/t/010_client_untar.pl' =>
 	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
 	'src/bin/pg_waldump/t/001_basic.pl' =>
 	  'pg_waldump needs extra options for encrypted WAL',
