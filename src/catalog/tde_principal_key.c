@@ -129,6 +129,12 @@ PrincipalKeyShmemSize(void)
 	return MAXALIGN(sz);
 }
 
+#if PG_VERSION_NUM >= 190000
+#define LWLockNewTrancheId2(name) LWLockNewTrancheId(name)
+#else
+#define LWLockNewTrancheId2(name) LWLockNewTrancheId()
+#endif
+
 void
 PrincipalKeyShmemInit(void)
 {
@@ -164,13 +170,13 @@ PrincipalKeyShmemInit(void)
 
 		dsa = dsa_create_in_place(free_start,
 								  dsa_area_size,
-								  LWLockNewTrancheId(), 0);
+								  LWLockNewTrancheId2("pg_tde_principal_key_dsa"), 0);
 		dsa_pin(dsa);
 
 		/* Limit area size during population to get a nice error */
 		dsa_set_size_limit(dsa, dsa_area_size);
 
-		principal_key_dsh_params.tranche_id = LWLockNewTrancheId();
+		principal_key_dsh_params.tranche_id = LWLockNewTrancheId2("pg_tde_principal_key_dsh");
 		dsh = dshash_create(dsa, &principal_key_dsh_params, NULL);
 
 		dsa_set_size_limit(dsa, -1);

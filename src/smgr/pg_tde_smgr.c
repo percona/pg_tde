@@ -474,6 +474,23 @@ tde_mdopen(SMgrRelation reln)
 
 #if PG_VERSION_NUM >= 180000
 
+/* Taken from src/backend/storage/aio/aio_init.c */
+static int
+AioChooseMaxConcurrency(void)
+{
+	uint32		max_backends;
+	int			max_proportional_pins;
+
+	/* Similar logic to LimitAdditionalPins() */
+	max_backends = MaxBackends + NUM_AUXILIARY_PROCS;
+	max_proportional_pins = NBuffers / max_backends;
+
+	max_proportional_pins = Max(max_proportional_pins, 1);
+
+	/* apply upper limit */
+	return Min(max_proportional_pins, 64);
+}
+
 /*
  * Area in shared memory which has the capacity to store one InternalKey per
  * IO handle.
@@ -493,13 +510,16 @@ tde_io_handle_keys_size(void)
 {
 	uint32		aio_procs;
 	uint32		io_handle_count;
+	int			max_concurrency;
 
-	/* We need to make sure io_max_concurrency is initialized */
-	AioShmemSize();
+	if (io_max_concurrency == -1)
+		max_concurrency = AioChooseMaxConcurrency();
+	else
+		max_concurrency = io_max_concurrency;
 
 	/* pgaio_ctl->io_handle_count is not set yet, so re-implement logic */
 	aio_procs = MaxBackends + NUM_AUXILIARY_PROCS;
-	io_handle_count = aio_procs * io_max_concurrency;
+	io_handle_count = aio_procs * max_concurrency;
 
 	return mul_size(io_handle_count, sizeof(InternalKey));
 }

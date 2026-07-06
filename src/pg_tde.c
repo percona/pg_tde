@@ -12,6 +12,7 @@
 #include "access/xloginsert.h"
 #include "funcapi.h"
 #include "miscadmin.h"
+#include "storage/fd.h"
 #include "storage/ipc.h"
 #include "storage/lwlock.h"
 #include "storage/shmem.h"
