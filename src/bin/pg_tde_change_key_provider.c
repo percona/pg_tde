@@ -30,7 +30,7 @@ usage(void)
 #define BUFFER_SIZE 1024
 
 static bool
-build_json(char *buffer, int count,...)
+build_json(char *buffer, int count, ...)
 {
 	va_list		args;
 	char	   *ptr;

@@ -196,7 +196,7 @@ scan_file(const char *fn, Oid spcOid, Oid dbOid, RelFileNumber relNumber, ForkNu
 	BlockNumber blockno;
 	int			flags;
 	int64		blocks_written_in_file = 0;
-	RelFileLocator locator = {.spcOid = spcOid,.dbOid = dbOid,.relNumber = relNumber};
+	RelFileLocator locator = {.spcOid = spcOid, .dbOid = dbOid, .relNumber = relNumber};
 	InternalKey *key = NULL;
 
 	Assert(mode == PG_MODE_ENABLE ||

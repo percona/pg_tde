@@ -288,8 +288,8 @@ pg_tde_fetch_wal_keys(WalLocation start)
 	{
 		WALKeyCacheRec *wal_rec;
 		WalEncryptionRange stub_range = {
-			.start = {.tli = 0,.lsn = InvalidXLogRecPtr},
-			.end = {.tli = MaxTimeLineID,.lsn = MaxXLogRecPtr},
+			.start = {.tli = 0, .lsn = InvalidXLogRecPtr},
+			.end = {.tli = MaxTimeLineID, .lsn = MaxXLogRecPtr},
 		};
 
 		wal_rec = pg_tde_add_wal_range_to_cache(&stub_range);

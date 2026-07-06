@@ -48,8 +48,8 @@ static void *EncryptionCryptCtx = NULL;
 /* TODO: can be swapped out to the disk */
 static WalEncryptionRange CurrentWalEncryptionRange = {
 	.type = WAL_ENCRYPTION_RANGE_INVALID,
-	.start = {.tli = 0,.lsn = InvalidXLogRecPtr},
-	.end = {.tli = MaxTimeLineID,.lsn = MaxXLogRecPtr},
+	.start = {.tli = 0, .lsn = InvalidXLogRecPtr},
+	.end = {.tli = MaxTimeLineID, .lsn = MaxXLogRecPtr},
 };
 
 /*
@@ -285,7 +285,7 @@ TDEXLogSmgrInitWrite(bool encrypt_xlog, int key_len)
 
 	if (keys == NULL)
 	{
-		WalLocation start = {.tli = 1,.lsn = 0};
+		WalLocation start = {.tli = 1, .lsn = 0};
 
 		/* cache is empty, prefetch keys from disk */
 		pg_tde_fetch_wal_keys(start);
@@ -309,8 +309,8 @@ TDEXLogSmgrInitWriteOldKeys()
 	WALKeyCacheRec *keys;
 	WalEncryptionRange dummy = {
 		.type = WAL_ENCRYPTION_RANGE_UNENCRYPTED,
-		.start = {.tli = MaxTimeLineID,.lsn = MaxXLogRecPtr},
-		.end = {.tli = MaxTimeLineID,.lsn = MaxXLogRecPtr},
+		.start = {.tli = MaxTimeLineID, .lsn = MaxXLogRecPtr},
+		.end = {.tli = MaxTimeLineID, .lsn = MaxXLogRecPtr},
 	};
 
 	CurrentWalEncryptionRange = dummy;
@@ -320,7 +320,7 @@ TDEXLogSmgrInitWriteOldKeys()
 
 	if (keys == NULL)
 	{
-		WalLocation start = {.tli = 1,.lsn = 0};
+		WalLocation start = {.tli = 1, .lsn = 0};
 
 		/* cache is empty, prefetch keys from disk */
 		pg_tde_fetch_wal_keys(start);
@@ -490,7 +490,7 @@ TDEXLogCryptBuffer(const void *buf, void *out_buf, size_t count, off_t offset,
 
 	if (keys == NULL)
 	{
-		WalLocation start = {.tli = 1,.lsn = 0};
+		WalLocation start = {.tli = 1, .lsn = 0};
 
 		/* cache is empty, try to read keys from disk */
 		keys = pg_tde_fetch_wal_keys(start);
@@ -506,7 +506,7 @@ TDEXLogCryptBuffer(const void *buf, void *out_buf, size_t count, off_t offset,
 	if (!XLogRecPtrIsInvalid(write_key_lsn))
 	{
 		WALKeyCacheRec *last_key = pg_tde_get_last_wal_key();
-		WalLocation write_loc = {.tli = TDEXLogGetEncKeyTli(),.lsn = write_key_lsn};
+		WalLocation write_loc = {.tli = TDEXLogGetEncKeyTli(), .lsn = write_key_lsn};
 
 		/* write has generated a new key, need to fetch it */
 		if (last_key != NULL && wal_location_cmp(last_key->range.start, write_loc) < 0)

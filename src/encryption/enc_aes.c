@@ -9,7 +9,8 @@
 #include "pg_tde_fe.h"
 #endif
 
-/* Implementation notes
+/*
+ * Implementation notes
  * =====================
  *
  * AES-CTR in a nutshell:

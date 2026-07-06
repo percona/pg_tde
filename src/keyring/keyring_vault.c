@@ -24,7 +24,7 @@
 
 /*
  * JSON parser state
-*/
+ */
 
 typedef enum
 {

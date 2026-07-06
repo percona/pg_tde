@@ -48,9 +48,9 @@ tde_fe_errlog_v(enum pg_log_part part, const char *fmt, va_list ap)
 	return 0;
 }
 
-static inline int tde_fe_errmsg(const char *fmt,...) pg_attribute_printf(1, 2);
+static inline int tde_fe_errmsg(const char *fmt, ...) pg_attribute_printf(1, 2);
 static inline int
-tde_fe_errmsg(const char *fmt,...)
+tde_fe_errmsg(const char *fmt, ...)
 {
 	va_list		ap;
 
@@ -60,9 +60,9 @@ tde_fe_errmsg(const char *fmt,...)
 	return 0;
 }
 
-static inline int tde_fe_errdetail(const char *fmt,...) pg_attribute_printf(1, 2);
+static inline int tde_fe_errdetail(const char *fmt, ...) pg_attribute_printf(1, 2);
 static inline int
-tde_fe_errdetail(const char *fmt,...)
+tde_fe_errdetail(const char *fmt, ...)
 {
 	va_list		ap;
 
@@ -72,9 +72,9 @@ tde_fe_errdetail(const char *fmt,...)
 	return 0;
 }
 
-static inline int tde_fe_errhint(const char *fmt,...) pg_attribute_printf(1, 2);
+static inline int tde_fe_errhint(const char *fmt, ...) pg_attribute_printf(1, 2);
 static inline int
-tde_fe_errhint(const char *fmt,...)
+tde_fe_errhint(const char *fmt, ...)
 {
 	va_list		ap;
 
@@ -108,7 +108,7 @@ tde_fe_errhint(const char *fmt,...)
 	} while(0)
 
 #undef ereport
-#define ereport(elevel,...)		\
+#define ereport(elevel, ...)		\
 	do {							\
 		tde_fe_error_level = elevel;	\
 		__VA_ARGS__;					\

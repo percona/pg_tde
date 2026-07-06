@@ -149,7 +149,7 @@ ParseKeyringJSONOptions(ProviderType provider_type, GenericKeyring *out_opts, ch
 
 /*
  * JSON parser semantic actions
-*/
+ */
 
 static JsonParseErrorType
 json_kring_array_start(void *state)
