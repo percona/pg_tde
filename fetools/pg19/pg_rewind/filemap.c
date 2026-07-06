@@ -87,7 +87,6 @@ typedef struct keepwal_entry
 
 
 static keepwal_hash *keepwal = NULL;
-static bool keepwal_entry_exists(const char *path);
 
 static int	final_filemap_cmp(const void *a, const void *b);
 
@@ -263,7 +262,7 @@ keepwal_add_entry(const char *path)
 }
 
 /* Return true if file is marked as not to be removed, false otherwise */
-static bool
+bool
 keepwal_entry_exists(const char *path)
 {
 	return keepwal_lookup(keepwal, path) != NULL;
@@ -487,6 +486,10 @@ action_to_str(file_action_t action)
 			return "CREATE";
 		case FILE_ACTION_REMOVE:
 			return "REMOVE";
+		case FILE_ACTION_ENSURE_TDE_KEY:
+			return "ENSURE_KEY";
+		case FILE_ACTION_ENSURE_WAL_SEG:
+			return "ENSURE_WAL_SEG";
 
 		default:
 			return "unknown";
@@ -569,7 +572,6 @@ getFileContentType(const char *path)
 {
 	RelFileLocator rlocator;
 	unsigned int segNo;
-	int			nmatch;
 	file_content_type_t result = FILE_CONTENT_TYPE_OTHER;
 
 	/* Check if it is a WAL file. */
@@ -582,6 +584,39 @@ getFileContentType(const char *path)
 		else
 			return FILE_CONTENT_TYPE_OTHER;
 	}
+
+	if (path_rlocator(path, &rlocator, &segNo))
+		result = FILE_CONTENT_TYPE_RELATION;
+
+	/*
+	 * path_rlocator() above can match files that have extra characters at the
+	 * end. To eliminate such cases, cross-check that GetRelationPath creates
+	 * the exact same filename, when passed the RelFileLocator information we
+	 * extracted from the filename.
+	 */
+	if (result == FILE_CONTENT_TYPE_RELATION)
+	{
+		char	   *check_path = datasegpath(rlocator, MAIN_FORKNUM, segNo);
+
+		if (strcmp(check_path, path) != 0)
+			result = FILE_CONTENT_TYPE_OTHER;
+
+		pfree(check_path);
+	}
+
+	return result;
+}
+
+/*
+ * Sets rlocator and segNo based on the given path. Returns false if no match
+ * is found.
+ *
+ * Only concerned with files belonging to the main fork.
+ */
+bool
+path_rlocator(const char *path, RelFileLocator *rlocator, unsigned int *segNo)
+{
+	int			nmatch;
 
 	/*----
 	 * Does it look like a relation data file?
@@ -609,55 +644,38 @@ getFileContentType(const char *path)
 	 *
 	 *----
 	 */
-	rlocator.spcOid = InvalidOid;
-	rlocator.dbOid = InvalidOid;
-	rlocator.relNumber = InvalidRelFileNumber;
-	segNo = 0;
-	result = FILE_CONTENT_TYPE_OTHER;
+	rlocator->spcOid = InvalidOid;
+	rlocator->dbOid = InvalidOid;
+	rlocator->relNumber = InvalidRelFileNumber;
+	*segNo = 0;
 
-	nmatch = sscanf(path, "global/%u.%u", &rlocator.relNumber, &segNo);
+	nmatch = sscanf(path, "global/%u.%u", &rlocator->relNumber, segNo);
 	if (nmatch == 1 || nmatch == 2)
 	{
-		rlocator.spcOid = GLOBALTABLESPACE_OID;
-		rlocator.dbOid = 0;
-		result = FILE_CONTENT_TYPE_RELATION;
+		rlocator->spcOid = GLOBALTABLESPACE_OID;
+		rlocator->dbOid = 0;
+		return true;
 	}
 	else
 	{
 		nmatch = sscanf(path, "base/%u/%u.%u",
-						&rlocator.dbOid, &rlocator.relNumber, &segNo);
+						&rlocator->dbOid, &rlocator->relNumber, segNo);
 		if (nmatch == 2 || nmatch == 3)
 		{
-			rlocator.spcOid = DEFAULTTABLESPACE_OID;
-			result = FILE_CONTENT_TYPE_RELATION;
+			rlocator->spcOid = DEFAULTTABLESPACE_OID;
+			return true;
 		}
 		else
 		{
 			nmatch = sscanf(path, "pg_tblspc/%u/" TABLESPACE_VERSION_DIRECTORY "/%u/%u.%u",
-							&rlocator.spcOid, &rlocator.dbOid, &rlocator.relNumber,
-							&segNo);
+							&rlocator->spcOid, &rlocator->dbOid, &rlocator->relNumber,
+							segNo);
 			if (nmatch == 3 || nmatch == 4)
-				result = FILE_CONTENT_TYPE_RELATION;
+				return true;
 		}
 	}
 
-	/*
-	 * The sscanf tests above can match files that have extra characters at
-	 * the end. To eliminate such cases, cross-check that GetRelationPath
-	 * creates the exact same filename, when passed the RelFileLocator
-	 * information we extracted from the filename.
-	 */
-	if (result == FILE_CONTENT_TYPE_RELATION)
-	{
-		char	   *check_path = datasegpath(rlocator, MAIN_FORKNUM, segNo);
-
-		if (strcmp(check_path, path) != 0)
-			result = FILE_CONTENT_TYPE_OTHER;
-
-		pfree(check_path);
-	}
-
-	return result;
+	return false;
 }
 
 /*
@@ -737,7 +755,7 @@ decide_wal_file_action(const char *fname, XLogSegNo last_common_segno,
 	 */
 	if (file_segno < last_common_segno &&
 		source_size == target_size)
-		return FILE_ACTION_NONE;
+		return FILE_ACTION_ENSURE_WAL_SEG;
 
 	return FILE_ACTION_COPY;
 }
@@ -759,6 +777,13 @@ decide_file_action(file_entry_t *entry, XLogSegNo last_common_segno)
 
 	/* Skip macOS system files */
 	if (strstr(path, ".DS_Store") != NULL)
+		return FILE_ACTION_NONE;
+
+	/*
+	 * Skip pg_tde key data. This is handled separately by combining the
+	 * source and target keys when processing relation files.
+	 */
+	if (strncmp(path, "pg_tde/", 7) == 0)
 		return FILE_ACTION_NONE;
 
 	/*
@@ -803,7 +828,7 @@ decide_file_action(file_entry_t *entry, XLogSegNo last_common_segno)
 		if (keepwal_entry_exists(path))
 		{
 			pg_log_debug("Not removing file \"%s\" because it is required for recovery", path);
-			return FILE_ACTION_NONE;
+			return FILE_ACTION_ENSURE_WAL_SEG;
 		}
 		return FILE_ACTION_REMOVE;
 	}
@@ -894,14 +919,15 @@ decide_file_action(file_entry_t *entry, XLogSegNo last_common_segno)
 				 * in the target will be copied based on parsing the target
 				 * system's WAL, and any blocks modified in the source will be
 				 * updated after rewinding, when the source system's WAL is
-				 * replayed.
+				 * replayed. But we still have to sync source/target keys in
+				 * case it is encrypted.
 				 */
 				if (entry->target_size < entry->source_size)
 					return FILE_ACTION_COPY_TAIL;
 				else if (entry->target_size > entry->source_size)
 					return FILE_ACTION_TRUNCATE;
 				else
-					return FILE_ACTION_NONE;
+					return FILE_ACTION_ENSURE_TDE_KEY;
 			}
 			break;
 
