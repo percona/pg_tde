@@ -1032,7 +1032,7 @@ open_keyring_infofile(Oid database_id, int flags)
 
 /*
  * Fetch the next key provider from the file and update the curr_pos
-*/
+ */
 static bool
 fetch_next_key_provider(int fd, off_t *curr_pos, KeyringProviderRecord *provider)
 {

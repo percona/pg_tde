@@ -35,7 +35,7 @@
 #include "smgr/pg_tde_smgr.h"
 
 #if PG_VERSION_NUM >= 180000
-PG_MODULE_MAGIC_EXT(.name = PG_TDE_NAME,.version = PG_TDE_VERSION);
+PG_MODULE_MAGIC_EXT(.name = PG_TDE_NAME, .version = PG_TDE_VERSION);
 #else
 PG_MODULE_MAGIC;
 #endif

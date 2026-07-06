@@ -5,7 +5,7 @@ on:
       - documentation/**
 
 env:
-  pg_version: 18
+  pg_version: 19
 
 jobs:
   check:

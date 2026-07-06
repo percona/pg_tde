@@ -40,7 +40,7 @@
 #include "common/logging.h"
 #endif
 
-static void report_invalid_record(XLogReaderState *state, const char *fmt,...)
+static void report_invalid_record(XLogReaderState *state, const char *fmt, ...)
 			pg_attribute_printf(2, 3);
 static void allocate_recordbuf(XLogReaderState *state, uint32 reclength);
 static int	ReadPageInternal(XLogReaderState *state, XLogRecPtr pageptr,
@@ -84,7 +84,7 @@ SetXLogSmgr(const XLogSmgr *xlsmgr)
  * the current record being read.
  */
 static void
-report_invalid_record(XLogReaderState *state, const char *fmt,...)
+report_invalid_record(XLogReaderState *state, const char *fmt, ...)
 {
 	va_list		args;
 

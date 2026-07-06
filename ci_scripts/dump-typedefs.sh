@@ -19,4 +19,5 @@ fi
   ../postgres/src/tools/find_typedef .
   wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_17_STABLE"
   wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_18_STABLE"
+  wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_19_STABLE"
 ) | sort -u > ../src/typedefs.list
