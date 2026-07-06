@@ -144,7 +144,7 @@ sub bao_setup
 			"-dev-cluster-json=$temp/info"
 		]);
 
-	wait_for_file("$temp/info", '.');
+	wait_for_file_backport("$temp/info", '.');
 
 	my $cluster_info = decode_json(slurp_file("$temp/info"));
 
@@ -197,7 +197,7 @@ sub write_file
 }
 
 # Taken from PostgreSQL 19
-sub wait_for_file
+sub wait_for_file_backport
 {
 	my ($filename, $regexp, $offset) = @_;
 	$offset = 0 unless defined $offset;

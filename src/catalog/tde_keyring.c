@@ -16,6 +16,7 @@
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/snapmgr.h"
+#include "utils/tuplestore.h"
 
 #include "access/pg_tde_xlog.h"
 #include "catalog/tde_global_space.h"
