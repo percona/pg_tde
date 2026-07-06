@@ -50,7 +50,8 @@ DEPS=(
 sudo apt-get update
 sudo apt-get install -y ${DEPS[@]}
 
-sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 22
+sudo apt-get install -y clang-format-22
 
 # Cosmian KMS
 COSMIAN_VERSION=5.21.0

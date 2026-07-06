@@ -1,4 +1,4 @@
-[submodule "src/libkmip"]
-	path = src/libkmip
+[submodule "subprojects/libkmip"]
+	path = subprojects/libkmip
 	url = https://github.com/Percona-Lab/libkmip.git
 	ignore = dirty
