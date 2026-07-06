@@ -12,11 +12,11 @@ on:
 env:
   pg_version: 18
   CC: clang
+  CXX: clang++
   LD: clang
   UBSAN_OPTIONS: log_path=${{ github.workspace }}/sanitize.log print_suppressions=0 print_stacktrace=1 print_summary=1 halt_on_error=1
   ASAN_OPTIONS: log_path=${{ github.workspace }}/sanitize.log print_suppressions=0 abort_on_error=1
   LSAN_OPTIONS: log_path=${{ github.workspace }}/sanitize.log print_suppressions=0 suppressions=${{ github.workspace }}/src/ci_scripts/suppressions/lsan.supp
-  ASAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer-14
   # Avoid failures on slow recovery
   PGCTLTIMEOUT: 120
   PG_TEST_TIMEOUT_DEFAULT: 300
