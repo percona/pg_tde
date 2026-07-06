@@ -8,9 +8,6 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 `pg_tde` 2.2.1 focuses on stability and compatibility improvements. This release improves `pg_rewind` reliability and Microsoft Visual C++ (MSVC) compatibility. For more details, see the [Changelog](#changelog).
 
-!!! warning
-    `pg_tde` 2.2.1 is not compatible with Percona Distribution for PostgreSQL older than 17.10 or 18.4.
-
 ## Known issues
 
 * The default `mlock` limit on Rocky Linux 8 for ARM64-based architectures equals the memory page size and is 64 Kb. This results in the child process with `pg_tde` failing to allocate another memory page because the max memory limit is reached by the parent process.
