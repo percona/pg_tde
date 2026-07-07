@@ -31,9 +31,14 @@ case "$1" in
         ARGS+=" -Dc_link_args=['-fsanitize=address','-fsanitize=undefined']"
         ;;
 
+    exec-backend)
+        echo "Building with exec-backend option"
+        BUILD_TYPE=debugoptimized
+        ;;
+
     *)
         echo "Unknown build type: $1"
-        echo "Please use one of the following: debug, debugoptimized, coverage, sanitize"
+        echo "Please use one of the following: debug, debugoptimized, coverage, sanitize, exec-backend"
         exit 1
         ;;
 esac
