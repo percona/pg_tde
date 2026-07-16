@@ -47,7 +47,6 @@ jobs:
 
   arm:
     name: ARM matrix
-    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
