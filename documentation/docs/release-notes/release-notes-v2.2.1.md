@@ -6,7 +6,7 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 ## Release Highlights
 
-`pg_tde` 2.2.1 focuses on stability and compatibility improvements. This release improves `pg_rewind` reliability and Microsoft Visual C++ (MSVC) compatibility. For more details, see the [Changelog](#changelog).
+`pg_tde` 2.2.1 focuses on stability and compatibility improvements. This release improves `pg_rewind` reliability. For more details, see the [Changelog](#changelog).
 
 !!! warning
     `pg_tde` 2.2.1 is not compatible with Percona Distribution for PostgreSQL older than 17.10.2 or 18.4.2.
@@ -26,7 +26,15 @@ The `pg_tde` extension, provided by Percona, adds [Transparent Data Encryption (
 
 Changes introduced in `pg_tde` 2.2.1:
 
+### New Features
+
+- [PG-2398](https://perconadev.atlassian.net/browse/PG-2398) - PostgreSQL 16 support
+
 ### Bug Fixes
 
-- [PG-2473](https://perconadev.atlassian.net/browse/PG-2473) - Fixed build and runtime compatibility issues for Microsoft Visual C++ (MSVC) on Windows.
 - [PG-2407](https://perconadev.atlassian.net/browse/PG-2407) - Fixed multiple issues affecting `pg_rewind` for `pg_tde` clusters, improving reliability during rewind and recovery operations.
+- [PG-2258](https://perconadev.atlassian.net/browse/PG-2258) - Fixed "could not find server principal key" error from `pg_tde_basebackup`
+
+### Changes
+
+- Remove support for building `pg_tde` with `make`, now it can only be built with Meson
