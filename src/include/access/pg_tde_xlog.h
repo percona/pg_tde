@@ -5,7 +5,7 @@
 #ifndef PG_TDE_XLOG_H
 #define PG_TDE_XLOG_H
 
-#ifndef FRONTEND
+#include "access/xlogreader.h"
 
 /* TDE XLOG record types */
 #define XLOG_TDE_CREATE_RELATION_KEY	0x00
@@ -24,7 +24,11 @@ typedef struct XLogRelKey
 	RelFileLocator rlocator;
 } XLogRelKey;
 
-extern void RegisterTdeRmgr(void);
+extern void tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record);
+extern const char *tdeheap_rmgr_identify(uint8 info);
 
+#ifndef FRONTEND
+extern void RegisterTdeRmgr(void);
 #endif							/* !FRONTEND */
+
 #endif							/* PG_TDE_XLOG_H */

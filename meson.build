@@ -153,6 +153,7 @@ pg_tde_frontend = static_library('pg_tde_frontend',
   files(
     'src/pg_tde_fe.c',
     'src/access/pg_tde_tdemap.c',
+    'src/access/pg_tde_xlog.c',
     'src/access/pg_tde_xlog_keys.c',
     'src/catalog/tde_keyring.c',
     'src/catalog/tde_keyring_parse_opts.c',
