@@ -18,6 +18,7 @@
 
 /* ID 140 is registered for Percona TDE extension: https://wiki.postgresql.org/wiki/CustomWALResourceManagers */
 #define RM_TDERMGR_ID	140
+#define RM_TDERMGR_NAME	"pg_tde"
 
 typedef struct XLogRelKey
 {
