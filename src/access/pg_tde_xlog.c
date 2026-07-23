@@ -4,6 +4,7 @@
 
 #include "postgres.h"
 
+#ifndef FRONTEND
 #include "access/xlog.h"
 #include "access/xlog_internal.h"
 #include "access/xloginsert.h"
@@ -11,6 +12,7 @@
 #include "storage/shmem.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
+#endif
 
 #include "access/pg_tde_xlog_keys.h"
 #include "access/pg_tde_xlog.h"
@@ -21,9 +23,11 @@
 #include "pg_tde_defines.h"
 #include "smgr/pg_tde_smgr.h"
 
+#ifdef FRONTEND
+#include "pg_tde_fe.h"
+#else
+
 static void tdeheap_rmgr_redo(XLogReaderState *record);
-static void tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record);
-static const char *tdeheap_rmgr_identify(uint8 info);
 
 static const RmgrData tdeheap_rmgr = {
 	.rm_name = "pg_tde",
@@ -93,8 +97,9 @@ tdeheap_rmgr_redo(XLogReaderState *record)
 		elog(PANIC, "pg_tde_redo: unknown op code %u", info);
 	}
 }
+#endif							/* !FRONTEND */
 
-static void
+void
 tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record)
 {
 	uint8		info = XLogRecGetInfo(record) & ~XLR_INFO_MASK;
@@ -143,7 +148,7 @@ tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record)
 	}
 }
 
-static const char *
+const char *
 tdeheap_rmgr_identify(uint8 info)
 {
 	switch (info & ~XLR_INFO_MASK)
