@@ -86,7 +86,7 @@ initialize_custom_rmgrs(void)
 	/* Initialize pg_tde resource manager */
 	Assert(RmgrIdIsValid(RM_TDERMGR_ID));
 
-	CustomRmgrDesc[RM_TDERMGR_ID - RM_MIN_CUSTOM_ID].rm_name = "pg_tde";
+	CustomRmgrDesc[RM_TDERMGR_ID - RM_MIN_CUSTOM_ID].rm_name = RM_TDERMGR_NAME;
 	CustomRmgrDesc[RM_TDERMGR_ID - RM_MIN_CUSTOM_ID].rm_desc = tdeheap_rmgr_desc;
 	CustomRmgrDesc[RM_TDERMGR_ID - RM_MIN_CUSTOM_ID].rm_identify = tdeheap_rmgr_identify;
 

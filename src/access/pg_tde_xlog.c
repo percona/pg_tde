@@ -30,7 +30,7 @@
 static void tdeheap_rmgr_redo(XLogReaderState *record);
 
 static const RmgrData tdeheap_rmgr = {
-	.rm_name = "pg_tde",
+	.rm_name = RM_TDERMGR_NAME,
 	.rm_redo = tdeheap_rmgr_redo,
 	.rm_desc = tdeheap_rmgr_desc,
 	.rm_identify = tdeheap_rmgr_identify,
