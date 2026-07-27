@@ -10,7 +10,7 @@ coverage:
         paths:
           - "!fetools/"
 ignore:
-  - subprojects/libkmip/
+  - src/libkmip/
 comment:
   layout: "header, diff, components"
 component_management:
