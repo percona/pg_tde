@@ -4,10 +4,13 @@
 
 #include "postgres.h"
 
+#include <unistd.h>
+
 #include "keyring/keyring_curl.h"
 #include "pg_tde_defines.h"
 
 CURL	   *keyringCurl = NULL;
+static pid_t keyringCurlPid = 0;
 
 static size_t
 write_func(void *ptr, size_t size, size_t nmemb, struct CurlString *s)
@@ -29,12 +32,23 @@ write_func(void *ptr, size_t size, size_t nmemb, struct CurlString *s)
 bool
 curlSetupSession(const char *url, const char *caFile, CurlString *outStr)
 {
-	if (keyringCurl == NULL)
+	/*
+	 * A handle created before a fork keeps the parent's connection cache, so
+	 * the socket is shared with the parent and every other child. Two
+	 * processes writing to it interleave their requests on one stream. Start
+	 * over whenever we notice we are in a different process.
+	 *
+	 * The inherited handle is abandoned rather than cleaned up: cleanup would
+	 * send a TLS shutdown over the connection the parent still uses.
+	 */
+	if (keyringCurl == NULL || keyringCurlPid != getpid())
 	{
 		keyringCurl = curl_easy_init();
 
 		if (keyringCurl == NULL)
 			return false;
+
+		keyringCurlPid = getpid();
 	}
 	else
 	{
