@@ -39,3 +39,4 @@ Changes introduced in `pg_tde` 2.2.2:
 
 - [PG-2492](https://perconadev.atlassian.net/browse/PG-2492) - Fixed crash when empty certificate parameters are passed to `pg_tde_add_global_key_provider_kmip()` or `pg_tde_add_database_key_provider_kmip()`
 - [PG-2608](https://perconadev.atlassian.net/browse/PG-2608) - Fixed a race condition in the Vault key provider that could occur when multiple processes accessed the same cURL handle after a fork.
+- [PG-2609](https://perconadev.atlassian.net/browse/PG-2609) - Fixed WAL archiving (`pg_tde_archive_decrypt` and `pg_tde_restore_encrypt`) when pg_wal dir is a symlink.

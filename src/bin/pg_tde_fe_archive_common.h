@@ -19,6 +19,14 @@ derive_tde_dir_from_segment_path(const char *segpath, const char *sep,
 
 		strlcpy(segdir, segpath, sep - segpath + 1);
 		snprintf(tdedir, tdedir_sz, "%s/../" PG_TDE_DATA_DIR, segdir);
+
+		/*
+		 * tdedir most probaly is "pg_wal/../pg_tde" now, but it won't work if
+		 * pg_wal is a symlink directing outside the datadir. In such a case,
+		 * canonicalization will remove the reference to pg_wal, making path
+		 * just "pg_tde". And it won't do any harm for other cases.
+		 */
+		canonicalize_path(tdedir);
 	}
 	else
 	{
