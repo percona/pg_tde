@@ -2,6 +2,21 @@
 
 WAL encryption requires a principal key. You can satisfy this requirement in one of the following ways:
 
+!!! warning "WAL archiving and recovery requirements"
+
+    A deployment with WAL encryption is not supported unless you use both of the following tools for WAL archiving and recovery:
+
+    * [`pg_tde_archive_decrypt`](command-line-tools/pg-tde-archive-decrypt.md) in `archive_command`
+    * [`pg_tde_restore_encrypt`](command-line-tools/pg-tde-restore-encrypt.md) in `restore_command`
+
+    If you use pgBackRest, you must also disable its asynchronous archiving, WAL header checks, and page checksum validation. Add these settings to the applicable pgBackRest configuration section:
+
+    ```ini
+    archive-async=n
+    archive-header-check=n
+    checksum-page=n
+    ```
+
 ## Option 1: Use the default principal key
 
 If a default principal key is already configured for the server, WAL encryption uses it automatically. No additional server key configuration is required.

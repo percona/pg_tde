@@ -48,8 +48,14 @@ restore_command='pg_tde_restore_encrypt %f %p "cp /mnt/server/archivedir/%%f %%p
 restore_command='pg_tde_restore_encrypt %f %p "pgbackrest --stanza=your_stanza archive-get %%f \"%%p\""'
 ```
 
-!!! warning
-    When using PgBackRest with WAL encryption, disable PostgreSQL data checksums. Otherwise, PgBackRest may spam error messages, and in some package builds the log statement can cause crashes.
+!!! warning "Required configuration"
 
-!!! warning
-    PgBackRest's [asynchronous archiving](https://pgbackrest.org/user-guide.html#async-archiving) doesn't work with encrypted WAL.
+    A deployment with WAL encryption is not supported unless `archive_command` uses [`pg_tde_archive_decrypt`](./pg-tde-archive-decrypt.md) and `restore_command` uses `pg_tde_restore_encrypt`.
+
+    Disable the following pgBackRest features in the applicable pgBackRest configuration section:
+
+    ```ini
+    archive-async=n
+    archive-header-check=n
+    checksum-page=n
+    ```
