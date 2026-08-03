@@ -252,6 +252,26 @@ alter_table_encryption_mix(Oid relid)
 	return enc;
 }
 
+static EncryptionMix
+alter_table_encryption_mix_check(Oid relid)
+{
+	EncryptionMix encmix = alter_table_encryption_mix(relid);
+
+	/*
+	 * This check is very broad and could be limited only to commands which
+	 * recurse to child tables or to those which may create new relfilenodes,
+	 * but this restrictive code is good enough for now.
+	 */
+	if (encmix == ENC_MIX_MIXED)
+	{
+		ereport(ERROR,
+				errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Recursive ALTER TABLE on a mix of encrypted and unencrypted relations is not supported"));
+	}
+
+	return encmix;
+}
+
 /*
  * pg_tde_ddl_command_start_capture is an event trigger function triggered
  * at the start of any DDL command execution.
@@ -377,9 +397,9 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 		if (relid != InvalidOid)
 		{
 			AlterTableCmd *setAccessMethod = NULL;
+			bool		create_partition = false;
 			ListCell   *lcmd;
 			TdeDdlEvent event = {.parsetree = parsetree};
-			EncryptionMix encmix;
 			Relation	rel;
 
 			foreach(lcmd, stmt->cmds)
@@ -388,34 +408,50 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 
 				if (cmd->subtype == AT_SetAccessMethod)
 					setAccessMethod = cmd;
-			}
-
-			encmix = alter_table_encryption_mix(relid);
-
-			/*
-			 * This check is very braod and could be limited only to commands
-			 * which recurse to child tables or to those which may create new
-			 * relfilenodes, but this restrictive code is good enough for now.
-			 */
-			if (encmix == ENC_MIX_MIXED)
-			{
-				ereport(ERROR,
-						errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-						errmsg("Recursive ALTER TABLE on a mix of encrypted and unencrypted relations is not supported"));
+#if PG_VERSION_NUM >= 190000
+				else if (cmd->subtype == AT_SplitPartition || cmd->subtype == AT_MergePartitions)
+					create_partition = true;
+#endif
 			}
 
 			rel = relation_open(relid, NoLock);
 
-			/*
-			 * With a SET ACCESS METHOD clause, use that as the basis for
-			 * decisions. But if it's not present, look up encryption status
-			 * of the table.
-			 *
-			 * Since partitioned tables lack storage we do not need to set the
-			 * encryption mode.
-			 */
-			if (setAccessMethod && RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
+			if (create_partition)
 			{
+				/*
+				 * Partition merge and split actually behave like CREATE TABLE
+				 * so the AM of the new partition should be inherited from the
+				 * parent partition, i.e. the table we "alter".
+				 */
+
+				if (rel->rd_rel->relam == InvalidOid)
+				{
+					if (strcmp(default_table_access_method, "tde_heap") == 0)
+						event.encryptMode = TDE_ENCRYPT_MODE_ENCRYPT;
+					else
+						event.encryptMode = TDE_ENCRYPT_MODE_PLAIN;
+				}
+				else if (rel->rd_rel->relam == get_tde_table_am_oid())
+				{
+					event.encryptMode = TDE_ENCRYPT_MODE_ENCRYPT;
+					checkPrincipalKeyConfigured();
+				}
+				else
+					event.encryptMode = TDE_ENCRYPT_MODE_PLAIN;
+			}
+			else if (setAccessMethod && RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
+			{
+				/*
+				 * With a SET ACCESS METHOD clause, use that as the basis for
+				 * decisions. But if it's not present, look up encryption
+				 * status of the table.
+				 *
+				 * Since partitioned tables lack storage we do not need to set
+				 * the encryption mode.
+				 */
+
+				alter_table_encryption_mix_check(relid);
+
 				event.rebuildSequencesFor = relid;
 
 				if (shouldEncryptTable(setAccessMethod->name))
@@ -428,6 +464,8 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 			}
 			else
 			{
+				EncryptionMix encmix = alter_table_encryption_mix_check(relid);
+
 				if (encmix == ENC_MIX_ENCRYPTED)
 				{
 					event.encryptMode = TDE_ENCRYPT_MODE_ENCRYPT;

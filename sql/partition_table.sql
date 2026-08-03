@@ -118,4 +118,113 @@ CREATE TABLE partition_child PARTITION OF partition_parent FOR VALUES FROM (10) 
 SELECT pg_tde_is_encrypted('partition_child_a_idx');
 DROP TABLE partition_parent;
 
+-- Split/merge should behave like creating a new partition
+
+CREATE TABLE partitioned_table_plain (
+    id int,
+    data text,
+    created_at date,
+    PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at) USING heap;
+
+CREATE TABLE partition_q1q2_2024 PARTITION OF partitioned_table_plain FOR VALUES FROM ('2024-01-01') TO ('2024-07-01') USING tde_heap;
+CREATE TABLE partition_q3q4_2024 PARTITION OF partitioned_table_plain FOR VALUES FROM ('2024-07-01') TO ('2025-01-01') USING heap;
+
+ALTER TABLE partitioned_table_plain SPLIT PARTITION partition_q1q2_2024 INTO (
+    PARTITION partition_q1_2024 FOR VALUES FROM ('2024-01-01') TO ('2024-04-01'),
+    PARTITION partition_q2_2024 FOR VALUES FROM ('2024-04-01') TO ('2024-07-01')
+);
+ALTER TABLE partitioned_table_plain SPLIT PARTITION partition_q3q4_2024 INTO (
+    PARTITION partition_q3_2024 FOR VALUES FROM ('2024-07-01') TO ('2024-10-01'),
+    PARTITION partition_q4_2024 FOR VALUES FROM ('2024-10-01') TO ('2025-01-01')
+);
+
+SELECT pg_tde_is_encrypted('partition_q1_2024');
+SELECT pg_tde_is_encrypted('partition_q2_2024');
+SELECT pg_tde_is_encrypted('partition_q3_2024');
+SELECT pg_tde_is_encrypted('partition_q4_2024');
+
+ALTER TABLE partition_q3_2024 SET ACCESS METHOD tde_heap;
+
+ALTER TABLE partitioned_table_plain MERGE PARTITIONS (partition_q1_2024, partition_q2_2024) INTO partition_q1q2_2024;
+ALTER TABLE partitioned_table_plain MERGE PARTITIONS (partition_q3_2024, partition_q4_2024) INTO partition_q3q4_2024;
+
+SELECT pg_tde_is_encrypted('partition_q1q2_2024');
+SELECT pg_tde_is_encrypted('partition_q3q4_2024');
+
+DROP TABLE partitioned_table_plain;
+
+CREATE TABLE partitioned_table_enc (
+    id int,
+    data text,
+    created_at date,
+    PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at) USING tde_heap;
+
+CREATE TABLE partition_q1q2_2024 PARTITION OF partitioned_table_enc FOR VALUES FROM ('2024-01-01') TO ('2024-07-01') USING tde_heap;
+CREATE TABLE partition_q3q4_2024 PARTITION OF partitioned_table_enc FOR VALUES FROM ('2024-07-01') TO ('2025-01-01') USING heap;
+
+ALTER TABLE partitioned_table_enc SPLIT PARTITION partition_q1q2_2024 INTO (
+    PARTITION partition_q1_2024 FOR VALUES FROM ('2024-01-01') TO ('2024-04-01'),
+    PARTITION partition_q2_2024 FOR VALUES FROM ('2024-04-01') TO ('2024-07-01')
+);
+ALTER TABLE partitioned_table_enc SPLIT PARTITION partition_q3q4_2024 INTO (
+    PARTITION partition_q3_2024 FOR VALUES FROM ('2024-07-01') TO ('2024-10-01'),
+    PARTITION partition_q4_2024 FOR VALUES FROM ('2024-10-01') TO ('2025-01-01')
+);
+
+SELECT pg_tde_is_encrypted('partition_q1_2024');
+SELECT pg_tde_is_encrypted('partition_q2_2024');
+SELECT pg_tde_is_encrypted('partition_q3_2024');
+SELECT pg_tde_is_encrypted('partition_q4_2024');
+
+ALTER TABLE partition_q3_2024 SET ACCESS METHOD heap;
+
+ALTER TABLE partitioned_table_enc MERGE PARTITIONS (partition_q1_2024, partition_q2_2024) INTO partition_q1q2_2024;
+ALTER TABLE partitioned_table_enc MERGE PARTITIONS (partition_q3_2024, partition_q4_2024) INTO partition_q3q4_2024;
+
+SELECT pg_tde_is_encrypted('partition_q1q2_2024');
+SELECT pg_tde_is_encrypted('partition_q3q4_2024');
+
+DROP TABLE partitioned_table_enc;
+
+CREATE TABLE partitioned_table_default (
+    id int,
+    data text,
+    created_at date,
+    PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE partition_q1q2_2024 PARTITION OF partitioned_table_default FOR VALUES FROM ('2024-01-01') TO ('2024-07-01') USING tde_heap;
+CREATE TABLE partition_q3q4_2024 PARTITION OF partitioned_table_default FOR VALUES FROM ('2024-07-01') TO ('2025-01-01') USING heap;
+
+SET default_table_access_method = 'tde_heap';
+ALTER TABLE partitioned_table_default SPLIT PARTITION partition_q1q2_2024 INTO (
+    PARTITION partition_q1_2024 FOR VALUES FROM ('2024-01-01') TO ('2024-04-01'),
+    PARTITION partition_q2_2024 FOR VALUES FROM ('2024-04-01') TO ('2024-07-01')
+);
+RESET default_table_access_method;
+ALTER TABLE partitioned_table_default SPLIT PARTITION partition_q3q4_2024 INTO (
+    PARTITION partition_q3_2024 FOR VALUES FROM ('2024-07-01') TO ('2024-10-01'),
+    PARTITION partition_q4_2024 FOR VALUES FROM ('2024-10-01') TO ('2025-01-01')
+);
+
+SELECT pg_tde_is_encrypted('partition_q1_2024');
+SELECT pg_tde_is_encrypted('partition_q2_2024');
+SELECT pg_tde_is_encrypted('partition_q3_2024');
+SELECT pg_tde_is_encrypted('partition_q4_2024');
+
+ALTER TABLE partition_q1_2024 SET ACCESS METHOD tde_heap;
+ALTER TABLE partition_q3_2024 SET ACCESS METHOD heap;
+
+ALTER TABLE partitioned_table_default MERGE PARTITIONS (partition_q1_2024, partition_q2_2024) INTO partition_q1q2_2024;
+SET default_table_access_method = 'tde_heap';
+ALTER TABLE partitioned_table_default MERGE PARTITIONS (partition_q3_2024, partition_q4_2024) INTO partition_q3q4_2024;
+RESET default_table_access_method;
+
+SELECT pg_tde_is_encrypted('partition_q1q2_2024');
+SELECT pg_tde_is_encrypted('partition_q3q4_2024');
+
+DROP TABLE partitioned_table_default;
+
 DROP EXTENSION pg_tde;
