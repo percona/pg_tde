@@ -78,7 +78,5 @@ cd "$PSP_DIR"
 
 make install-world -s -j $NCPU
 
-if [ "$INSTALL_INJECTION_POINTS" = 1 ]; then
-    # Injection points extension is not built by default
-    make install -j -s -C src/test/modules/injection_points
-fi
+# We need to build all test extensions before running installcheck-world
+make install -j -s -C src/test/modules
