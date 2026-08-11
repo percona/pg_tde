@@ -57,6 +57,8 @@ my %wal_skip = (
 	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
 	'src/bin/pg_combinebackup/t/006_db_file_copy.pl' =>
 	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
+	'src/bin/pg_combinebackup/t/012_vm_consistency.pl' =>
+	  'pg_basebackup without -E from server with encrypted WAL produces broken backups',
 	'src/bin/pg_rewind/t/001_basic.pl' =>
 	  'copies WAL directly to archive without using archive_command',
 	'src/bin/pg_verifybackup/t/009_extract.pl' =>
