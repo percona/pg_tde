@@ -1,6 +1,6 @@
 project('pg_tde',
   ['c', 'cpp'],
-  version: '2.2.1',
+  version: '2.2.2',
   meson_version: '>=0.56',
 )
 
@@ -379,6 +379,7 @@ tap_tests = [
   't/tde_heap.pl',
   't/unlogged_tables.pl',
   't/vault_v2.pl',
+  't/wal_archiving_symlink.pl',
   't/wal_archiving.pl',
   't/wal_encrypt.pl',
   't/wal_key_tli.pl',

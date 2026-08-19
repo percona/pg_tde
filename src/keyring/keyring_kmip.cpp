@@ -25,8 +25,11 @@ extern "C"
 
 namespace
 {
-/* Timeout applied to connect, handshake and every read/write, in ms. */
-constexpr int KMIP_TIMEOUT_MS = 10000;
+/*
+ * TODO: Timeouts are disabled since they are broken in libkmip due a bug with
+ *       SA_RESTART and signals.
+ */
+constexpr int KMIP_TIMEOUT_MS = 0;
 
 /*
  * Run a kmipclient operation, translating any C++ exception it throws into
