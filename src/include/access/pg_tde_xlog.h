@@ -5,7 +5,7 @@
 #ifndef PG_TDE_XLOG_H
 #define PG_TDE_XLOG_H
 
-#ifndef FRONTEND
+#include "access/xlogreader.h"
 
 /* TDE XLOG record types */
 #define XLOG_TDE_CREATE_RELATION_KEY	0x00
@@ -18,13 +18,18 @@
 
 /* ID 140 is registered for Percona TDE extension: https://wiki.postgresql.org/wiki/CustomWALResourceManagers */
 #define RM_TDERMGR_ID	140
+#define RM_TDERMGR_NAME	"pg_tde"
 
 typedef struct XLogRelKey
 {
 	RelFileLocator rlocator;
 } XLogRelKey;
 
-extern void RegisterTdeRmgr(void);
+extern void tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record);
+extern const char *tdeheap_rmgr_identify(uint8 info);
 
+#ifndef FRONTEND
+extern void RegisterTdeRmgr(void);
 #endif							/* !FRONTEND */
+
 #endif							/* PG_TDE_XLOG_H */

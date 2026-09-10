@@ -32,6 +32,8 @@
 #include "storage/standbydefs.h"
 #include "utils/relmapper.h"
 
+#include "access/pg_tde_xlog.h"
+
 #define PG_RMGR(symname,name,redo,desc,identify,startup,cleanup,mask,decode) \
 	{ name, desc, identify},
 
@@ -80,6 +82,14 @@ initialize_custom_rmgrs(void)
 		CustomRmgrDesc[i].rm_desc = default_desc;
 		CustomRmgrDesc[i].rm_identify = default_identify;
 	}
+
+	/* Initialize pg_tde resource manager */
+	Assert(RmgrIdIsValid(RM_TDERMGR_ID));
+
+	CustomRmgrDesc[RM_TDERMGR_ID - RM_MIN_CUSTOM_ID].rm_name = RM_TDERMGR_NAME;
+	CustomRmgrDesc[RM_TDERMGR_ID - RM_MIN_CUSTOM_ID].rm_desc = tdeheap_rmgr_desc;
+	CustomRmgrDesc[RM_TDERMGR_ID - RM_MIN_CUSTOM_ID].rm_identify = tdeheap_rmgr_identify;
+
 	CustomRmgrDescInitialized = true;
 }
 
