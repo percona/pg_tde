@@ -379,6 +379,7 @@ tap_tests = [
   't/pg_tde_upgrade.pl',
   't/pg_waldump_basic.pl',
   't/pg_waldump_fullpage.pl',
+  't/pg_waldump_tde_rmgr.pl',
   't/regress.pl',
   't/replication.pl',
   't/reuse_relfilenode_in_cache.pl',
