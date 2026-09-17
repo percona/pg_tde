@@ -34,6 +34,7 @@
 #include "storage/bufpage.h"
 
 #include "pg_tde_fe.h"
+#include "access/pg_tde_xlog.h"
 #include "access/pg_tde_xlog_smgr.h"
 #include "access/xlog_smgr.h"
 #include "catalog/tde_global_space.h"
@@ -102,6 +103,8 @@ print_rmgr_list(void)
 	{
 		printf("%s\n", GetRmgrDesc(i)->rm_name);
 	}
+
+	printf("%s\n", RM_TDERMGR_NAME);
 }
 
 /*
@@ -1136,6 +1139,11 @@ main(int argc, char **argv)
 							goto bad_argument;
 						}
 						config.filter_by_rmgr[rmid] = true;
+						config.filter_by_rmgr_enabled = true;
+					}
+					else if (pg_strcasecmp(optarg, RM_TDERMGR_NAME) == 0)
+					{
+						config.filter_by_rmgr[RM_TDERMGR_ID] = true;
 						config.filter_by_rmgr_enabled = true;
 					}
 					else
