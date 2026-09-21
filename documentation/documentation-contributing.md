@@ -37,13 +37,14 @@ To edit the documentation locally:
 2. Clone the repository on your machine:
 
 ```sh
-git clone --recursive git@github.com:<your-name>/postgres.git
+git clone --recursive git@github.com:<your-name>/pg_tde.git
 ```
 
-3. Change the directory to `contrib/pg_tde` and add the remote upstream repository:
+3. Change the directory to `pg_tde` and add the remote upstream repository:
 
 ```sh
-git remote add upstream git@github.com:percona/postgres.git
+cd pg_tde
+git remote add upstream git@github.com:percona/pg_tde.git
 ```
 
 4. Pull the latest changes from upstream:
@@ -105,26 +106,27 @@ View the site at <http://127.0.0.1:8000>
 
 ## Repository structure
 
-The repository includes the following directories and files:
+The documentation lives in the `documentation` directory of the repository and includes the following directories and files:
 
-- `mkdocs-base.yml` - the base configuration file. It includes general settings and documentation structure.
-- `mkdocs.yml` - configuration file. Contains the settings for building the docs with Material theme.
+- `mkdocs.yml` - configuration file. Contains the general settings, the documentation structure and the settings for building the docs with Material theme.
+- `variables.yml` - variables used throughout the documentation, such as version numbers and release dates.
+- `requirements.txt` - the Python packages required to build the documentation.
 - `docs`:
   - `*.md` - Source markdown files.
-  - `assets` - Images, text snippets and templates
-    - `images` - Images, logos and favicons
-    - `fragments` - Text snippets used in multiple places in docs. 
-    - `templates`:
-      - `pdf_cover_page.tpl` - The PDF cover page template
+  - `_images` - Images, logos and favicons
+  - `templates`:
+    - `pdf_cover_page.tpl` - The PDF cover page template
   - `css` - Styles
   - `js` - Javascript files
-- `_resource`: The set of Material theme templates with our customizations  
+- `snippets` - Text snippets used in multiple places in docs.
+- `_resource`: The set of Material theme templates with our customizations
   - `.icons` - Custom icons used in the documentation
   - `overrides`:
     - `partials` - The layout templates for various parts of the documentation such as header, copyright and others.
     - `main.html` - The layout template for hosting the documentation on Percona website
-    - `404.html` - The 404 page template
 - `_resourcepdf` - The set of Material theme templates with our customizations for PDF builds
+  - `overrides`:
+    - `404.html` - The 404 page template
 - `site` - This is where the output HTML files are put after the build
 
 [MkDocs]: https://www.mkdocs.org/
