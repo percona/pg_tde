@@ -45,6 +45,7 @@ extern void principal_key_startup_cleanup(Oid databaseId);
 extern LWLock *tde_lwlock_enc_keys(void);
 extern bool pg_tde_principal_key_configured(Oid databaseId);
 extern TDEPrincipalKey *GetPrincipalKey(Oid dbOid, LWLockMode lockMode);
+extern void clear_principal_key_cache(Oid databaseId);
 #else
 extern TDEPrincipalKey *GetPrincipalKey(Oid dbOid, void *lockMode);
 
