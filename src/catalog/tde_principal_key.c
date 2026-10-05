@@ -1005,28 +1005,18 @@ clean_fe_server_principal_key_cache(void)
 #endif							/* FRONTEND */
 
 /*
- * Get principal key form the keyring.
+ * Fetches the principal key described by the signed key info from its keyring
+ * and verifies the signature. Returns a palloc'd key.
  */
-static TDEPrincipalKey *
-get_principal_key_from_keyring(Oid dbOid)
+TDEPrincipalKey *
+pg_tde_load_principal_key(const TDESignedPrincipalKeyInfo *principalKeyInfo)
 {
-	TDESignedPrincipalKeyInfo *principalKeyInfo;
 	GenericKeyring *keyring;
 	KeyInfo    *keyInfo;
 	KeyringReturnCode keyring_ret;
 	TDEPrincipalKey *principalKey;
 
-	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
-
-	if (dbOid == GLOBAL_DATA_TDE_OID)
-		principalKeyInfo = pg_tde_get_server_key_info();
-	else
-		principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
-
-	if (principalKeyInfo == NULL)
-		return NULL;
-
-	keyring = GetKeyProviderByID(principalKeyInfo->data.keyringId, dbOid);
+	keyring = GetKeyProviderByID(principalKeyInfo->data.keyringId, principalKeyInfo->data.databaseId);
 	if (keyring == NULL)
 		ereport(ERROR,
 				errcode(ERRCODE_DATA_CORRUPTED),
@@ -1046,7 +1036,7 @@ get_principal_key_from_keyring(Oid dbOid)
 				errmsg("key \"%s\" not found in key provider \"%s\"",
 					   principalKeyInfo->data.name, keyring->provider_name));
 
-	if (!pg_tde_verify_principal_key_info(principalKeyInfo, &keyInfo->data))
+	if (!pg_tde_verify_principal_key_info((TDESignedPrincipalKeyInfo *) principalKeyInfo, &keyInfo->data))
 		ereport(ERROR,
 				errcode(ERRCODE_DATA_CORRUPTED),
 				errmsg("Failed to verify principal key header for key %s, incorrect principal key or corrupted key file",
@@ -1058,10 +1048,35 @@ get_principal_key_from_keyring(Oid dbOid)
 	memcpy(principalKey->keyData, keyInfo->data.data, keyInfo->data.len);
 	principalKey->keyLength = keyInfo->data.len;
 
-	Assert(dbOid == principalKey->keyInfo.databaseId);
-
 	pfree(keyInfo);
 	free_keyring(keyring);
+
+	return principalKey;
+}
+
+/*
+ * Get principal key form the keyring.
+ */
+static TDEPrincipalKey *
+get_principal_key_from_keyring(Oid dbOid)
+{
+	TDESignedPrincipalKeyInfo *principalKeyInfo;
+	TDEPrincipalKey *principalKey;
+
+	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
+
+	if (dbOid == GLOBAL_DATA_TDE_OID)
+		principalKeyInfo = pg_tde_get_server_key_info();
+	else
+		principalKeyInfo = pg_tde_get_principal_key_info(dbOid);
+
+	if (principalKeyInfo == NULL)
+		return NULL;
+
+	principalKey = pg_tde_load_principal_key(principalKeyInfo);
+
+	Assert(dbOid == principalKey->keyInfo.databaseId);
+
 	pfree(principalKeyInfo);
 
 	return principalKey;
