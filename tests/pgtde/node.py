@@ -84,7 +84,7 @@ class TdeNode(PgTestNode):
         return node
 
     def setup_db_key(
-        self, keyring: Keyring | str | Path, *, provider: str = "file-vault", key: str = "test-db-key"
+        self, keyring: Keyring | str | Path, *, provider: str = "db-provider", key: str = "test-db-key"
     ) -> None:
         api.create_extension(self)
         api.add_provider(self, keyring, provider)
@@ -95,7 +95,7 @@ class TdeNode(PgTestNode):
         self,
         keyring: Keyring | str | Path,
         *,
-        provider: str = "global-vault",
+        provider: str = "global-provider",
         key: str = "server-key",
         wal_encrypt: bool = False,
     ) -> None:
@@ -107,7 +107,7 @@ class TdeNode(PgTestNode):
             api.set_wal_encrypt(self, True)
 
     def setup_default_key(
-        self, keyring: Keyring | str | Path, *, provider: str = "global-vault", key: str = "default-key"
+        self, keyring: Keyring | str | Path, *, provider: str = "global-provider", key: str = "default-key"
     ) -> None:
         api.create_extension(self)
         api.add_provider(self, keyring, provider, scope="global")
