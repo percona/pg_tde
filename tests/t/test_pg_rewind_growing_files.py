@@ -1,14 +1,11 @@
 import subprocess
 from pathlib import Path
 
-from stormweaver.keyrings.file import FileKeyring
-
 from pgtde.rewind import TdeRewindDriver
 
 
-def test_pg_rewind_growing_files(pg_install_dir, sw_log_dir, tmp_path):
-    kr = FileKeyring(tmp_path / "kr.per")
-    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=kr, debug=True) as rw:
+def test_pg_rewind_growing_files(pg_install_dir, sw_log_dir, node_config, keyring_obj):
+    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=keyring_obj, debug=True, config=node_config) as rw:
         p = rw.setup_primary()
         p.safe_sql("CREATE TABLE tbl1 (d text)")
         p.safe_sql("INSERT INTO tbl1 VALUES ('in primary')")

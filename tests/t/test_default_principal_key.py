@@ -4,10 +4,10 @@ DEFAULT = ["-1", "file-provider", "default-key"]
 NEW_DEFAULT = ["-1", "file-provider", "new-default-key"]
 
 
-def test_default_principal_key(tde_node, tmp_path):
+def test_default_principal_key(tde_node, keyring_obj):
     node = tde_node
     api.create_extension(node)
-    api.add_provider(node, tmp_path / "global.keys", "file-provider", scope="global")
+    api.add_provider(node, keyring_obj, "file-provider", scope="global")
 
     node.expect_error(r"principal key not configured for current database", "SELECT pg_tde_verify_default_key()")
     assert api.default_key_info(node) is None

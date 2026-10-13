@@ -2,7 +2,6 @@
 import shutil
 
 import pytest
-from stormweaver.keyrings.file import FileKeyring
 
 from pgtde.rewind import TdeRewindDriver
 
@@ -22,10 +21,14 @@ class SymlinkWalDriver(TdeRewindDriver):
 
 
 @pytest.mark.parametrize("mode", ["local", "remote"])
-def test_pg_rewind_pg_xlog_symlink(mode, pg_install_dir, sw_log_dir, tmp_path):
-    kr = FileKeyring(tmp_path / "kr.per")
+def test_pg_rewind_pg_xlog_symlink(mode, pg_install_dir, sw_log_dir, node_config, keyring_obj, tmp_path):
     with SymlinkWalDriver(
-        pg_install_dir, cipher="aes_128", keyring=kr, debug=True, xlogdir=tmp_path / "xlog_primary"
+        pg_install_dir,
+        cipher="aes_128",
+        keyring=keyring_obj,
+        debug=True,
+        config=node_config,
+        xlogdir=tmp_path / "xlog_primary",
     ) as rw:
         p = rw.setup_primary()
         assert (p.datadir / "pg_wal").is_symlink()

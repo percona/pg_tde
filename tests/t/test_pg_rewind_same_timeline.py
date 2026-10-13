@@ -1,13 +1,11 @@
 # pg_tde_rewind with source and target on the same timeline succeeds.
 import stormweaver.testing as st
-from stormweaver.keyrings.file import FileKeyring
 
 from pgtde.rewind import TdeRewindDriver
 
 
-def test_pg_rewind_same_timeline(pg_install_dir, sw_log_dir, tmp_path):
-    kr = FileKeyring(tmp_path / "kr.per")
-    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=kr, debug=True) as rw:
+def test_pg_rewind_same_timeline(pg_install_dir, sw_log_dir, node_config, keyring_obj):
+    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=keyring_obj, debug=True, config=node_config) as rw:
         p = rw.setup_primary()
         s = rw.create_standby()
 
@@ -16,7 +14,7 @@ def test_pg_rewind_same_timeline(pg_install_dir, sw_log_dir, tmp_path):
         with p.db.preserve_config() as conf:
             s.stop()
             st.command_ok(
-                p.run_bin(
+                p.tool(
                     rw.rewind_bin,
                     "--debug",
                     f"--source-pgdata={s.datadir}",

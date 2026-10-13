@@ -3,7 +3,6 @@ import re
 import pytest
 import stormweaver.testing as st
 
-from pgtde.node import TdeNode
 from pgtde.standby import standby_from_backup_dir
 
 # tmpfs mount point for temporary files is Linux specific
@@ -63,7 +62,7 @@ def _start_restoring(replica):
     replica.wait_for_log("waiting for WAL to become available", offset)
 
 
-def test_wal_archiving(pg_install, sw_log_dir, tmp_path):
+def test_wal_archiving(pg_install, tde_node_factory, keyring_obj, tmp_path):
     archive = tmp_path / "archive"
     archive.mkdir()
     decrypt = pg_install.bindir / "pg_tde_archive_decrypt"
@@ -74,35 +73,35 @@ def test_wal_archiving(pg_install, sw_log_dir, tmp_path):
         "archive_mode": "on",
         "archive_command": f'{decrypt} %f %p "cp %%p {archive}/%%f"',
     }
-    with TdeNode.fresh(pg_install.install_dir, name="primary", config=config) as primary:
-        primary.setup_server_key(tmp_path / "global.keys", provider="keyring", key="server-key")
+    primary = tde_node_factory("primary", config=config)
+    primary.setup_server_key(keyring_obj, provider="keyring", key="server-key")
 
-        # one backup taken with plain WAL and one with encrypted WAL, then
-        # some plaintext WAL and some encrypted WAL
-        plain_wal = primary.basebackup(extra_args=["-X", "none"])
+    # one backup taken with plain WAL and one with encrypted WAL, then
+    # some plaintext WAL and some encrypted WAL
+    plain_wal = primary.basebackup(extra_args=["-X", "none"])
 
-        primary.db.add_config({"pg_tde.wal_encrypt": "on"})
-        primary.restart()
+    primary.db.add_config({"pg_tde.wal_encrypt": "on"})
+    primary.restart()
 
-        enc_wal = primary.basebackup(extra_args=["-X", "none"])
+    enc_wal = primary.basebackup(extra_args=["-X", "none"])
 
-        primary.db.add_config({"pg_tde.wal_encrypt": "off"})
-        primary.restart()
+    primary.db.add_config({"pg_tde.wal_encrypt": "off"})
+    primary.restart()
 
-        primary.db.add_config({"pg_tde.wal_encrypt": "on"})
-        primary.safe_sql("CREATE TABLE t1 AS SELECT 'foobar_plain' AS x")
-        primary.restart()
-        primary.safe_sql("CREATE TABLE t2 AS SELECT 'foobar_enc' AS x")
+    primary.db.add_config({"pg_tde.wal_encrypt": "on"})
+    primary.safe_sql("CREATE TABLE t1 AS SELECT 'foobar_plain' AS x")
+    primary.restart()
+    primary.safe_sql("CREATE TABLE t2 AS SELECT 'foobar_enc' AS x")
 
-        s = st.wal_strings(primary.datadir / "pg_wal")
-        assert "foobar_plain" in s, "should find foobar_plain in WAL"
-        assert "foobar_enc" not in s, "should not find foobar_enc in WAL since it is encrypted"
+    s = st.wal_strings(primary.datadir / "pg_wal")
+    assert "foobar_plain" in s, "should find foobar_plain in WAL"
+    assert "foobar_enc" not in s, "should not find foobar_enc in WAL since it is encrypted"
 
-        primary.stop()
+    primary.stop()
 
-        s = st.wal_strings(archive)
-        assert "foobar_plain" in s, "should find foobar_plain in archive"
-        assert "foobar_enc" in s, "should find foobar_enc in archive"
+    s = st.wal_strings(archive)
+    assert "foobar_plain" in s, "should find foobar_plain in archive"
+    assert "foobar_enc" in s, "should find foobar_enc in archive"
 
     # restore_command with encrypted WAL
     with _replica(enc_wal, pg_install, archive, "replica_enc") as replica:

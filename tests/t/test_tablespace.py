@@ -1,7 +1,7 @@
 from pgtde import api
 
 
-def test_tablespace(tde_node_db, file_keyring):
+def test_tablespace(tde_node_db, keyring_obj):
     node = tde_node_db
     node.safe_sql("""
         CREATE TABLE test (num1 bigint, num2 double precision, t text) USING tde_heap;
@@ -24,7 +24,7 @@ def test_tablespace(tde_node_db, file_keyring):
     node.safe_sql("CREATE DATABASE move_test")
     with node.connect(db="move_test") as conn:
         api.create_extension(conn)
-        api.add_provider(conn, file_keyring, "file-vault")
+        api.add_provider(conn, keyring_obj, "file-vault")
         api.create_key(conn, "test-db-key2", "file-vault")
         api.set_key(conn, "test-db-key2", "file-vault")
         conn.safe_sql("CREATE TABLE test2 (x int) USING tde_heap TABLESPACE test_tblspace2")

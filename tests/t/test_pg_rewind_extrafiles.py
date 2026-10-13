@@ -2,7 +2,6 @@
 import sys
 
 import pytest
-from stormweaver.keyrings.file import FileKeyring
 
 from pgtde.rewind import TdeRewindDriver
 
@@ -14,9 +13,8 @@ def _put(path, text):
 
 
 @pytest.mark.parametrize("mode", ["local", "remote"])
-def test_pg_rewind_extrafiles(mode, pg_install_dir, sw_log_dir, tmp_path):
-    kr = FileKeyring(tmp_path / "kr.per")
-    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=kr, debug=True) as rw:
+def test_pg_rewind_extrafiles(mode, pg_install_dir, sw_log_dir, node_config, keyring_obj):
+    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=keyring_obj, debug=True, config=node_config) as rw:
         p = rw.setup_primary()
         pd = p.datadir
 

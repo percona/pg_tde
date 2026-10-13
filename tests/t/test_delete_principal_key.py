@@ -3,10 +3,10 @@ from pgtde import api
 CANNOT_DELETE = r"cannot delete principal key"
 
 
-def test_delete_principal_key(tde_node, file_keyring):
+def test_delete_principal_key(tde_node, keyring_obj):
     node = tde_node
     api.create_extension(node)
-    api.add_provider(node, file_keyring, "file-provider", scope="global")
+    api.add_provider(node, keyring_obj, "file-provider", scope="global")
     api.create_key(node, "defalut-key", "file-provider", scope="global")
     api.create_key(node, "test-db-key", "file-provider", scope="global")
 

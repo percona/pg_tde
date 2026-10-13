@@ -2,13 +2,12 @@
 # new WAL keys while the replica is created, so kept segments must be
 # re-encrypted.
 import pytest
-from stormweaver.keyrings.file import FileKeyring
 
 from pgtde.rewind import ALL_MODES, TdeRewindDriver
 
 
 @pytest.mark.parametrize(("mode", "cipher"), ALL_MODES)
-def test_pg_rewind_enc_keep_wal_seg(mode, cipher, pg_install_dir, sw_log_dir, tmp_path):
+def test_pg_rewind_enc_keep_wal_seg(mode, cipher, pg_install_dir, sw_log_dir, node_config, keyring_obj, tmp_path):
     archive = tmp_path / "archive"
     archive.mkdir()
     decrypt = f"{pg_install_dir}/bin/pg_tde_archive_decrypt"
@@ -19,8 +18,9 @@ def test_pg_rewind_enc_keep_wal_seg(mode, cipher, pg_install_dir, sw_log_dir, tm
         "archive_command": f'{decrypt} %f %p "cp %%p {archive}/%%f"',
         "restore_command": f'{encrypt} %f %p "cp {archive}/%%f %%p"',
     }
-    kr = FileKeyring(tmp_path / "kr.per")
-    with TdeRewindDriver(pg_install_dir, cipher=cipher, keyring=kr, debug=True, config=config) as rw:
+    with TdeRewindDriver(
+        pg_install_dir, cipher=cipher, keyring=keyring_obj, debug=True, config=node_config | config
+    ) as rw:
         p = rw.setup_primary()
         p.restart()
 

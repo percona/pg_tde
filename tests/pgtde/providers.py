@@ -5,13 +5,9 @@ from stormweaver.keyrings.file import FileKeyring
 from stormweaver.keyrings.kmip import KmipKeyring
 from stormweaver.keyrings.vault import VaultKeyring
 
+from pgtde.sql import sql_literal
+
 Scope = Literal["global", "database"]
-
-
-def _q(v: str | int) -> str:
-    if isinstance(v, int):
-        return str(v)
-    return "'" + v.replace("'", "''") + "'"
 
 
 def add_provider_sql(keyring: Keyring, scope: Scope, name: str) -> str:
@@ -40,4 +36,4 @@ def add_provider_sql(keyring: Keyring, scope: Scope, name: str) -> str:
     else:
         raise TypeError(f"unsupported keyring: {type(keyring).__name__}")
     fn = f"pg_tde_add_{scope}_key_provider_{suffix}"
-    return f"SELECT {fn}({', '.join(_q(a) for a in args)})"
+    return f"SELECT {fn}({', '.join(sql_literal(a) for a in args)})"

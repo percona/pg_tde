@@ -5,16 +5,13 @@ from stormweaver.keyrings.vault import VaultKeyring
 
 from pgtde import api
 from pgtde.services import prepare_openbao_for_vault_v2
+from pgtde.sql import sql_literal
 
 pytestmark = pytest.mark.needs_vault
 
 
-def _q(v: str | None) -> str:
-    return "NULL" if v is None else "'" + v.replace("'", "''") + "'"
-
-
 def _vault_sql(op, name, url, mount, token, ca):
-    args = ", ".join(_q(a) for a in (name, url, mount, token, ca))
+    args = ", ".join(sql_literal(a) for a in (name, url, mount, token, ca))
     return f"SELECT pg_tde_{op}_database_key_provider_vault_v2({args})"
 
 

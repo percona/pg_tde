@@ -3,7 +3,7 @@ from pgtde import api
 ROWS = [["1", "Japan", "Asia"], ["2", "UK", "Europe"], ["3", "USA", "North America"]]
 
 
-def test_key_rotate_tablespace(tde_node, file_keyring):
+def test_key_rotate_tablespace(tde_node, keyring_obj):
     node = tde_node
     node.safe_sql("SET allow_in_place_tablespaces = true")
     node.safe_sql("CREATE TABLESPACE test_tblspace LOCATION ''")
@@ -11,7 +11,7 @@ def test_key_rotate_tablespace(tde_node, file_keyring):
 
     with node.connect(db="tbc") as tbc:
         api.create_extension(tbc)
-        api.add_provider(tbc, file_keyring, "file-vault")
+        api.add_provider(tbc, keyring_obj, "file-vault")
         api.create_key(tbc, "test-db-key", "file-vault")
         api.set_key(tbc, "test-db-key", "file-vault")
         tbc.safe_sql("""

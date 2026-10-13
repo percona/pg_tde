@@ -5,10 +5,7 @@ from stormweaver.keyrings.base import Keyring
 from stormweaver.keyrings.file import FileKeyring
 
 from pgtde.providers import Scope, add_provider_sql
-
-
-def _q(v: str) -> str:
-    return "'" + v.replace("'", "''") + "'"
+from pgtde.sql import sql_literal
 
 
 def create_extension(node: Any, schema: str | None = None) -> None:
@@ -23,19 +20,23 @@ def drop_extension(node: Any, cascade: bool = False) -> None:
 
 
 def create_key(node: Any, key: str, provider: str, *, scope: Scope = "database") -> None:
-    node.safe_sql(f"SELECT pg_tde_create_key_using_{scope}_key_provider({_q(key)}, {_q(provider)})")
+    node.safe_sql(f"SELECT pg_tde_create_key_using_{scope}_key_provider({sql_literal(key)}, {sql_literal(provider)})")
 
 
 def set_key(node: Any, key: str, provider: str, *, scope: Scope = "database") -> None:
-    node.safe_sql(f"SELECT pg_tde_set_key_using_{scope}_key_provider({_q(key)}, {_q(provider)})")
+    node.safe_sql(f"SELECT pg_tde_set_key_using_{scope}_key_provider({sql_literal(key)}, {sql_literal(provider)})")
 
 
 def set_server_key(node: Any, key: str, provider: str) -> None:
-    node.safe_sql(f"SELECT pg_tde_set_server_key_using_global_key_provider({_q(key)}, {_q(provider)})")
+    node.safe_sql(
+        f"SELECT pg_tde_set_server_key_using_global_key_provider({sql_literal(key)}, {sql_literal(provider)})"
+    )
 
 
 def set_default_key(node: Any, key: str, provider: str) -> None:
-    node.safe_sql(f"SELECT pg_tde_set_default_key_using_global_key_provider({_q(key)}, {_q(provider)})")
+    node.safe_sql(
+        f"SELECT pg_tde_set_default_key_using_global_key_provider({sql_literal(key)}, {sql_literal(provider)})"
+    )
 
 
 def delete_key(node: Any) -> None:
@@ -53,11 +54,11 @@ def add_provider(node: Any, keyring: Keyring | str | Path, name: str, *, scope: 
 
 
 def delete_provider(node: Any, name: str, *, scope: Scope = "database") -> None:
-    node.safe_sql(f"SELECT pg_tde_delete_{scope}_key_provider({_q(name)})")
+    node.safe_sql(f"SELECT pg_tde_delete_{scope}_key_provider({sql_literal(name)})")
 
 
 def change_provider_file(node: Any, name: str, path: str, *, scope: Scope = "database") -> None:
-    node.safe_sql(f"SELECT pg_tde_change_{scope}_key_provider_file({_q(name)}, {_q(path)})")
+    node.safe_sql(f"SELECT pg_tde_change_{scope}_key_provider_file({sql_literal(name)}, {sql_literal(path)})")
 
 
 def list_providers(node: Any, *, scope: Scope = "database") -> list[list[str | None]]:
@@ -94,12 +95,8 @@ def verify_server_key(node: Any) -> None:
     node.safe_sql("SELECT pg_tde_verify_server_key()")
 
 
-def verify_default_key(node: Any) -> None:
-    node.safe_sql("SELECT pg_tde_verify_default_key()")
-
-
 def is_encrypted(node: Any, rel: str) -> bool | None:
-    v = node.sql_value(f"SELECT pg_tde_is_encrypted({_q(rel)})")
+    v = node.sql_value(f"SELECT pg_tde_is_encrypted({sql_literal(rel)})")
     return None if v is None else v == "t"
 
 

@@ -4,10 +4,20 @@ import tempfile
 from pathlib import Path
 from typing import Any, Self
 
+from stormweaver.backends.postgres import Postgres
 from stormweaver.keyrings.base import Keyring
-from stormweaver.testing import PgTestNode
+from stormweaver.testing import PgTestNode, alloc_port, ensure_logging
 
 from pgtde import api
+
+
+def _base_config(preload: str | None, config: dict[str, str] | None) -> dict[str, str]:
+    # fsync off like PostgreSQL::Test::Cluster: a crashed --no-sync cluster
+    # otherwise spends ~10s syncing the whole datadir before recovery
+    cfg = {"fsync": "off"}
+    if preload:
+        cfg["shared_preload_libraries"] = preload
+    return cfg | (config or {})
 
 
 class TdeNode(PgTestNode):
@@ -21,13 +31,57 @@ class TdeNode(PgTestNode):
         preload: str | None = "pg_tde",
         **kw: Any,
     ) -> Self:
-        # fsync off like PostgreSQL::Test::Cluster: a crashed --no-sync cluster
-        # otherwise spends ~10s syncing the whole datadir before recovery
-        cfg = {"fsync": "off"}
-        if preload:
-            cfg["shared_preload_libraries"] = preload
-        cfg |= config or {}
-        return super().fresh(install_dir, name=name, config=cfg, **kw)
+        return super().fresh(install_dir, name=name, config=_base_config(preload, config), **kw)
+
+    @classmethod
+    def unstarted(
+        cls,
+        install_dir: str | Path,
+        *,
+        name: str,
+        config: dict[str, str] | None = None,
+        preload: str | None = "pg_tde",
+        initdb_args: list[str] | None = None,
+    ) -> Self:
+        # initdb only, the caller starts it (or hands it to pg_upgrade)
+        ensure_logging()
+        base = Path(tempfile.mkdtemp(prefix=f"sw-{name}-", dir="/tmp"))
+        try:
+            pg = Postgres(install_dir, base / name, port=alloc_port(), initdb_args=initdb_args)
+        except BaseException:
+            shutil.rmtree(base, ignore_errors=True)
+            raise
+        node = cls(pg, "postgres", name)
+        node._owned_dir = base
+        try:
+            pg.add_config(_base_config(preload, config))
+        except BaseException:
+            node.close()
+            raise
+        node._node_event("init")
+        return node
+
+    @classmethod
+    def adopt(
+        cls,
+        install_dir: str | Path,
+        datadir: Path,
+        *,
+        name: str,
+        config: dict[str, str] | None = None,
+        unix_socket: bool = True,
+    ) -> Self:
+        # existing datadir (backup, fixture tarball), not started
+        ensure_logging()
+        port = alloc_port()
+        pg = Postgres(install_dir, datadir, init=False, port=port)
+        sockdir = str(datadir.resolve().parent) if unix_socket else ""
+        pg.add_config({"port": str(port), "unix_socket_directories": sockdir})
+        if config:
+            pg.add_config(config)
+        node = cls(pg, "postgres", name)
+        node._node_event("init")
+        return node
 
     def setup_db_key(
         self, keyring: Keyring | str | Path, *, provider: str = "file-vault", key: str = "test-db-key"

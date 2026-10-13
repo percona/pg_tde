@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import override
 
 import stormweaver.testing as st
 from stormweaver.keyrings.base import Keyring
@@ -43,18 +44,22 @@ class TdeRewindDriver(RewindDriver):
         self.config = config or {}
         self.backup_options: tuple[str, ...] = ()
 
+    @override
     def primary_config(self) -> dict[str, str]:
         # cipher must be set before key creation
         return (
             super().primary_config() | {"allow_in_place_tablespaces": "on", "pg_tde.cipher": self.cipher} | self.config
         )
 
+    @override
     def initdb_args(self) -> list[str] | None:
         return ["--data-checksums", *self.initdb_extra]
 
+    @override
     def rewind_user(self) -> str | None:
         return "rewind_user"
 
+    @override
     def configure_primary(self, primary: PgTestNode) -> None:
         assert isinstance(primary, TdeNode)
         api.create_extension(primary)
@@ -68,18 +73,29 @@ class TdeRewindDriver(RewindDriver):
         primary.restart()
         primary.safe_sql(REWIND_USER_SQL)
 
+    @override
     def backup_primary(self) -> Path:
         assert isinstance(self.primary, TdeNode)
         dest = self.primary.tde_basebackup(None, "-X", "stream", *self.backup_options)
         return dest
 
+    @override
     def create_standby(self, *backup_options: str) -> PgTestNode:
         self.backup_options = backup_options
         return super().create_standby()
 
 
-def run_databases(install_dir, mode, keyring, *, restart_standby=False):
-    with TdeRewindDriver(install_dir, cipher="aes_128", keyring=keyring, debug=True, initdb_extra=["-g"]) as rw:
+def run_databases(
+    install_dir: str | Path,
+    mode: str,
+    keyring: Keyring,
+    *,
+    restart_standby: bool = False,
+    config: dict[str, str] | None = None,
+) -> None:
+    with TdeRewindDriver(
+        install_dir, cipher="aes_128", keyring=keyring, debug=True, initdb_extra=["-g"], config=config
+    ) as rw:
         p = rw.setup_primary()
         p.safe_sql("CREATE DATABASE inprimary")
         with p.connect(db="inprimary") as c:
@@ -114,3 +130,25 @@ def run_databases(install_dir, mode, keyring, *, restart_standby=False):
             "template1",
         ]
         assert st.check_mode_recursive(p.datadir, 0o750, 0o640) == []
+
+
+def create_tail_block(p: PgTestNode, tablespace: str | None = None) -> None:
+    ts = f" TABLESPACE {tablespace}" if tablespace else ""
+    for t in ("tail_t", "block_t"):
+        p.safe_sql(
+            f"CREATE TABLE {t} (id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, f1 TEXT) USING tde_heap{ts}"
+        )
+        p.safe_sql(f"INSERT INTO {t} (f1) SELECT repeat('abcdeF', 1000) FROM generate_series(1, 1000)")
+    p.safe_sql("CHECKPOINT")
+
+
+def diverge_tail_block(p: PgTestNode, s: PgTestNode) -> None:
+    # changed blocks on the old primary, appended blocks on the new one
+    p.safe_sql("UPDATE block_t SET f1='YYYYYYY' WHERE id % 10 = 0")
+    s.safe_sql("INSERT INTO tail_t (f1) SELECT repeat('ghijk', 100) FROM generate_series(1, 1000)")
+    s.safe_sql("CHECKPOINT")
+
+
+def check_tail_block(p: PgTestNode) -> None:
+    assert p.sql_value("SELECT count(*) FROM tail_t") == "2000"
+    assert p.sql_value("SELECT count(*) FROM block_t") == "1000"

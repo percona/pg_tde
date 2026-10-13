@@ -1,18 +1,16 @@
 # Encrypted relations in an external tablespace.
 import pytest
-from stormweaver.keyrings.file import FileKeyring
 
 from pgtde.rewind import ALL_MODES, TdeRewindDriver
 
 
 @pytest.mark.pg_min(17)
 @pytest.mark.parametrize(("mode", "cipher"), ALL_MODES)
-def test_pg_rewind_enc_ext_tablespace(mode, cipher, pg_install_dir, sw_log_dir, tmp_path):
+def test_pg_rewind_enc_ext_tablespace(mode, cipher, pg_install_dir, sw_log_dir, node_config, keyring_obj, tmp_path):
     ts_primary = tmp_path / "ts1"
     ts_standby = tmp_path / "ts1_standby"
     ts_primary.mkdir()
-    kr = FileKeyring(tmp_path / "kr.per")
-    with TdeRewindDriver(pg_install_dir, cipher=cipher, keyring=kr, debug=True) as rw:
+    with TdeRewindDriver(pg_install_dir, cipher=cipher, keyring=keyring_obj, debug=True, config=node_config) as rw:
         p = rw.setup_primary()
         p.safe_sql(f"CREATE TABLESPACE ts1 LOCATION '{ts_primary}'")
 

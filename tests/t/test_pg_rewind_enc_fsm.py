@@ -1,15 +1,13 @@
 # pg_tde_rewind re-encrypts FSM/VM fork blocks so the server does not zero
 # them out on startup.
 import pytest
-from stormweaver.keyrings.file import FileKeyring
 
 from pgtde.rewind import ALL_MODES, TdeRewindDriver
 
 
 @pytest.mark.parametrize(("mode", "cipher"), ALL_MODES)
-def test_pg_rewind_enc_fsm(mode, cipher, pg_install_dir, sw_log_dir, tmp_path):
-    kr = FileKeyring(tmp_path / "kr.per")
-    with TdeRewindDriver(pg_install_dir, cipher=cipher, keyring=kr, debug=True) as rw:
+def test_pg_rewind_enc_fsm(mode, cipher, pg_install_dir, sw_log_dir, node_config, keyring_obj):
+    with TdeRewindDriver(pg_install_dir, cipher=cipher, keyring=keyring_obj, debug=True, config=node_config) as rw:
         p = rw.setup_primary()
         log_start = p.log_offset()
         s = rw.create_standby()

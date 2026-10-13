@@ -1,9 +1,10 @@
+import contextlib
 import hashlib
 import os
 import re
 import shutil
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -129,33 +130,83 @@ def _node_name(request: pytest.FixtureRequest) -> str:
     return f"{short}-{digest}"
 
 
-def _node_config(request: pytest.FixtureRequest) -> dict[str, str]:
+def _marker_config(request: pytest.FixtureRequest) -> tuple[dict[str, str], list[str] | None]:
     cfg: dict[str, str] = {}
-    if "cipher" in request.fixturenames:
-        cfg["pg_tde.cipher"] = request.getfixturevalue("cipher")
-    if "io_method" in request.fixturenames:
-        io_method = request.getfixturevalue("io_method")
-        if io_method != "default":
-            cfg["io_method"] = io_method
-    return cfg
+    initdb_args = None
+    # iter_markers yields the closest first, apply it last
+    for m in reversed(list(request.node.iter_markers("node_config"))):
+        if m.args:
+            cfg |= m.args[0]
+        initdb_args = m.kwargs.get("initdb_args", initdb_args)
+    return cfg, initdb_args
 
 
 @pytest.fixture
-def tde_node(pg_install_dir: str, sw_log_dir: Path, request: pytest.FixtureRequest) -> Iterator[TdeNode]:
-    with TdeNode.fresh(pg_install_dir, name=_node_name(request), config=_node_config(request)) as node:
+def node_config(io_method: str, request: pytest.FixtureRequest) -> dict[str, str]:
+    cfg: dict[str, str] = {}
+    if io_method != "default":
+        cfg["io_method"] = io_method
+    if "cipher" in request.fixturenames:
+        cfg["pg_tde.cipher"] = request.getfixturevalue("cipher")
+    return cfg | _marker_config(request)[0]
+
+
+@pytest.fixture
+def tde_node(
+    pg_install_dir: str, sw_log_dir: Path, node_config: dict[str, str], request: pytest.FixtureRequest
+) -> Iterator[TdeNode]:
+    initdb_args = _marker_config(request)[1]
+    with TdeNode.fresh(pg_install_dir, name=_node_name(request), config=node_config, initdb_args=initdb_args) as node:
         yield node
 
 
 @pytest.fixture
-def tde_node_db(tde_node: TdeNode, file_keyring: FileKeyring) -> TdeNode:
-    tde_node.setup_db_key(file_keyring)
+def tde_node_factory(
+    pg_install_dir: str, sw_log_dir: Path, node_config: dict[str, str], request: pytest.FixtureRequest
+) -> Iterator[Callable[..., TdeNode]]:
+    # nodes for multi-node tests, closed at teardown in reverse order
+    with contextlib.ExitStack() as stack:
+
+        def make(
+            name: str,
+            *,
+            config: dict[str, str] | None = None,
+            start: bool = True,
+            install: pginstall.PgInstall | None = None,
+            **kw: Any,
+        ) -> TdeNode:
+            cfg = node_config | (config or {})
+            kw.setdefault("initdb_args", _marker_config(request)[1])
+            install_dir = pg_install_dir
+            if install is not None:
+                install_dir = str(install.install_dir)
+                if install.major is not None and install.major < 18:
+                    cfg.pop("io_method", None)
+            if start:
+                node = TdeNode.fresh(install_dir, name=name, config=cfg, **kw)
+            else:
+                node = TdeNode.unstarted(install_dir, name=name, config=cfg, **kw)
+            return stack.enter_context(node)
+
+        yield make
+
+
+@pytest.fixture
+def tde_node_db(keyring_obj: keyrings.Keyring, tde_node: TdeNode) -> TdeNode:
+    tde_node.setup_db_key(keyring_obj)
     return tde_node
 
 
 @pytest.fixture
-def tde_node_global(tde_node: TdeNode, tmp_path: Path) -> TdeNode:
-    tde_node.setup_server_key(FileKeyring(tmp_path / "global.keys"), wal_encrypt=True)
+def tde_node_global(keyring_obj: keyrings.Keyring, tde_node: TdeNode) -> TdeNode:
+    tde_node.setup_server_key(keyring_obj, wal_encrypt=True)
     tde_node.restart()
+    return tde_node
+
+
+@pytest.fixture
+def tde_node_default(keyring_obj: keyrings.Keyring, tde_node: TdeNode) -> TdeNode:
+    tde_node.setup_default_key(keyring_obj)
     return tde_node
 
 

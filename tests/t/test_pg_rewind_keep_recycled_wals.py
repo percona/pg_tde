@@ -1,14 +1,11 @@
 # Target data directory contains WAL files already recycled by the new primary.
 import re
 
-from stormweaver.keyrings.file import FileKeyring
-
 from pgtde.rewind import TdeRewindDriver
 
 
-def test_pg_rewind_keep_recycled_wals(pg_install_dir, sw_log_dir, tmp_path):
-    kr = FileKeyring(tmp_path / "kr.per")
-    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=kr, debug=True) as rw:
+def test_pg_rewind_keep_recycled_wals(pg_install_dir, sw_log_dir, node_config, keyring_obj):
+    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=keyring_obj, debug=True, config=node_config) as rw:
         p = rw.setup_primary()
         p.db.enable_archiving()
         p.restart()
@@ -36,7 +33,5 @@ def test_pg_rewind_keep_recycled_wals(pg_install_dir, sw_log_dir, tmp_path):
         s.stop()
         p.stop()
 
-        cp = p.run_bin(
-            rw.rewind_bin, "--debug", "--source-pgdata", s.datadir, "--target-pgdata", p.datadir, "--no-sync"
-        )
+        cp = p.tool(rw.rewind_bin, "--debug", "--source-pgdata", s.datadir, "--target-pgdata", p.datadir, "--no-sync")
         assert re.search(r"Not removing file .* because it is required for recovery", cp.stderr), cp.stderr

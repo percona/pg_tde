@@ -1,10 +1,6 @@
 import shutil
-import tempfile
-from pathlib import Path
 
 import pytest
-import stormweaver.testing as st
-from stormweaver.backends.postgres import Postgres
 
 from pgtde.node import TdeNode
 from pgtde.standby import standby_from_backup_dir
@@ -13,27 +9,21 @@ from pgtde.standby import standby_from_backup_dir
 pytestmark = pytest.mark.linux_only
 
 
-def test_wal_archiving_symlink(pg_install, sw_log_dir, tmp_path):
+def test_wal_archiving_symlink(pg_install, sw_log_dir, node_config, keyring_obj, tmp_path):
     archive = tmp_path / "archive"
     archive.mkdir()
     wal_dir = tmp_path / "pg_wal"
     decrypt = pg_install.bindir / "pg_tde_archive_decrypt"
     restore = pg_install.bindir / "pg_tde_restore_encrypt"
 
-    base = Path(tempfile.mkdtemp(prefix="sw-primary-", dir="/tmp"))
-    pg = Postgres(pg_install.install_dir, base / "primary", port=st.alloc_port())
-    pg.add_config(
-        {
-            "shared_preload_libraries": "pg_tde",
-            "wal_level": "replica",
-            "autovacuum": "off",
-            "checkpoint_timeout": "1h",
-            "archive_mode": "on",
-            "archive_command": f'{decrypt} %f %p "cp %%p {archive}/%%f"',
-        }
-    )
-    primary = TdeNode(pg, "postgres", "primary")
-    primary._owned_dir = base
+    config = {
+        "wal_level": "replica",
+        "autovacuum": "off",
+        "checkpoint_timeout": "1h",
+        "archive_mode": "on",
+        "archive_command": f'{decrypt} %f %p "cp %%p {archive}/%%f"',
+    }
+    primary = TdeNode.unstarted(pg_install.install_dir, name="primary", config=config | node_config)
 
     with primary:
         shutil.move(primary.datadir / "pg_wal", wal_dir)
@@ -41,7 +31,7 @@ def test_wal_archiving_symlink(pg_install, sw_log_dir, tmp_path):
 
         log_offset = primary.log_offset()
         primary.start()
-        primary.setup_server_key(tmp_path / "global.keys", provider="keyring", key="server-key")
+        primary.setup_server_key(keyring_obj, provider="keyring", key="server-key")
         primary.db.add_config({"pg_tde.wal_encrypt": "on"})
         primary.restart()
 

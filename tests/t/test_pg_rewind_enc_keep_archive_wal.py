@@ -5,7 +5,6 @@ import logging
 import time
 
 import stormweaver.testing as st
-from stormweaver.keyrings.file import FileKeyring
 
 from pgtde import api
 from pgtde.rewind import TdeRewindDriver
@@ -26,7 +25,7 @@ def wait_for_archive(archive, node, timeout=180):
     raise TimeoutError(f"{segment} not archived after {timeout}s")
 
 
-def test_pg_rewind_enc_keep_archive_wal(pg_install_dir, sw_log_dir, tmp_path):
+def test_pg_rewind_enc_keep_archive_wal(pg_install_dir, sw_log_dir, node_config, keyring_obj, tmp_path):
     archive = tmp_path / "archive"
     archive.mkdir()
     decrypt = f"{pg_install_dir}/bin/pg_tde_archive_decrypt"
@@ -38,8 +37,9 @@ def test_pg_rewind_enc_keep_archive_wal(pg_install_dir, sw_log_dir, tmp_path):
         "archive_command": f'{decrypt} %f %p "cp %%p {archive}/%%f"',
         "restore_command": f'{encrypt} %f %p "cp {archive}/%%f %%p"',
     }
-    kr = FileKeyring(tmp_path / "kr.per")
-    with TdeRewindDriver(pg_install_dir, cipher="aes_128", keyring=kr, debug=True, config=config) as rw:
+    with TdeRewindDriver(
+        pg_install_dir, cipher="aes_128", keyring=keyring_obj, debug=True, config=node_config | config
+    ) as rw:
         p = rw.setup_primary()
         log_start = p.log_offset()
 
@@ -81,7 +81,7 @@ def test_pg_rewind_enc_keep_archive_wal(pg_install_dir, sw_log_dir, tmp_path):
         with p.db.preserve_config() as conf:
             s.stop()
             st.command_ok(
-                p.run_bin(
+                p.tool(
                     rw.rewind_bin,
                     "--debug",
                     f"--source-pgdata={s.datadir}",
