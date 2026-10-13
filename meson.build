@@ -1,21 +1,27 @@
 project('pg_tde',
-  ['c', 'cpp'],
   version: '2.2.2',
-  meson_version: '>=0.56',
+  meson_version: '>=0.57',
 )
 
 fs = import('fs')
-cmake = import('cmake')
 
 pg_config = find_program(get_option('pg_config'))
-shsplit = find_program(files('shsplit'))
+
+if not get_option('tests_only') # skip all build setup, only register tests
 
 bindir = run_command(pg_config, '--bindir', check: true).stdout().strip()
+pkglibdir = run_command(pg_config, '--pkglibdir', check: true).stdout().strip()
+
+add_languages('c', 'cpp', native: false)
+
+cmake = import('cmake')
+
+shsplit = find_program(files('shsplit'))
+
 includedir = run_command(pg_config, '--includedir', check: true).stdout().strip()
 includedir_server = run_command(pg_config, '--includedir-server', check: true).stdout().strip()
 libdir = run_command(pg_config, '--libdir', check: true).stdout().strip()
 pkgincludedir = run_command(pg_config, '--pkgincludedir', check: true).stdout().strip()
-pkglibdir = run_command(pg_config, '--pkglibdir', check: true).stdout().strip()
 sharedir = run_command(pg_config, '--sharedir', check: true).stdout().strip()
 ldflags = run_command(shsplit, pg_config.full_path(), '--ldflags', check: true).stdout()
 ldflags_ex = run_command(shsplit, pg_config.full_path(), '--ldflags_ex', check: true).stdout()
@@ -418,3 +424,47 @@ foreach test : tap_tests
     ],
   )
 endforeach
+
+endif # not tests_only
+
+stormweaver = find_program(get_option('stormweaver'), required: false)
+if not stormweaver.found() and get_option('tests_only')
+  error('stormweaver not found; install it or pass -Dstormweaver=/path/to/stormweaver')
+endif
+
+pytest_files = [
+  'tests/pgtde/test_providers.py',
+]
+
+if stormweaver.found()
+  pytest_env = environment()
+  pytest_env.set('STORMWEAVER_PG_CONFIG', pg_config.full_path())
+
+  foreach f : pytest_files
+    pytest_stem = fs.stem(fs.name(f))
+    if pytest_stem.startswith('test_')
+      pytest_stem = pytest_stem.substring(5)
+    endif
+    pytest_name = fs.parent(f) / pytest_stem
+    pytest_args = ['test', meson.project_source_root() / f, '-q', '--pg-config', pg_config.full_path()]
+    test(pytest_name, stormweaver,
+      suite: 'fast',
+      env: pytest_env,
+      workdir: meson.project_build_root(),
+      timeout: 1800,
+      args: pytest_args,
+    )
+    test(pytest_name + '/full', stormweaver,
+      suite: 'full',
+      env: pytest_env,
+      workdir: meson.project_build_root(),
+      timeout: 3600,
+      args: pytest_args + ['--full'],
+    )
+  endforeach
+
+  # plain `meson test` runs the fast suite only
+  add_test_setup('default', exclude_suites: ['full'], is_default: true)
+else
+  warning('stormweaver not found; pytest suite not registered (pass -Dstormweaver=/path/to/stormweaver)')
+endif

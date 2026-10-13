@@ -75,27 +75,51 @@ Refer to the [Building from source code](https://github.com/percona/pg_tde?tab=r
 
 ### Run tests
 
-You can find the tests in the `sql` and `t` directories.
+The tests live in `tests/` and run with pytest through stormweaver. `tests/stress/` holds randomized stress scenarios, which you run with `stormweaver <file>`.
+
+#### Prerequisites
+
+* A PostgreSQL installation with `pg_tde` installed (`meson install`).
+* The `stormweaver` package. It ships its own Python 3.14. Install it from the OBS packages, or from a source checkout of [stormweaver](https://github.com/Percona-Lab/stormweaver).
+* `psql`, from the PostgreSQL client package.
 
 #### Run manually
 
-1. Change the directory to `pg_tde`
+There are three ways to run the suite.
 
-2. Build and install `pg_tde` with the following commands:
-
-    ```sh
-    meson setup -Dpg_config=/path/to/postgresql/bin/pg_config ./build
-    cd build
-    meson install
-    ```
-
-3. Start OpenKMIP
-
-4. Run the tests using the following command:
+1. From a build directory. Build and install `pg_tde`, then run the fast suite (the default) or the full one:
 
     ```sh
-    meson install && meson test --print-errorlogs
+    meson setup build -Dpg_config=/path/to/postgresql/bin/pg_config [-Dstormweaver=/path/to/stormweaver]
+    meson install -C build
+    meson test -C build --print-errorlogs
+    meson test -C build --suite full --print-errorlogs
     ```
+
+2. Against any installed setup, from a checkout:
+
+    ```sh
+    stormweaver test tests --pg-config /path/to/postgresql/bin/pg_config
+    ```
+
+    Useful options are `-k <expr>` to select tests and `--full` to run every matrix dimension at every available value (`--matrix cipher=aes_128,aes_256` picks values for one dimension). The dimensions `keyring`, `io_method` and `cipher` are registered in `tests/conftest.py`; the ported tests still fix their own values, so the matrix only grows the run once tests start requesting these fixtures. `stormweaver test` passes all other arguments through to pytest.
+
+3. Tests only, without building anything. This registers the test suite and skips all build targets, so it can run against an existing installation:
+
+    ```sh
+    meson setup build-tests -Dtests_only=true -Dpg_config=/path/to/postgresql/bin/pg_config
+    meson test -C build-tests
+    ```
+
+#### Keyring services
+
+The vault and KMIP tests need an OpenBao (`bao`) and a Cosmian KMS (`cosmian_kms`) server. Stormweaver starts them automatically when the binary is on `PATH`, or when a container runtime is available. You can configure them in the `[keyring.vault]` and `[keyring.kmip]` sections of stormweaver's `stormweaver.toml`.
+
+Tests that need a service skip when it is not available. Set `STORMWEAVER_KEYRINGS=vault,kmip` to make a missing service an error instead.
+
+#### Logs
+
+Each run writes `logs/<run>/main.log` in the working directory, next to the server logs of every node. With `meson test`, use `--print-errorlogs` to print the output of failed tests.
 
 #### Run automatically
 
