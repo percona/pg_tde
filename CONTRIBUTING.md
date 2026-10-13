@@ -87,14 +87,16 @@ The tests live in `tests/` and run with pytest through stormweaver. `tests/stres
 
 There are three ways to run the suite.
 
-1. From a build directory. Build and install `pg_tde`, then run the fast suite (the default) or the full one:
+1. From a build directory. Build and install `pg_tde`, then run the fast suite (the default) or the matrix run:
 
     ```sh
     meson setup build -Dpg_config=/path/to/postgresql/bin/pg_config [-Dstormweaver=/path/to/stormweaver]
     meson install -C build
     meson test -C build --print-errorlogs
-    meson test -C build --suite full --print-errorlogs
+    meson test -C build --suite all-values --print-errorlogs
     ```
+
+    See [Meson suites](#meson-suites) for the other suites.
 
 2. Against any installed setup, from a checkout:
 
@@ -102,7 +104,9 @@ There are three ways to run the suite.
     stormweaver test tests --pg-config /path/to/postgresql/bin/pg_config
     ```
 
-    Useful options are `-k <expr>` to select tests and `--full` to run every matrix dimension at every available value (`--matrix cipher=aes_128,aes_256` picks values for one dimension). The dimensions `keyring`, `io_method` and `cipher` are registered in `tests/conftest.py`; the ported tests still fix their own values, so the matrix only grows the run once tests start requesting these fixtures. `stormweaver test` passes all other arguments through to pytest.
+    Use `-k <expr>` to select tests.
+    The matrix options are described in [Matrix options](#matrix-options).
+    `stormweaver test` passes all other arguments through to pytest.
 
 3. Tests only, without building anything. This registers the test suite and skips all build targets, so it can run against an existing installation:
 
@@ -111,11 +115,157 @@ There are three ways to run the suite.
     meson test -C build-tests
     ```
 
+#### Test layout
+
+```
+tests/
+  conftest.py          cross-topic options, fixtures, dimensions
+  pgtde/               helper package and its unit tests
+  extension/
+  encryption/
+  keys/
+  keyrings/
+  wal/
+  recovery/
+  backup/
+  replication/
+  rewind/
+  upgrade/
+  tools/
+  stress/              randomized stress scenarios
+  fixtures/
+```
+
+Each topic directory has an empty `__init__.py`, so module basenames like `test_basic.py` can repeat across topics.
+Topic-specific fixtures go into `<topic>/conftest.py`.
+
+A test goes where the behavior it exercises lives, not where the binary it runs lives.
+`pg_tde_waldump` tests are in `wal/`.
+`pg_tde_rewind` has its own `rewind/` directory because it is a large feature.
+`tools/` is only for frontend tools without another home.
+`keyrings/` is for behavior specific to one backend (vault mounts and namespaces, kmip certificates, server revalidation).
+Keyring-agnostic behavior is tested in its own topic and runs on all keyrings through the `keyring` dimension.
+
+New modules must be added to the `pytest_files` list in `meson.build`.
+
+#### Module conventions
+
+* A module covers one feature, a test function is one scenario.
+  Use plain functions, no test classes.
+* Variants are `pytest.mark.parametrize`, never copies.
+  Scenarios sharing setup share a fixture or a module-level scenario helper.
+* Test names describe the scenario (`test_rotate_principal_key_keeps_data_readable`, not `test_rotate_key`).
+* Bug regressions carry `@pytest.mark.bug("PG-xxxx")` and live in the module of their topic.
+  There is no `bugs/` directory.
+* Topic-only fixtures go into `<topic>/conftest.py`, the root `conftest.py` only keeps cross-topic ones.
+* Run binaries through `node.tool(name, ...)` when a node is involved and through the `tools` fixture otherwise, never through `run_bin` directly.
+  Exceptions need a comment (e.g. stderr redirected to a file, `rewind/test_files.py`).
+* Tests that do not care about the keyring use `keyring_obj` (or a setup fixture built on it).
+  Tests that depend on file provider internals (moving or corrupting the key file, file paths in CLI arguments) use `file_keyring`.
+* Archive and restore commands come from `pgtde.wal`.
+  Checks shared between modules live in `pgtde/` (e.g. `pgtde/checks.py`).
+  Test modules never import other test modules.
+
+#### Fixtures
+
+Root `tests/conftest.py`:
+
+| Fixture | Gives | Dimensions |
+|---|---|---|
+| `tde_node` | fresh started node, `pg_tde` preloaded, extension not created | io_method |
+| `keyring_obj` | provider-ready keyring from the `keyring` dimension | keyring |
+| `tde_node_db` | `tde_node` + extension, database provider and key from `keyring_obj` | io_method, keyring |
+| `tde_node_global` | `tde_node` + global provider, server key, `wal_encrypt=on`, restarted | io_method, keyring |
+| `tde_node_default` | `tde_node` + global provider, default key | io_method, keyring |
+| `file_keyring` | explicit file keyring | none |
+| `tde_node_factory` | `factory(name, config={...}, start=True, install=None, initdb_args=None, preload=...) -> TdeNode` for multi-node tests and nodes on another install, same io_method wiring per node | io_method |
+| `node_config` | server settings every node gets: `io_method`, and `pg_tde.cipher` if the test requests `cipher` | io_method |
+| `tools` | nodeless binary runner with `help_ok`, `version_ok`, `options_ok` | none |
+
+`tests/rewind/conftest.py` adds `rewind_driver`, a factory for `TdeRewindDriver` that takes the keyring and `node_config` from the fixtures.
+
+Every test that gets a node through `tde_node` or `tde_node_factory` is on the `io_method` dimension.
+`cipher` is opt-in, request it in tests where the cipher matters.
+
+Extra server settings for a single test go through `@pytest.mark.node_config({...})`.
+They are merged into the `node_config` fixture, so `tde_node`, the setup fixtures built on it and every node made by the factory get them.
+The marker closest to the test wins.
+`node_config(initdb_args=[...])` adds `initdb` arguments, a factory call can override them with `initdb_args=`.
+With `install=` the factory drops `io_method` for installs older than 18.
+
+For multi-node tests the factory does not create providers.
+Set the keys up on the primary from `keyring_obj`, standbys and backups inherit them.
+
+#### Matrix options
+
+The dimensions `keyring`, `io_method` and `cipher` are registered in `tests/conftest.py`.
+A test is on a dimension when it requests it, directly or through a fixture.
+By default each dimension has a single value, so a normal run is not multiplied.
+The examples assume `PGC=/path/to/postgresql/bin/pg_config`.
+
+* `--all-values`: every value of every requested dimension runs at least once.
+  One dimension varies at a time, the others stay at their default, so the cost is additive.
+  For a test using all three dimensions on PG18 that is 1 + 2 + 3 + 1 = 7 runs, with all keyrings available.
+
+    ```sh
+    stormweaver test tests/keys --pg-config $PGC --all-values
+    ```
+
+* `--all-combinations`: the cartesian product of all values of all requested dimensions.
+  The cost multiplies, use it for manual runs only.
+
+    ```sh
+    stormweaver test tests/rewind/test_encrypted.py --pg-config $PGC --all-combinations
+    ```
+
+* `--matrix name=v1,v2`: explicit values for one dimension, cartesian across the dimensions named.
+  Dimensions not named follow `--all-values` or `--all-combinations` if given, otherwise their default.
+
+    ```sh
+    stormweaver test tests/encryption --pg-config $PGC --matrix cipher=aes_128,aes_256
+    ```
+
+* `STORMWEAVER_KEYRINGS`: only matters when keyring values are expanded (`--all-values`, `--all-combinations`, `--matrix keyring=...`).
+  It restricts the keyring values to the listed kinds, and a listed kind that is not available is an error.
+
+    ```sh
+    STORMWEAVER_KEYRINGS=file,kmip stormweaver test tests/keys --pg-config $PGC --all-values
+    ```
+
+The options `--keyrings`, `--io-methods` and `--ciphers` (or the environment variables `PG_TDE_TEST_KEYRINGS`, `PG_TDE_TEST_IO_METHODS` and `PG_TDE_TEST_CIPHERS`) override the available values of one dimension.
+`--keyrings` takes precedence over `STORMWEAVER_KEYRINGS`.
+
+`--all-values` and `--all-combinations` cannot be used together.
+Test ids are `name-value`, so `-k keyring-kmip` selects one value.
+
+#### Meson suites
+
+Every test module is registered as `<topic>/<module>` (without the `test_` prefix), for example `rewind/encrypted`.
+
+| Suite | Contains |
+|---|---|
+| `fast` | every module, run with default dimension values. This is what plain `meson test` runs |
+| `<topic>` | the modules of one topic, e.g. `rewind` |
+| `all-values` | the `<topic>/<module>/all-values` twins, run with `--all-values` |
+| `<topic>-all-values` | the twins of one topic, e.g. `rewind-all-values` |
+
+```sh
+meson test -C build                          # fast suite
+meson test -C build --suite rewind           # one topic
+meson test -C build --suite all-values       # matrix run of everything
+meson test -C build --suite rewind-all-values
+```
+
+`--all-combinations` is not registered in meson, run it by hand with `stormweaver test`.
+
 #### Keyring services
 
 The vault and KMIP tests need an OpenBao (`bao`) and a Cosmian KMS (`cosmian_kms`) server. Stormweaver starts them automatically when the binary is on `PATH`, or when a container runtime is available. You can configure them in the `[keyring.vault]` and `[keyring.kmip]` sections of stormweaver's `stormweaver.toml`.
 
-Tests that need a service skip when it is not available. Set `STORMWEAVER_KEYRINGS=vault,kmip` to make a missing service an error instead.
+In a plain run, tests marked `needs_vault` or `needs_kmip` skip when the service binary or container is not available.
+This does not depend on `STORMWEAVER_KEYRINGS`, which only affects tests on the `keyring` dimension.
+To make a missing service an error for the dimension tests, set `STORMWEAVER_KEYRINGS=vault,kmip` and pass `--all-values`.
+Tests in `keyrings/` skip without the service.
 
 #### Logs
 

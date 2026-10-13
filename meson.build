@@ -405,26 +405,27 @@ if stormweaver.found()
     if pytest_stem.startswith('test_')
       pytest_stem = pytest_stem.substring(5)
     endif
-    pytest_name = fs.parent(f) / pytest_stem
+    pytest_topic = fs.name(fs.parent(f))
+    pytest_name = pytest_topic / pytest_stem
     pytest_args = ['test', meson.project_source_root() / f, '-q', '--pg-config', pg_config.full_path()]
     test(pytest_name, stormweaver,
-      suite: 'fast',
+      suite: ['fast', pytest_topic],
       env: pytest_env,
       workdir: meson.project_build_root(),
       timeout: 1800,
       args: pytest_args,
     )
-    test(pytest_name + '/full', stormweaver,
-      suite: 'full',
+    test(pytest_name + '/all-values', stormweaver,
+      suite: ['all-values', pytest_topic + '-all-values'],
       env: pytest_env,
       workdir: meson.project_build_root(),
       timeout: 3600,
-      args: pytest_args + ['--full'],
+      args: pytest_args + ['--all-values'],
     )
   endforeach
 
   # plain `meson test` runs the fast suite only
-  add_test_setup('default', exclude_suites: ['full'], is_default: true)
+  add_test_setup('default', exclude_suites: ['all-values'], is_default: true)
 else
   warning('stormweaver not found; pytest suite not registered (pass -Dstormweaver=/path/to/stormweaver)')
 endif
