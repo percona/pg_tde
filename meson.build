@@ -434,6 +434,20 @@ endif
 
 pytest_files = [
   'tests/pgtde/test_providers.py',
+  'tests/t/test_access_control.py',
+  'tests/t/test_alter_index.py',
+  'tests/t/test_change_access_method.py',
+  'tests/t/test_create_database.py',
+  'tests/t/test_delete_principal_key.py',
+  'tests/t/test_insert_update_delete.py',
+  'tests/t/test_key_provider.py',
+  'tests/t/test_partition_table.py',
+  'tests/t/test_pg_tde_is_encrypted.py',
+  'tests/t/test_recreate_storage.py',
+  'tests/t/test_relocate.py',
+  'tests/t/test_tablespace.py',
+  'tests/t/test_toast_decrypt.py',
+  'tests/t/test_version.py',
 ]
 
 if stormweaver.found()
