@@ -451,9 +451,17 @@ pytest_files = [
   'tests/t/test_keys_update.py',
   'tests/t/test_kmip.py',
   'tests/t/test_partition_table.py',
+  'tests/t/test_pg_basebackup.py',
+  'tests/t/test_pg_tde_change_key_provider.py',
+  'tests/t/test_pg_tde_checksums.py',
   'tests/t/test_pg_tde_is_encrypted.py',
+  'tests/t/test_pg_tde_upgrade.py',
+  'tests/t/test_pg_waldump_basic.py',
+  'tests/t/test_pg_waldump_fullpage.py',
+  'tests/t/test_pg_waldump_tde_rmgr.py',
   'tests/t/test_recreate_storage.py',
   'tests/t/test_relocate.py',
+  'tests/t/test_replication.py',
   'tests/t/test_reuse_relfilenode_in_cache.py',
   'tests/t/test_rotate_key.py',
   'tests/t/test_tablespace.py',
@@ -463,6 +471,9 @@ pytest_files = [
   'tests/t/test_unlogged_tables.py',
   'tests/t/test_vault_v2.py',
   'tests/t/test_version.py',
+  'tests/t/test_wal_archiving.py',
+  'tests/t/test_wal_archiving_symlink.py',
+  'tests/t/test_wal_encrypt.py',
 ]
 
 if stormweaver.found()
