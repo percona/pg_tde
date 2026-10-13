@@ -449,6 +449,7 @@ pytest_files = [
   'tests/t/test_key_rotate_tablespace.py',
   'tests/t/test_key_validation.py',
   'tests/t/test_keys_update.py',
+  'tests/t/test_kmip.py',
   'tests/t/test_partition_table.py',
   'tests/t/test_pg_tde_is_encrypted.py',
   'tests/t/test_recreate_storage.py',
@@ -460,6 +461,7 @@ pytest_files = [
   'tests/t/test_tde_heap_aes_256.py',
   'tests/t/test_toast_decrypt.py',
   'tests/t/test_unlogged_tables.py',
+  'tests/t/test_vault_v2.py',
   'tests/t/test_version.py',
 ]
 
