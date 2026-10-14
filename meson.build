@@ -379,6 +379,7 @@ pytest_files = [
   'tests/keyrings/test_kmip.py',
   'tests/keyrings/test_vault.py',
   'tests/wal/test_archiving.py',
+  'tests/wal/test_pitr.py',
   'tests/wal/test_wal_encrypt.py',
   'tests/wal/test_waldump.py',
   'tests/recovery/test_crash.py',

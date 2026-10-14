@@ -5,6 +5,11 @@ import tempfile
 import pytest
 import stormweaver.testing as st
 
+from pgtde import api
+from pgtde.wal import wal_contains
+
+MARKER = "waldump-plaintext-marker"
+
 WORKLOAD = [
     # heap, btree, hash, sequence
     "CREATE TABLE t1 (a int GENERATED ALWAYS AS IDENTITY, b text)",
@@ -15,6 +20,7 @@ WORKLOAD = [
     "TRUNCATE t1",
     # abort
     "START TRANSACTION; INSERT INTO t1 VALUES (default, 'three'); ROLLBACK",
+    f"INSERT INTO t1 VALUES (default, '{MARKER}')",
     # unlogged/init fork
     "CREATE UNLOGGED TABLE t2 (x int)",
     "CREATE INDEX i2 ON t2 USING btree (x)",
@@ -88,8 +94,10 @@ def test_waldump_basic(tde_node, keyring_obj, pg_major, tmp_path, tblspc_dir):
     postgres_db_oid = node.sql_value("SELECT oid FROM pg_database WHERE datname = 'postgres'")
     rel_t1_oid = node.sql_value("SELECT oid FROM pg_class WHERE relname = 't1'")
     rel_i1a_oid = node.sql_value("SELECT oid FROM pg_class WHERE relname = 'i1a'")
+    xid = node.sql_value(f"SELECT xmin FROM t1 WHERE b = '{MARKER}'")
 
     node.stop()
+    assert not wal_contains(node, MARKER, flush=False)
 
     keydir = node.datadir / "pg_tde"
     start_seg = node.datadir / "pg_wal" / start_walfile
@@ -170,6 +178,14 @@ def test_waldump_basic(tde_node, keyring_obj, pg_major, tmp_path, tblspc_dir):
         lines = run_waldump(stats)
         assert re.search(r"WAL statistics", lines[0]), "statistics on stdout"
         assert count(r"^rmgr:", lines) == 0, "no rmgr lines output"
+        if stats == "--stats=record":
+            assert count(r"^Heap/INSERT\s", lines) > 0, "per record type stats"
+
+    lines = run_waldump("--xid", xid)
+    assert count(rf"^rmgr: .*\btx: +{xid},", lines, negate=True) == 0, "only lines of the selected xid"
+
+    lines = run_waldump("--bkp-details")
+    assert count(r"^\s+blkref #\d+: rel \d+/\d+/\d+", lines) > 0, "block references printed"
 
     lines = run_waldump("--rmgr", "Btree")
     assert count(r"^rmgr: Btree", lines, negate=True) == 0, "only Btree lines"
@@ -191,14 +207,12 @@ FILE_RE = re.compile(
     r"^[0-9A-F]{8}-([0-9A-F]{8})-([0-9A-F]{8})[.][0-9]+[.][0-9]+[.][0-9]+[.][0-9]+(?:_vm|_init|_fsm|_main)?$"
 )
 
-RELATION_SQL = """
-    SELECT format(
-        '%s/%s/%s',
-        CASE WHEN reltablespace = 0 THEN dattablespace ELSE reltablespace END,
-        pg_database.oid,
-        pg_relation_filenode(pg_class.oid))
-    FROM pg_class, pg_database
-    WHERE relname = 'test_table' AND datname = current_database()
+
+REL_SQL = """
+    SELECT format('%s/%s/%s', CASE WHEN c.reltablespace = 0 THEN d.dattablespace ELSE c.reltablespace END,
+                  d.oid, pg_relation_filenode(c.oid))
+    FROM pg_class c, pg_database d
+    WHERE c.oid = {rel} AND d.datname = current_database()
 """
 
 
@@ -213,12 +227,14 @@ def block_lsn(path, blocksize):
 def test_waldump_fullpage(tde_node, keyring_obj, tmp_path):
     node = tde_node
     node.setup_server_key(keyring_obj, provider="wal-provider", key="server-key")
+    api.create_key(node, "db-key", "wal-provider", scope="global")
+    api.set_key(node, "db-key", "wal-provider", scope="global")
     node.db.add_config({"pg_tde.wal_encrypt": "on"})
     node.restart()
 
     # data/WAL with full pages in it
     node.safe_sql("SELECT 'init' FROM pg_create_physical_replication_slot('regress_pg_waldump_slot', true, false)")
-    node.safe_sql("CREATE TABLE test_table AS SELECT generate_series(1,100) a")
+    node.safe_sql(f"CREATE TABLE test_table USING tde_heap AS SELECT a, '{MARKER}' AS b FROM generate_series(1,100) a")
     # force FPWs on the next writes
     node.safe_sql("CHECKPOINT")
     node.safe_sql("UPDATE test_table SET a = a + 1")
@@ -226,7 +242,8 @@ def test_waldump_fullpage(tde_node, keyring_obj, tmp_path):
     [[walfile_name, blocksize]] = node.safe_sql(
         "SELECT pg_walfile_name(pg_switch_wal()), current_setting('block_size')"
     )
-    relation = node.sql_value(RELATION_SQL)
+    relation = node.sql_value(REL_SQL.format(rel="'test_table'::regclass"))
+    assert node.is_encrypted("test_table")
 
     walfile = node.datadir / "pg_wal" / walfile_name
     assert walfile.is_file(), "Got a WAL file"
@@ -246,6 +263,9 @@ def test_waldump_fullpage(tde_node, keyring_obj, tmp_path):
         ),
         "pg_waldump with --save-fullpage runs",
     )
+
+    assert not wal_contains(node, MARKER, flush=False)
+    assert any(MARKER.encode() in p.read_bytes() for p in raw.glob("*")), "saved pages are decrypted"
 
     file_count = 0
     for path in sorted(raw.glob("*")):
@@ -271,11 +291,13 @@ def test_waldump_tde_rmgr(tde_node, keyring_obj, tools):
     end_lsn = node.sql_value("SELECT pg_current_wal_insert_lsn()")
     node.stop()
 
-    def run_waldump(*opts):
+    log = node.server_log.read_text(errors="replace")
+    assert re.search(r'registered custom resource manager "pg_tde" with ID 140', log), "rmgr registered at startup"
+
+    def run_waldump(*opts, keyring=True):
         cp = node.tool(
             "pg_tde_waldump",
-            "-k",
-            node.datadir / "pg_tde",
+            *(["-k", node.datadir / "pg_tde"] if keyring else []),
             "-p",
             node.datadir,
             "--start",
@@ -303,6 +325,7 @@ def test_waldump_tde_rmgr(tde_node, keyring_obj, tools):
     )
     for desc in ("INSTALL_EXTENSION", "WRITE_KEY_PROVIDER", "ADD_PRINCIPAL_KEY"):
         assert count(rf"^rmgr: pg_tde\b.*\bdesc: {desc}\b", lines) > 0, f"{desc} record is described"
+    assert run_waldump(keyring=False) == lines, "plain WAL decodes the same without -k"
 
     cp = tools.run("pg_tde_waldump", "--rmgr", "list")
     st.command_ok(cp, "pg_tde_waldump --rmgr=list runs ok")
@@ -317,3 +340,82 @@ def test_waldump_tde_rmgr(tde_node, keyring_obj, tools):
         "only pg_tde lines with legacy --rmgr=custom140"
     )
     assert lines == lines_legacy, "--rmgr=pg_tde and --rmgr=custom140 select the same records"
+
+
+KINDS_WORKLOAD = [
+    "CREATE TABLE enc (id int, arr int[], n int, lbl text) USING tde_heap",
+    "CREATE INDEX enc_btree ON enc USING btree (id)",
+    "CREATE INDEX enc_hash ON enc USING hash (lbl)",
+    "CREATE INDEX enc_gin ON enc USING gin (arr)",
+    "CREATE INDEX enc_brin ON enc USING brin (n)",
+    "INSERT INTO enc SELECT g, ARRAY[g, g + 1], g % 100, 'enc-' || g || '-{m}' FROM generate_series(1, 500) g",
+    "CREATE TABLE plain (id int, lbl text) USING heap",
+    "INSERT INTO plain SELECT g, 'plain-' || g || '-{m}' FROM generate_series(1, 100) g",
+    "CREATE TABLE toasty (id int, payload text) USING tde_heap",
+    "ALTER TABLE toasty ALTER COLUMN payload SET STORAGE EXTERNAL",
+    "INSERT INTO toasty SELECT g, repeat('toast-{m}-', 400) FROM generate_series(1, 20) g",
+    "CREATE TABLE parts (id int, region text, lbl text) PARTITION BY LIST (region)",
+    "CREATE TABLE parts_e PARTITION OF parts FOR VALUES IN ('east') USING tde_heap",
+    "CREATE TABLE parts_w PARTITION OF parts FOR VALUES IN ('west') USING tde_heap",
+    """INSERT INTO parts SELECT g, CASE g % 2 WHEN 0 THEN 'east' ELSE 'west' END, 'part-' || g || '-{m}'
+       FROM generate_series(1, 200) g""",
+    "CREATE MATERIALIZED VIEW mv USING tde_heap AS SELECT id, lbl FROM enc WHERE id % 2 = 0",
+    "REFRESH MATERIALIZED VIEW mv",
+]
+
+
+@pytest.mark.node_config({"autovacuum": "off", "checkpoint_timeout": "1h"})
+def test_waldump_encrypted_relation_kinds(tde_node, keyring_obj):
+    node = tde_node
+    node.setup_server_key(keyring_obj, wal_encrypt=True)
+    api.create_key(node, "db-key", "global-provider", scope="global")
+    api.set_key(node, "db-key", "global-provider", scope="global")
+    node.restart()
+    # keeps the WAL across the checkpoints below
+    node.safe_sql("SELECT 'init' FROM pg_create_physical_replication_slot('waldump_slot', true, false)")
+    start_lsn = node.sql_value("SELECT pg_current_wal_insert_lsn()")
+
+    for sql in KINDS_WORKLOAD:
+        node.safe_sql(sql.format(m=MARKER))
+    rels = {
+        r: node.sql_value(REL_SQL.format(rel=f"'{r}'::regclass")) for r in ("enc", "plain", "parts_e", "parts_w", "mv")
+    }
+    assert node.is_encrypted("mv")
+    rels["toast"] = node.sql_value(REL_SQL.format(rel="(SELECT reltoastrelid FROM pg_class WHERE relname = 'toasty')"))
+
+    node.safe_sql("CREATE DATABASE db2")
+    with node.connect(db="db2") as conn:
+        api.create_extension(conn)
+        api.create_key(conn, "db2-key", "global-provider", scope="global")
+        api.set_key(conn, "db2-key", "global-provider", scope="global")
+        conn.safe_sql("CREATE TABLE enc2 (id int, lbl text) USING tde_heap")
+        conn.safe_sql(f"INSERT INTO enc2 SELECT g, 'db2-' || g || '-{MARKER}' FROM generate_series(1, 100) g")
+        rels["db2"] = conn.sql_value(REL_SQL.format(rel="'enc2'::regclass"))
+    end_lsn = node.sql_value("SELECT pg_current_wal_insert_lsn()")
+
+    # plain heap too: WAL encryption covers the whole stream
+    assert not wal_contains(node, MARKER)
+    node.stop()
+
+    def waldump(*opts, keyring=True):
+        keydir = ["-k", node.datadir / "pg_tde"] if keyring else []
+        return node.tool("pg_tde_waldump", *keydir, "-p", node.datadir, "--start", start_lsn, "--end", end_lsn, *opts)
+
+    cp = waldump()
+    st.command_ok(cp, "decodes with -k")
+    assert cp.stderr == ""
+    rmgrs = set(re.findall(r"^rmgr: (\w+)", cp.stdout, re.M))
+    assert {"Heap", "Btree", "Hash", "Gin", "BRIN", "pg_tde"} <= rmgrs, rmgrs
+
+    for kind, rel in rels.items():
+        cp = waldump("--relation", rel)
+        st.command_ok(cp, f"{kind}: --relation runs")
+        assert re.search(rf"^rmgr: Heap2? .*\brel {re.escape(rel)}\b", cp.stdout, re.M), f"{kind}: heap records"
+
+    cp = waldump(keyring=False)
+    st.command_fails(
+        cp,
+        stderr_re=rf"error: could not find a valid record after {re.escape(start_lsn)}",
+        msg="no -k: encrypted WAL is not decoded",
+    )
+    assert cp.stdout == ""
