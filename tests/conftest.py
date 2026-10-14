@@ -3,6 +3,7 @@ import hashlib
 import os
 import re
 import shutil
+import subprocess
 import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -16,6 +17,7 @@ from stormweaver.testing import process
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from pgtde import upgrade as upgrade_mod  # noqa: E402
 from pgtde.node import TdeNode  # noqa: E402
 
 CIPHERS = ["aes_128", "aes_256"]
@@ -36,8 +38,9 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--ciphers", default=os.environ.get("PG_TDE_TEST_CIPHERS"), help="comma separated cipher values")
     parser.addoption(
         "--old-pg-config",
-        default=os.environ.get("PG_TDE_TEST_OLD_PG_CONFIG"),
-        help="pg_config of an older installation, for upgrade tests",
+        action="append",
+        default=[],
+        help="pg_config of an older installation (or script:<cmd>), comma separated or repeated, for upgrade tests",
     )
 
 
@@ -58,6 +61,26 @@ def _install(config: pytest.Config) -> pginstall.PgInstall | None:
     return config.stash[_INSTALL]
 
 
+_UPGRADE = pytest.StashKey[list[upgrade_mod.UpgradeSource]]()
+
+
+def _upgrade_sources(config: pytest.Config) -> list[upgrade_mod.UpgradeSource]:
+    if _UPGRADE not in config.stash:
+        values = list(config.getoption("--old-pg-config"))
+        if not values and os.environ.get("PG_TDE_TEST_OLD_PG_CONFIG"):
+            values = [os.environ["PG_TDE_TEST_OLD_PG_CONFIG"]]
+        if any(upgrade_mod.is_script(v) for v in values) and config.getoption("numprocesses", None):
+            raise pytest.UsageError("script: --old-pg-config entries change the install, they cannot run under xdist")
+        pi = _install(config)
+        if values and (pi is None or pi.pg_config is None):
+            raise pytest.UsageError("--old-pg-config needs --pg-config")
+        try:
+            config.stash[_UPGRADE] = upgrade_mod.parse_sources(values, pi) if values else []
+        except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as e:
+            raise pytest.UsageError(f"--old-pg-config: {e}") from e
+    return config.stash[_UPGRADE]
+
+
 def _io_methods(config: pytest.Config) -> list[str]:
     explicit = _csv(config, "--io-methods")
     if explicit:
@@ -76,15 +99,51 @@ def pytest_configure(config: pytest.Config) -> None:
     register_dimension(config, "cipher", default="aes_128", available=lambda: _csv(config, "--ciphers") or CIPHERS)
 
 
+def pytest_report_header(config: pytest.Config) -> list[str]:
+    srcs = _upgrade_sources(config)
+    if not srcs:
+        return []
+    lines = ["old installs: " + ", ".join(f"{s.label} ({s.mode})" for s in srcs)]
+    if any(not s.side_by_side for s in srcs):
+        lines.append("script mode: only old_install tests run")
+    return lines
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    # bad entries as a usage error, also under -q where the header is not built
+    _upgrade_sources(session.config)
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    err: Exception | None = None
+    for s in config.stash.get(_UPGRADE, []):
+        try:
+            s.switch_new()
+        except Exception as e:
+            err = err or e
+    if err:
+        raise err
+
+
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    if "upgrade" in metafunc.fixturenames:
+        srcs = _upgrade_sources(metafunc.config)
+        if srcs:
+            metafunc.parametrize("upgrade", srcs, ids=[s.label for s in srcs], indirect=True)
+
+
 def _skip(item: pytest.Item, reason: str) -> None:
     item.add_marker(pytest.mark.skip(reason=reason))
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     pi = _install(config)
     major = pi.major if pi else None
     avail: list[str] | None = None
     for item in items:
+        if "upgrade" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.old_install)
         for m in item.iter_markers("pg_min"):
             if major is not None and major < m.args[0]:
                 _skip(item, f"needs PostgreSQL >= {m.args[0]}")
@@ -101,8 +160,28 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
                     _skip(item, f"{kind} keyring service not available")
         if item.get_closest_marker("needs_pgbackrest") and not shutil.which("pgbackrest"):
             _skip(item, "pgbackrest not on PATH")
-        if item.get_closest_marker("needs_old_install") and not config.getoption("--old-pg-config"):
-            _skip(item, "set --old-pg-config")
+    srcs = _upgrade_sources(config)
+    if any(not s.side_by_side for s in srcs):
+        keep = [i for i in items if i.get_closest_marker("old_install")]
+        drop = [i for i in items if not i.get_closest_marker("old_install")]
+        if drop:
+            config.hook.pytest_deselected(items=drop)
+            items[:] = keep
+
+
+@pytest.fixture
+def upgrade(request: pytest.FixtureRequest) -> Iterator[upgrade_mod.UpgradeSource]:
+    src = getattr(request, "param", None)
+    if src is None:
+        pytest.skip("set --old-pg-config")
+    for m in request.node.iter_markers("old_install"):
+        why = upgrade_mod.gate_mismatch(src, m.kwargs)
+        if why:
+            pytest.skip(why)
+    try:
+        yield src
+    finally:
+        src.switch_new()
 
 
 @pytest.fixture(scope="session")
@@ -173,10 +252,13 @@ def tde_node_factory(
             config: dict[str, str] | None = None,
             start: bool = True,
             install: pginstall.PgInstall | None = None,
+            extra_initdb_args: list[str] | None = None,
             **kw: Any,
         ) -> TdeNode:
             cfg = node_config | (config or {})
             kw.setdefault("initdb_args", _marker_config(request)[1])
+            if extra_initdb_args:
+                kw["initdb_args"] = [*(kw["initdb_args"] or []), *extra_initdb_args]
             install_dir = pg_install_dir
             if install is not None:
                 install_dir = str(install.install_dir)

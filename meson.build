@@ -364,6 +364,7 @@ endif
 
 pytest_files = [
   'tests/pgtde/test_providers.py',
+  'tests/pgtde/test_upgrade_source.py',
   'tests/extension/test_extension.py',
   'tests/encryption/test_access_method.py',
   'tests/encryption/test_cipher.py',
@@ -424,8 +425,20 @@ if stormweaver.found()
     )
   endforeach
 
+  if get_option('old_pg_configs') != ''
+    test('upgrade/old-install', stormweaver,
+      suite: ['old-install'],
+      env: pytest_env,
+      workdir: meson.project_build_root(),
+      timeout: 3600,
+      is_parallel: false,
+      args: ['test', meson.project_source_root() / 'tests', '-q', '--pg-config', pg_config.full_path(),
+             '-m', 'old_install', '--old-pg-config', get_option('old_pg_configs')],
+    )
+  endif
+
   # plain `meson test` runs the fast suite only
-  add_test_setup('default', exclude_suites: ['all-values'], is_default: true)
+  add_test_setup('default', exclude_suites: ['all-values', 'old-install'], is_default: true)
 else
   warning('stormweaver not found; pytest suite not registered (pass -Dstormweaver=/path/to/stormweaver)')
 endif

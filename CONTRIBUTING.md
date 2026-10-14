@@ -178,7 +178,8 @@ Root `tests/conftest.py`:
 | `tde_node_global` | `tde_node` + global provider, server key, `wal_encrypt=on`, restarted | io_method, keyring |
 | `tde_node_default` | `tde_node` + global provider, default key | io_method, keyring |
 | `file_keyring` | explicit file keyring | none |
-| `tde_node_factory` | `factory(name, config={...}, start=True, install=None, initdb_args=None, preload=...) -> TdeNode` for multi-node tests and nodes on another install, same io_method wiring per node | io_method |
+| `tde_node_factory` | `factory(name, config={...}, start=True, install=None, initdb_args=None, extra_initdb_args=None, preload=...) -> TdeNode` for multi-node tests and nodes on another install, same io_method wiring per node | io_method |
+| `upgrade` | one `--old-pg-config` entry per test run, see [Old installs](#old-installs) | old installs |
 | `node_config` | server settings every node gets: `io_method`, and `pg_tde.cipher` if the test requests `cipher` | io_method |
 | `tools` | nodeless binary runner with `help_ok`, `version_ok`, `options_ok` | none |
 
@@ -190,7 +191,7 @@ Every test that gets a node through `tde_node` or `tde_node_factory` is on the `
 Extra server settings for a single test go through `@pytest.mark.node_config({...})`.
 They are merged into the `node_config` fixture, so `tde_node`, the setup fixtures built on it and every node made by the factory get them.
 The marker closest to the test wins.
-`node_config(initdb_args=[...])` adds `initdb` arguments, a factory call can override them with `initdb_args=`.
+`node_config(initdb_args=[...])` adds `initdb` arguments, a factory call can override them with `initdb_args=`, or add to them with `extra_initdb_args=`.
 With `install=` the factory drops `io_method` for installs older than 18.
 
 For multi-node tests the factory does not create providers.
@@ -248,6 +249,7 @@ Every test module is registered as `<topic>/<module>` (without the `test_` prefi
 | `<topic>` | the modules of one topic, e.g. `rewind` |
 | `all-values` | the `<topic>/<module>/all-values` twins, run with `--all-values` |
 | `<topic>-all-values` | the twins of one topic, e.g. `rewind-all-values` |
+| `old-install` | `upgrade/old-install`, the `old_install` tests against `-Dold_pg_configs`. Only registered when the option is set, not part of plain `meson test` |
 
 ```sh
 meson test -C build                          # fast suite
@@ -266,6 +268,70 @@ In a plain run, tests marked `needs_vault` or `needs_kmip` skip when the service
 This does not depend on `STORMWEAVER_KEYRINGS`, which only affects tests on the `keyring` dimension.
 To make a missing service an error for the dimension tests, set `STORMWEAVER_KEYRINGS=vault,kmip` and pass `--all-values`.
 Tests in `keyrings/` skip without the service.
+
+#### Old installs
+
+Upgrade tests need an older installation next to the one under test.
+`--old-pg-config` (or `PG_TDE_TEST_OLD_PG_CONFIG` when the option is not given) takes a comma separated list, and it can be repeated.
+Every test using the `upgrade` fixture runs once per entry.
+Without entries these tests are collected once and skip with "set --old-pg-config".
+
+There are 2 kinds of entries.
+
+* A `pg_config` path (dir mode): the old installation is on disk next to the new one, in a different prefix.
+  Any major works, so this is how cross-major upgrades are tested.
+
+    ```sh
+    stormweaver test tests --pg-config $PGC --old-pg-config /usr/lib/postgresql/17/bin/pg_config,/opt/pg18-tde21/bin/pg_config
+    stormweaver test tests -m old_install --pg-config $PGC --old-pg-config /usr/lib/postgresql/16/bin/pg_config
+    ```
+
+* `script:<cmd>` (script mode): for package installs, where the old and new version can't be on disk at the same time.
+  The suite runs `<cmd> old` and `<cmd> new`, the command must exit with 0, and after it returns the installation behind `--pg-config` must be the requested version.
+  Arguments in `<cmd>` are passed before `old`/`new`, `tests/upgrade/switch.sh.example` shows the idea.
+
+    ```sh
+    stormweaver test tests -m old_install --pg-config $PGC --old-pg-config "script:ci/switch-pg-tde.sh 2.1.2"
+    ```
+
+  A script entry must be its own `--old-pg-config` value, because a command line can contain commas.
+  `script:` after a comma is a usage error.
+  The script switches the same prefix, so the old version must have the same major.
+
+  Script mode changes the installation every other test uses, which has some consequences:
+  with a `script:` entry only `old_install` tests run, everything else is deselected, and xdist (`-n`) is a usage error.
+  At startup the suite runs `<cmd> new` first, so an install left on old by an aborted run is fine, then `old` and `new` again to probe the old version.
+  The `upgrade` fixture switches back to new at teardown, and so does the end of the session.
+
+Each entry gets a label `pg<major>-tde<default_version>` from its `pg_config` and `pg_tde.control`, for example `pg17-tde2.2`.
+Duplicates get `-2`, `-3`, ...
+The label is the first part of the test id, so `-k pg17-tde2.2` selects that entry.
+`-k` is a substring match though, it also catches the duplicates (`pg17-tde2.2-2`), use the full test id when you need exactly one.
+The run header lists the entries and their mode.
+
+Tests using `upgrade` get the `old_install` marker automatically, so `-m old_install` selects all of them.
+The marker also takes gates, a test skips for an entry that doesn't match with "`<label>`: needs `<gate>`=`<value>`":
+
+* `same_major`: the old install has the same major as `--pg-config`
+* `tde_differs`: the old `pg_tde` default version is not the one under test, use it for release to release behavior
+* `side_by_side`: dir mode, both installs on disk at the same time
+
+From meson, set the list once and run the `old-install` suite:
+
+```sh
+meson configure build -Dold_pg_configs=/usr/lib/postgresql/17/bin/pg_config && meson test -C build --suite old-install
+```
+
+##### Writing an old-install test
+
+`upgrade` must be the first argument of the test.
+Fixture teardown runs in reverse setup order, so this way it switches back to new only after the factory stopped the nodes.
+`upgrade.old_node(tde_node_factory, name)` makes a started node on the old install.
+For `pg_upgrade`, `upgrade.new_node(tde_node_factory, name, old)` makes the unstarted target (with the checksum setting of the old cluster), and `upgrade.run_pg_tde_upgrade(old, new, socketdir=..., cwd=...)` runs it.
+This needs both installs on disk, so mark the test `@pytest.mark.old_install(side_by_side=True)`.
+`upgrade.start_in_place(node)` restarts the old node on the new binaries and runs `ALTER EXTENSION pg_tde UPDATE` everywhere, mark it `same_major=True`.
+`upgrade.old_tde` and `upgrade.suite_tde` are the 2 `pg_tde` versions.
+See `upgrade/test_pg_upgrade.py` for examples.
 
 #### Logs
 

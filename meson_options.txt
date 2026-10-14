@@ -4,3 +4,5 @@ option('stormweaver', type: 'string', value: 'stormweaver',
   description: 'Path to the stormweaver executable used to run the pytest suite')
 option('tests_only', type: 'boolean', value: false,
   description: 'Only set up the test suite, for running against an existing installation; skips all build targets')
+option('old_pg_configs', type: 'string', value: '',
+  description: 'Comma separated pg_config paths, or one script:<cmd>, of older installations for the old-install suite')

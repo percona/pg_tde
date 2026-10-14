@@ -5,6 +5,7 @@ import pytest
 import stormweaver.testing as st
 
 from pgtde import api
+from pgtde.upgrade import update_extension
 
 
 def _upgrade(node, old, new, socketdir, cwd):
@@ -76,3 +77,38 @@ def test_pg_tde_upgrade(tde_node_factory, file_keyring, tools, tmp_path, socketd
     new.start()
     assert new.safe_sql("SELECT * FROM test_enc") == [["1"], ["2"]]
     new.stop()
+
+
+def _encrypted_old(upgrade, tde_node_factory, keyring_obj, name="old"):
+    old = upgrade.old_node(tde_node_factory, name)
+    old.setup_server_key(keyring_obj)
+    api.set_key(old, "server-key", "global-provider", scope="global")
+    old.safe_sql(
+        "CREATE TABLE t_enc (k int PRIMARY KEY) USING tde_heap; INSERT INTO t_enc SELECT generate_series(1, 100)"
+    )
+    return old
+
+
+@pytest.mark.old_install(side_by_side=True)
+def test_pg_tde_upgrade_keeps_encrypted_data(upgrade, tde_node_factory, keyring_obj, tmp_path, socketdir):
+    old = _encrypted_old(upgrade, tde_node_factory, keyring_obj)
+    new = upgrade.new_node(tde_node_factory, "new", old)
+    workdir = tmp_path / "work"
+    workdir.mkdir()
+    st.command_ok(upgrade.run_pg_tde_upgrade(old, new, socketdir=socketdir, cwd=workdir), "pg_tde_upgrade")
+    new.start()
+    update_extension(new)
+    assert api.tde_version(new) == upgrade.suite_tde
+    assert new.sql_value("SELECT count(*) FROM t_enc") == "100"
+    assert api.is_encrypted(new, "t_enc")
+
+
+@pytest.mark.old_install(same_major=True)
+def test_in_place_start_keeps_encrypted_data(upgrade, tde_node_factory, keyring_obj):
+    node = _encrypted_old(upgrade, tde_node_factory, keyring_obj, name="inplace")
+    assert api.tde_version(node) == upgrade.old_tde
+    upgrade.start_in_place(node)
+    assert api.tde_version(node) == upgrade.suite_tde
+    assert node.sql_value("SELECT count(*) FROM t_enc") == "100"
+    node.restart()
+    assert node.sql_value("SELECT count(*) FROM t_enc") == "100"

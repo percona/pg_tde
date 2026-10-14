@@ -106,6 +106,10 @@ def version(node: Any) -> str:
     return v
 
 
+def tde_version(node: Any) -> str | None:
+    return node.sql_value("SELECT extversion FROM pg_extension WHERE extname = 'pg_tde'")
+
+
 def set_wal_encrypt(node: Any, on: bool) -> None:
     node.safe_sql(f"ALTER SYSTEM SET pg_tde.wal_encrypt = {'on' if on else 'off'}")
 
