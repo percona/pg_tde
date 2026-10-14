@@ -398,6 +398,7 @@ pytest_files = [
   'tests/upgrade/test_pg_upgrade.py',
   'tests/tools/test_change_key_provider.py',
   'tests/tools/test_checksums.py',
+  'tests/tools/test_resetwal.py',
 ]
 
 if stormweaver.found()

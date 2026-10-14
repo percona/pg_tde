@@ -10,6 +10,7 @@ from pgtde.wal import archive_config, restore_command
 # tmpfs mount point for temporary files is Linux specific
 pytestmark = pytest.mark.linux_only
 
+SEGMENT = "000000010000000000000099"
 HELP = {
     "pg_tde_archive_decrypt": r"wraps an archive command to give the command unencrypted WAL",
     "pg_tde_restore_encrypt": r"wraps a restore command to encrypt its returned WAL",
@@ -17,8 +18,9 @@ HELP = {
 
 
 @pytest.mark.parametrize("tool", ["pg_tde_archive_decrypt", "pg_tde_restore_encrypt"])
-def test_archive_tools_cli(tools, tool):
-    param = "ARCHIVE-COMMAND" if tool.endswith("decrypt") else "RESTORE-COMMAND"
+def test_archive_tools_cli(tools, tool, tmp_path):
+    decrypt = tool.endswith("decrypt")
+    param = "ARCHIVE-COMMAND" if decrypt else "RESTORE-COMMAND"
 
     cp = tools.run(tool, "--help")
     st.command_ok(cp)
@@ -44,6 +46,14 @@ def test_archive_tools_cli(tools, tool):
     st.command_fails(
         tools.run(tool, "file", "pg_wal/file", "kill $$; sleep"),
         stderr_re=rf'error: {param} "kill \$\$; sleep" was terminated by signal 15: Terminated',
+    )
+    # segment missing: no source to decrypt, or the restore command left nothing to encrypt
+    seg_path = tmp_path / "pg_wal" / SEGMENT
+    cmd = f"cp %p {tmp_path}/%f" if decrypt else "true"
+    missing = re.escape(str(seg_path)) if decrypt else rf'[^"]+/{SEGMENT}'
+    st.command_fails(
+        tools.run(tool, SEGMENT, seg_path, cmd),
+        stderr_re=rf'error: could not open file "{missing}": No such file or directory',
     )
 
 
