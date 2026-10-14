@@ -5,7 +5,7 @@ from stormweaver.keyrings.file import FileKeyring
 from stormweaver.keyrings.kmip import KmipKeyring
 from stormweaver.keyrings.vault import VaultKeyring
 
-from pgtde.providers import add_provider_sql
+from pgtde.providers import add_provider_sql, change_provider_sql
 
 
 def test_file_provider_sql():
@@ -41,6 +41,11 @@ def test_kmip_provider_sql():
         "SELECT pg_tde_add_database_key_provider_kmip"
         "('km', '127.0.0.1', 5696, '/d/client.pem', '/d/client.key', '/d/ca.pem')"
     )
+
+
+def test_change_provider_sql():
+    k = FileKeyring("/tmp/kr.per")
+    assert change_provider_sql(k, "global", "p") == "SELECT pg_tde_change_global_key_provider_file('p', '/tmp/kr.per')"
 
 
 def test_quote_escaping():

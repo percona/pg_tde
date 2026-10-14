@@ -8,10 +8,21 @@ from stormweaver.keyrings.vault import VaultKeyring
 from pgtde.sql import sql_literal
 
 Scope = Literal["global", "database"]
+# oid global providers are stored under
+GLOBAL_OID = "1664"
 
 
 def add_provider_sql(keyring: Keyring, scope: Scope, name: str) -> str:
     """SELECT statement registering keyring as a pg_tde key provider."""
+    return _provider_sql("add", keyring, scope, name)
+
+
+def change_provider_sql(keyring: Keyring, scope: Scope, name: str) -> str:
+    """SELECT statement pointing provider name at keyring."""
+    return _provider_sql("change", keyring, scope, name)
+
+
+def _provider_sql(op: str, keyring: Keyring, scope: Scope, name: str) -> str:
     if scope not in ("global", "database"):
         raise ValueError(f"unknown scope: {scope}")
     args: list[str | int]
@@ -35,5 +46,5 @@ def add_provider_sql(keyring: Keyring, scope: Scope, name: str) -> str:
         ]
     else:
         raise TypeError(f"unsupported keyring: {type(keyring).__name__}")
-    fn = f"pg_tde_add_{scope}_key_provider_{suffix}"
+    fn = f"pg_tde_{op}_{scope}_key_provider_{suffix}"
     return f"SELECT {fn}({', '.join(sql_literal(a) for a in args)})"

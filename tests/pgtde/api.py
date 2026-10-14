@@ -4,7 +4,7 @@ from typing import Any
 from stormweaver.keyrings.base import Keyring
 from stormweaver.keyrings.file import FileKeyring
 
-from pgtde.providers import Scope, add_provider_sql
+from pgtde.providers import Scope, add_provider_sql, change_provider_sql
 from pgtde.sql import sql_literal
 
 
@@ -51,6 +51,10 @@ def add_provider(node: Any, keyring: Keyring | str | Path, name: str, *, scope: 
     if not isinstance(keyring, Keyring):
         keyring = FileKeyring(Path(keyring))
     node.safe_sql(add_provider_sql(keyring, scope, name))
+
+
+def change_provider(node: Any, keyring: Keyring, name: str, *, scope: Scope = "database") -> None:
+    node.safe_sql(change_provider_sql(keyring, scope, name))
 
 
 def delete_provider(node: Any, name: str, *, scope: Scope = "database") -> None:

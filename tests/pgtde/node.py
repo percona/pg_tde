@@ -114,6 +114,11 @@ class TdeNode(PgTestNode):
         api.create_key(self, key, provider, scope="global")
         api.set_default_key(self, key, provider)
 
+    def log_since(self, offset: int) -> str:
+        with open(self.server_log, errors="replace") as f:
+            f.seek(offset)
+            return f.read()
+
     def is_encrypted(self, rel: str) -> bool | None:
         return api.is_encrypted(self, rel)
 

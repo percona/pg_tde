@@ -6,9 +6,9 @@ import pytest
 import stormweaver.testing as st
 
 from pgtde import api
+from pgtde.providers import GLOBAL_OID
 
 OK = r"Key provider updated successfully!"
-GLOBAL_OID = "1664"
 
 
 def test_change_key_provider_cli(tde_node, tools, tmp_path):

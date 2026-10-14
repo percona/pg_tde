@@ -60,12 +60,6 @@ def _restored(stanza, pg_install, *extra):
     return _adopt(pg_install, stanza.restore(_target(), *extra))
 
 
-def _log_since(node, offset):
-    with open(node.server_log, errors="replace") as f:
-        f.seek(offset)
-        return f.read()
-
-
 def _labels(stanza):
     [info] = stanza.info()
     return {b["type"]: b["label"] for b in info["backup"]}
@@ -474,7 +468,7 @@ def test_raw_archive_replay_needs_writer_wal_keys(pg_install, tde_node_factory, 
         if keys == "standby":
             with pytest.raises(RuntimeError, match="server did not become ready"):
                 node.start()
-            log = _log_since(node, offset)
+            log = node.log_since(offset)
             assert re.search(r"LOG:  invalid magic number [0-9A-F]{4} in WAL segment \w{24}, LSN \S+, offset 0", log)
             assert "FATAL:  could not locate required checkpoint record" in log
             return
@@ -496,7 +490,7 @@ def test_raw_archive_replay_with_backup_keys_loses_no_rows(pg_install, tde_node_
             node.start()
         except RuntimeError:
             # refusing to start is fine, as long as it says the key is missing
-            assert re.search(r"(FATAL|PANIC): .*key", _log_since(node, offset)), _log_since(node, offset)
+            assert re.search(r"(FATAL|PANIC): .*key", node.log_since(offset)), node.log_since(offset)
             return
         node.poll_until("SELECT pg_is_in_recovery()", "f", timeout=60)
         assert node.safe_sql(IDS_SQL) == [["1"], ["2"], ["3"]], "promoted past the unreadable WAL"
@@ -539,7 +533,7 @@ def _archive_midstream_wal_encrypt(tde_node_factory, keyring, tmp_path, layout):
         node.safe_sql(f"INSERT INTO t SELECT g, repeat('x', 80) FROM generate_series({i * 500 + 1}, {i * 500 + 500}) g")
         archive_all(node)
 
-    assert "mismatch of segment size" not in _log_since(node, offset)
+    assert "mismatch of segment size" not in node.log_since(offset)
     assert node.sql_value("SELECT failed_count FROM pg_stat_archiver") == "0"
     return node, stanza
 
