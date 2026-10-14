@@ -19,6 +19,7 @@ def test_crash_recovery(tde_node, keyring_obj):
     node.kill()
     # crash recovery of the pg_tde setup
     node.poll_start()
+    assert node.sql_value("SHOW pg_tde.wal_encrypt") == "on"
 
     def rotate(n):
         wal_key = f"wal_encryption_key_{n}"

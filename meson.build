@@ -384,6 +384,7 @@ pytest_files = [
   'tests/recovery/test_crash.py',
   'tests/recovery/test_relfilenode_cache.py',
   'tests/recovery/test_unlogged.py',
+  'tests/recovery/test_wal_skip.py',
   'tests/backup/test_basebackup.py',
   'tests/replication/test_streaming.py',
   'tests/rewind/test_basic.py',

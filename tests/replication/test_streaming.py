@@ -1,5 +1,6 @@
 import pytest
 
+from pgtde import api
 from pgtde.node import TdeNode
 
 
@@ -38,3 +39,20 @@ def test_streaming_replication(tde_node, keyring_obj):
         primary.wait_for_catchup(replica)
 
         assert replica.safe_sql("SELECT * FROM test_enc2 ORDER BY x") == [["1"], ["2"]]
+
+
+# small buffers and no FPW widen the race window
+@pytest.mark.node_config({"full_page_writes": "off", "shared_buffers": "1MB"})
+@pytest.mark.bug("PG-2861")
+@pytest.mark.xfail(
+    strict=False,
+    reason="PG-2861: set_default_key races walsender server-key fallback, standby FATALs replaying ROTATE for db 1664",
+)
+def test_standby_follows_default_key_setup(tde_node, keyring_obj):
+    node = tde_node
+    with TdeNode.from_backup(node.basebackup(), node, name="standby") as standby:
+        node.setup_default_key(keyring_obj, provider="global-keyring", key="default-key")
+        # key functions do not flush their WAL, a commit does
+        node.safe_sql("CREATE TABLE flush_wal (a int)")
+        node.wait_for_catchup(standby)
+        assert api.default_key_info(standby)[1:] == ["global-keyring", "default-key"]
