@@ -1,51 +1,59 @@
 from pgtde import api
 
 ROWS = [["1", "5"], ["2", "6"]]
+PROVIDER_TYPE = {"file": "file", "vault": "vault-v2", "kmip": "kmip"}
 
 
-def _read(node):
+def _read(node, tables):
     assert node.safe_sql("SELECT * FROM test_enc ORDER BY id") == ROWS
+    for i, t in enumerate(tables):
+        assert node.safe_sql(f"SELECT x FROM {t}") == [[str(i)]], t
 
 
-def _rotate(node, key, provider, scope, info):
+def _rotate(node, key, provider, scope, info, tables):
     api.create_key(node, key, provider, scope=scope)
     api.set_key(node, key, provider, scope=scope)
     api.verify_key(node)
-    _read(node)
+    # new relation key under the new principal key
+    t = f"t_{len(tables)}"
+    node.safe_sql(f"CREATE TABLE {t} (x int) USING tde_heap")
+    node.safe_sql(f"INSERT INTO {t} VALUES ({len(tables)})")
+    tables.append(t)
+    _read(node, tables)
     node.restart()
     api.verify_key(node)
     assert api.key_info(node) == info
     assert api.server_key_info(node) is None
-    _read(node)
+    _read(node, tables)
 
 
-def test_rotate_key_across_providers_and_scopes(tde_node, tmp_path):
+def test_rotate_key_across_providers_and_scopes(tde_node, keyring_obj, tmp_path):
     node = tde_node
-    db1 = tmp_path / "db1.keys"
     db2 = tmp_path / "db2.keys"
     api.create_extension(node)
-    api.add_provider(node, db1, "file-vault")
+    api.add_provider(node, keyring_obj, "db-provider")
     api.add_provider(node, db2, "file-2")
     api.add_provider(node, tmp_path / "global2.keys", "file-2", scope="global")
     api.add_provider(node, tmp_path / "global3.keys", "file-3", scope="global")
 
-    assert api.list_providers(node) == [
-        ["1", "file-vault", "file", f'{{"path" : "{db1}"}}'],
-        ["2", "file-2", "file", f'{{"path" : "{db2}"}}'],
-    ]
+    listing = api.list_providers(node)
+    assert [r[1] for r in listing] == ["db-provider", "file-2"]
+    assert listing[0][:3] == ["1", "db-provider", PROVIDER_TYPE[keyring_obj.kind]]
+    assert listing[1] == ["2", "file-2", "file", f'{{"path" : "{db2}"}}']
 
-    api.create_key(node, "test-db-key", "file-vault")
-    api.set_key(node, "test-db-key", "file-vault")
+    api.create_key(node, "test-db-key", "db-provider")
+    api.set_key(node, "test-db-key", "db-provider")
     node.safe_sql("""
         CREATE TABLE test_enc (id SERIAL, k INTEGER, PRIMARY KEY (id)) USING tde_heap;
         INSERT INTO test_enc (k) VALUES (5), (6);
     """)
-    _read(node)
+    tables = []
+    _read(node, tables)
 
-    _rotate(node, "rotated-key1", "file-vault", "database", ["1", "file-vault", "rotated-key1"])
-    _rotate(node, "rotated-key2", "file-2", "database", ["2", "file-2", "rotated-key2"])
-    _rotate(node, "rotated-key", "file-3", "global", ["-2", "file-3", "rotated-key"])
-    _rotate(node, "rotated-keyX", "file-2", "global", ["-1", "file-2", "rotated-keyX"])
+    _rotate(node, "rotated-key1", "db-provider", "database", ["1", "db-provider", "rotated-key1"], tables)
+    _rotate(node, "rotated-key2", "file-2", "database", ["2", "file-2", "rotated-key2"], tables)
+    _rotate(node, "rotated-key", "file-3", "global", ["-2", "file-3", "rotated-key"], tables)
+    _rotate(node, "rotated-keyX", "file-2", "global", ["-1", "file-2", "rotated-keyX"], tables)
     api.delete_provider(node, "file-3", scope="global")
     assert [r[1] for r in api.list_providers(node, scope="global")] == ["file-2"]
 
@@ -58,9 +66,15 @@ def test_rotate_key_across_providers_and_scopes(tde_node, tmp_path):
     assert api.key_info(node) == ["-1", "file-2", "rotated-keyX"]
     assert api.server_key_info(node) is None
 
+    # global key to database key
     api.set_key(node, "rotated-key2", "file-2")
     assert api.key_info(node) == ["2", "file-2", "rotated-key2"]
     assert api.server_key_info(node) is None
+    node.safe_sql("CREATE TABLE inherit_off (x int) USING tde_heap")
+    assert api.is_encrypted(node, "inherit_off") is True
+    node.restart()
+    assert api.key_info(node) == ["2", "file-2", "rotated-key2"]
+    _read(node, tables)
 
     node.safe_sql("DROP TABLE test_enc")
     node.safe_sql("ALTER SYSTEM RESET pg_tde.inherit_global_providers")

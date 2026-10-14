@@ -5,6 +5,7 @@ ROLE = "regress_pg_tde_access_control"
 DENIED = [
     ("pg_tde_create_key_using_database_key_provider", "'test-db-key', 'local-file-provider'"),
     ("pg_tde_set_key_using_database_key_provider", "'test-db-key', 'local-file-provider'"),
+    ("pg_tde_create_key_using_global_key_provider", "'key1', 'global-file-provider'"),
     ("pg_tde_delete_key", ""),
     ("pg_tde_list_all_database_key_providers", ""),
     ("pg_tde_list_all_global_key_providers", ""),
@@ -58,6 +59,8 @@ def test_access_control(tde_node, file_keyring):
         conn.safe_sql(f"SET ROLE {ROLE}")
         for fn, args in DENIED:
             conn.expect_error(rf"permission denied for function {fn}$", f"SELECT {fn}({args})")
+        assert conn.sql_value("SELECT pg_tde_version()").startswith("pg_tde ")
+        assert conn.sql_value("SELECT pg_tde_is_encrypted('pg_class')") == "f"
 
     for sig in GRANTS:
         node.safe_sql(f"GRANT EXECUTE ON FUNCTION {sig} TO {ROLE}")

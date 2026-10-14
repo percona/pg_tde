@@ -271,22 +271,31 @@ def test_key_name_validation(providers_node):
 FILE_PATH_ROWS = [["1", "5"], ["2", "6"]]
 
 
-def _provider_row(path):
-    return [["1", "db-provider", "file", f'{{"path" : "{path}"}}']]
+def _provider_row(scope, path):
+    return [["1" if scope == "database" else "-1", "file-provider", "file", f'{{"path" : "{path}"}}']]
 
 
 def _check_readable(node):
     api.verify_key(node)
-    assert node.is_encrypted("test_enc") is True
+    assert api.is_encrypted(node, "test_enc") is True
     assert node.safe_sql("SELECT * FROM test_enc ORDER BY id") == FILE_PATH_ROWS
 
 
-def test_change_provider_file_path(tde_node, tmp_path):
+def _check_new_table(node):
+    assert api.is_encrypted(node, "test_enc_new") is True
+    assert node.safe_sql("SELECT x FROM test_enc_new") == [["7"]]
+
+
+@pytest.mark.parametrize("scope", SCOPES)
+def test_change_provider_file_path(tde_node, tmp_path, scope):
     node = tde_node
     db1 = tmp_path / "db1.keys"
     db2 = tmp_path / "db2.keys"
-    node.setup_db_key(db1, key="test-key")
-    assert api.list_providers(node) == _provider_row(db1)
+    api.create_extension(node)
+    api.add_provider(node, db1, "file-provider", scope=scope)
+    api.create_key(node, "test-key", "file-provider", scope=scope)
+    api.set_key(node, "test-key", "file-provider", scope=scope)
+    assert api.list_providers(node, scope=scope) == _provider_row(scope, db1)
 
     node.safe_sql("""
         CREATE TABLE test_enc (id serial, k integer, PRIMARY KEY (id)) USING tde_heap;
@@ -295,24 +304,156 @@ def test_change_provider_file_path(tde_node, tmp_path):
     _check_readable(node)
 
     shutil.move(db1, db2)
-    api.change_provider_file(node, "db-provider", str(db2))
-    assert api.list_providers(node) == _provider_row(db2)
+    api.change_provider_file(node, "file-provider", str(db2), scope=scope)
+    assert api.list_providers(node, scope=scope) == _provider_row(scope, db2)
     _check_readable(node)
+    node.safe_sql("CREATE TABLE test_enc_new (x int) USING tde_heap")
+    node.safe_sql("INSERT INTO test_enc_new VALUES (7)")
+    _check_new_table(node)
 
     node.restart()
     _check_readable(node)
+    _check_new_table(node)
 
     # move file back, restart, then change provider
     shutil.move(db2, db1)
     node.restart()
 
-    not_found = r'key "test-key" not found in key provider "db-provider"'
+    not_found = r'key "test-key" not found in key provider "file-provider"'
     node.expect_error(not_found, "SELECT pg_tde_verify_key()")
-    assert node.is_encrypted("test_enc") is True
+    assert api.is_encrypted(node, "test_enc") is True
     node.expect_error(not_found, "SELECT * FROM test_enc ORDER BY id")
 
-    api.change_provider_file(node, "db-provider", str(db1))
-    assert api.list_providers(node) == _provider_row(db1)
+    api.change_provider_file(node, "file-provider", str(db1), scope=scope)
+    assert api.list_providers(node, scope=scope) == _provider_row(scope, db1)
     _check_readable(node)
+    _check_new_table(node)
 
     api.drop_extension(node, cascade=True)
+
+
+DBS = ["db_local", "db_other", "db_global", "db_default"]
+
+
+def _rows(db):
+    return [["1", f"{db} secret"]]
+
+
+def test_database_keys_per_database(tde_node, keyring_obj, tmp_path):
+    node = tde_node
+    api.create_extension(node)
+    api.add_provider(node, keyring_obj, "global-provider", scope="global")
+    api.create_key(node, "default-key", "global-provider", scope="global")
+    api.set_default_key(node, "default-key", "global-provider")
+    for db in DBS:
+        node.safe_sql(f"CREATE DATABASE {db}")
+
+    info = {
+        "db_local": ["1", "db-provider", "local-key"],
+        "db_other": ["1", "db-provider", "other-key"],
+        "db_global": ["-1", "global-provider", "global-key"],
+        "db_default": ["-1", "global-provider", "default-key"],
+    }
+    with node.connect(db="db_local") as c:
+        api.create_extension(c)
+        api.add_provider(c, keyring_obj, "db-provider")
+        api.create_key(c, "local-key", "db-provider")
+        api.set_key(c, "local-key", "db-provider")
+    with node.connect(db="db_other") as c:
+        api.create_extension(c)
+        # database providers are not visible from other databases
+        assert api.list_providers(c) == []
+        missing = r'key provider "db-provider" does not exists'
+        c.expect_error(missing, "SELECT pg_tde_create_key_using_database_key_provider('x', 'db-provider')")
+        c.expect_error(missing, "SELECT pg_tde_set_key_using_database_key_provider('local-key', 'db-provider')")
+        api.add_provider(c, tmp_path / "other.keys", "db-provider")
+        api.create_key(c, "other-key", "db-provider")
+        api.set_key(c, "other-key", "db-provider")
+    with node.connect(db="db_global") as c:
+        api.create_extension(c)
+        api.create_key(c, "global-key", "global-provider", scope="global")
+        api.set_key(c, "global-key", "global-provider", scope="global")
+    with node.connect(db="db_default") as c:
+        api.create_extension(c)
+    for db in DBS:
+        with node.connect(db=db) as c:
+            c.safe_sql("CREATE TABLE t (id int PRIMARY KEY, v text) USING tde_heap")
+            c.safe_sql(f"INSERT INTO t VALUES (1, '{db} secret')")
+            assert api.key_info(c) == info[db], db
+
+    listing = api.list_providers(node, scope="global")
+    node.expect_error(IN_USE, "SELECT pg_tde_delete_global_key_provider('global-provider')")
+    assert api.list_providers(node, scope="global") == listing
+
+    node.restart()
+    for db in DBS:
+        with node.connect(db=db) as c:
+            api.verify_key(c)
+            assert api.key_info(c) == info[db], db
+            assert api.is_encrypted(c, "t") is True, db
+            assert c.safe_sql("SELECT * FROM t") == _rows(db), db
+
+    for db in DBS:
+        with node.connect(db=db) as c:
+            c.safe_sql("DROP TABLE t")
+            if db != "db_default":
+                api.delete_key(c)
+            if db in ("db_local", "db_other"):
+                api.delete_provider(c, "db-provider")
+    api.delete_default_key(node)
+    api.delete_provider(node, "global-provider", scope="global")
+
+    node.restart()
+    for db in DBS:
+        with node.connect(db=db) as c:
+            assert api.key_info(c) is None, db
+            assert api.list_providers(c) == [], db
+            assert api.list_providers(c, scope="global") == [], db
+    assert api.default_key_info(node) is None
+
+
+def _check_restored(conn, info):
+    assert api.key_info(conn) == info
+    for t, enc in (("t_enc", True), ("t_plain", False)):
+        assert api.is_encrypted(conn, t) is enc, t
+        assert conn.safe_sql(f"SELECT * FROM {t}") == [["101", "bond"]], t
+
+
+def test_dump_restore_into_database_with_own_key(tde_node, keyring_obj, tmp_path):
+    node = tde_node
+    dump = tmp_path / "dump.sql"
+    node.safe_sql("CREATE DATABASE src")
+    node.safe_sql("CREATE DATABASE dst")
+    with node.connect(db="src") as c:
+        api.create_extension(c)
+        api.add_provider(c, keyring_obj, "db-provider")
+        api.create_key(c, "src-key", "db-provider")
+        api.set_key(c, "src-key", "db-provider")
+        c.safe_sql("""
+            CREATE TABLE t_enc (a int PRIMARY KEY, b text) USING tde_heap;
+            CREATE TABLE t_plain (a int PRIMARY KEY, b text) USING heap;
+            INSERT INTO t_enc VALUES (101, 'bond');
+            INSERT INTO t_plain VALUES (101, 'bond');
+        """)
+    with node.connect(db="dst") as c:
+        api.create_extension(c)
+        api.add_provider(c, tmp_path / "dst.keys", "file-provider")
+        api.create_key(c, "dst-key", "file-provider")
+        api.set_key(c, "dst-key", "file-provider")
+
+    cp = node.tool("pg_dump", "-d", "src", "-t", "t_enc", "-t", "t_plain", "-f", dump)
+    assert cp.returncode == 0, cp.stderr
+    cp = node.psql(file=dump, db="dst")
+    assert cp.returncode == 0, cp.stderr
+
+    with node.connect(db="dst") as c:
+        _check_restored(c, ["1", "file-provider", "dst-key"])
+    node.restart()
+    with node.connect(db="dst") as c:
+        _check_restored(c, ["1", "file-provider", "dst-key"])
+        api.add_provider(c, keyring_obj, "db-provider")
+        api.create_key(c, "dst-key2", "db-provider")
+        api.set_key(c, "dst-key2", "db-provider")
+    node.restart()
+    with node.connect(db="dst") as c:
+        _check_restored(c, ["2", "db-provider", "dst-key2"])

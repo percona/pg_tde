@@ -90,6 +90,26 @@ def test_wal_encrypt(pg_install, tde_node, keyring_obj):
     node.safe_sql("DROP EXTENSION pg_tde")
 
 
+def test_server_key_moves_to_other_provider(tde_node_global, tmp_path):
+    node = tde_node_global
+    assert node.sql_value("SHOW pg_tde.wal_encrypt") == "on"
+    node.safe_sql("CREATE TABLE test_wal (id int PRIMARY KEY, k int) USING heap")
+    node.safe_sql("INSERT INTO test_wal SELECT i, i FROM generate_series(1, 100) i")
+    node.expect_error(IN_USE, "SELECT pg_tde_delete_global_key_provider('global-provider')")
+
+    api.add_provider(node, tmp_path / "other.keys", "other-provider", scope="global")
+    api.create_key(node, "server-key2", "other-provider", scope="global")
+    api.set_server_key(node, "server-key2", "other-provider")
+    assert node.safe_sql(KEY_INFO_SQL) == [["server-key2", "other-provider", "-2"]]
+    api.delete_provider(node, "global-provider", scope="global")
+    assert [r[1] for r in api.list_providers(node, scope="global")] == ["other-provider"]
+
+    node.restart()
+    api.verify_server_key(node)
+    assert node.safe_sql(KEY_INFO_SQL) == [["server-key2", "other-provider", "-2"]]
+    assert node.sql_value("SELECT sum(k) FROM test_wal") == "5050"
+
+
 @pytest.mark.bug("PG-1813")
 def test_wal_key_tli(pg_install_dir, sw_log_dir, node_config, keyring_obj):
     run_databases(pg_install_dir, "remote", keyring_obj, restart_standby=True, config=node_config)

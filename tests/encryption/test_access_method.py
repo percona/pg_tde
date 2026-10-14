@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from pgtde import api
@@ -30,6 +32,11 @@ def test_change_access_method(tde_node_db, pg_major):
     assert _status(node) == [True] * 3
 
     node.safe_sql("ALTER TABLE country_table SET ACCESS METHOD heap")
+    assert node.safe_sql("SELECT country_name, continent FROM country_table ORDER BY country_id") == [
+        ["Japan", "Asia"],
+        ["UK", "Europe"],
+        ["USA", "North America"],
+    ]
     _insert(node, ("France", "Europe"), ("Germany", "Europe"), ("Canada", "NA"))
     assert node.sql_value("SELECT count(*) FROM country_table") == "6"
     assert _status(node) == [False] * 3
@@ -86,7 +93,9 @@ def _keeps_encryption(node, rels, sql):
 def test_new_relfilenode_keeps_encryption(tde_default_am_node):
     node = tde_default_am_node
     node.safe_sql("CREATE TABLE t1 (n integer)")
+    node.safe_sql("INSERT INTO t1 SELECT generate_series(1, 200)")
     _keeps_encryption(node, ["t1"], "VACUUM FULL t1")
+    assert node.sql_value("SELECT sum(n) FROM t1") == "20100"
 
     node.safe_sql("""
         CREATE TABLE test_tab1 AS SELECT generate_series(1, 10) a;
@@ -101,6 +110,7 @@ def test_new_relfilenode_keeps_encryption(tde_default_am_node):
             SELECT type, sum(amt) AS totamt FROM mvtest_t GROUP BY type WITH NO DATA;
     """)
     _keeps_encryption(node, ["mvtest_tm"], "REFRESH MATERIALIZED VIEW mvtest_tm")
+    assert node.safe_sql("SELECT type, totamt FROM mvtest_tm ORDER BY type") == [["x", "5"], ["y", "12"], ["z", "11"]]
 
     node.safe_sql("""
         CREATE TYPE rewritetype AS (a int);
@@ -254,3 +264,39 @@ def test_enforce_encryption_cluster_wide(tde_node_db):
     node.restart()
     assert node.sql_value("SHOW pg_tde.enforce_encryption") == "on"
     _enforce_blocks(node)
+
+
+def test_enforce_encryption_database_scope(tde_node_default):
+    node = tde_node_default
+    node.safe_sql("CREATE DATABASE enforce_db")
+    node.safe_sql("ALTER DATABASE enforce_db SET pg_tde.enforce_encryption = on")
+    with node.connect(db="enforce_db") as c:
+        api.create_extension(c)
+        assert c.sql_value("SHOW pg_tde.enforce_encryption") == "on"
+        c.expect_error(ENFORCE, "CREATE TABLE heap_blocked (id int) USING heap")
+        c.safe_sql("CREATE TABLE tde_ok (id int) USING tde_heap")
+        assert api.is_encrypted(c, "tde_ok") is True
+
+    assert node.sql_value("SHOW pg_tde.enforce_encryption") == "off"
+    node.safe_sql("CREATE TABLE heap_ok (id int) USING heap")
+    assert api.is_encrypted(node, "heap_ok") is False
+
+
+def test_enforce_encryption_role_scope(tde_node_default):
+    node = tde_node_default
+    role = "enforce_role"
+    node.safe_sql(f"CREATE ROLE {role} LOGIN")
+    node.safe_sql(f"GRANT CREATE ON SCHEMA public TO {role}")
+    # role settings apply at login, SET ROLE does not pick them up
+    node.safe_sql(f"ALTER ROLE {role} SET pg_tde.enforce_encryption = on")
+
+    cp = node.psql("CREATE TABLE role_heap (id int) USING heap", user=role)
+    assert cp.returncode != 0
+    assert re.search(ENFORCE, cp.stderr), cp.stderr
+    cp = node.psql("CREATE TABLE role_tde (id int) USING tde_heap", user=role)
+    assert cp.returncode == 0, cp.stderr
+    assert node.sql_value("SELECT to_regclass('role_heap')") is None
+    assert api.is_encrypted(node, "role_tde") is True
+
+    node.safe_sql("CREATE TABLE heap_ok (id int) USING heap")
+    assert api.is_encrypted(node, "heap_ok") is False
