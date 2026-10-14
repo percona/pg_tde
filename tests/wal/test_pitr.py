@@ -2,7 +2,7 @@ import pytest
 
 from pgtde import api
 from pgtde.standby import standby_from_backup_dir
-from pgtde.wal import archive_config, wal_contains
+from pgtde.wal import archive_all, archive_config, wal_contains
 
 CONFIG = {"wal_level": "replica", "autovacuum": "off", "checkpoint_timeout": "1h"}
 IDS_SQL = "SELECT id FROM t ORDER BY id"
@@ -16,11 +16,6 @@ def _primary(tde_node_factory, pg_install, keyring_obj, archive):
     api.set_key(primary, "db-key", "global-provider", scope="global")
     primary.restart()
     return primary
-
-
-def _archive_all(node):
-    seg = node.sql_value("SELECT pg_walfile_name(pg_switch_wal())")
-    node.poll_until(f"SELECT coalesce(last_archived_wal >= '{seg}', false) FROM pg_stat_archiver")
 
 
 def _restore(backup, pg_install, recovery):
@@ -52,15 +47,26 @@ def test_pitr_to_target(pg_install, tde_node_factory, keyring_obj, tmp_path, kin
     primary.safe_sql("INSERT INTO t VALUES (1, 'base')")
     primary.safe_sql("CREATE TABLE d (id int PRIMARY KEY, v text) USING tde_heap")
     primary.safe_sql("INSERT INTO d VALUES (1, 'dropped-later')")
+    primary.safe_sql("CREATE TABLE tr (id int PRIMARY KEY) USING tde_heap")
+    primary.safe_sql("INSERT INTO tr SELECT generate_series(1, 100)")
     backup = primary.tde_basebackup()
 
+    # keys rotated after the backup only exist in the archived WAL
+    api.create_key(primary, "server-key-2", "global-provider", scope="global")
+    api.set_server_key(primary, "server-key-2", "global-provider")
+    api.create_key(primary, "db-key-2", "global-provider", scope="global")
+    api.set_key(primary, "db-key-2", "global-provider", scope="global")
     primary.safe_sql("INSERT INTO t VALUES (2, 'target')")
     xid = primary.sql_value("SELECT xmin FROM t WHERE id = 2")
     # after commit 2, before commit 3
     [[lsn, ts]] = primary.safe_sql("SELECT pg_current_wal_lsn(), clock_timestamp()")
     primary.safe_sql("INSERT INTO t VALUES (3, 'after')")
+    primary.safe_sql("UPDATE t SET v = 'changed' WHERE id = 1")
+    primary.safe_sql("DELETE FROM t WHERE id = 2")
     primary.safe_sql("DROP TABLE d")
-    _archive_all(primary)
+    primary.safe_sql("TRUNCATE tr")
+    primary.safe_sql("INSERT INTO tr VALUES (999)")
+    archive_all(primary)
 
     recovery = {
         f"recovery_target_{kind}": {"time": ts, "lsn": lsn, "xid": xid}[kind],
@@ -76,9 +82,14 @@ def test_pitr_to_target(pg_install, tde_node_factory, keyring_obj, tmp_path, kin
             node.safe_sql("SELECT pg_wal_replay_resume()")
         node.poll_until("SELECT pg_is_in_recovery()", "f")
         assert node.safe_sql(IDS_SQL) == expected
+        assert node.sql_value("SELECT v FROM t WHERE id = 1") == "base"
         assert node.is_encrypted("t")
         assert node.safe_sql("SELECT id, v FROM d") == [["1", "dropped-later"]]
         assert node.is_encrypted("d")
+        assert node.safe_sql("SELECT count(*), sum(id) FROM tr") == [["100", "5050"]]
+        assert node.is_encrypted("tr")
+        assert api.server_key_info(node)[1:] == ["global-provider", "server-key-2"]
+        assert api.key_info(node)[1:] == ["global-provider", "db-key-2"]
 
         # new timeline keeps encrypting WAL
         assert node.sql_value("SHOW pg_tde.wal_encrypt") == "on"
@@ -103,8 +114,11 @@ def test_pitr_before_drop_database(pg_install, tde_node_factory, keyring_obj, tm
         conn.safe_sql("CREATE TABLE t (id int PRIMARY KEY, v text) USING tde_heap")
         conn.safe_sql("INSERT INTO t VALUES (10, 'appdb-row')")
     lsn = primary.sql_value("SELECT pg_current_wal_lsn()")
+    primary.safe_sql("INSERT INTO keep_me VALUES (2, 'after-target')")
+    with primary.connect(db="appdb") as conn:
+        conn.safe_sql("INSERT INTO t VALUES (11, 'after-target')")
     primary.safe_sql("DROP DATABASE appdb")
-    _archive_all(primary)
+    archive_all(primary)
 
     recovery = {
         "recovery_target_lsn": lsn,
@@ -115,6 +129,7 @@ def test_pitr_before_drop_database(pg_install, tde_node_factory, keyring_obj, tm
         node.start()
         node.poll_until("SELECT pg_is_in_recovery()", "f")
         assert node.safe_sql("SELECT id, v FROM keep_me") == [["1", "postgres-row"]]
+        assert node.is_encrypted("keep_me")
         # -2 marks a database whose DROP was interrupted
         assert node.sql_value("SELECT datconnlimit FROM pg_database WHERE datname = 'appdb'") == "-1"
         with node.connect(db="appdb") as conn:

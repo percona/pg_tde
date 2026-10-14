@@ -172,6 +172,10 @@ def test_keep_wal_seg(mode, cipher, pg_install_dir, rewind_driver, tmp_path):
         diverge_tail_block(p, s)
         rw.run_rewind(mode)
         check_tail_block(p)
+        # the rewound node keeps replaying past its kept segments
+        s.safe_sql("INSERT INTO tail_t (f1) SELECT 'after-rewind' FROM generate_series(1, 300)")
+        s.wait_for_catchup(p)
+        assert p.sql_value("SELECT count(*) FROM tail_t WHERE f1 = 'after-rewind'") == "300"
 
 
 # The target's keys are preserved for unchanged and kept encrypted relations.
