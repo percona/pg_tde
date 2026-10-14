@@ -2,7 +2,8 @@ from pgtde import api
 from pgtde.checks import check_tde_heap
 
 
-def test_tde_heap(tde_node_db):
+def test_tde_heap(tde_node_db, cipher):
+    assert tde_node_db.sql_value("SHOW pg_tde.cipher") == cipher
     check_tde_heap(tde_node_db)
 
 

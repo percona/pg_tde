@@ -91,4 +91,19 @@ def test_vault_v2(tde_node, tmp_path):
         assert node.safe_sql("SELECT * FROM test_enc_ns") == [["1"], ["2"]]
         api.verify_key(node)
 
+        api.add_provider(node, kr, "vault-v2-global", scope="global")
+        api.create_key(node, "vault-v2-global-key", "vault-v2-global", scope="global")
+        api.set_key(node, "vault-v2-global-key", "vault-v2-global", scope="global")
+        api.set_server_key(node, "vault-v2-global-key", "vault-v2-global")
+        assert api.key_info(node)[1:] == ["vault-v2-global", "vault-v2-global-key"]
+        assert api.server_key_info(node)[1:] == ["vault-v2-global", "vault-v2-global-key"]
+        api.verify_key(node)
+        api.verify_server_key(node)
+        assert node.safe_sql("SELECT * FROM test_enc UNION ALL SELECT * FROM test_enc_ns ORDER BY 1") == [
+            ["1"],
+            ["1"],
+            ["2"],
+            ["2"],
+        ]
+
         node.stop()

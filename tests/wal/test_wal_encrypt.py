@@ -4,6 +4,8 @@ from pgtde import api
 from pgtde.rewind import run_databases
 
 KEY_INFO_SQL = "SELECT key_name, provider_name, provider_id FROM pg_tde_server_key_info()"
+IN_USE = r"cannot delete provider which is currently in use"
+DELETE_WAL_PROVIDER = "SELECT pg_tde_delete_global_key_provider('wal-provider')"
 
 
 def ins(a, b):
@@ -38,6 +40,7 @@ def test_wal_encrypt(pg_install, tde_node, keyring_obj):
         pytest.skip("contrib module test_decoding not installed")
     # not tested: the server refusing to start with wal_encrypt on and no key
     node = tde_node
+    assert node.sql_value("SHOW pg_tde.wal_encrypt") == "off"
     api.create_extension(node)
     api.add_provider(node, keyring_obj, "wal-provider", scope="global")
 
@@ -48,10 +51,15 @@ def test_wal_encrypt(pg_install, tde_node, keyring_obj):
     api.set_server_key(node, "server-key", "wal-provider")
     api.verify_server_key(node)
     assert node.safe_sql(KEY_INFO_SQL) == [["server-key", "wal-provider", "-1"]]
+    listing = api.list_providers(node, scope="global")
+    node.expect_error(IN_USE, DELETE_WAL_PROVIDER)
+    assert api.list_providers(node, scope="global") == listing
 
     node.safe_sql("ALTER SYSTEM SET pg_tde.wal_encrypt = on")
     node.restart()
     assert node.sql_value("SHOW pg_tde.wal_encrypt") == "on"
+    node.expect_error(IN_USE, DELETE_WAL_PROVIDER)
+    assert api.list_providers(node, scope="global") == listing
 
     assert (
         node.sql_value("SELECT slot_name FROM pg_create_logical_replication_slot('tde_slot', 'test_decoding')")
@@ -85,3 +93,39 @@ def test_wal_encrypt(pg_install, tde_node, keyring_obj):
 @pytest.mark.bug("PG-1813")
 def test_wal_key_tli(pg_install_dir, sw_log_dir, node_config, keyring_obj):
     run_databases(pg_install_dir, "remote", keyring_obj, restart_standby=True, config=node_config)
+
+
+def _segsize(mb, **cfg):
+    config = {"checkpoint_timeout": "1h", **cfg}
+    return pytest.param(mb, marks=pytest.mark.node_config(config, initdb_args=[f"--wal-segsize={mb}"]), id=f"{mb}MB")
+
+
+@pytest.mark.parametrize("segsize", [_segsize(1), _segsize(64, min_wal_size="256MB", max_wal_size="1GB")])
+def test_wal_encrypt_segment_size(tde_node_global, segsize):
+    node = tde_node_global
+    assert node.sql_value("SHOW wal_segment_size") == f"{segsize}MB"
+    assert node.sql_value("SHOW pg_tde.wal_encrypt") == "on"
+    marker = f"segsize-{segsize}MB-marker"
+    # plain heap: only WAL encryption keeps the marker off disk; enough WAL
+    # after the checkpoint for crash recovery to replay over several segments
+    rows, repeat = (15_000, 1) if segsize == 1 else (160_000, 30)
+    node.safe_sql("CREATE TABLE seg_test (id int PRIMARY KEY, payload text) USING heap")
+    node.safe_sql("CHECKPOINT")
+    start = node.sql_value("SELECT pg_current_wal_lsn()")
+    node.safe_sql(f"""
+        INSERT INTO seg_test SELECT i, '{marker}-' || repeat(md5(i::text), {repeat}) FROM generate_series(1, {rows}) i
+    """)
+    written = int(node.sql_value(f"SELECT pg_wal_lsn_diff(pg_current_wal_lsn(), '{start}')"))
+    assert written > 2 * segsize * 1024 * 1024
+
+    segs = [p for p in (node.datadir / "pg_wal").iterdir() if p.is_file() and len(p.name) == 24]
+    assert len(segs) >= 3
+    for seg in segs:
+        assert seg.stat().st_size == segsize * 1024 * 1024, seg.name
+        assert marker.encode() not in seg.read_bytes(), seg.name
+
+    node.kill()
+    node.poll_start()
+    assert node.sql_value("SELECT count(*) FROM seg_test") == str(rows)
+    last = f"SELECT payload = '{marker}-' || repeat(md5('{rows}'), {repeat}) FROM seg_test WHERE id = {rows}"
+    assert node.sql_value(last) == "t"

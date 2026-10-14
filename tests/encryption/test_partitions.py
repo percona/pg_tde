@@ -151,3 +151,143 @@ def test_partitioned_index_new_partition(node):
         CREATE TABLE partition_child PARTITION OF partition_parent FOR VALUES FROM (10) TO (19) USING tde_heap;
     """)
     assert api.is_encrypted(node, "partition_child_a_idx") is True
+
+
+TREE = """
+    SET default_table_access_method = 'tde_heap';
+    CREATE TABLE sales (yr int, mo int, region text, id int, note text, PRIMARY KEY (yr, mo, region, id))
+        PARTITION BY RANGE (yr, mo);
+    CREATE TABLE sales_2024 PARTITION OF sales FOR VALUES FROM (2024, 1) TO (2025, 1);
+    CREATE TABLE sales_2025 PARTITION OF sales FOR VALUES FROM (2025, 1) TO (2026, 1) PARTITION BY LIST (region);
+    CREATE TABLE sales_2025_na PARTITION OF sales_2025 FOR VALUES IN ('na');
+    CREATE TABLE sales_2025_other PARTITION OF sales_2025 DEFAULT;
+    CREATE TABLE sales_2026 PARTITION OF sales FOR VALUES FROM (2026, 1) TO (2027, 1) PARTITION BY HASH (id);
+    CREATE TABLE sales_2026_h0 PARTITION OF sales_2026 FOR VALUES WITH (MODULUS 2, REMAINDER 0);
+    CREATE TABLE sales_2026_h1 PARTITION OF sales_2026 FOR VALUES WITH (MODULUS 2, REMAINDER 1);
+    CREATE TABLE sales_default PARTITION OF sales DEFAULT;
+    RESET default_table_access_method;
+    ALTER TABLE sales_2024 ALTER COLUMN note SET STORAGE EXTERNAL;
+    INSERT INTO sales
+        SELECT 2024 + i % 4, 1 + i % 12, (ARRAY['na', 'emea', 'apac'])[1 + i % 3], i, 'secret-' || i
+        FROM generate_series(1, 1200) i;
+    INSERT INTO sales VALUES (2024, 6, 'na', 100000, repeat('toasted-secret', 2000));
+"""
+
+LEAVES = {
+    "sales_2024": "yr = 2024",
+    "sales_2025_na": "yr = 2025 AND region = 'na'",
+    "sales_2025_other": "yr = 2025 AND region <> 'na'",
+    "sales_2026_h0": None,
+    "sales_2026_h1": None,
+    "sales_default": "yr = 2027",
+}
+
+
+def _leaf_counts(node):
+    return {leaf: node.sql_value(f"SELECT count(*) FROM {leaf}") for leaf in LEAVES}
+
+
+def _check_tree(node, counts):
+    for rel in ("sales", "sales_2025", "sales_2026", "sales_pkey", "sales_2025_pkey", "sales_2026_pkey"):
+        assert api.is_encrypted(node, rel) is None, rel
+    for leaf in LEAVES:
+        assert api.is_encrypted(node, leaf) is True, leaf
+        assert api.is_encrypted(node, f"{leaf}_pkey") is True, leaf
+    assert _leaf_counts(node) == counts
+    assert node.sql_value("SELECT length(note) FROM sales WHERE id = 100000") == str(len("toasted-secret") * 2000)
+
+
+def test_partition_tree_leaves_encrypted(node):
+    node.safe_sql(TREE)
+    counts = _leaf_counts(node)
+    for leaf, cond in LEAVES.items():
+        assert int(counts[leaf]) > 0, leaf
+        if cond:
+            want = node.sql_value(f"SELECT count(*) FROM sales WHERE {cond}")
+            assert counts[leaf] == want, leaf
+    assert int(counts["sales_2026_h0"]) + int(counts["sales_2026_h1"]) == 300
+    toast = node.sql_value("SELECT reltoastrelid::regclass::text FROM pg_class WHERE relname = 'sales_2024'")
+    assert api.is_encrypted(node, toast) is True
+    _check_tree(node, counts)
+
+    node.restart()
+
+    _check_tree(node, counts)
+    for leaf in LEAVES:
+        node.assert_not_on_disk(leaf, "secret-")
+    node.assert_not_on_disk(toast, "toasted-secret")
+
+
+def test_attach_detach_keeps_encryption(node):
+    node.safe_sql("""
+        CREATE TABLE standalone (id int PRIMARY KEY, payload text) USING tde_heap;
+        INSERT INTO standalone SELECT i, md5(i::text) FROM generate_series(1, 50) i;
+        CREATE TABLE attach_parent (id int PRIMARY KEY, payload text) PARTITION BY RANGE (id);
+        ALTER TABLE attach_parent ATTACH PARTITION standalone FOR VALUES FROM (1) TO (100);
+        INSERT INTO attach_parent VALUES (60, 'via-parent');
+    """)
+    for rel in ("standalone", "standalone_pkey"):
+        assert api.is_encrypted(node, rel) is True, rel
+    assert node.sql_value("SELECT count(*) FROM attach_parent") == "51"
+
+    node.safe_sql("ALTER TABLE attach_parent DETACH PARTITION standalone")
+    for rel in ("standalone", "standalone_pkey"):
+        assert api.is_encrypted(node, rel) is True, rel
+    assert node.sql_value("SELECT payload FROM standalone WHERE id = 60") == "via-parent"
+    assert node.sql_value("SELECT count(*) FROM attach_parent") == "0"
+
+
+RW_LEAVES = ("rw_low", "rw_high")
+
+
+def _rw_filenodes(node):
+    return {leaf: node.sql_value(f"SELECT pg_relation_filenode('{leaf}')") for leaf in RW_LEAVES}
+
+
+def _rw_check(node, low, high):
+    for leaf in RW_LEAVES:
+        assert api.is_encrypted(node, leaf) is True, leaf
+    assert [node.sql_value(f"SELECT count(*) FROM {leaf}") for leaf in RW_LEAVES] == [str(low), str(high)]
+
+
+def test_partition_rewrites_keep_encryption(node, tmp_path):
+    node.safe_sql("""
+        CREATE TABLE rw (id int, val int, payload text) PARTITION BY RANGE (id);
+        CREATE TABLE rw_low PARTITION OF rw FOR VALUES FROM (0) TO (500) USING tde_heap;
+        CREATE TABLE rw_high PARTITION OF rw FOR VALUES FROM (500) TO (1000) USING tde_heap;
+        INSERT INTO rw SELECT i, i * 7, 'secret-' || i FROM generate_series(0, 999) i;
+        DELETE FROM rw WHERE id % 2 = 0;
+    """)
+    _rw_check(node, 250, 250)
+
+    before = _rw_filenodes(node)
+    node.safe_sql("VACUUM FULL rw_low")
+    assert _rw_filenodes(node)["rw_low"] != before["rw_low"]
+    _rw_check(node, 250, 250)
+
+    before = _rw_filenodes(node)
+    node.safe_sql("ALTER TABLE rw ALTER COLUMN val TYPE bigint USING val::bigint")
+    after = _rw_filenodes(node)
+    assert all(after[leaf] != before[leaf] for leaf in RW_LEAVES)
+    _rw_check(node, 250, 250)
+    assert node.sql_value("SELECT sum(val) FROM rw") == str(sum(i * 7 for i in range(1, 1000, 2)))
+
+    # row movement: ids 1..99 move to rw_high
+    node.safe_sql("UPDATE rw SET id = id + 501 WHERE id < 100")
+    _rw_check(node, 200, 300)
+    assert node.sql_value("SELECT payload FROM rw_high WHERE id = 502") == "secret-1"
+
+    before = _rw_filenodes(node)
+    node.safe_sql("TRUNCATE rw")
+    after = _rw_filenodes(node)
+    assert all(after[leaf] != before[leaf] for leaf in RW_LEAVES)
+    _rw_check(node, 0, 0)
+
+    csv = tmp_path / "rw.csv"
+    csv.write_text("".join(f"{i},{i},secret-{i}\n" for i in range(1000)))
+    node.safe_sql(f"COPY rw FROM '{csv}' WITH (FORMAT csv)")
+    _rw_check(node, 500, 500)
+
+    node.safe_sql("CHECKPOINT")
+    for leaf in RW_LEAVES:
+        node.assert_not_on_disk(leaf, "secret-")

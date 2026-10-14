@@ -82,6 +82,7 @@ def test_delete_key_needs_default_key_with_encrypted_tables(tde_node, keyring_ob
     api.set_key(node, "test-db-key", "global-provider", scope="global")
     assert api.key_info(node)[2] == "test-db-key"
     api.delete_key(node)
+    assert api.key_info(node) is None
 
     # encrypted table and no default key to fall back to
     api.set_key(node, "test-db-key", "global-provider", scope="global")
@@ -113,6 +114,7 @@ def test_delete_key_needs_default_key_with_encrypted_tables(tde_node, keyring_ob
 
     api.set_key(node, "test-db-key", "global-provider", scope="global")
     api.delete_default_key(node)
+    assert api.default_key_info(node) is None
     node.safe_sql("DROP TABLE test_table")
     api.delete_key(node)
 

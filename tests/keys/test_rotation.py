@@ -10,8 +10,10 @@ def _read(node):
 def _rotate(node, key, provider, scope, info):
     api.create_key(node, key, provider, scope=scope)
     api.set_key(node, key, provider, scope=scope)
+    api.verify_key(node)
     _read(node)
     node.restart()
+    api.verify_key(node)
     assert api.key_info(node) == info
     assert api.server_key_info(node) is None
     _read(node)
@@ -44,6 +46,8 @@ def test_rotate_key_across_providers_and_scopes(tde_node, tmp_path):
     _rotate(node, "rotated-key2", "file-2", "database", ["2", "file-2", "rotated-key2"])
     _rotate(node, "rotated-key", "file-3", "global", ["-2", "file-3", "rotated-key"])
     _rotate(node, "rotated-keyX", "file-2", "global", ["-1", "file-2", "rotated-keyX"])
+    api.delete_provider(node, "file-3", scope="global")
+    assert [r[1] for r in api.list_providers(node, scope="global")] == ["file-2"]
 
     node.safe_sql("ALTER SYSTEM SET pg_tde.inherit_global_providers = off")
     node.restart()

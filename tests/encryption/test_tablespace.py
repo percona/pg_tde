@@ -28,16 +28,24 @@ def test_tablespace(tde_node_db, keyring_obj):
         api.create_key(conn, "test-db-key2", "db-provider")
         api.set_key(conn, "test-db-key2", "db-provider")
         conn.safe_sql("CREATE TABLE test2 (x int) USING tde_heap TABLESPACE test_tblspace2")
+        conn.safe_sql("CREATE TABLE test_heap (x int) USING heap")
+        conn.safe_sql("INSERT INTO test_heap VALUES (1)")
+    # heap objects in the default tablespace do not block the move
     node.safe_sql("ALTER DATABASE move_test SET TABLESPACE test_tblspace")
 
     with node.connect(db="move_test") as conn:
         conn.safe_sql("CREATE TABLE test3 (x int) USING tde_heap")
+        conn.safe_sql("INSERT INTO test3 VALUES (3)")
     res = node.expect_error(
         r"SET TABLESPACE cannot be used when there are encrypted objects in the default .* "
         r"of the database: 1 object found",
         "ALTER DATABASE move_test SET TABLESPACE pg_default",
     )
     assert "Move every object separately" in res.error_message
+    q = "SELECT spcname FROM pg_database d JOIN pg_tablespace t ON t.oid = dattablespace WHERE datname = 'move_test'"
+    assert node.sql_value(q) == "test_tblspace"
+    with node.connect(db="move_test") as conn:
+        assert conn.safe_sql("SELECT * FROM test3 UNION ALL SELECT * FROM test_heap ORDER BY 1") == [["1"], ["3"]]
 
     node.safe_sql("DROP DATABASE move_test")
     node.safe_sql("DROP TABLE test")

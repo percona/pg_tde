@@ -60,6 +60,7 @@ def test_change_access_method(tde_node_db, pg_major):
     node.safe_sql("SET pg_tde.enforce_encryption = on")
     node.expect_error(ENFORCE, f"CREATE TABLE country_table3 {COLS} USING heap")
     node.expect_error(ENFORCE, "ALTER TABLE country_table SET ACCESS METHOD heap")
+    assert api.is_encrypted(node, "country_table") is True
     node.safe_sql("ALTER TABLE country_table2 SET ACCESS METHOD tde_heap")
     node.safe_sql(f"CREATE TABLE country_table3 {COLS} USING tde_heap")
     node.safe_sql("SET pg_tde.enforce_encryption = off")
@@ -205,3 +206,51 @@ def test_is_encrypted(tde_node_db, pg_major):
 
     assert node.sql_value("SELECT pg_tde_is_encrypted(NULL)") is None
     assert api.key_info(node)[1:] == ["db-provider", "test-db-key"]
+
+
+ENFORCE_BLOCKED = {
+    "blocked_heap": "CREATE TABLE blocked_heap (id int) USING heap",
+    "blocked_ctas": "CREATE TABLE blocked_ctas USING heap AS SELECT 1 AS id",
+    "blocked_select_into": "SELECT 1 AS id INTO blocked_select_into",
+    "blocked_matview": "CREATE MATERIALIZED VIEW blocked_matview USING heap AS SELECT 1 AS id",
+    "blocked_default": "SET LOCAL default_table_access_method = 'heap'; CREATE TABLE blocked_default (id int)",
+}
+
+
+def _enforce_blocks(node):
+    for rel, sql in ENFORCE_BLOCKED.items():
+        node.expect_error(ENFORCE, sql)
+        assert node.sql_value(f"SELECT to_regclass('{rel}')") is None, rel
+
+
+def test_enforce_encryption_cluster_wide(tde_node_db):
+    node = tde_node_db
+    assert node.sql_value("SHOW pg_tde.enforce_encryption") == "off"
+    node.safe_sql("""
+        CREATE TABLE legacy_heap (id int) USING heap;
+        INSERT INTO legacy_heap SELECT generate_series(1, 200);
+    """)
+
+    node.safe_sql("ALTER SYSTEM SET pg_tde.enforce_encryption = on")
+    node.safe_sql("SELECT pg_reload_conf()")
+    node.poll_until("SHOW pg_tde.enforce_encryption", "on", timeout=10)
+    with node.connect() as conn:
+        assert conn.sql_value("SHOW pg_tde.enforce_encryption") == "on"
+
+    _enforce_blocks(node)
+    node.safe_sql("""
+        CREATE TABLE allowed_ctas USING tde_heap AS SELECT generate_series(1, 50) AS id;
+        SET LOCAL default_table_access_method = 'tde_heap';
+        CREATE TABLE allowed_default (id int);
+    """)
+    assert api.is_encrypted(node, "allowed_ctas") is True
+    assert api.is_encrypted(node, "allowed_default") is True
+    assert node.sql_value("SELECT count(*) FROM allowed_ctas") == "50"
+
+    # only creation is restricted, existing heap tables stay usable
+    node.safe_sql("INSERT INTO legacy_heap VALUES (201)")
+    assert node.sql_value("SELECT count(*) FROM legacy_heap") == "201"
+
+    node.restart()
+    assert node.sql_value("SHOW pg_tde.enforce_encryption") == "on"
+    _enforce_blocks(node)

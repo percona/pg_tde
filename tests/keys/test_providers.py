@@ -1,3 +1,4 @@
+import re
 import shutil
 
 import pytest
@@ -15,6 +16,8 @@ NON_SCALAR = [
     ("'{\"path\": true}'", r'unexpected boolean in field "path"'),
 ]
 SCOPES = ["database", "global"]
+MISSING_PATH = r"file path is missing in the keyring options"
+IN_USE = r"cannot delete provider which is currently in use"
 
 
 @pytest.fixture
@@ -43,18 +46,28 @@ def test_add_provider_validation(tde_node):
         res = node.expect_error(r'provider name "K{128}" is too long', f"SELECT {fn}('file', repeat('K', 128), '{{}}')")
         assert "Maximum length is 127 bytes." in res.error_message
         node.expect_error(TOO_LARGE, f"SELECT {fn}('file', 'name', json_build_object('key', repeat('K', 1024)))")
+        node.expect_error(r"Invalid provider type\.", f"SELECT {fn}('bogus', 'name', '{{}}')")
+        node.expect_error(MISSING_PATH, f"SELECT {fn}('file', 'name', '{{}}')")
+        node.expect_error(MISSING_PATH, f"SELECT {fn}_file('name', '')")
     for opts in NON_OBJECT_JSON:
         node.expect_error(NOT_OBJECT, f"SELECT pg_tde_add_database_key_provider('file', 'provider', {opts})")
     for opts, msg in NON_SCALAR:
         node.expect_error(msg, f"SELECT pg_tde_add_database_key_provider('file', 'provider', {opts})")
+    for s in SCOPES:
+        assert api.list_providers(node, scope=s) == [], s
 
 
-def test_unwritable_keyring_path(tde_node):
+def test_unwritable_keyring_path(tde_node, tmp_path):
     api.create_extension(tde_node)
     tde_node.expect_error(
         r"Failed to open keyring file /cant-create-file-in-root\.per: (Permission denied|Read-only file system)",
         "SELECT pg_tde_add_database_key_provider_file('will-not-work', '/cant-create-file-in-root.per')",
     )
+    tde_node.expect_error(
+        rf"Failed to open keyring file {re.escape(str(tmp_path))}: Is a directory",
+        f"SELECT pg_tde_add_database_key_provider_file('will-not-work', '{tmp_path}')",
+    )
+    assert api.list_providers(tde_node) == []
 
 
 def test_provider_lifecycle(tde_node, tmp_path):
@@ -64,10 +77,12 @@ def test_provider_lifecycle(tde_node, tmp_path):
     kr2 = FileKeyring(tmp_path / "keyring2.per")
     api.add_provider(node, kr1, "file-provider")
     api.add_provider(node, kr2, "file-provider2")
+    listing = api.list_providers(node)
     node.expect_error(
         r'Key provider "file-provider" already exists\.',
         f"SELECT pg_tde_add_database_key_provider_file('file-provider', '{tmp_path / 'dup.per'}')",
     )
+    assert api.list_providers(node) == listing
 
     api.create_key(node, "test-db-key", "file-provider")
     node.expect_error(r"principal key not configured for current database", "SELECT pg_tde_verify_key()")
@@ -86,20 +101,54 @@ def test_provider_lifecycle(tde_node, tmp_path):
 
     api.add_provider(node, kr1, "file-keyring", scope="global")
     api.add_provider(node, kr2, "file-keyring2", scope="global")
+    node.expect_error(
+        r'Key provider "file-keyring" already exists\.',
+        f"SELECT pg_tde_add_global_key_provider_file('file-keyring', '{tmp_path / 'dup.per'}')",
+    )
+    for s in SCOPES:
+        node.expect_error(r'key provider "ghost" does not exists', f"SELECT pg_tde_delete_{s}_key_provider('ghost')")
+    node.expect_error(
+        r'key provider "ghost" does not exists',
+        f"SELECT pg_tde_change_global_key_provider_file('ghost', '{kr1.path}')",
+    )
 
-    in_use = r"cannot delete provider which is currently in use"
-    node.expect_error(in_use, "SELECT pg_tde_delete_database_key_provider('file-provider')")
+    # generic api with json options
+    kr3 = tmp_path / "keyring3.per"
+    node.safe_sql(f"SELECT pg_tde_add_global_key_provider('file', 'file-keyring3', json_build_object('path', '{kr3}'))")
+    api.create_key(node, "generic-key", "file-keyring3", scope="global")
+    assert kr3.exists()
+
+    api.change_provider_file(node, "file-keyring2", str(kr3), scope="global")
+    assert ["-2", "file-keyring2", "file", f'{{"path" : "{kr3}"}}'] in api.list_providers(node, scope="global")
+
+    node.expect_error(IN_USE, "SELECT pg_tde_delete_database_key_provider('file-provider')")
     api.delete_provider(node, "file-provider2")
     assert [r[1] for r in api.list_providers(node)] == ["file-provider"]
 
     api.set_key(node, "test-db-key", "file-keyring", scope="global")
-    node.expect_error(in_use, "SELECT pg_tde_delete_global_key_provider('file-keyring')")
-    api.delete_provider(node, "file-keyring2", scope="global")
-    assert [r[1] for r in api.list_providers(node, scope="global")] == ["file-keyring"]
+    api.delete_provider(node, "file-provider")
+    assert api.list_providers(node) == []
+    node.expect_error(IN_USE, "SELECT pg_tde_delete_global_key_provider('file-keyring')")
+    api.delete_provider(node, "file-keyring3", scope="global")
+    assert sorted(r[1] for r in api.list_providers(node, scope="global")) == ["file-keyring", "file-keyring2"]
+
+    # database providers are per database
+    node.safe_sql("CREATE DATABASE other")
+    with node.connect(db="other") as other:
+        api.create_extension(other)
+        assert api.list_providers(other) == []
+        assert sorted(r[1] for r in api.list_providers(other, scope="global")) == ["file-keyring", "file-keyring2"]
+    node.safe_sql("DROP DATABASE other")
+
+    listing = {s: api.list_providers(node, scope=s) for s in SCOPES}
+    node.restart()
+    assert {s: api.list_providers(node, scope=s) for s in SCOPES} == listing
 
 
-def test_change_provider_validation(providers_node):
+def test_change_provider_validation(providers_node, file_keyring, tmp_path):
     node = providers_node
+    other = tmp_path / "other.per"
+    listing = {s: api.list_providers(node, scope=s) for s in SCOPES}
     for s in SCOPES:
         fn = f"pg_tde_change_{s}_key_provider"
         node.expect_error(r"provider type cannot be null", f"SELECT {fn}(NULL, 'file-keyring', '{{}}')")
@@ -115,6 +164,24 @@ def test_change_provider_validation(providers_node):
         node.expect_error(NOT_OBJECT, f"SELECT {fn}('file', 'file-provider', {opts})")
     for opts, msg in NON_SCALAR:
         node.expect_error(msg, f"SELECT {fn}('file', 'file-provider', {opts})")
+    for s, name in (("database", "file-provider"), ("global", "file-keyring")):
+        node.expect_error(MISSING_PATH, f"SELECT pg_tde_change_{s}_key_provider_file('{name}', '')")
+    node.expect_error(
+        r'key provider "" does not exists', f"SELECT pg_tde_change_database_key_provider_file('', '{other}')"
+    )
+    # no fallthrough to the other scope
+    for s, name in (("database", "file-keyring"), ("global", "file-provider")):
+        sql = f"SELECT pg_tde_change_{s}_key_provider_file('{name}', '{other}')"
+        node.expect_error(rf'key provider "{name}" does not exists', sql)
+    assert {s: api.list_providers(node, scope=s) for s in SCOPES} == listing
+
+    # same name in both scopes, a change touches its own scope only
+    api.add_provider(node, file_keyring, "file-provider", scope="global")
+    api.change_provider_file(node, "file-provider", str(other))
+    assert api.list_providers(node) == [["1", "file-provider", "file", f'{{"path" : "{other}"}}']]
+    assert ["-2", "file-provider", "file", f'{{"path" : "{file_keyring.path}"}}'] in api.list_providers(
+        node, scope="global"
+    )
 
 
 def test_change_provider_must_keep_keys(tde_node, tmp_path):
@@ -142,7 +209,9 @@ def test_change_provider_must_keep_keys(tde_node, tmp_path):
         r'not found in modified key provider "global-provider2"',
         f"SELECT pg_tde_change_global_key_provider_file('global-provider2', '{other}')",
     )
+    node.expect_error(IN_USE, "SELECT pg_tde_delete_global_key_provider('global-provider2')")
     node.safe_sql("DROP DATABASE db_using_global_provider")
+    api.delete_provider(node, "global-provider2", scope="global")
 
     node.safe_sql("CREATE DATABASE db_using_database_provider")
     with node.connect(db="db_using_database_provider") as conn:
