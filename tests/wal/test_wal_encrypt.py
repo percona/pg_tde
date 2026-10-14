@@ -2,6 +2,7 @@ import pytest
 
 from pgtde import api
 from pgtde.rewind import run_databases
+from pgtde.wal import wal_contains, wal_segments
 
 KEY_INFO_SQL = "SELECT key_name, provider_name, provider_id FROM pg_tde_server_key_info()"
 IN_USE = r"cannot delete provider which is currently in use"
@@ -138,11 +139,12 @@ def test_wal_encrypt_segment_size(tde_node_global, segsize):
     written = int(node.sql_value(f"SELECT pg_wal_lsn_diff(pg_current_wal_lsn(), '{start}')"))
     assert written > 2 * segsize * 1024 * 1024
 
-    segs = [p for p in (node.datadir / "pg_wal").iterdir() if p.is_file() and len(p.name) == 24]
+    segs = wal_segments(node)
     assert len(segs) >= 3
     for seg in segs:
         assert seg.stat().st_size == segsize * 1024 * 1024, seg.name
-        assert marker.encode() not in seg.read_bytes(), seg.name
+    # no flush: the crash below has to replay from the old checkpoint
+    assert not wal_contains(node, marker, flush=False)
 
     node.kill()
     node.poll_start()
