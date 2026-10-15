@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 from typing import override
 
@@ -8,6 +9,7 @@ from stormweaver.testing.rewind import RewindDriver
 
 from pgtde import api
 from pgtde.node import TdeNode
+from pgtde.wal import archive_all
 
 ALL_MODES = [("local", "aes_128"), ("remote", "aes_128"), ("archive", "aes_128"), ("local", "aes_256")]
 
@@ -36,10 +38,12 @@ class TdeRewindDriver(RewindDriver):
         debug: bool = False,
         initdb_extra: list[str] | None = None,
         config: dict[str, str] | None = None,
+        wal_encrypt: bool = True,
     ) -> None:
         super().__init__(install_dir, debug=debug)
         self.cipher = cipher
         self.keyring = keyring
+        self.wal_encrypt = wal_encrypt
         self.initdb_extra = initdb_extra or []
         self.config = config or {}
         self.backup_options: tuple[str, ...] = ()
@@ -69,7 +73,9 @@ class TdeRewindDriver(RewindDriver):
         api.add_provider(primary, self.keyring, "db-provider")
         api.create_key(primary, "test-db-key", "db-provider")
         api.set_key(primary, "test-db-key", "db-provider")
-        primary.db.add_config({"pg_tde.wal_encrypt": "on", "default_table_access_method": "tde_heap"})
+        primary.db.add_config(
+            {"pg_tde.wal_encrypt": "on" if self.wal_encrypt else "off", "default_table_access_method": "tde_heap"}
+        )
         primary.restart()
         primary.safe_sql(REWIND_USER_SQL)
 
@@ -83,6 +89,49 @@ class TdeRewindDriver(RewindDriver):
     def create_standby(self, *backup_options: str) -> PgTestNode:
         self.backup_options = backup_options
         return super().create_standby()
+
+    def rewind(
+        self, *, source: str = "local", restore: bool = False, config_file: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        # pg_tde_rewind of the primary from the standby, the caller stops and starts the nodes
+        assert isinstance(self.primary, TdeNode) and self.standby is not None
+        p, s = self.primary, self.standby
+        if source == "local":
+            src = f"--source-pgdata={s.datadir}"
+        else:
+            src = f"--source-server=host=localhost port={s.port} dbname=postgres user={self.rewind_user()}"
+        args: list[str | Path] = [self.rewind_bin, "--debug", src, f"--target-pgdata={p.datadir}", "--no-sync"]
+        if restore:
+            args.append("--restore-target-wal")
+        if config_file is not None:
+            args.append(f"--config-file={config_file}")
+        return p.tool(*args)
+
+    @override
+    def run_rewind(self, mode: str) -> None:
+        if mode != "restore":
+            super().run_rewind(mode)
+            return
+        # local source, target WAL recycled since the divergence comes from the
+        # target's own restore_command; needs archiving and wal_keep_size=0
+        assert isinstance(self.primary, TdeNode) and self.standby is not None
+        p, s = self.primary, self.standby
+        archive_all(p)
+        archive_all(p)
+        p.safe_sql("CHECKPOINT")
+        p.stop()
+        with p.db.preserve_config() as conf:
+            s.stop()
+            cp = self.rewind(restore=True, config_file=conf)
+            st.command_ok(cp, f"{self.rewind_bin} restore")
+        assert "restored from archive" in cp.stderr, cp.stderr
+        s.start()
+        p.rejoin_as_standby(s)
+        s.wait_for_catchup(p)
+
+    def swap_roles(self) -> None:
+        # the rewound node becomes the standby to promote next
+        self.primary, self.standby = self.standby, self.primary
 
 
 def run_databases(
@@ -152,3 +201,14 @@ def diverge_tail_block(p: PgTestNode, s: PgTestNode) -> None:
 def check_tail_block(p: PgTestNode) -> None:
     assert p.sql_value("SELECT count(*) FROM tail_t") == "2000"
     assert p.sql_value("SELECT count(*) FROM block_t") == "1000"
+
+
+def create_asymmetric_tables(p: PgTestNode, s: PgTestNode) -> None:
+    # after promotion: one table only on the new primary, one only on the old
+    s.safe_sql("CREATE TABLE source_only (id int) USING tde_heap; INSERT INTO source_only VALUES (1), (2)")
+    p.safe_sql("CREATE TABLE target_only (id int) USING tde_heap; INSERT INTO target_only VALUES (10), (20)")
+
+
+def check_asymmetric_tables(p: PgTestNode) -> None:
+    assert p.sql_value("SELECT count(*) FROM source_only") == "2"
+    assert p.sql_value("SELECT to_regclass('target_only')") is None

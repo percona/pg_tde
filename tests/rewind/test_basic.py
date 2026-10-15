@@ -1,13 +1,18 @@
+import hashlib
 from pathlib import Path
 
 import pytest
 import stormweaver.testing as st
 
-from pgtde.rewind import ALL_MODES, run_databases
+from pgtde.rewind import ALL_MODES, check_asymmetric_tables, create_asymmetric_tables, run_databases
 
 
-def _snapshot(root: Path) -> dict[str, int]:
-    return {str(p.relative_to(root)): p.stat().st_size for p in root.rglob("*") if p.is_file() and not p.is_symlink()}
+def _snapshot(root: Path) -> dict[str, str]:
+    return {
+        str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in root.rglob("*")
+        if p.is_file() and not p.is_symlink()
+    }
 
 
 def _local_option_checks(p, s) -> None:
@@ -22,6 +27,15 @@ def _local_option_checks(p, s) -> None:
     st.command_fails(rewind("--no-ensure-shutdown"), msg="pg_rewind with unexpected running source")
     s.stop()
     before = _snapshot(p.datadir)
+    cp = p.tool("pg_tde_rewind", "--debug", "--source-pgdata", p.datadir, "--target-pgdata", p.datadir, "--no-sync")
+    st.command_ok(cp, "pg_rewind with the target as source")
+    assert "no rewind required" in cp.stderr
+    # a stale install can have a pg_rewind with pg_tde built in, it reads the WAL
+    plain = p.tool("pg_rewind", "--dry-run", "--source-pgdata", s.datadir, "--target-pgdata", p.datadir)
+    if b"pg_tde" in (Path(p.db.install_dir) / "bin" / "pg_rewind").read_bytes():
+        st.command_ok(plain, "TDE aware pg_rewind")
+    else:
+        st.command_fails(plain, stderr_re="invalid magic number", msg="plain pg_rewind on encrypted WAL")
     st.command_ok(rewind("--dry-run"), "pg_rewind --dry-run")
     assert _snapshot(p.datadir) == before
     s.start()
@@ -100,6 +114,7 @@ def test_rewind_basic(mode, cipher, rewind_driver):
 def test_same_timeline(rewind_driver):
     with rewind_driver() as rw:
         p = rw.setup_primary()
+        p.safe_sql("CREATE TABLE same_tl (id int); INSERT INTO same_tl VALUES (1)")
         s = rw.create_standby()
 
         # run_rewind("local") minus its catchup wait: the source is no primary
@@ -118,6 +133,7 @@ def test_same_timeline(rewind_driver):
                 "pg_rewind local",
             )
         p.rejoin_as_standby(s)
+        assert p.sql_value("SELECT count(*) FROM same_tl") == "1"
 
 
 def test_rewind_cli_options_and_invalid_args(tools, tmp_path):
@@ -146,3 +162,28 @@ def test_rewind_cli_options_and_invalid_args(tools, tmp_path):
 @pytest.mark.parametrize("mode", ["local", "remote"])
 def test_rewind_multiple_databases(mode, pg_install_dir, sw_log_dir, node_config, keyring_obj):
     run_databases(pg_install_dir, mode, keyring_obj, config=node_config)
+
+
+# Three failovers between the same two nodes, each time the old primary is
+# rewound and follows; every round both sides diverge.
+def test_rewind_back_and_forth(file_rewind_driver):
+    with file_rewind_driver() as rw:
+        p = rw.setup_primary()
+        p.safe_sql("CREATE TABLE round_t (round int, side text)")
+        p.safe_sql("CHECKPOINT")
+        rw.create_standby()
+        for rnd, mode in enumerate(("local", "remote", "local"), start=1):
+            rw.promote_standby()
+            new, old = rw.standby, rw.primary
+            new.safe_sql(f"INSERT INTO round_t VALUES ({rnd}, 'source')")
+            old.safe_sql(f"INSERT INTO round_t VALUES ({rnd}, 'target')")
+            if rnd == 1:
+                create_asymmetric_tables(old, new)
+
+            rw.run_rewind(mode)
+
+            assert old.safe_sql("SELECT round, side FROM round_t ORDER BY round") == [
+                [str(r), "source"] for r in range(1, rnd + 1)
+            ]
+            check_asymmetric_tables(old)
+            rw.swap_roles()

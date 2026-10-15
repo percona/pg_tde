@@ -7,6 +7,7 @@ import stormweaver.testing as st
 from stormweaver import keyrings
 
 from pgtde import api
+from pgtde.checks import setup_error
 from pgtde.providers import GLOBAL_OID
 from pgtde.services import (
     create_namespace,
@@ -388,14 +389,6 @@ def _global_options(node, name="ns-global"):
     return json.loads(opts)
 
 
-def _setup_error(fn):
-    # only the final checks may xfail
-    try:
-        return fn()
-    except AssertionError as e:
-        raise RuntimeError(f"setup failed: {e}") from e
-
-
 @pytest.mark.xfail(
     strict=True, raises=AssertionError, reason="PG-2875: pg_tde_change_key_provider drops vault namespace"
 )
@@ -428,7 +421,7 @@ def test_change_key_provider_cli_keeps_namespace(tde_node, tmp_path):
             )
             st.command_ok(cp)
 
-        _setup_error(setup)
+        setup_error(setup)
         off = node.log_offset()
         try:
             node.start()

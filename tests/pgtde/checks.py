@@ -58,3 +58,11 @@ def check_tde_heap(node):
             node.assert_on_disk(t, "multitud")
         else:
             node.assert_not_on_disk(t, "multitud")
+
+
+def setup_error(fn):
+    # strict xfail tests: setup failures must not count as the expected AssertionError
+    try:
+        return fn()
+    except AssertionError as e:
+        raise RuntimeError(f"setup failed: {e}") from e
