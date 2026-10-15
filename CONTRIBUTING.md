@@ -329,7 +329,9 @@ Fixture teardown runs in reverse setup order, so this way it switches back to ne
 `upgrade.old_node(tde_node_factory, name)` makes a started node on the old install.
 For `pg_upgrade`, `upgrade.new_node(tde_node_factory, name, old)` makes the unstarted target (with the checksum setting of the old cluster), and `upgrade.run_pg_tde_upgrade(old, new, socketdir=..., cwd=...)` runs it.
 This needs both installs on disk, so mark the test `@pytest.mark.old_install(side_by_side=True)`.
-`upgrade.start_in_place(node)` restarts the old node on the new binaries and runs `ALTER EXTENSION pg_tde UPDATE` everywhere, mark it `same_major=True`.
+`upgrade.restart_on_new(node)` restarts a node on the new binaries in its datadir, mark it `same_major=True`.
+It does not update the extension, so it also works on standbys; run `pgtde.upgrade.update_extension(node)` on the primary afterwards.
+`upgrade.upgrade_cluster(tde_node_factory, old, socketdir=..., cwd=...)` takes either path, in place for the same major and `pg_tde_upgrade` otherwise, and returns the started node on the new binaries.
 `upgrade.old_tde` and `upgrade.suite_tde` are the 2 `pg_tde` versions.
 See `upgrade/test_pg_upgrade.py` for examples.
 

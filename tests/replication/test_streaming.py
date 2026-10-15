@@ -64,6 +64,7 @@ def test_standby_follows_key_rotation(tde_node, keyring_obj):
         INSERT INTO pre_rotation SELECT generate_series(1, 500);
     """)
     with TdeNode.from_backup(primary.tde_basebackup(), primary, name="standby") as standby:
+        assert primary.sql_value("SHOW pg_tde.wal_encrypt") == "on"
         assert standby.sql_value("SHOW pg_tde.wal_encrypt") == "on"
         api.create_key(primary, "server-key-2", "global-provider", scope="global")
         api.set_server_key(primary, "server-key-2", "global-provider")

@@ -57,11 +57,30 @@ def test_version(tde_node, pg_install, pg_major):
     m = re.fullmatch(r"pg_tde (\d+\.\d+)\.\d+", v)
     assert m, v
     assert m.group(1) == control_default_version(pg_install)
+    assert api.tde_version(tde_node) == m.group(1)
     if pg_major >= 18:
         rows = tde_node.safe_sql(
             "SELECT module_name, version FROM pg_get_loaded_modules() WHERE file_name IN ('pg_tde.so', 'pg_tde.dylib')"
         )
         assert rows == [["pg_tde", v.split()[1]]]
+
+
+def test_update_to_installed_version_keeps_state(tde_node, file_keyring, pg_install):
+    node = tde_node
+    node.setup_server_key(file_keyring, wal_encrypt=True)
+    api.create_key(node, "db-key", "global-provider", scope="global")
+    api.set_key(node, "db-key", "global-provider", scope="global")
+    node.restart()
+    node.safe_sql("CREATE TABLE t (k int, v text) USING tde_heap")
+    node.safe_sql("INSERT INTO t SELECT i, md5(i::text) FROM generate_series(1, 500) i")
+    for _ in range(2):
+        node.safe_sql("ALTER EXTENSION pg_tde UPDATE")
+    assert api.tde_version(node) == control_default_version(pg_install)
+    assert [r[1] for r in api.list_providers(node, scope="global")] == ["global-provider"]
+    assert api.server_key_info(node)[1:] == ["global-provider", "server-key"]
+    assert api.key_info(node)[1:] == ["global-provider", "db-key"]
+    assert node.sql_value("SHOW pg_tde.wal_encrypt") == "on"
+    assert node.sql_value("SELECT count(*) FROM t WHERE v = md5(k::text)") == "500"
 
 
 def test_set_schema_rejected(tde_node, file_keyring):

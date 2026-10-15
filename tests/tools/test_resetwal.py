@@ -4,6 +4,7 @@ import pytest
 import stormweaver.testing as st
 
 from pgtde import api
+from pgtde.checks import setup_error
 from pgtde.wal import wal_contains, wal_segments
 
 
@@ -81,3 +82,31 @@ def test_resetwal_dry_run_changes_nothing(tde_node_global):
     node.start()
     assert node.sql_value("SELECT count(*) FROM t") == "10"
     assert node.is_encrypted("t")
+
+
+@pytest.mark.bug("PG-2870")
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="PG-2870: pg_tde_resetwal with relative datadir breaks WAL encrypted cluster",
+)
+def test_resetwal_relative_datadir(tde_node_global):
+    node = tde_node_global
+
+    def setup():
+        _keyed_table(node, 100)
+        node.stop()
+        cp = node.tool("pg_tde_resetwal", "-f", node.datadir.name, cwd=node.datadir.parent)
+        st.command_ok(cp)
+        return node.log_offset()
+
+    offset = setup_error(setup)
+    try:
+        node.start()
+    except RuntimeError:
+        log = node.log_since(offset)
+        if "invalid magic number" in log and "could not locate a valid checkpoint record" in log:
+            raise AssertionError("server does not start after pg_tde_resetwal with a relative datadir") from None
+        raise
+    assert node.sql_value("SELECT count(*) FROM t") == "100"
+    assert node.sql_value("SHOW pg_tde.wal_encrypt") == "on"

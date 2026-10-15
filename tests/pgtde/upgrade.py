@@ -88,21 +88,42 @@ class UpgradeSource:
             kw["extra_initdb_args"] = [*(kw.get("extra_initdb_args") or []), flag]
         return factory(name, start=False, **kw)
 
-    def start_in_place(self, node: Any) -> None:
-        # same datadir on the new binaries, then update the extension everywhere
-        assert self.same_major, f"{self.label}: start_in_place needs same_major"
+    def restart_on_new(self, node: Any) -> None:
+        # same datadir on the new binaries, extension not updated (standbys can't)
+        assert self.same_major, f"{self.label}: restart_on_new needs same_major"
         if node.db.is_running():
             node.stop()
         self.switch_new()
         node.db.install_dir = Path(self.suite.install_dir)
         node.start()
-        update_extension(node)
+
+    def upgrade_cluster(
+        self, factory: Callable[..., Any], old: Any, *, socketdir: str | Path, cwd: Path, **new_kw: Any
+    ) -> Any:
+        # old cluster on the new binaries, extension not updated:
+        # in place for the same major, pg_tde_upgrade otherwise
+        if self.same_major:
+            self.restart_on_new(old)
+            return old
+        new = self.new_node(factory, "new", old, **new_kw)
+        cp = self.run_pg_tde_upgrade(old, new, socketdir=socketdir, cwd=cwd)
+        if cp.returncode != 0:
+            raise RuntimeError(f"pg_tde_upgrade failed rc={cp.returncode}:\n{cp.stdout}{cp.stderr}")
+        new.start()
+        return new
 
     def run_pg_tde_upgrade(
-        self, old_node: Any, new_node: Any, *extra: str | Path, socketdir: str | Path, cwd: Path
+        self,
+        old_node: Any,
+        new_node: Any,
+        *extra: str | Path,
+        socketdir: str | Path,
+        cwd: Path,
+        stop_old: bool = True,
+        new_bindir: str | Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         assert self.side_by_side, f"{self.label}: pg_tde_upgrade needs both installs on disk"
-        if old_node.db.is_running():
+        if stop_old and old_node.db.is_running():
             old_node.stop()
         return new_node.tool(
             "pg_tde_upgrade",
@@ -114,7 +135,7 @@ class UpgradeSource:
             "--old-bindir",
             self.old.bindir,
             "--new-bindir",
-            self.suite.bindir,
+            new_bindir or self.suite.bindir,
             "--socketdir",
             socketdir,
             "--old-port",

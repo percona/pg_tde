@@ -398,6 +398,7 @@ pytest_files = [
   'tests/rewind/test_unencrypted.py',
   'tests/rewind/test_wal.py',
   'tests/upgrade/test_format_upgrade.py',
+  'tests/upgrade/test_in_place.py',
   'tests/upgrade/test_pg_upgrade.py',
   'tests/tools/test_change_key_provider.py',
   'tests/tools/test_checksums.py',

@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -99,3 +100,87 @@ def test_script_value_stripped(tmp_path):
     suite = _fake_install(tmp_path, "new", 18, "2.2")
     (src,) = upgrade.parse_sources(["  script:/bin/true "], upgrade.load_install(suite))
     assert src.command == ["/bin/true"]
+
+
+class _StubNode:
+    # stop/start/tool calls go to note()
+    def __init__(self, note, running: bool = True):
+        self.note = note
+        self.running = running
+        self.db = self
+        self.install_dir = Path("/old")
+        self.datadir = Path("/data")
+        self.port = 5432
+
+    def is_running(self):
+        return self.running
+
+    def stop(self):
+        self.note("stop")
+        self.running = False
+
+    def start(self):
+        self.note(f"start {self.install_dir}")
+        self.running = True
+
+    def tool(self, name, *args, **kw):
+        self.note([name, *map(str, args)])
+
+
+def test_restart_on_new_stops_before_switch(tmp_path):
+    suite = _fake_install(tmp_path, "new", 18, "2.2")
+    log = tmp_path / "log"
+    script = tmp_path / "switch.sh"
+    script.write_text(f'#!/bin/sh\necho "switch $1" >> {log}\n')
+    script.chmod(0o755)
+    (src,) = upgrade.parse_sources([f"script:{script}"], upgrade.load_install(suite))
+    src.switch_old()
+    node = _StubNode(lambda e: log.open("a").write(f"{e}\n"))
+    src.restart_on_new(node)
+    assert log.read_text().splitlines()[-3:] == ["stop", "switch new", f"start {suite.parents[1]}"]
+    assert node.install_dir == suite.parents[1]
+
+
+def test_run_pg_tde_upgrade_options(tmp_path):
+    suite = _fake_install(tmp_path, "new", 18, "2.2")
+    a = _fake_install(tmp_path, "a", 17, "2.2")
+    (src,) = upgrade.parse_sources([str(a)], upgrade.load_install(suite))
+    for kw, stopped, bindir in (({}, True, src.suite.bindir), ({"stop_old": False, "new_bindir": "/x"}, False, "/x")):
+        events: list = []
+        old, new = _StubNode(events.append), _StubNode(events.append, running=False)
+        src.run_pg_tde_upgrade(old, new, "--check", socketdir="/s", cwd=tmp_path, **kw)
+        assert ("stop" in events) is stopped
+        args = events[-1]
+        assert args[0] == "pg_tde_upgrade" and args[-1] == "--check"
+        assert args[args.index("--new-bindir") + 1] == str(bindir)
+        assert args[args.index("--old-bindir") + 1] == str(src.old.bindir)
+
+
+def test_upgrade_cluster_picks_path(tmp_path):
+    suite = _fake_install(tmp_path, "new", 18, "2.2")
+    same = _fake_install(tmp_path, "same", 18, "2.1")
+    other = _fake_install(tmp_path, "other", 17, "2.2")
+    srcs = upgrade.parse_sources([f"{same},{other}"], upgrade.load_install(suite))
+
+    events: list = []
+    old = _StubNode(events.append)
+    assert srcs[0].upgrade_cluster(None, old, socketdir="/s", cwd=tmp_path) is old
+    assert events == ["stop", f"start {suite.parents[1]}"]
+
+    events.clear()
+    old = _StubNode(events.append)
+    old.sql_value = lambda q: "on"
+    new = _StubNode(events.append, running=False)
+    new.tool = lambda *a, **kw: (events.append(a[0]), subprocess.CompletedProcess(a, 0, "", ""))[1]
+    made = {}
+
+    def factory(name, **kw):
+        made.update(kw, name=name)
+        return new
+
+    assert srcs[1].upgrade_cluster(factory, old, socketdir="/s", cwd=tmp_path) is new
+    assert made["name"] == "new" and made["start"] is False
+    assert events == ["stop", "pg_tde_upgrade", "start /old"]
+    new.tool = lambda *a, **kw: subprocess.CompletedProcess(a, 1, "out", "err")
+    with pytest.raises(RuntimeError, match="rc=1"):
+        srcs[1].upgrade_cluster(factory, old, socketdir="/s", cwd=tmp_path)
