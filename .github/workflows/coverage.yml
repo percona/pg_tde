@@ -21,7 +21,11 @@ jobs:
     runs-on: ubuntu-24.04
     # The tag is spelled out because the `env` context is not available here;
     # keep it in step with pg_version above.
-    container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-gcc-debugoptimized-ubuntu24.04
+    container:
+      image: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-gcc-debugoptimized-ubuntu24.04
+      # Reaps orphaned processes, e.g. a postmaster that a test SIGKILLs;
+      # otherwise its PID stays taken and the restart fails.
+      options: --init
     timeout-minutes: 10
     env:
       PG_TEST_REQUIRE_COSMIAN_KMS: '1'

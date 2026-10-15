@@ -40,8 +40,10 @@ jobs:
         'ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-{0}-{1}-{2}-ubuntu{3}',
         inputs.pg_version, inputs.compiler, inputs.build_type,
         fromJSON('{"ubuntu-22.04": "22.04", "ubuntu-24.04": "24.04", "ubuntu-24.04-arm": "24.04"}')[inputs.os]) || '' }}
-      # EXEC_BACKEND requires ASLR to be turned off.
-      options: ${{ inputs.build_type == 'exec-backend' && '--security-opt seccomp=unconfined' || '' }}
+      # Reaps orphaned processes, e.g. a postmaster that a test SIGKILLs;
+      # otherwise its PID stays taken and the restart fails.
+      # EXEC_BACKEND also requires ASLR to be turned off.
+      options: --init ${{ inputs.build_type == 'exec-backend' && '--security-opt seccomp=unconfined' || '' }}
     timeout-minutes: 10
     steps:
       - name: Clone repository
