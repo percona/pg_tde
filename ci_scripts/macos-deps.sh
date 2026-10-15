@@ -17,14 +17,10 @@ DEPS=(
     zstd
     # Build pg_tde
     meson
-    # Run pgperltidy
-    perltidy
 )
 
 brew update
 brew install ${DEPS[@]}
-
-cpan -T IPC::Run JSON
 
 # OpenBao
 wget https://github.com/openbao/openbao/releases/download/v2.4.3/bao_2.4.3_Darwin_arm64.tar.gz
@@ -37,3 +33,6 @@ if [[ -n $GITHUB_ACTIONS ]]; then
     echo "PKG_CONFIG_PATH=/opt/homebrew/opt/icu4c/lib/pkgconfig" >> $GITHUB_ENV
     echo "XML_CATALOG_FILES=/opt/homebrew/etc/xml/catalog" >> $GITHUB_ENV
 fi
+
+# PSP is configured with --enable-tap-tests and test-global-tde.sh runs them
+cpan -T IPC::Run
