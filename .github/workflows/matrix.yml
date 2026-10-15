@@ -26,6 +26,7 @@ jobs:
         os: ${{ matrix.os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
+        container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-${{ matrix.pg_version }}-${{ matrix.compiler }}-${{ matrix.build_type }}
     secrets: inherit
 
   macos:
@@ -77,6 +78,7 @@ jobs:
         os: ${{ matrix.os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
+        container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-${{ matrix.pg_version }}-${{ matrix.compiler }}-${{ matrix.build_type }}
     secrets: inherit
 
   slack-notification:

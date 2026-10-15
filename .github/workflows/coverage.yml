@@ -19,6 +19,9 @@ jobs:
   collect:
     name: Collect and upload
     runs-on: ubuntu-24.04
+    # The tag is spelled out because the `env` context is not available here;
+    # keep it in step with pg_version above.
+    container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-gcc-debugoptimized
     timeout-minutes: 10
     env:
       PG_TEST_REQUIRE_COSMIAN_KMS: '1'
@@ -30,18 +33,8 @@ jobs:
           path: src
           submodules: recursive
 
-      - name: Clone postgres repository
-        uses: actions/checkout@v6
-        with:
-          path: postgres
-          repository: percona/postgres.git
-          ref: PSP_REL_${{ env.pg_version }}_STABLE
-
       - name: Install dependencies
         run: src/ci_scripts/ubuntu-deps.sh
-
-      - name: Build postgres
-        run: src/ci_scripts/build-and-install-psp.sh coverage
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh coverage

@@ -14,7 +14,7 @@ do
 done
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
-SRC_DIR="$SCRIPT_DIR/../../postgres"
+SRC_DIR="${PG_SOURCE_DIR:-$SCRIPT_DIR/../../postgres}"
 
 source "$SCRIPT_DIR/configure-global-tde.sh"
 

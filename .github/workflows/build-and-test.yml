@@ -14,6 +14,14 @@ on:
       build_type:
         type: string
         required: true
+      container:
+        description: >-
+          Prebuilt CI image providing Percona Server for PostgreSQL, built,
+          and the common dependencies; ubuntu-deps.sh adds pg_tde's extras.
+          Empty string runs directly on the runner, as before.
+        type: string
+        required: false
+        default: ''
 
 env:
   artifact_name: build-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
@@ -23,6 +31,7 @@ jobs:
   build:
     name: Build
     runs-on: ${{ inputs.os }}
+    container: ${{ inputs.container }}
     timeout-minutes: 10
     steps:
       - name: Clone repository
@@ -32,7 +41,9 @@ jobs:
           submodules: recursive
           ref: ${{ github.ref }}
 
+      # The image already contains the PostgreSQL tree, built and installed.
       - name: Clone postgres repository
+        if: inputs.container == ''
         uses: actions/checkout@v6
         with:
           path: postgres
@@ -48,13 +59,16 @@ jobs:
         run: src/ci_scripts/macos-deps.sh
 
       - name: Build postgres
+        if: inputs.container == ''
         run: src/ci_scripts/build-and-install-psp.sh ${{ inputs.build_type }}
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh ${{ inputs.build_type }}
 
       - name: Add build and install to artifact tar file
-        run: tar -czf artifacts.tar src build postgres pginst
+        # In a container the PostgreSQL tree and installation come from the
+        # image, which the test jobs use too.
+        run: tar -czf artifacts.tar src build ${{ inputs.container == '' && 'postgres pginst' || '' }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -68,6 +82,7 @@ jobs:
   test:
     name: Test
     runs-on: ${{ inputs.os }}
+    container: ${{ inputs.container }}
     needs: build
     timeout-minutes: 20
     env:
@@ -93,6 +108,12 @@ jobs:
         if: startsWith(inputs.os,  'macos-')
         run: src/ci_scripts/macos-deps.sh
 
+      # The image's installation does not contain pg_tde yet: the build job
+      # installed it into its own container, which is gone.
+      - name: Install pg_tde
+        if: inputs.container != ''
+        run: meson install -C build
+
       - name: Test pg_tde
         run: src/ci_scripts/test.sh
 
@@ -113,6 +134,7 @@ jobs:
   test-psp-with-tde:
     name: Test PSP with TDE enabled by default
     runs-on: ${{ inputs.os }}
+    container: ${{ inputs.container }}
     needs: build
     timeout-minutes: 30
     # Skip PSP tests for MacOS because it doesn't support TDE archiving commands.
@@ -130,6 +152,18 @@ jobs:
 
       - name: Install dependencies for Ubuntu
         run: src/ci_scripts/ubuntu-deps.sh
+
+      # The image's installation does not contain pg_tde yet: the build job
+      # installed it into its own container, which is gone.
+      - name: Install pg_tde
+        if: inputs.container != ''
+        run: meson install -C build
+
+      # Lets the log upload below find the image's tree and installation at the
+      # same workspace paths as on the runner.
+      - name: Link prebuilt PostgreSQL into the workspace
+        if: inputs.container != ''
+        run: ln -s "$PG_SOURCE_DIR" postgres && ln -s "$PG_INSTALL_DIR" pginst
 
       - name: Test postgres with TDE as default access method
         run: src/ci_scripts/test-global-tde.sh --continue
