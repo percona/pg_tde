@@ -15,7 +15,7 @@ jobs:
     # find_typedef/perltidyrc tooling this job exists to run. The tag is spelled
     # out because the `env` context is not available here; keep it in step
     # with pg_version above.
-    container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-19-gcc-debugoptimized
+    container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-19-gcc-debugoptimized-ubuntu24.04
     timeout-minutes: 5
     steps:
       - name: Clone repository
@@ -25,7 +25,7 @@ jobs:
           submodules: recursive
 
       - name: Install dependencies
-        run: src/ci_scripts/ubuntu-deps.sh
+        run: src/ci_scripts/ubuntu-deps.sh format
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh debug

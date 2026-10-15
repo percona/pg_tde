@@ -2,9 +2,12 @@
 
 set -e
 
-DEPS=(
-    # PostgreeSQL build dependencies
-    #
+# Installs what pg_tde's CI jobs need on Ubuntu. With "format" as the argument
+# it also installs clang-format, which only the format check uses.
+
+# Only needed to build PostgreSQL itself, which the prebuilt CI images
+# (percona-lab/pg_github_actions_images, which set PG_INSTALL_DIR) already did.
+PG_DEPS=(
     # Based on https://salsa.debian.org/postgresql/postgresql/-/blob/18/debian/control
     bison
     docbook-xml
@@ -40,27 +43,46 @@ DEPS=(
     xsltproc
     zlib1g-dev
     zstd
-    # Setup, including what apt.llvm.org's llvm.sh needs
-    gnupg
-    lsb-release
-    software-properties-common
+)
+
+DEPS=(
     wget
     # pg_tde dependencies
+    cmake
     meson
     # pg_tde test dependencies
+    libjson-xs-perl
     lcov
     perltidy
 )
 
-sudo apt-get update
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ${DEPS[@]}
+if [ -z "${PG_INSTALL_DIR:-}" ]; then
+    DEPS+=("${PG_DEPS[@]}")
+fi
+
+if [ "$1" = format ]; then
+    # What apt.llvm.org's llvm.sh needs
+    DEPS+=(gnupg lsb-release software-properties-common)
+fi
+
+# The images carry most of these, so skip apt when there is nothing to install.
+if ! dpkg -s "${DEPS[@]}" >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${DEPS[@]}"
+fi
+
+# t/keys_update.pl starts from a data directory initdb'd with en_US.UTF-8, which
+# GitHub-hosted runners have but containers might not.
+if ! locale -a | grep -qx en_US.utf8; then
+    sudo locale-gen en_US.UTF-8
+fi
 
 # Everything below is pg_tde-specific and downloaded from third-party hosts, so
-# the shared CI images (percona-lab/pg_github_actions_images) do not carry it:
-# jobs running in them install it here. Skip whatever is already present, so a
-# second run, or an environment that has it, costs nothing.
+# the shared CI images do not carry it: jobs running in them install it here.
+# Skip whatever is already present, so a second run, or an environment that has
+# it, costs nothing.
 
-if ! command -v clang-format-22 >/dev/null; then
+if [ "$1" = format ] && ! command -v clang-format-22 >/dev/null; then
     sudo DEBIAN_FRONTEND=noninteractive bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 22
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y clang-format-22
 fi

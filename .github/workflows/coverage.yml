@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     # The tag is spelled out because the `env` context is not available here;
     # keep it in step with pg_version above.
-    container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-gcc-debugoptimized
+    container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-gcc-debugoptimized-ubuntu24.04
     timeout-minutes: 10
     env:
       PG_TEST_REQUIRE_COSMIAN_KMS: '1'
