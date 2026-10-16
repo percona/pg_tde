@@ -2,48 +2,10 @@
 
 set -e
 
-# Installs what pg_tde's CI jobs need on Ubuntu. With "format" as the argument
-# it also installs clang-format, which only the format check uses.
-
-# Only needed to build PostgreSQL itself, which the prebuilt CI images
-# (percona-lab/pg_github_actions_images, which set PG_INSTALL_DIR) already did.
-PG_DEPS=(
-    # Based on https://salsa.debian.org/postgresql/postgresql/-/blob/18/debian/control
-    bison
-    docbook-xml
-    docbook-xsl
-    flex
-    gettext
-    libcurl4-openssl-dev
-    libicu-dev
-    libipc-run-perl
-    libkrb5-dev
-    libldap2-dev
-    liblz4-dev
-    libnuma-dev
-    libpam0g-dev
-    libperl-dev
-    libreadline-dev
-    libselinux1-dev
-    libssl-dev
-    libsystemd-dev
-    liburing-dev
-    libxml2-dev
-    libxml2-utils
-    libxslt1-dev
-    libzstd-dev
-    lz4
-    mawk
-    perl
-    pkgconf
-    python3-dev
-    systemtap-sdt-dev
-    tcl-dev
-    uuid-dev
-    xsltproc
-    zlib1g-dev
-    zstd
-)
+# Installs what pg_tde's CI jobs need on top of the prebuilt CI images
+# (percona-lab/pg_github_actions_images), which provide PostgreSQL and the
+# common dependencies. With "format" as the argument it also installs
+# clang-format, which only the format check uses.
 
 DEPS=(
     wget
@@ -56,10 +18,6 @@ DEPS=(
     perltidy
 )
 
-if [ -z "${PG_INSTALL_DIR:-}" ]; then
-    DEPS+=("${PG_DEPS[@]}")
-fi
-
 if [ "$1" = format ]; then
     # What apt.llvm.org's llvm.sh needs
     DEPS+=(gnupg lsb-release software-properties-common)
@@ -69,12 +27,6 @@ fi
 if ! dpkg -s "${DEPS[@]}" >/dev/null 2>&1; then
     sudo apt-get update
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${DEPS[@]}"
-fi
-
-# t/keys_update.pl starts from a data directory initdb'd with en_US.UTF-8, which
-# GitHub-hosted runners have but containers might not.
-if ! locale -a | grep -qx en_US.utf8; then
-    sudo locale-gen en_US.UTF-8
 fi
 
 # Everything below is pg_tde-specific and downloaded from third-party hosts, so

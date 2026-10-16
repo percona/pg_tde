@@ -4,17 +4,12 @@ on:
     paths-ignore:
       - documentation/**
 
-env:
-  pg_version: 19
-
 jobs:
   check:
     name: Check
     runs-on: ubuntu-24.04
     # The image already provides PostgreSQL plus the pgindent/pg_bsd_indent/
-    # find_typedef/perltidyrc tooling this job exists to run. The tag is spelled
-    # out because the `env` context is not available here; keep it in step
-    # with pg_version above.
+    # find_typedef/perltidyrc tooling this job exists to run.
     container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-19-gcc-debugoptimized-ubuntu24.04
     timeout-minutes: 5
     steps:

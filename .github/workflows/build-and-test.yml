@@ -14,15 +14,6 @@ on:
       build_type:
         type: string
         required: true
-      container:
-        description: >-
-          Run in the prebuilt CI image (percona-lab/pg_github_actions_images)
-          that provides Percona Server for PostgreSQL, built for pg_version,
-          compiler and build_type, and the common dependencies; ubuntu-deps.sh
-          adds pg_tde's extras. Otherwise PostgreSQL is built on the runner.
-        type: boolean
-        required: false
-        default: false
 
 env:
   artifact_name: build-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
@@ -33,13 +24,15 @@ jobs:
     name: Build
     runs-on: ${{ inputs.os }}
     container: &container
-      # The image is the one matching the job's inputs, e.g.
-      # postgres-source:psp-18-gcc-debugoptimized-ubuntu24.04, or none.
+      # Ubuntu jobs run in the prebuilt CI image matching the job's inputs, e.g.
+      # postgres-source:psp-18-gcc-debugoptimized-ubuntu24.04, which provides
+      # Percona Server for PostgreSQL and the common dependencies. macOS jobs
+      # build PostgreSQL on the runner.
       image: >-
-        ${{ inputs.container && format(
+        ${{ startsWith(inputs.os, 'ubuntu-') && format(
         'ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-{0}-{1}-{2}-ubuntu{3}',
         inputs.pg_version, inputs.compiler, inputs.build_type,
-        fromJSON('{"ubuntu-22.04": "22.04", "ubuntu-24.04": "24.04", "ubuntu-24.04-arm": "24.04"}')[inputs.os]) || '' }}
+        fromJSON('{"ubuntu-24.04": "24.04", "ubuntu-24.04-arm": "24.04"}')[inputs.os]) || '' }}
       # Reaps orphaned processes, e.g. a postmaster that a test SIGKILLs;
       # otherwise its PID stays taken and the restart fails.
       # EXEC_BACKEND also requires ASLR to be turned off.
@@ -55,23 +48,19 @@ jobs:
 
       # The image already contains the PostgreSQL tree, built and installed.
       - name: Clone postgres repository
-        if: ${{ !inputs.container }}
+        if: startsWith(inputs.os, 'macos-')
         uses: actions/checkout@v6
         with:
           path: postgres
           repository: percona/postgres.git
           ref: PSP_REL_${{ inputs.pg_version }}_STABLE
 
-      - name: Install dependencies for Ubuntu
-        if: startsWith(inputs.os, 'ubuntu-')
-        run: src/ci_scripts/ubuntu-deps.sh
-
       - name: Install dependencies for MacOS
         if: startsWith(inputs.os,  'macos-')
         run: src/ci_scripts/macos-deps.sh
 
       - name: Build postgres
-        if: ${{ !inputs.container }}
+        if: startsWith(inputs.os, 'macos-')
         run: src/ci_scripts/build-and-install-psp.sh ${{ inputs.build_type }}
 
       - name: Build pg_tde
@@ -80,7 +69,7 @@ jobs:
       - name: Add build and install to artifact tar file
         # In a container the PostgreSQL tree and installation come from the
         # image, which the test jobs use too.
-        run: tar -czf artifacts.tar src build ${{ !inputs.container && 'postgres pginst' || '' }}
+        run: tar -czf artifacts.tar src build ${{ startsWith(inputs.os, 'macos-') && 'postgres pginst' || '' }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -123,7 +112,7 @@ jobs:
       # The image's installation does not contain pg_tde yet: the build job
       # installed it into its own container, which is gone.
       - name: Install pg_tde
-        if: inputs.container
+        if: startsWith(inputs.os, 'ubuntu-')
         run: meson install -C build
 
       - name: Test pg_tde
@@ -168,13 +157,11 @@ jobs:
       # The image's installation does not contain pg_tde yet: the build job
       # installed it into its own container, which is gone.
       - name: Install pg_tde
-        if: inputs.container
         run: meson install -C build
 
       # Lets the log upload below find the image's tree and installation at the
       # same workspace paths as on the runner.
       - name: Link prebuilt PostgreSQL into the workspace
-        if: inputs.container
         run: ln -s "$PG_SOURCE_DIR" postgres && ln -s "$PG_INSTALL_DIR" pginst
 
       - name: Test postgres with TDE as default access method

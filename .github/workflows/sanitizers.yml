@@ -10,7 +10,6 @@ on:
       - documentation/**
 
 env:
-  pg_version: 18
   CC: clang
   CXX: clang++
   LD: clang
@@ -22,10 +21,7 @@ jobs:
   run:
     name: Run
     runs-on: ubuntu-24.04
-    # Percona Server for PostgreSQL built with the same sanitize flags as
-    # build-and-install-psp.sh uses, on Ubuntu 24.04. The tag is
-    # spelled out because the `env` context is not available here; keep it in
-    # step with pg_version above.
+    # Percona Server for PostgreSQL 18 built with ASan and UBSan.
     container:
       image: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-clang-sanitize-ubuntu24.04
       # Reaps orphaned processes, e.g. a postmaster that a test SIGKILLs;

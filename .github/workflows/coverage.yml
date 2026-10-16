@@ -10,7 +10,6 @@ on:
       - documentation/**
 
 env:
-  pg_version: 18
   # Avoid failures on slow recovery
   PGCTLTIMEOUT: 120
   PG_TEST_TIMEOUT_DEFAULT: 300
@@ -19,8 +18,6 @@ jobs:
   collect:
     name: Collect and upload
     runs-on: ubuntu-24.04
-    # The tag is spelled out because the `env` context is not available here;
-    # keep it in step with pg_version above.
     container:
       image: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-gcc-debugoptimized-ubuntu24.04
       # Reaps orphaned processes, e.g. a postmaster that a test SIGKILLs;
