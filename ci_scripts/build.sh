@@ -27,7 +27,9 @@ case "$1" in
     sanitize)
         echo "Building with sanitize option"
         BUILD_TYPE=debug
-        ARGS+=" -Dc_args=['-fsanitize=address','-fsanitize=undefined','-fno-omit-frame-pointer','-fno-inline-functions']"
+        # Since LLVM 17 function also checks C, and PostgreSQL calls functions
+        # through pointers of a different type by design.
+        ARGS+=" -Dc_args=['-fsanitize=address','-fsanitize=undefined','-fno-sanitize=function','-fno-omit-frame-pointer','-fno-inline-functions']"
         ARGS+=" -Dc_link_args=['-fsanitize=address','-fsanitize=undefined']"
         # The UBSan runtime of vptr and, before LLVM 17, function lives in the
         # C++-only ubsan_standalone_cxx library, which the C postgres backend that

@@ -21,13 +21,13 @@ env:
 jobs:
   run:
     name: Run
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # Percona Server for PostgreSQL built with the same sanitize flags as
-    # build-and-install-psp.sh uses, on Ubuntu 22.04. The tag is
+    # build-and-install-psp.sh uses, on Ubuntu 24.04. The tag is
     # spelled out because the `env` context is not available here; keep it in
     # step with pg_version above.
     container:
-      image: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-clang-sanitize-ubuntu22.04
+      image: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-clang-sanitize-ubuntu24.04
       # Reaps orphaned processes, e.g. a postmaster that a test SIGKILLs;
       # otherwise its PID stays taken and the restart fails.
       # The tests set max_stack_depth=8MB, which needs a stack limit above
