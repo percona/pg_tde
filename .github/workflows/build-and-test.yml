@@ -5,9 +5,13 @@ on:
       pg_version:
         type: string
         required: true
-      os:
+      runs-on:
         type: string
         required: true
+      image-os:
+        type: string
+        required: false
+        default: ''
       compiler:
         type: string
         required: true
@@ -16,14 +20,24 @@ on:
         required: true
 
 env:
-  artifact_name: build-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
   CC: ${{ inputs.compiler }}
 
 jobs:
-  build:
-    name: Build
-    runs-on: ${{ inputs.os }}
-    timeout-minutes: 10
+  test:
+    name: Test
+    runs-on: ${{ inputs.runs-on }}
+    container: &container
+      image: >-
+        ${{ inputs.image-os && format(
+        'ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-{0}-{1}-{2}-{3}',
+        inputs.pg_version, inputs.compiler, inputs.build_type, inputs.image-os) }}
+      options: --init ${{ inputs.build_type == 'exec-backend' && '--security-opt seccomp=unconfined' || '' }}
+    timeout-minutes: 30
+    env:
+      # No cosmian_kms package on macOS; let kmip.pl skip_all there.
+      PG_TEST_REQUIRE_COSMIAN_KMS: ${{ startsWith(inputs.runs-on, 'macos-') && '0' || '1' }}
+      PG_TEST_REQUIRE_OPENBAO: '1'
+
     steps:
       - name: Clone repository
         uses: actions/checkout@v6
@@ -33,6 +47,7 @@ jobs:
           ref: ${{ github.ref }}
 
       - name: Clone postgres repository
+        if: startsWith(inputs.runs-on, 'macos-')
         uses: actions/checkout@v6
         with:
           path: postgres
@@ -40,58 +55,19 @@ jobs:
           ref: PSP_REL_${{ inputs.pg_version }}_STABLE
 
       - name: Install dependencies for Ubuntu
-        if: startsWith(inputs.os, 'ubuntu-')
+        if: inputs.image-os
         run: src/ci_scripts/ubuntu-deps.sh
 
       - name: Install dependencies for MacOS
-        if: startsWith(inputs.os,  'macos-')
+        if: startsWith(inputs.runs-on,  'macos-')
         run: src/ci_scripts/macos-deps.sh
 
       - name: Build postgres
+        if: startsWith(inputs.runs-on, 'macos-')
         run: src/ci_scripts/build-and-install-psp.sh ${{ inputs.build_type }}
 
       - name: Build pg_tde
         run: src/ci_scripts/build.sh ${{ inputs.build_type }}
-
-      - name: Add build and install to artifact tar file
-        run: tar -czf artifacts.tar src build postgres pginst
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ env.artifact_name }}
-          overwrite: true
-          path: |
-            artifacts.tar
-          retention-days: 1
-
-  test:
-    name: Test
-    runs-on: ${{ inputs.os }}
-    needs: build
-    timeout-minutes: 20
-    env:
-      # No cosmian_kms package on macOS; let kmip.pl skip_all there.
-      PG_TEST_REQUIRE_COSMIAN_KMS: ${{ startsWith(inputs.os, 'macos-') && '0' || '1' }}
-      PG_TEST_REQUIRE_OPENBAO: '1'
-
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ env.artifact_name }}
-          path: .
-
-      - name: Extract artifact file
-        run: tar -xzf artifacts.tar
-
-      - name: Install dependencies for Ubuntu
-        if: startsWith(inputs.os, 'ubuntu-')
-        run: src/ci_scripts/ubuntu-deps.sh
-
-      - name: Install dependencies for MacOS
-        if: startsWith(inputs.os,  'macos-')
-        run: src/ci_scripts/macos-deps.sh
 
       - name: Test pg_tde
         run: src/ci_scripts/test.sh
@@ -100,7 +76,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
-          name: log-test-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
+          name: log-test-${{ inputs.pg_version }}-${{ inputs.runs-on }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
             build/meson-logs/testlog.txt
             build/regress_install
@@ -112,24 +88,30 @@ jobs:
 
   test-psp-with-tde:
     name: Test PSP with TDE enabled by default
-    runs-on: ${{ inputs.os }}
-    needs: build
+    runs-on: ${{ inputs.runs-on }}
+    container: *container
     timeout-minutes: 30
     # Skip PSP tests for MacOS because it doesn't support TDE archiving commands.
-    if: ${{ ! startsWith(inputs.os,  'macos-') }}
+    if: ${{ ! startsWith(inputs.runs-on,  'macos-') }}
 
     steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
+      - name: Clone repository
+        uses: actions/checkout@v6
         with:
-          name: ${{ env.artifact_name }}
-          path: .
-
-      - name: Extract artifact file
-        run: tar -xzf artifacts.tar
+          path: src
+          submodules: recursive
+          ref: ${{ github.ref }}
 
       - name: Install dependencies for Ubuntu
         run: src/ci_scripts/ubuntu-deps.sh
+
+      - name: Build pg_tde
+        run: src/ci_scripts/build.sh ${{ inputs.build_type }}
+
+      # Lets the log upload below find the image's tree and installation at the
+      # same workspace paths as on the runner.
+      - name: Link prebuilt PostgreSQL into the workspace
+        run: ln -s "$PG_SOURCE_DIR" postgres && ln -s "$PG_INSTALL_DIR" pginst
 
       - name: Test postgres with TDE as default access method
         run: src/ci_scripts/test-global-tde.sh --continue
@@ -138,7 +120,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
-          name: log-test-global-tde-${{ inputs.pg_version }}-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.build_type }}
+          name: log-test-global-tde-${{ inputs.pg_version }}-${{ inputs.runs-on }}-${{ inputs.compiler }}-${{ inputs.build_type }}
           path: |
             pginst/postgresql.log
             postgres/contrib/*/log
