@@ -9,6 +9,12 @@ on:
     paths-ignore:
       - documentation/**
 
+# A new push to a PR supersedes the runs of its previous head. Other runs, such
+# as pushes to main, each get a group of their own and are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 env:
   CC: clang
   CXX: clang++
@@ -21,13 +27,8 @@ jobs:
   run:
     name: Run
     runs-on: ubuntu-24.04
-    # Percona Server for PostgreSQL 18 built with ASan and UBSan.
     container:
       image: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-clang-sanitize-ubuntu24.04
-      # Reaps orphaned processes, e.g. a postmaster that a test SIGKILLs;
-      # otherwise its PID stays taken and the restart fails.
-      # The tests set max_stack_depth=8MB, which needs a stack limit above
-      # Docker's default 8MB.
       options: --init --ulimit stack=67108864:67108864
     timeout-minutes: 15
     env:
@@ -43,8 +44,6 @@ jobs:
       - name: Install dependencies
         run: src/ci_scripts/ubuntu-deps.sh
 
-      # ${{ github.workspace }} is the runner's path, not the container's, so
-      # the sanitizer options are set from $GITHUB_WORKSPACE instead.
       - name: Configure sanitizers
         run: |
           {

@@ -2,39 +2,10 @@
 
 set -e
 
-# Installs what pg_tde's CI jobs need on top of the prebuilt CI images
-# (percona-lab/pg_github_actions_images), which provide PostgreSQL and the
-# common dependencies. With "format" as the argument it also installs
-# clang-format, which only the format check uses.
-
-DEPS=(
-    wget
-    # pg_tde dependencies
-    cmake
-    meson
-    # pg_tde test dependencies
-    libjson-xs-perl
-    lcov
-    perltidy
-)
-
-if [ "$1" = format ]; then
-    # What apt.llvm.org's llvm.sh needs
-    DEPS+=(gnupg lsb-release software-properties-common)
-fi
-
-# The images carry most of these, so skip apt when there is nothing to install.
-if ! dpkg -s "${DEPS[@]}" >/dev/null 2>&1; then
-    sudo apt-get update
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${DEPS[@]}"
-fi
-
-# Everything below is pg_tde-specific and downloaded from third-party hosts, so
-# the shared CI images do not carry it: jobs running in them install it here.
-# Skip whatever is already present, so a second run, or an environment that has
-# it, costs nothing.
-
 if [ "$1" = format ] && ! command -v clang-format-22 >/dev/null; then
+    # apt.llvm.org's llvm.sh needs add-apt-repository.
+    sudo apt-get update
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common
     sudo DEBIAN_FRONTEND=noninteractive bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 22
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y clang-format-22
 fi

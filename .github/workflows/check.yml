@@ -1,15 +1,19 @@
-name: Format
+name: Check
 on:
   pull_request:
     paths-ignore:
       - documentation/**
 
+# A new push to a PR supersedes the runs of its previous head. Other runs, such
+# as pushes to main, each get a group of their own and are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
-  check:
-    name: Check
+  format:
+    name: Format
     runs-on: ubuntu-24.04
-    # The image already provides PostgreSQL plus the pgindent/pg_bsd_indent/
-    # find_typedef/perltidyrc tooling this job exists to run.
     container: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-19-gcc-debugoptimized-ubuntu24.04
     timeout-minutes: 5
     steps:

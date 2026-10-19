@@ -9,6 +9,12 @@ on:
     paths-ignore:
       - documentation/**
 
+# A new push to a PR supersedes the runs of its previous head. Other runs, such
+# as pushes to main, each get a group of their own and are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 env:
   # Avoid failures on slow recovery
   PGCTLTIMEOUT: 120
@@ -20,8 +26,6 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: ghcr.io/percona-lab/pg_github_actions_images/postgres-source:psp-18-gcc-debugoptimized-ubuntu24.04
-      # Reaps orphaned processes, e.g. a postmaster that a test SIGKILLs;
-      # otherwise its PID stays taken and the restart fails.
       options: --init
     timeout-minutes: 10
     env:
