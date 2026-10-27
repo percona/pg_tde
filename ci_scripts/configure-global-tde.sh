@@ -3,7 +3,7 @@
 set -e
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
-INSTALL_DIR="$SCRIPT_DIR/../../pginst"
+INSTALL_DIR="${PG_INSTALL_DIR:-$SCRIPT_DIR/../../pginst}"
 DATA_DIR=$INSTALL_DIR/data
 
 cd "$SCRIPT_DIR/.."
