@@ -3,7 +3,7 @@
 set -e
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
-PG_CONFIG="$SCRIPT_DIR/../../pginst/bin/pg_config"
+PG_CONFIG="${PG_INSTALL_DIR:-$SCRIPT_DIR/../../pginst}/bin/pg_config"
 BUILD_TYPE=
 ARGS=
 

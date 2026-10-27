@@ -8,6 +8,7 @@
 set -e
 
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
+PG_SOURCE_DIR="${PG_SOURCE_DIR:-$SCRIPT_DIR/../../postgres}"
 cd "$SCRIPT_DIR/../../build"
 
 if ! test -f pg_tde.so; then
@@ -16,7 +17,7 @@ if ! test -f pg_tde.so; then
 fi
 
 (
-  ../postgres/src/tools/find_typedef .
+  "$PG_SOURCE_DIR"/src/tools/find_typedef .
   wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_17_STABLE"
   wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_18_STABLE"
   wget -q -O - "https://buildfarm.postgresql.org/cgi-bin/typedefs.pl?branch=REL_19_STABLE"
