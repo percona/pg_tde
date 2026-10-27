@@ -29,13 +29,13 @@ jobs:
       PG_TEST_REQUIRE_OPENBAO: '1'
     steps:
       - name: Clone repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: src
           submodules: recursive
 
       - name: Clone postgres repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: postgres
           repository: percona/postgres.git
