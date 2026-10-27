@@ -10,71 +10,77 @@ on:
     paths-ignore:
       - documentation/**
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   main:
-    name: Main matrix
+    name: Main
     strategy:
       fail-fast: false
       matrix:
         pg_version: [16, 17, 18, 19]
-        os: [ubuntu-24.04]
+        image-os: [ubuntu24.04]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
         pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
+        runs-on: ubuntu-24.04
+        image-os: ${{ matrix.image-os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
     secrets: inherit
 
   macos:
-    name: MacOS matrix
+    name: MacOS
     strategy:
       fail-fast: false
       matrix:
         pg_version: [18, 19]
-        os: [macos-15]
         compiler: [clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
         pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
+        runs-on: macos-15
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
     secrets: inherit
 
   arm:
-    name: ARM matrix
+    name: ARM
     strategy:
       fail-fast: false
       matrix:
         pg_version: [16, 17, 18, 19]
-        os: [ubuntu-24.04-arm]
+        image-os: [ubuntu24.04]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
         pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
+        runs-on: ubuntu-24.04-arm
+        image-os: ${{ matrix.image-os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
     secrets: inherit
 
   exec-backend:
-    name: EXEC_BACKEND matrix
+    name: EXEC_BACKEND
     strategy:
       fail-fast: false
       matrix:
         pg_version: [16, 17, 18, 19]
-        os: [ubuntu-24.04]
+        image-os: [ubuntu24.04]
         compiler: [gcc]
         build_type: [exec-backend]
     uses: ./.github/workflows/build-and-test.yml
     with:
         pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
+        runs-on: ubuntu-24.04
+        image-os: ${{ matrix.image-os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
     secrets: inherit
@@ -87,7 +93,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Notify
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
