@@ -21,13 +21,14 @@ jobs:
       fail-fast: false
       matrix:
         pg_version: [16, 17, 18, 19]
-        os: [ubuntu-24.04]
+        image-os: [ubuntu24.04]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
         pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
+        runs-on: ubuntu-24.04
+        image-os: ${{ matrix.image-os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
     secrets: inherit
@@ -38,13 +39,12 @@ jobs:
       fail-fast: false
       matrix:
         pg_version: [18, 19]
-        os: [macos-15]
         compiler: [clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
         pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
+        runs-on: macos-15
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
     secrets: inherit
@@ -55,13 +55,14 @@ jobs:
       fail-fast: false
       matrix:
         pg_version: [16, 17, 18, 19]
-        os: [ubuntu-24.04-arm]
+        image-os: [ubuntu24.04]
         compiler: [gcc, clang]
         build_type: [debugoptimized]
     uses: ./.github/workflows/build-and-test.yml
     with:
         pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
+        runs-on: ubuntu-24.04-arm
+        image-os: ${{ matrix.image-os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
     secrets: inherit
@@ -72,13 +73,14 @@ jobs:
       fail-fast: false
       matrix:
         pg_version: [16, 17, 18, 19]
-        os: [ubuntu-24.04]
+        image-os: [ubuntu24.04]
         compiler: [gcc]
         build_type: [exec-backend]
     uses: ./.github/workflows/build-and-test.yml
     with:
         pg_version: ${{ matrix.pg_version }}
-        os: ${{ matrix.os }}
+        runs-on: ubuntu-24.04
+        image-os: ${{ matrix.image-os }}
         compiler: ${{ matrix.compiler }}
         build_type: ${{ matrix.build_type }}
     secrets: inherit
