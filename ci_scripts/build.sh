@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 PG_CONFIG="${PG_INSTALL_DIR:-$SCRIPT_DIR/../../pginst}/bin/pg_config"
 BUILD_TYPE=
 ARGS=
+CLANG_SAN_ARGS=
 
 case "$1" in
     debug)
@@ -27,12 +28,13 @@ case "$1" in
     sanitize)
         echo "Building with sanitize option"
         BUILD_TYPE=debug
-        ARGS+=" -Dc_args=['-fsanitize=address','-fsanitize=undefined','-fno-omit-frame-pointer','-fno-inline-functions']"
+        case "$CC" in *clang*) CLANG_SAN_ARGS=",'-fno-sanitize=function'" ;; esac
+        ARGS+=" -Dc_args=['-fsanitize=address','-fsanitize=undefined'$CLANG_SAN_ARGS,'-fno-omit-frame-pointer','-fno-inline-functions']"
         ARGS+=" -Dc_link_args=['-fsanitize=address','-fsanitize=undefined']"
         # vptr's UBSan runtime lives in the C++-only ubsan_standalone_cxx library,
         # which the C postgres backend that dlopens pg_tde.so does not link, so it
         # is disabled here to avoid an undefined __ubsan_vptr_type_cache at load.
-        ARGS+=" -Dcpp_args=['-fsanitize=address','-fsanitize=undefined','-fno-sanitize=vptr','-fno-omit-frame-pointer','-fno-inline-functions']"
+        ARGS+=" -Dcpp_args=['-fsanitize=address','-fsanitize=undefined','-fno-sanitize=vptr'$CLANG_SAN_ARGS,'-fno-omit-frame-pointer','-fno-inline-functions']"
         ARGS+=" -Dcpp_link_args=['-fsanitize=address','-fsanitize=undefined']"
         ;;
 
