@@ -19,9 +19,6 @@ on:
         type: string
         required: true
 
-env:
-  CC: ${{ inputs.compiler }}
-
 jobs:
   test:
     name: Test
