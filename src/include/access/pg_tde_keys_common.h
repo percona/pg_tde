@@ -13,4 +13,6 @@ typedef struct
 	unsigned char aead_tag[MAP_ENTRY_AEAD_TAG_SIZE];
 } TDESignedPrincipalKeyInfo;
 
+extern TDEPrincipalKey *pg_tde_load_principal_key(const TDESignedPrincipalKeyInfo *principalKeyInfo);
+
 #endif							/* PG_TDE_KEYS_COMMON_H */
