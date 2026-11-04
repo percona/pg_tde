@@ -1,0 +1,8 @@
+line-length = 120
+target-version = "py314"
+
+[lint]
+extend-select = ["E501", "I", "UP", "B"]
+
+[lint.isort]
+known-first-party = ["pgtde"]

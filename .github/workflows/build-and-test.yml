@@ -71,7 +71,7 @@ jobs:
     needs: build
     timeout-minutes: 20
     env:
-      # No cosmian_kms package on macOS; let kmip.pl skip_all there.
+      # No cosmian_kms package on macOS; kmip tests skip there.
       PG_TEST_REQUIRE_COSMIAN_KMS: ${{ startsWith(inputs.os, 'macos-') && '0' || '1' }}
       PG_TEST_REQUIRE_OPENBAO: '1'
 
@@ -93,6 +93,7 @@ jobs:
         if: startsWith(inputs.os,  'macos-')
         run: src/ci_scripts/macos-deps.sh
 
+      # meson test needs stormweaver on PATH or -Dstormweaver=
       - name: Test pg_tde
         run: src/ci_scripts/test.sh
 

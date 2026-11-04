@@ -12,3 +12,7 @@ __pycache__
 # Meson subproject artifacts
 /subprojects/.wraplock
 /subprojects/packagecache
+
+# Test run artifacts
+logs/
+/datadirs

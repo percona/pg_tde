@@ -1,21 +1,27 @@
 project('pg_tde',
-  ['c', 'cpp'],
   version: '2.2.2',
-  meson_version: '>=0.56',
+  meson_version: '>=0.57',
 )
 
 fs = import('fs')
-cmake = import('cmake')
 
 pg_config = find_program(get_option('pg_config'))
-shsplit = find_program(files('shsplit'))
+
+if not get_option('tests_only') # skip all build setup, only register tests
 
 bindir = run_command(pg_config, '--bindir', check: true).stdout().strip()
+pkglibdir = run_command(pg_config, '--pkglibdir', check: true).stdout().strip()
+
+add_languages('c', 'cpp', native: false)
+
+cmake = import('cmake')
+
+shsplit = find_program(files('shsplit'))
+
 includedir = run_command(pg_config, '--includedir', check: true).stdout().strip()
 includedir_server = run_command(pg_config, '--includedir-server', check: true).stdout().strip()
 libdir = run_command(pg_config, '--libdir', check: true).stdout().strip()
 pkgincludedir = run_command(pg_config, '--pkgincludedir', check: true).stdout().strip()
-pkglibdir = run_command(pg_config, '--pkglibdir', check: true).stdout().strip()
 sharedir = run_command(pg_config, '--sharedir', check: true).stdout().strip()
 ldflags = run_command(shsplit, pg_config.full_path(), '--ldflags', check: true).stdout()
 ldflags_ex = run_command(shsplit, pg_config.full_path(), '--ldflags_ex', check: true).stdout()
@@ -349,72 +355,98 @@ executable('pg_tde_waldump',
   link_language: 'cpp',
 )
 
-tap_tests = [
-  't/basic.pl',
-  't/change_key_provider.pl',
-  't/crash_recovery.pl',
-  't/default_principal_key.pl',
-  't/key_rotate_tablespace.pl',
-  't/keys_update.pl',
-  't/key_validation.pl',
-  't/kmip.pl',
-  't/pg_basebackup.pl',
-  't/pg_rewind_basic.pl',
-  't/pg_rewind_databases.pl',
-  't/pg_rewind_enc_copy_blocks.pl',
-  't/pg_rewind_enc_ext_tablespace.pl',
-  't/pg_rewind_enc_fsm.pl',
-  't/pg_rewind_enc_keep_archive_wal.pl',
-  't/pg_rewind_enc_keep_wal_seg.pl',
-  't/pg_rewind_enc_unchanged_rel.pl',
-  't/pg_rewind_extrafiles.pl',
-  't/pg_rewind_growing_files.pl',
-  't/pg_rewind_keep_recycled_wals.pl',
-  't/pg_rewind_min_recovery_point.pl',
-  't/pg_rewind_options.pl',
-  't/pg_rewind_pg_xlog_symlink.pl',
-  't/pg_rewind_same_timeline.pl',
-  't/pg_tde_change_key_provider.pl',
-  't/pg_tde_checksums.pl',
-  't/pg_tde_upgrade.pl',
-  't/pg_waldump_basic.pl',
-  't/pg_waldump_fullpage.pl',
-  't/pg_waldump_tde_rmgr.pl',
-  't/regress.pl',
-  't/replication.pl',
-  't/reuse_relfilenode_in_cache.pl',
-  't/rotate_key.pl',
-  't/tde_heap_aes_256.pl',
-  't/tde_heap.pl',
-  't/unlogged_tables.pl',
-  't/vault_v2.pl',
-  't/wal_archiving_symlink.pl',
-  't/wal_archiving.pl',
-  't/wal_encrypt.pl',
-  't/wal_key_tli.pl',
+endif # not tests_only
+
+stormweaver = find_program(get_option('stormweaver'), required: false)
+if not stormweaver.found() and get_option('tests_only')
+  error('stormweaver not found; install it or pass -Dstormweaver=/path/to/stormweaver')
+endif
+
+pytest_files = [
+  'tests/pgtde/test_providers.py',
+  'tests/pgtde/test_upgrade_source.py',
+  'tests/extension/test_extension.py',
+  'tests/encryption/test_access_method.py',
+  'tests/encryption/test_cipher.py',
+  'tests/encryption/test_databases.py',
+  'tests/encryption/test_partitions.py',
+  'tests/encryption/test_tablespace.py',
+  'tests/encryption/test_tde_heap.py',
+  'tests/keys/test_access_control.py',
+  'tests/keys/test_principal_key.py',
+  'tests/keys/test_providers.py',
+  'tests/keys/test_rotation.py',
+  'tests/keyrings/test_kmip.py',
+  'tests/keyrings/test_vault.py',
+  'tests/wal/test_archiving.py',
+  'tests/wal/test_pitr.py',
+  'tests/wal/test_wal_encrypt.py',
+  'tests/wal/test_waldump.py',
+  'tests/recovery/test_crash.py',
+  'tests/recovery/test_relfilenode_cache.py',
+  'tests/recovery/test_unlogged.py',
+  'tests/recovery/test_wal_skip.py',
+  'tests/backup/test_basebackup.py',
+  'tests/backup/test_pgbackrest.py',
+  'tests/replication/test_logical.py',
+  'tests/replication/test_streaming.py',
+  'tests/rewind/test_basic.py',
+  'tests/rewind/test_divergence.py',
+  'tests/rewind/test_encrypted.py',
+  'tests/rewind/test_files.py',
+  'tests/rewind/test_keys.py',
+  'tests/rewind/test_unencrypted.py',
+  'tests/rewind/test_wal.py',
+  'tests/upgrade/test_format_upgrade.py',
+  'tests/upgrade/test_in_place.py',
+  'tests/upgrade/test_pg_upgrade.py',
+  'tests/tools/test_change_key_provider.py',
+  'tests/tools/test_checksums.py',
+  'tests/tools/test_resetwal.py',
 ]
 
-testwrap = files('testwrap')
-perl = find_program('perl')
-pg_regress = find_program('pg_regress', dirs: [pkglibdir / 'pgxs/src/test/regress'])
+if stormweaver.found()
+  pytest_env = environment()
+  pytest_env.set('STORMWEAVER_PG_CONFIG', pg_config.full_path())
 
-env = environment()
-env.prepend('PATH', bindir)
-env.set('PG_REGRESS', pg_regress.full_path())
-env.set('top_builddir', meson.project_build_root())
+  foreach f : pytest_files
+    pytest_stem = fs.stem(fs.name(f))
+    if pytest_stem.startswith('test_')
+      pytest_stem = pytest_stem.substring(5)
+    endif
+    pytest_topic = fs.name(fs.parent(f))
+    pytest_name = pytest_topic / pytest_stem
+    pytest_args = ['test', meson.project_source_root() / f, '-q', '--pg-config', pg_config.full_path()]
+    test(pytest_name, stormweaver,
+      suite: ['fast', pytest_topic],
+      env: pytest_env,
+      workdir: meson.project_build_root(),
+      timeout: 1800,
+      args: pytest_args,
+    )
+    test(pytest_name + '/all-values', stormweaver,
+      suite: ['all-values', pytest_topic + '-all-values'],
+      env: pytest_env,
+      workdir: meson.project_build_root(),
+      timeout: 3600,
+      args: pytest_args + ['--all-values'],
+    )
+  endforeach
 
-foreach test : tap_tests
-  test(test,
-    testwrap,
-    protocol: 'tap',
-    env: env,
-    args: [
-      fs.stem(fs.name(test)),
-      meson.project_source_root(),
-      perl.full_path(),
-      '-I', meson.project_source_root() / 't',
-      '-I', pkglibdir / 'pgxs/src/test/perl',
-      files(test),
-    ],
-  )
-endforeach
+  if get_option('old_pg_configs') != ''
+    test('upgrade/old-install', stormweaver,
+      suite: ['old-install'],
+      env: pytest_env,
+      workdir: meson.project_build_root(),
+      timeout: 3600,
+      is_parallel: false,
+      args: ['test', meson.project_source_root() / 'tests', '-q', '--pg-config', pg_config.full_path(),
+             '-m', 'old_install', '--old-pg-config', get_option('old_pg_configs')],
+    )
+  endif
+
+  # plain `meson test` runs the fast suite only
+  add_test_setup('default', exclude_suites: ['all-values', 'old-install'], is_default: true)
+else
+  warning('stormweaver not found; pytest suite not registered (pass -Dstormweaver=/path/to/stormweaver)')
+endif

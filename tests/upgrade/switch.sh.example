@@ -1,0 +1,16 @@
+#!/bin/sh
+# Example for --old-pg-config "script:switch.sh.example <old-version>".
+# The suite runs it as "<cmd> <old-version> old" and "... new"; afterwards
+# the installation behind --pg-config must be the requested version.
+# pg_config resolves symlinks, so the prefix has to be a real directory
+# whose contents get replaced. A package based script would install the
+# pinned old or the current package instead.
+set -e
+prefix=/opt/pg-under-test       # what --pg-config points into
+case "$2" in
+  old) src=/opt/pg-tde-$1 ;;    # old version, kept outside the prefix
+  new) src=/opt/pg-tde-current ;;
+  *) echo "usage: $0 <old-version> old|new" >&2; exit 2 ;;
+esac
+mkdir -p "$prefix"
+rsync -a --delete "$src/" "$prefix/"

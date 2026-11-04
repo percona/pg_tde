@@ -44,7 +44,6 @@ DEPS=(
     meson
     # pg_tde test dependencies
     lcov
-    perltidy
 )
 
 sudo apt-get update
