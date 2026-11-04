@@ -2,6 +2,9 @@
 
 set -e
 
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_INSTALL_CLEANUP=1
+
 DEPS=(
     # Setup
     wget
@@ -19,12 +22,12 @@ DEPS=(
     meson
     # Run pgperltidy
     perltidy
+    # Perl dependencies
+    cpanminus
 )
 
-brew update
-brew install ${DEPS[@]}
-
-cpan -T IPC::Run JSON
+brew install "${DEPS[@]}"
+cpanm --notest --quiet IPC::Run JSON JSON::XS
 
 # OpenBao
 wget https://github.com/openbao/openbao/releases/download/v2.4.3/bao_2.4.3_Darwin_arm64.tar.gz
