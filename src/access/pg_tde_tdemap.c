@@ -20,7 +20,10 @@
 #ifdef FRONTEND
 #include "pg_tde_fe.h"
 #else
+#include "access/xact.h"
+#include "access/xlog.h"
 #include "miscadmin.h"
+#include "storage/proc.h"
 #endif
 
 /* A useful macro when debugging key encryption/decryption */
@@ -97,7 +100,6 @@ static bool pg_tde_parse_key_file_name(const char *name, Oid *spcOid, RelFileNum
 static List *pg_tde_list_key_files(Oid dbOid, Oid spcOid);
 static void pg_tde_remove_dir_if_exists(const char *path);
 static bool pg_tde_is_current_principal_key(Oid dbOid, const TDEPrincipalKey *principal_key);
-static void pg_tde_finish_rotation_on_start(Oid dbOid);
 #endif
 
 static void
@@ -285,7 +287,8 @@ pg_tde_remove_dir_if_exists(const char *path)
  * Deletes the key files for a given database.
  *
  * The directory is renamed first so the deletion is atomic. If we fail to
- * remove the renamed directory, it is removed on the next start.
+ * remove the renamed directory, it is removed on the next deletion of a
+ * database with the same oid.
  */
 void
 pg_tde_delete_tde_files(Oid dbOid)
@@ -300,16 +303,21 @@ pg_tde_delete_tde_files(Oid dbOid)
 	LWLockAcquire(tde_lwlock_enc_keys(), LW_EXCLUSIVE);
 
 	/*
-	 * Remove the leftovers of a rotation that failed with an error. Must be
-	 * done before the database directory is removed, otherwise the crash
-	 * recovery could bring the keys back.
+	 * Remove the leftovers of a rotation, if any. Otherwise, a stale rotate
+	 * directory would be renamed to the database directory on the next start,
+	 * bringing the keys back.
 	 */
 	pg_tde_set_db_dir_path(dbOid, PG_TDE_DB_DIR_ROTATE_SUFFIX, path);
 	pg_tde_remove_dir_if_exists(path);
 	pg_tde_set_db_dir_path(dbOid, PG_TDE_DB_DIR_OLD_SUFFIX, path);
 	pg_tde_remove_dir_if_exists(path);
 
-	/* Leftover of a previous deletion that failed with an error */
+	/*
+	 * Clean up a leftover of a previous deletion that failed with an error,
+	 * if any. We proceed with the rename attempt even if rm_dir existed as
+	 * there is a possibility that both db_dir and rm_dir exist (crash before
+	 * fsync).
+	 */
 	pg_tde_remove_dir_if_exists(rm_dir);
 
 	if (rename(db_dir, rm_dir) < 0)
@@ -352,62 +360,17 @@ pg_tde_is_current_principal_key(Oid dbOid, const TDEPrincipalKey *principal_key)
 	return result;
 }
 
-static void
-pg_tde_finish_rotation_on_start(Oid dbOid)
-{
-	char		new_dir[MAXPGPATH];
-	char		new_pkey_path[MAXPGPATH];
-	TDESignedPrincipalKeyInfo *new_key_info;
-	TDESignedPrincipalKeyInfo *old_key_info;
-	TDEPrincipalKey *principal_key;
-	TDEPrincipalKey *new_principal_key;
-
-	pg_tde_set_db_dir_path(dbOid, PG_TDE_DB_DIR_ROTATE_SUFFIX, new_dir);
-	snprintf(new_pkey_path, MAXPGPATH, "%s/" PG_TDE_PRINCIPAL_KEY_FILE, new_dir);
-
-	new_key_info = pg_tde_read_principal_key_file(new_pkey_path);
-	old_key_info = pg_tde_get_principal_key_info(dbOid);
-
-	if (new_key_info == NULL || old_key_info == NULL)
-	{
-		ereport(LOG,
-				errmsg("removing incomplete principal key rotation for database %u", dbOid));
-		pg_tde_remove_dir_if_exists(new_dir);
-
-		if (new_key_info)
-			pfree(new_key_info);
-		if (old_key_info)
-			pfree(old_key_info);
-		return;
-	}
-
-	ereport(LOG,
-			errmsg("finishing interrupted principal key rotation for database %u", dbOid));
-
-	principal_key = pg_tde_load_principal_key(old_key_info);
-	new_principal_key = pg_tde_load_principal_key(new_key_info);
-
-	/* The WAL record has been written already */
-	pg_tde_perform_rotate_key(principal_key, new_principal_key, false);
-
-	pfree(new_key_info);
-	pfree(old_key_info);
-	pfree(principal_key);
-	pfree(new_principal_key);
-}
-
 /*
- * Brings the key directories to a consistent state after a crash in the
- * middle of a rotation or a deletion and removes leftovers:
+ * Finishes principal key rotations that crashed between the two renames in
+ * pg_tde_perform_rotate_key(). It leaves the complete new key directory under
+ * the rotate name, the previous one under the old name and no database
+ * directory, so we just rename the new one back. Must be done before the WAL
+ * replay, as redo needs the keys.
  *
- *	<dbOid>.rm					- removed, the deletion was interrupted.
- *	<dbOid>.rotate with <dbOid>	- the rotation hasn't finished building the
- *								  new directory. It is done again, as its WAL
- *								  record may be already sent to replicas.
- *	<dbOid>.rotate with			- renamed to <dbOid>, the rotation was
- *	  <dbOid>.old but without	  interrupted between the two renames.
- *	  <dbOid>
- *	<dbOid>.old with <dbOid>	- removed, the rotation is complete.
+ * We require the old directory to exist, so a rotate directory that wasn't
+ * part of an interrupted swap (hence may be incomplete) is never promoted.
+ *
+ * Other leftovers are removed by the next rotation or deletion.
  *
  * Should be called on server start.
  */
@@ -418,7 +381,6 @@ pg_tde_ensure_key_dirs_on_start(void)
 	DIR		   *dir;
 	struct dirent *de;
 	List	   *rotate_dirs = NIL;
-	List	   *old_dirs = NIL;
 
 	LWLockAcquire(tde_lwlock_enc_keys(), LW_EXCLUSIVE);
 
@@ -438,36 +400,16 @@ pg_tde_ensure_key_dirs_on_start(void)
 	{
 		Oid			dbOid;
 		int			n = 0;
-		const char *suffix;
 
 		if (sscanf(de->d_name, "%u%n", &dbOid, &n) != 1 || n == 0)
 			continue;
 
-		suffix = de->d_name + n;
-
-		if (strcmp(suffix, PG_TDE_DB_DIR_DELETE_SUFFIX) == 0)
-		{
-			char		path[MAXPGPATH];
-
-			pg_tde_set_db_dir_path(dbOid, PG_TDE_DB_DIR_DELETE_SUFFIX, path);
-			ereport(LOG,
-					errmsg("removing keys of database %u left by an interrupted deletion", dbOid));
-			old_dirs = lappend(old_dirs, pstrdup(path));
-		}
-		else if (strcmp(suffix, PG_TDE_DB_DIR_ROTATE_SUFFIX) == 0)
+		if (strcmp(de->d_name + n, PG_TDE_DB_DIR_ROTATE_SUFFIX) == 0)
 			rotate_dirs = lappend_oid(rotate_dirs, dbOid);
-		else if (strcmp(suffix, PG_TDE_DB_DIR_OLD_SUFFIX) == 0)
-		{
-			char		path[MAXPGPATH];
-
-			pg_tde_set_db_dir_path(dbOid, PG_TDE_DB_DIR_OLD_SUFFIX, path);
-			old_dirs = lappend(old_dirs, pstrdup(path));
-		}
 	}
 
 	FreeDir(dir);
 
-	/* Rotations first, as they decide what to do with the old directories */
 	foreach_oid(dbOid, rotate_dirs)
 	{
 		char		db_dir[MAXPGPATH];
@@ -478,56 +420,23 @@ pg_tde_ensure_key_dirs_on_start(void)
 		pg_tde_set_db_dir_path(dbOid, PG_TDE_DB_DIR_ROTATE_SUFFIX, new_dir);
 		pg_tde_set_db_dir_path(dbOid, PG_TDE_DB_DIR_OLD_SUFFIX, old_dir);
 
-		if (access(db_dir, F_OK) != 0 && access(old_dir, F_OK) == 0)
-		{
-			ereport(LOG,
-					errmsg("finishing interrupted principal key rotation for database %u", dbOid));
-
-			if (rename(new_dir, db_dir) < 0)
-				ereport(ERROR,
-						errcode_for_file_access(),
-						errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
-							   new_dir, db_dir));
-			fsync_fname(data_dir, true);
-		}
-		else
-			pg_tde_finish_rotation_on_start(dbOid);
-	}
-
-	foreach_ptr(char, path, old_dirs)
-	{
-		char		db_dir[MAXPGPATH];
-		Oid			dbOid = atooid(path + strlen(data_dir) + 1);
-
-		pg_tde_set_db_dir_path(dbOid, "", db_dir);
-
-		/*
-		 * Shouldn't happen, as the old directory is only renamed after the new
-		 * one is complete. But better be safe than sorry.
-		 */
-		if (strcmp(path + strlen(path) - strlen(PG_TDE_DB_DIR_OLD_SUFFIX),
-				   PG_TDE_DB_DIR_OLD_SUFFIX) == 0 &&
-			access(db_dir, F_OK) != 0)
-		{
-			ereport(WARNING,
-					errmsg("restoring keys of database %u from \"%s\"", dbOid, path));
-
-			if (rename(path, db_dir) < 0)
-				ereport(ERROR,
-						errcode_for_file_access(),
-						errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
-							   path, db_dir));
-			fsync_fname(data_dir, true);
+		if (access(db_dir, F_OK) == 0 || access(old_dir, F_OK) != 0)
 			continue;
-		}
 
-		pg_tde_remove_dir_if_exists(path);
+		ereport(LOG,
+				errmsg("finishing interrupted principal key rotation for database %u", dbOid));
+
+		if (rename(new_dir, db_dir) < 0)
+			ereport(ERROR,
+					errcode_for_file_access(),
+					errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
+						   new_dir, db_dir));
+		fsync_fname(data_dir, true);
 	}
 
 	LWLockRelease(tde_lwlock_enc_keys());
 
 	list_free(rotate_dirs);
-	list_free_deep(old_dirs);
 }
 
 /*
@@ -671,7 +580,7 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 	/* Should have been created along with the current principal key file */
 	Assert(access(db_dir, F_OK) == 0);
 
-	/* Leftovers of a rotation that failed with an error */
+	/* Clean up leftovers of a rotation that failed with an error, if any */
 	pg_tde_remove_dir_if_exists(new_dir);
 	pg_tde_remove_dir_if_exists(old_dir);
 
@@ -683,26 +592,6 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 	if (!write_xlog && pg_tde_is_current_principal_key(dbOid, new_principal_key))
 		return;
 
-	/* Log the rotation before starting it (if needed) */
-	/* TODO: should be XLogFlush'd */
-	if (write_xlog)
-	{
-		XLogPrincipalKeyRotate xlrec;
-
-		xlrec.databaseId = new_principal_key->keyInfo.databaseId;
-		xlrec.keyringId = new_principal_key->keyInfo.keyringId;
-		memcpy(xlrec.keyName, new_principal_key->keyInfo.name, sizeof(new_principal_key->keyInfo.name));
-
-		XLogBeginInsert();
-		XLogRegisterData((char *) &xlrec, sizeof(XLogPrincipalKeyRotate));
-		XLogInsert(RM_TDERMGR_ID, XLOG_TDE_ROTATE_PRINCIPAL_KEY);
-	}
-
- 	/*
-	 * ??? Can a checkpoint happen here? And if a crash too...
-	 * So on redo, no pg_tde_finish_rotation_on_start, hence replicas have rotated keys
-	 * but primary hasn't.
-	 */
 	if (MakePGDirectory(new_dir) < 0)
 		ereport(ERROR,
 				errcode_for_file_access(),
@@ -733,17 +622,36 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 
 	fsync_fname(new_dir, true);
 
-	/*
-	 * Swap the directories. After the first rename, there is no key directory
-	 * until the second one is done, so any failure must cause the crash recovery.
-	 */
+	if (write_xlog)
+	{
+		XLogPrincipalKeyRotate xlrec;
+		XLogRecPtr	lsn;
+
+		/* Assigning an xid may fail, hence should be out of the critical section */
+		GetTopTransactionId();
+
+		START_CRIT_SECTION();
+
+		Assert((MyProc->delayChkptFlags & DELAY_CHKPT_START) == 0);
+		MyProc->delayChkptFlags |= DELAY_CHKPT_START;
+
+		xlrec.databaseId = new_principal_key->keyInfo.databaseId;
+		xlrec.keyringId = new_principal_key->keyInfo.keyringId;
+		memcpy(xlrec.keyName, new_principal_key->keyInfo.name, sizeof(new_principal_key->keyInfo.name));
+
+		XLogBeginInsert();
+		XLogRegisterData((char *) &xlrec, sizeof(XLogPrincipalKeyRotate));
+		lsn = XLogInsert(RM_TDERMGR_ID, XLOG_TDE_ROTATE_PRINCIPAL_KEY);
+
+		XLogFlush(lsn);
+	}
+
 	if (rename(db_dir, old_dir) < 0)
 		ereport(ERROR,
 				errcode_for_file_access(),
 				errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
 					   db_dir, old_dir));
 
-	START_CRIT_SECTION();
 
 	fsync_fname(data_dir, true);
 
@@ -752,12 +660,16 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 				errcode_for_file_access(),
 				errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
 					   new_dir, db_dir));
-
 	fsync_fname(data_dir, true);
 
-	END_CRIT_SECTION();
+	if (write_xlog)
+	{
+		MyProc->delayChkptFlags &= ~DELAY_CHKPT_START;
 
-	/* If it fails, it gets removed on the next start or rotation */
+		END_CRIT_SECTION();
+	}
+
+	/* If it fails, it gets removed on the next rotation */
 	if (!rmtree(old_dir, true))
 		ereport(WARNING,
 				errmsg("could not remove tde directory \"%s\"", old_dir));
