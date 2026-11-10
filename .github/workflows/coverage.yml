@@ -9,6 +9,10 @@ on:
     paths-ignore:
       - documentation/**
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 env:
   pg_version: 18
   # Avoid failures on slow recovery
