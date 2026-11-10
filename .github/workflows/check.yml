@@ -1,4 +1,4 @@
-name: Format
+name: Check
 on:
   pull_request:
     paths-ignore:
@@ -12,8 +12,8 @@ env:
   pg_version: 19
 
 jobs:
-  check:
-    name: Check
+  format:
+    name: Format
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
