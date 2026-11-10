@@ -42,6 +42,7 @@
 #define PG_TDE_PRINCIPAL_KEY_FILE	"pkey_info"
 #define PG_TDE_KEY_FILE_SUFFIX		"_key"
 #define PG_TDE_KEY_FILENAME			"%u_%u" PG_TDE_KEY_FILE_SUFFIX
+#define PG_TDE_TMP_FILE_SUFFIX		".r"
 
 #define PG_TDE_DB_DIR_ROTATE_SUFFIX	".rotate"
 #define PG_TDE_DB_DIR_OLD_SUFFIX	".old"
@@ -94,6 +95,7 @@ static void pg_tde_initialize_key_entry(TDESmgrKeyEntry *key_entry, const TDEPri
 static void pg_tde_write_file(const char *path, const void *data, size_t len);
 static void pg_tde_durable_write_file(const char *path, const void *data, size_t len);
 #ifndef FRONTEND
+static void pg_tde_prepare_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_info, char *pkey_path, char *tmp_path);
 static void pg_tde_save_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_info);
 static void pg_tde_rotate_rel_key(const char *old_path, const char *new_path, const RelFileLocator *rlocator, const TDEPrincipalKey *old_principal_key, const TDEPrincipalKey *new_principal_key);
 static bool pg_tde_parse_key_file_name(const char *name, Oid *spcOid, RelFileNumber *relNumber);
@@ -162,7 +164,7 @@ pg_tde_durable_write_file(const char *path, const void *data, size_t len)
 {
 	char		path_tmp[MAXPGPATH];
 
-	snprintf(path_tmp, MAXPGPATH, "%s.r", path);
+	snprintf(path_tmp, MAXPGPATH, "%s" PG_TDE_TMP_FILE_SUFFIX, path);
 
 	pg_tde_write_file(path_tmp, data, len);
 
@@ -236,10 +238,16 @@ tde_sprint_key(InternalKey *k)
 	return buf;
 }
 
+/*
+ * Does everything that can fail during saving the principal key: creates the
+ * database directory and writes the key to a temporary file. Sets the paths of
+ * both files, so the caller can move the temporary file into place with
+ * durable_rename().
+ */
 static void
-pg_tde_save_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_info)
+pg_tde_prepare_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_info,
+									char *pkey_path, char *tmp_path)
 {
-	char		pkey_path[MAXPGPATH];
 	char		dir_path[MAXPGPATH];
 	TDEFileHeader fheader;
 
@@ -247,6 +255,7 @@ pg_tde_save_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_inf
 	fheader.signed_key_info = *signed_key_info;
 
 	pg_tde_set_pkey_file_path(signed_key_info->data.databaseId, pkey_path);
+	snprintf(tmp_path, MAXPGPATH, "%s" PG_TDE_TMP_FILE_SUFFIX, pkey_path);
 	pg_tde_set_db_dir_path(signed_key_info->data.databaseId, "", dir_path);
 
 	if (MakePGDirectory(dir_path) != 0 && errno != EEXIST)
@@ -259,7 +268,17 @@ pg_tde_save_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_inf
 	fsync_fname(dir_path, true);
 	fsync_fname(pg_tde_get_data_dir(), true);
 
-	pg_tde_durable_write_file(pkey_path, &fheader, sizeof(TDEFileHeader));
+	pg_tde_write_file(tmp_path, &fheader, sizeof(TDEFileHeader));
+}
+
+static void
+pg_tde_save_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_info)
+{
+	char		pkey_path[MAXPGPATH];
+	char		tmp_path[MAXPGPATH];
+
+	pg_tde_prepare_signed_principal_key(signed_key_info, pkey_path, tmp_path);
+	durable_rename(tmp_path, pkey_path, ERROR);
 }
 
 /*
@@ -475,6 +494,9 @@ void
 pg_tde_save_principal_key(const TDEPrincipalKey *principal_key, bool write_xlog)
 {
 	TDESignedPrincipalKeyInfo signed_key_info;
+	char		pkey_path[MAXPGPATH];
+	char		tmp_path[MAXPGPATH];
+	XLogRecPtr	lsn;
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
@@ -490,14 +512,38 @@ pg_tde_save_principal_key(const TDEPrincipalKey *principal_key, bool write_xlog)
 
 	pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
 
-	if (write_xlog)
+	if (!write_xlog)
 	{
-		XLogBeginInsert();
-		XLogRegisterData((char *) &signed_key_info, sizeof(TDESignedPrincipalKeyInfo));
-		XLogInsert(RM_TDERMGR_ID, XLOG_TDE_ADD_PRINCIPAL_KEY);
+		pg_tde_save_signed_principal_key(&signed_key_info);
+		return;
 	}
 
-	pg_tde_save_signed_principal_key(&signed_key_info);
+	pg_tde_prepare_signed_principal_key(&signed_key_info, pkey_path, tmp_path);
+
+	/* Assigning an xid may fail, so it can't be done in the critical section */
+	GetTopTransactionId();
+
+	/*
+	 * Once the WAL record is written, the key must be saved, as replicas and
+	 * the crash recovery will do it anyway. So any failure after is a PANIC.
+	 * Also, the checkpoint must not complete between the record and the key
+	 * being saved, otherwise the crash recovery won't replay the record.
+	 */
+	START_CRIT_SECTION();
+
+	Assert((MyProc->delayChkptFlags & DELAY_CHKPT_START) == 0);
+	MyProc->delayChkptFlags |= DELAY_CHKPT_START;
+
+	XLogBeginInsert();
+	XLogRegisterData((char *) &signed_key_info, sizeof(TDESignedPrincipalKeyInfo));
+	lsn = XLogInsert(RM_TDERMGR_ID, XLOG_TDE_ADD_PRINCIPAL_KEY);
+	XLogFlush(lsn);
+
+	durable_rename(tmp_path, pkey_path, ERROR);
+
+	MyProc->delayChkptFlags &= ~DELAY_CHKPT_START;
+
+	END_CRIT_SECTION();
 }
 
 /*
