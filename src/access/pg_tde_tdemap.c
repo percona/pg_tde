@@ -101,6 +101,9 @@ static void pg_tde_rotate_rel_key(const char *old_path, const char *new_path, co
 static bool pg_tde_parse_key_file_name(const char *name, Oid *spcOid, RelFileNumber *relNumber);
 static List *pg_tde_list_key_files(Oid dbOid, Oid spcOid);
 static void pg_tde_remove_dir_if_exists(const char *path);
+static void pg_tde_start_xlog_change(uint8 info, const void *data, int len);
+static void pg_tde_end_xlog_change(void);
+static void pg_tde_swap_key_dirs(const char *db_dir, const char *new_dir, const char *old_dir);
 static bool pg_tde_is_current_principal_key(Oid dbOid, const TDEPrincipalKey *principal_key);
 #endif
 
@@ -303,6 +306,75 @@ pg_tde_remove_dir_if_exists(const char *path)
 }
 
 /*
+ * See comments to PG_TDE_START_XLOG_CHANGE().
+ *
+ * Do not call those directly; use PG_TDE_{START,END}_XLOG_CHANGE()!
+ */
+static void
+pg_tde_start_xlog_change(uint8 info, const void *data, int len)
+{
+	XLogRecPtr	lsn;
+
+	/*
+	 * Make sure the transaction has an xid. Otherwise, it doesn't write a
+	 * commit record and doesn't wait for synchronous standbys on commit, as
+	 * the record is not transactional. Assigning an xid may fail, hence should
+	 * be out of the critical section.
+	 */
+	GetTopTransactionId();
+
+	START_CRIT_SECTION();
+
+	Assert((MyProc->delayChkptFlags & DELAY_CHKPT_START) == 0);
+	MyProc->delayChkptFlags |= DELAY_CHKPT_START;
+
+	XLogBeginInsert();
+	XLogRegisterData((char *) data, len);
+	lsn = XLogInsert(RM_TDERMGR_ID, info);
+	XLogFlush(lsn);
+}
+
+static void
+pg_tde_end_xlog_change(void)
+{
+	MyProc->delayChkptFlags &= ~DELAY_CHKPT_START;
+
+	END_CRIT_SECTION();
+}
+
+/*
+ * Wraps a change that should be XLogged and must be done. The XLog record is
+ * guaranteed to persist in WAL, be sent to replicas, and be replayed during
+ * recovery should a crash happen inside the section:
+ *
+ *	PG_TDE_START_XLOG_CHANGE(info, &data, sizeof(data));
+ *	{
+ *		... the change ...
+ *	}
+ *	PG_TDE_END_XLOG_CHANGE();
+ *
+ * Writes and flushes the XLog record and enters a critical section, hence any
+ * failure until PG_TDE_END_XLOG_CHANGE() is a PANIC. Also delays checkpoints,
+ * so the recovery is guaranteed to replay the record should a crash happen.
+ *
+ * Everything that may fail with an ERROR must be done before. The change must
+ * not return, break or goto out of the block, as it would skip
+ * PG_TDE_END_XLOG_CHANGE().
+ */
+#define PG_TDE_START_XLOG_CHANGE(xrec_type, data, len) \
+	do { \
+		pg_tde_start_xlog_change((xrec_type), (data), (len))
+
+#define PG_TDE_END_XLOG_CHANGE() \
+		pg_tde_end_xlog_change(); \
+	} while (0)
+
+/* Must be called via PG_TDE_{START,END}_XLOG_CHANGE() */
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC poison pg_tde_start_xlog_change pg_tde_end_xlog_change
+#endif
+
+/*
  * Deletes the key files for a given database.
  *
  * The directory is renamed first so the deletion is atomic. If we fail to
@@ -496,7 +568,6 @@ pg_tde_save_principal_key(const TDEPrincipalKey *principal_key, bool write_xlog)
 	TDESignedPrincipalKeyInfo signed_key_info;
 	char		pkey_path[MAXPGPATH];
 	char		tmp_path[MAXPGPATH];
-	XLogRecPtr	lsn;
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
@@ -520,30 +591,12 @@ pg_tde_save_principal_key(const TDEPrincipalKey *principal_key, bool write_xlog)
 
 	pg_tde_prepare_signed_principal_key(&signed_key_info, pkey_path, tmp_path);
 
-	/* Assigning an xid may fail, so it can't be done in the critical section */
-	GetTopTransactionId();
-
-	/*
-	 * Once the WAL record is written, the key must be saved, as replicas and
-	 * the crash recovery will do it anyway. So any failure after is a PANIC.
-	 * Also, the checkpoint must not complete between the record and the key
-	 * being saved, otherwise the crash recovery won't replay the record.
-	 */
-	START_CRIT_SECTION();
-
-	Assert((MyProc->delayChkptFlags & DELAY_CHKPT_START) == 0);
-	MyProc->delayChkptFlags |= DELAY_CHKPT_START;
-
-	XLogBeginInsert();
-	XLogRegisterData((char *) &signed_key_info, sizeof(TDESignedPrincipalKeyInfo));
-	lsn = XLogInsert(RM_TDERMGR_ID, XLOG_TDE_ADD_PRINCIPAL_KEY);
-	XLogFlush(lsn);
-
-	durable_rename(tmp_path, pkey_path, ERROR);
-
-	MyProc->delayChkptFlags &= ~DELAY_CHKPT_START;
-
-	END_CRIT_SECTION();
+	PG_TDE_START_XLOG_CHANGE(XLOG_TDE_ADD_PRINCIPAL_KEY,
+							 &signed_key_info, sizeof(TDESignedPrincipalKeyInfo));
+	{
+		durable_rename(tmp_path, pkey_path, ERROR);
+	}
+	PG_TDE_END_XLOG_CHANGE();
 }
 
 /*
@@ -595,6 +648,31 @@ pg_tde_rotate_rel_key(const char *old_path, const char *new_path,
 	pfree(rel_key_data);
 
 	pg_tde_write_file(new_path, &new_key_entry, sizeof(TDESmgrKeyEntry));
+}
+
+/*
+ * Replaces the database key directory with the new one. A crash between the
+ * renames leaves no database directory, which is fixed by
+ * pg_tde_ensure_key_dirs_on_start().
+ */
+static void
+pg_tde_swap_key_dirs(const char *db_dir, const char *new_dir, const char *old_dir)
+{
+	const char *data_dir = pg_tde_get_data_dir();
+
+	if (rename(db_dir, old_dir) < 0)
+		ereport(ERROR,
+				errcode_for_file_access(),
+				errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
+					   db_dir, old_dir));
+	fsync_fname(data_dir, true);
+
+	if (rename(new_dir, db_dir) < 0)
+		ereport(ERROR,
+				errcode_for_file_access(),
+				errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
+					   new_dir, db_dir));
+	fsync_fname(data_dir, true);
 }
 
 /*
@@ -671,48 +749,21 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 	if (write_xlog)
 	{
 		XLogPrincipalKeyRotate xlrec;
-		XLogRecPtr	lsn;
-
-		/* Assigning an xid may fail, hence should be out of the critical section */
-		GetTopTransactionId();
-
-		START_CRIT_SECTION();
-
-		Assert((MyProc->delayChkptFlags & DELAY_CHKPT_START) == 0);
-		MyProc->delayChkptFlags |= DELAY_CHKPT_START;
 
 		xlrec.databaseId = new_principal_key->keyInfo.databaseId;
 		xlrec.keyringId = new_principal_key->keyInfo.keyringId;
 		memcpy(xlrec.keyName, new_principal_key->keyInfo.name, sizeof(new_principal_key->keyInfo.name));
 
-		XLogBeginInsert();
-		XLogRegisterData((char *) &xlrec, sizeof(XLogPrincipalKeyRotate));
-		lsn = XLogInsert(RM_TDERMGR_ID, XLOG_TDE_ROTATE_PRINCIPAL_KEY);
-
-		XLogFlush(lsn);
+		PG_TDE_START_XLOG_CHANGE(XLOG_TDE_ROTATE_PRINCIPAL_KEY,
+								 &xlrec, sizeof(XLogPrincipalKeyRotate));
+		{
+			pg_tde_swap_key_dirs(db_dir, new_dir, old_dir);
+		}
+		PG_TDE_END_XLOG_CHANGE();
 	}
-
-	if (rename(db_dir, old_dir) < 0)
-		ereport(ERROR,
-				errcode_for_file_access(),
-				errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
-					   db_dir, old_dir));
-
-
-	fsync_fname(data_dir, true);
-
-	if (rename(new_dir, db_dir) < 0)
-		ereport(ERROR,
-				errcode_for_file_access(),
-				errmsg("could not rename tde directory \"%s\" to \"%s\": %m",
-					   new_dir, db_dir));
-	fsync_fname(data_dir, true);
-
-	if (write_xlog)
+	else
 	{
-		MyProc->delayChkptFlags &= ~DELAY_CHKPT_START;
-
-		END_CRIT_SECTION();
+		pg_tde_swap_key_dirs(db_dir, new_dir, old_dir);
 	}
 
 	/* If it fails, it gets removed on the next rotation */
@@ -741,7 +792,6 @@ void
 pg_tde_delete_principal_key(Oid dbOid)
 {
 	char		pkey_path[MAXPGPATH];
-	XLogRecPtr	lsn;
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
@@ -758,24 +808,11 @@ pg_tde_delete_principal_key(Oid dbOid)
 				errcode_for_file_access(),
 				errmsg("could not access tde file \"%s\": %m", pkey_path));
 
-	/* Assigning an xid may fail, so it can't be done in the critical section */
-	GetTopTransactionId();
-
-	START_CRIT_SECTION();
-
-	Assert((MyProc->delayChkptFlags & DELAY_CHKPT_START) == 0);
-	MyProc->delayChkptFlags |= DELAY_CHKPT_START;
-
-	XLogBeginInsert();
-	XLogRegisterData((char *) &dbOid, sizeof(Oid));
-	lsn = XLogInsert(RM_TDERMGR_ID, XLOG_TDE_DELETE_PRINCIPAL_KEY);
-	XLogFlush(lsn);
-
-	durable_unlink(pkey_path, ERROR);
-
-	MyProc->delayChkptFlags &= ~DELAY_CHKPT_START;
-
-	END_CRIT_SECTION();
+	PG_TDE_START_XLOG_CHANGE(XLOG_TDE_DELETE_PRINCIPAL_KEY, &dbOid, sizeof(Oid));
+	{
+		durable_unlink(pkey_path, ERROR);
+	}
+	PG_TDE_END_XLOG_CHANGE();
 }
 
 #endif							/* !FRONTEND */
