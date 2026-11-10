@@ -741,6 +741,7 @@ void
 pg_tde_delete_principal_key(Oid dbOid)
 {
 	char		pkey_path[MAXPGPATH];
+	XLogRecPtr	lsn;
 
 	Assert(LWLockHeldByMeInMode(tde_lwlock_enc_keys(), LW_EXCLUSIVE));
 
@@ -752,11 +753,29 @@ pg_tde_delete_principal_key(Oid dbOid)
 
 	pg_tde_set_pkey_file_path(dbOid, pkey_path);
 
+	if (access(pkey_path, F_OK) != 0)
+		ereport(ERROR,
+				errcode_for_file_access(),
+				errmsg("could not access tde file \"%s\": %m", pkey_path));
+
+	/* Assigning an xid may fail, so it can't be done in the critical section */
+	GetTopTransactionId();
+
+	START_CRIT_SECTION();
+
+	Assert((MyProc->delayChkptFlags & DELAY_CHKPT_START) == 0);
+	MyProc->delayChkptFlags |= DELAY_CHKPT_START;
+
 	XLogBeginInsert();
 	XLogRegisterData((char *) &dbOid, sizeof(Oid));
-	XLogInsert(RM_TDERMGR_ID, XLOG_TDE_DELETE_PRINCIPAL_KEY);
+	lsn = XLogInsert(RM_TDERMGR_ID, XLOG_TDE_DELETE_PRINCIPAL_KEY);
+	XLogFlush(lsn);
 
 	durable_unlink(pkey_path, ERROR);
+
+	MyProc->delayChkptFlags &= ~DELAY_CHKPT_START;
+
+	END_CRIT_SECTION();
 }
 
 #endif							/* !FRONTEND */
