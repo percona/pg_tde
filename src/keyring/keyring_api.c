@@ -28,8 +28,7 @@ static SimplePtrList registeredKeyProviderTypes = {NULL, NULL};
 
 static RegisteredKeyProviderType *find_key_provider_type(ProviderType type);
 static bool ValidateKey(KeyData *key, const char *key_name);
-static void KeyringStoreKey(GenericKeyring *keyring, KeyInfo *key);
-static KeyInfo *KeyringGenerateNewKey(const char *key_name, unsigned key_len);
+static KeyData *KeyringGenerateNewKey(unsigned key_len);
 
 #ifndef FRONTEND
 static RegisteredKeyProviderType *
@@ -99,10 +98,10 @@ RegisterKeyProviderType(const TDEKeyringRoutine *routine, ProviderType type)
 #endif
 }
 
-KeyInfo *
+KeyData *
 KeyringGetKey(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *returnCode)
 {
-	KeyInfo    *key = NULL;
+	KeyData    *key = NULL;
 	RegisteredKeyProviderType *kp = find_key_provider_type(keyring->type);
 
 	if (kp == NULL)
@@ -117,7 +116,7 @@ KeyringGetKey(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *
 	if (*returnCode != KEYRING_CODE_SUCCESS || key == NULL)
 		return NULL;
 
-	if (!ValidateKey(key))
+	if (!ValidateKey(key, key_name))
 	{
 		*returnCode = KEYRING_CODE_INVALID_KEY;
 		pfree(key);
@@ -128,25 +127,19 @@ KeyringGetKey(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *
 }
 
 static bool
-ValidateKey(KeyInfo *key)
+ValidateKey(KeyData *key, const char *key_name)
 {
-	if (key->name[0] == '\0')
-	{
-		ereport(WARNING, errmsg("invalid key: name is empty"));
-		return false;
-	}
-
-	if (key->data.len == 0)
+	if (key->len == 0)
 	{
 		ereport(WARNING, errmsg("invalid key: data length is zero"));
 		return false;
 	}
 
 	/* For now we only support 128 and 256-bit keys */
-	if (key->data.len != KEY_DATA_SIZE_128 && key->data.len != KEY_DATA_SIZE_256)
+	if (key->len != KEY_DATA_SIZE_128 && key->len != KEY_DATA_SIZE_256)
 	{
 		ereport(WARNING,
-				errmsg("invalid key: unsupported key length \"%u\"", key->data.len));
+				errmsg("invalid key: unsupported key length \"%u\"", key->len));
 		return false;
 	}
 
@@ -156,10 +149,10 @@ ValidateKey(KeyInfo *key)
  * TODO: Avoid the global state here
  */
 #ifndef FRONTEND
-	if (key->data.len != KeyLength)
+	if (key->len != KeyLength)
 	{
 		ereport(WARNING,
-				errmsg("length \"%u\" of key \"%s\" does not match the length \"%d\" of the current cipher setting", key->data.len, key->name, KeyLength),
+				errmsg("length \"%u\" of key \"%s\" does not match the length \"%d\" of the current cipher setting", key->len, key_name, KeyLength),
 				errhint("Create a new principal key and set it instead of the current one."));
 	}
 #endif
@@ -167,42 +160,36 @@ ValidateKey(KeyInfo *key)
 	return true;
 }
 
-static void
-KeyringStoreKey(GenericKeyring *keyring, KeyInfo *key)
+static KeyData *
+KeyringGenerateNewKey(unsigned key_len)
+{
+	KeyData    *key;
+
+	Assert(key_len <= sizeof(key->data));
+	/* Struct will be saved to disk so keep clean */
+	key = palloc0_object(KeyData);
+	key->len = key_len;
+	if (!RAND_bytes(key->data, key_len))
+		ereport(ERROR,
+				errcode(ERRCODE_INTERNAL_ERROR),
+				errmsg("could not generate new principal key: %s",
+					   ERR_error_string(ERR_get_error(), NULL)));
+	return key;
+}
+
+KeyData *
+KeyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len)
 {
 	RegisteredKeyProviderType *kp = find_key_provider_type(keyring->type);
+	KeyData    *key;
 
 	if (kp == NULL)
 		ereport(ERROR,
 				errmsg("Key provider of type %d not registered", keyring->type));
 
-	kp->routine->keyring_store_key(keyring, key);
-}
+	key = KeyringGenerateNewKey(key_len);
 
-static KeyInfo *
-KeyringGenerateNewKey(const char *key_name, unsigned key_len)
-{
-	KeyInfo    *key;
-
-	Assert(key_len <= sizeof(key->data));
-	/* Struct will be saved to disk so keep clean */
-	key = palloc0_object(KeyInfo);
-	key->data.len = key_len;
-	if (!RAND_bytes(key->data.data, key_len))
-		ereport(ERROR,
-				errcode(ERRCODE_INTERNAL_ERROR),
-				errmsg("could not generate new principal key: %s",
-					   ERR_error_string(ERR_get_error(), NULL)));
-	strlcpy(key->name, key_name, sizeof(key->name));
-	return key;
-}
-
-KeyInfo *
-KeyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len)
-{
-	KeyInfo    *key = KeyringGenerateNewKey(key_name, key_len);
-
-	KeyringStoreKey(keyring, key);
+	kp->routine->keyring_store_key(keyring, key_name, key);
 
 	return key;
 }
