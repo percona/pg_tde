@@ -92,7 +92,7 @@ static void pg_tde_read_key_file(const char *file_path, TDESmgrKeyEntry *key_ent
 static InternalKey *tde_decrypt_rel_key(const TDEPrincipalKey *principal_key, TDESmgrKeyEntry *key_entry, const RelFileLocator *rlocator);
 static void pg_tde_set_key_aad(TDESmgrKeyAAD *aad, uint32 cipher, const RelFileLocator *rlocator);
 static void pg_tde_initialize_key_entry(TDESmgrKeyEntry *key_entry, const TDEPrincipalKey *principal_key, const RelFileLocator *rlocator, const InternalKey *rel_key_data);
-static void pg_tde_write_file(const char *path, const void *data, size_t len);
+static void pg_tde_write_file(const char *path, const void *data, size_t len, bool sync);
 static void pg_tde_durable_write_file(const char *path, const void *data, size_t len);
 #ifndef FRONTEND
 static void pg_tde_prepare_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_info, char *pkey_path, char *tmp_path);
@@ -128,7 +128,7 @@ pg_tde_set_pkey_file_path(Oid dbOid, char *path)
 }
 
 static void
-pg_tde_write_file(const char *path, const void *data, size_t len)
+pg_tde_write_file(const char *path, const void *data, size_t len, bool sync)
 {
 	int			fd;
 
@@ -148,12 +148,17 @@ pg_tde_write_file(const char *path, const void *data, size_t len)
 				errmsg("could not write tde file \"%s\": %m", path));
 	}
 
-	if (pg_fsync(fd) != 0)
+	if (sync)
 	{
-		ereport(data_sync_elevel(ERROR),
-				errcode_for_file_access(),
-				errmsg("could not fsync tde file \"%s\": %m", path));
+		if (pg_fsync(fd) != 0)
+			ereport(data_sync_elevel(ERROR),
+					errcode_for_file_access(),
+					errmsg("could not fsync tde file \"%s\": %m", path));
 	}
+#ifndef FRONTEND
+	else
+		pg_flush_data(fd, 0, len);
+#endif
 
 	CloseTransientFile(fd);
 }
@@ -169,7 +174,7 @@ pg_tde_durable_write_file(const char *path, const void *data, size_t len)
 
 	snprintf(path_tmp, MAXPGPATH, "%s" PG_TDE_TMP_FILE_SUFFIX, path);
 
-	pg_tde_write_file(path_tmp, data, len);
+	pg_tde_write_file(path_tmp, data, len, true);
 
 	durable_rename(path_tmp, path, ERROR);
 }
@@ -271,7 +276,7 @@ pg_tde_prepare_signed_principal_key(const TDESignedPrincipalKeyInfo *signed_key_
 	fsync_fname(dir_path, true);
 	fsync_fname(pg_tde_get_data_dir(), true);
 
-	pg_tde_write_file(tmp_path, &fheader, sizeof(TDEFileHeader));
+	pg_tde_write_file(tmp_path, &fheader, sizeof(TDEFileHeader), true);
 }
 
 static void
@@ -629,7 +634,7 @@ pg_tde_delete_rel_key(const RelFileLocator rlocator)
 
 /*
  * Re-encrypts the relation key in old_path with the new principal key and
- * writes it to new_path.
+ * writes it to new_path. The new file isn't fsync'd, the caller has to do it.
  */
 static void
 pg_tde_rotate_rel_key(const char *old_path, const char *new_path,
@@ -647,7 +652,7 @@ pg_tde_rotate_rel_key(const char *old_path, const char *new_path,
 	pg_tde_initialize_key_entry(&new_key_entry, new_principal_key, rlocator, rel_key_data);
 	pfree(rel_key_data);
 
-	pg_tde_write_file(new_path, &new_key_entry, sizeof(TDESmgrKeyEntry));
+	pg_tde_write_file(new_path, &new_key_entry, sizeof(TDESmgrKeyEntry), false);
 }
 
 /*
@@ -724,7 +729,7 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 	fheader.file_version = PG_TDE_SMGR_FILE_MAGIC;
 	pg_tde_sign_principal_key_info(&fheader.signed_key_info, new_principal_key);
 	snprintf(new_path, MAXPGPATH, "%s/" PG_TDE_PRINCIPAL_KEY_FILE, new_dir);
-	pg_tde_write_file(new_path, &fheader, sizeof(TDEFileHeader));
+	pg_tde_write_file(new_path, &fheader, sizeof(TDEFileHeader), true);
 	fsync_fname(new_dir, true);
 	fsync_fname(data_dir, true);
 
@@ -741,6 +746,17 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 		snprintf(new_path, MAXPGPATH, "%s/%s", new_dir, file_name);
 
 		pg_tde_rotate_rel_key(old_path, new_path, &rloc, principal_key, new_principal_key);
+	}
+
+	/*
+	 * Fsync the key files in a separate loop. pg_tde_rotate_rel_key() has
+	 * already advised kernel to flush them so now fsync is cheaper. Shows
+	 * a significant performance improvement.
+	 */
+	foreach_ptr(char, file_name, key_files)
+	{
+		snprintf(new_path, MAXPGPATH, "%s/%s", new_dir, file_name);
+		fsync_fname(new_path, false);
 	}
 	list_free_deep(key_files);
 
