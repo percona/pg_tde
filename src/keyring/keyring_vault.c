@@ -84,8 +84,8 @@ static JsonParseErrorType parse_vault_mount_info(JsonVaultMountInfoState *state,
 static char *get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size);
 static bool curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long *httpCode, const char *postData);
 
-static void set_key_by_name(GenericKeyring *keyring, KeyInfo *key);
-static KeyInfo *get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *return_code);
+static void set_key_by_name(GenericKeyring *keyring, const char *key_name, KeyData *key);
+static KeyData *get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *return_code);
 static void validate(GenericKeyring *keyring);
 
 static const TDEKeyringRoutine keyringVaultV2Routine = {
@@ -188,7 +188,7 @@ get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, 
 }
 
 static void
-set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
+set_key_by_name(GenericKeyring *keyring, const char *key_name, KeyData *key)
 {
 	VaultV2Keyring *vault_keyring = (VaultV2Keyring *) keyring;
 	char		url[VAULT_URL_MAX_LEN];
@@ -206,9 +206,9 @@ set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 	 */
 	/* Simpler than using the limited pg json api */
 #if PG_VERSION_NUM >= 180000
-	keyLen = pg_b64_encode(key->data.data, key->data.len, keyData, 64);
+	keyLen = pg_b64_encode(key->data, key->len, keyData, 64);
 #else
-	keyLen = pg_b64_encode((char *) key->data.data, key->data.len, keyData, 64);
+	keyLen = pg_b64_encode((char *) key->data, key->len, keyData, 64);
 #endif
 	keyData[keyLen] = 0;
 
@@ -218,7 +218,7 @@ set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 	elog(DEBUG1, "Sending base64 key: %s", keyData);
 #endif
 
-	get_keyring_vault_url(vault_keyring, key->name, url, sizeof(url));
+	get_keyring_vault_url(vault_keyring, key_name, url, sizeof(url));
 
 	if (!curl_perform(vault_keyring, url, &str, &httpCode, jsonText))
 	{
@@ -236,11 +236,11 @@ set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 					   vault_keyring->keyring.provider_name, httpCode));
 }
 
-static KeyInfo *
+static KeyData *
 get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *return_code)
 {
 	VaultV2Keyring *vault_keyring = (VaultV2Keyring *) keyring;
-	KeyInfo    *key = NULL;
+	KeyData    *key = NULL;
 	char		url[VAULT_URL_MAX_LEN];
 	CurlString	str;
 	long		httpCode = 0;
@@ -308,21 +308,19 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 	elog(DEBUG1, "Retrieved base64 key: %s", responseKey);
 #endif
 
-	key = palloc_object(KeyInfo);
-	memset(key->name, 0, sizeof(key->name));
-	memcpy(key->name, key_name, strnlen(key_name, sizeof(key->name) - 1));
+	key = palloc_object(KeyData);
 #if PG_VERSION_NUM >= 180000
-	key->data.len = pg_b64_decode(responseKey, strlen(responseKey), key->data.data, MAX_KEY_DATA_SIZE);
+	key->len = pg_b64_decode(responseKey, strlen(responseKey), key->data, MAX_KEY_DATA_SIZE);
 #else
-	key->data.len = pg_b64_decode(responseKey, strlen(responseKey), (char *) key->data.data, MAX_KEY_DATA_SIZE);
+	key->len = pg_b64_decode(responseKey, strlen(responseKey), (char *) key->data, MAX_KEY_DATA_SIZE);
 #endif
 
-	if (key->data.len > MAX_KEY_DATA_SIZE)
+	if (key->len > MAX_KEY_DATA_SIZE)
 	{
 		*return_code = KEYRING_CODE_INVALID_KEY;
 		ereport(WARNING,
 				errmsg("keyring provider \"%s\" returned invalid key size: %d",
-					   vault_keyring->keyring.provider_name, key->data.len));
+					   vault_keyring->keyring.provider_name, key->len));
 		pfree(key);
 		key = NULL;
 		goto cleanup;
