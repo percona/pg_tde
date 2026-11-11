@@ -27,6 +27,7 @@ static SimplePtrList registeredKeyProviderTypes = {NULL, NULL};
 #endif
 
 static RegisteredKeyProviderType *find_key_provider_type(ProviderType type);
+static bool ValidateKey(KeyData *key, const char *key_name);
 static void KeyringStoreKey(GenericKeyring *keyring, KeyInfo *key);
 static KeyInfo *KeyringGenerateNewKey(const char *key_name, unsigned key_len);
 
@@ -126,11 +127,9 @@ KeyringGetKey(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *
 	return key;
 }
 
-bool
+static bool
 ValidateKey(KeyInfo *key)
 {
-	Assert(key != NULL);
-
 	if (key->name[0] == '\0')
 	{
 		ereport(WARNING, errmsg("invalid key: name is empty"));
