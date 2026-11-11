@@ -240,7 +240,7 @@ set_principal_key_with_keyring(const char *key_name,
 	LWLock	   *lock_files = tde_lwlock_enc_keys();
 	bool		already_has_key;
 	GenericKeyring *new_keyring;
-	KeyInfo    *keyInfo = NULL;
+	KeyData    *key = NULL;
 
 	/*
 	 * Try to get principal key from cache.
@@ -255,7 +255,7 @@ set_principal_key_with_keyring(const char *key_name,
 	{
 		KeyringReturnCode return_code;
 
-		keyInfo = KeyringGetKey(new_keyring, key_name, &return_code);
+		key = KeyringGetKey(new_keyring, key_name, &return_code);
 
 		if (return_code != KEYRING_CODE_SUCCESS)
 		{
@@ -265,7 +265,7 @@ set_principal_key_with_keyring(const char *key_name,
 		}
 	}
 
-	if (!keyInfo)
+	if (!key)
 	{
 		if (providerOid == GLOBAL_DATA_TDE_OID)
 			ereport(ERROR,
@@ -282,11 +282,11 @@ set_principal_key_with_keyring(const char *key_name,
 	new_principal_key = palloc_object(TDEPrincipalKey);
 	new_principal_key->keyInfo.databaseId = dbOid;
 	new_principal_key->keyInfo.keyringId = new_keyring->keyring_id;
-	memcpy(new_principal_key->keyInfo.name, keyInfo->name, TDE_KEY_NAME_LEN);
+	memcpy(new_principal_key->keyInfo.name, key_name, TDE_KEY_NAME_LEN);
 	gettimeofday(&new_principal_key->keyInfo.creationTime, NULL);
-	new_principal_key->keyLength = keyInfo->data.len;
+	new_principal_key->keyLength = key->len;
 
-	memcpy(new_principal_key->keyData, keyInfo->data.data, keyInfo->data.len);
+	memcpy(new_principal_key->keyData, key->data, key->len);
 
 	if (!already_has_key)
 	{
@@ -311,7 +311,7 @@ set_principal_key_with_keyring(const char *key_name,
 
 	LWLockRelease(lock_files);
 
-	pfree(keyInfo);
+	pfree(key);
 	pfree(new_keyring);
 	pfree(new_principal_key);
 }
@@ -325,7 +325,7 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 	TDEPrincipalKey *curr_principal_key;
 	TDEPrincipalKey *new_principal_key;
 	GenericKeyring *new_keyring;
-	KeyInfo    *keyInfo;
+	KeyData    *key;
 	KeyringReturnCode return_code;
 
 	LWLockAcquire(tde_lwlock_enc_keys(), LW_EXCLUSIVE);
@@ -339,7 +339,7 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 	}
 
 	new_keyring = GetKeyProviderByID(xlrec->keyringId, xlrec->databaseId);
-	keyInfo = KeyringGetKey(new_keyring, xlrec->keyName, &return_code);
+	key = KeyringGetKey(new_keyring, xlrec->keyName, &return_code);
 
 	if (return_code != KEYRING_CODE_SUCCESS)
 	{
@@ -349,7 +349,7 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 	}
 
 	/* The new key should be on keyring by this time */
-	if (keyInfo == NULL)
+	if (key == NULL)
 	{
 		ereport(ERROR, errmsg("failed to retrieve principal key \"%s\" from key provider \"%s\" for database %u",
 							  xlrec->keyName, new_keyring->provider_name, xlrec->databaseId));
@@ -358,11 +358,11 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 	new_principal_key = palloc_object(TDEPrincipalKey);
 	new_principal_key->keyInfo.databaseId = xlrec->databaseId;
 	new_principal_key->keyInfo.keyringId = new_keyring->keyring_id;
-	memcpy(new_principal_key->keyInfo.name, keyInfo->name, TDE_KEY_NAME_LEN);
+	memcpy(new_principal_key->keyInfo.name, xlrec->keyName, TDE_KEY_NAME_LEN);
 	gettimeofday(&new_principal_key->keyInfo.creationTime, NULL);
-	new_principal_key->keyLength = keyInfo->data.len;
+	new_principal_key->keyLength = key->len;
 
-	memcpy(new_principal_key->keyData, keyInfo->data.data, keyInfo->data.len);
+	memcpy(new_principal_key->keyData, key->data, key->len);
 
 	if (xlrec->databaseId == GLOBAL_DATA_TDE_OID)
 		pg_tde_perform_rotate_server_key(curr_principal_key, new_principal_key, false);
@@ -374,7 +374,7 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 
 	LWLockRelease(tde_lwlock_enc_keys());
 
-	pfree(keyInfo);
+	pfree(key);
 	pfree(new_keyring);
 	pfree(new_principal_key);
 }
@@ -506,7 +506,7 @@ pg_tde_create_principal_key_internal(Oid providerOid,
 {
 
 	GenericKeyring *provider;
-	KeyInfo    *key_info;
+	KeyData    *key;
 	KeyringReturnCode return_code;
 
 	if (providerOid == GLOBAL_DATA_TDE_OID && !superuser())
@@ -538,16 +538,16 @@ pg_tde_create_principal_key_internal(Oid providerOid,
 
 	provider = GetKeyProviderByName(provider_name, providerOid);
 
-	key_info = KeyringGetKey(provider, key_name, &return_code);
+	key = KeyringGetKey(provider, key_name, &return_code);
 
-	if (key_info != NULL)
+	if (key != NULL)
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("cannot create key \"%s\" because it already exists", key_name));
 
-	key_info = KeyringGenerateNewKeyAndStore(provider, key_name, KeyLength);
+	key = KeyringGenerateNewKeyAndStore(provider, key_name, KeyLength);
 
-	pfree(key_info);
+	pfree(key);
 	pfree(provider);
 }
 
@@ -1012,7 +1012,7 @@ get_principal_key_from_keyring(Oid dbOid)
 {
 	TDESignedPrincipalKeyInfo *principalKeyInfo;
 	GenericKeyring *keyring;
-	KeyInfo    *keyInfo;
+	KeyData    *key;
 	KeyringReturnCode keyring_ret;
 	TDEPrincipalKey *principalKey;
 
@@ -1033,20 +1033,20 @@ get_principal_key_from_keyring(Oid dbOid)
 				errmsg("keyring lookup failed for principal key %s, unknown keyring with ID %d",
 					   principalKeyInfo->data.name, principalKeyInfo->data.keyringId));
 
-	keyInfo = KeyringGetKey(keyring, principalKeyInfo->data.name, &keyring_ret);
+	key = KeyringGetKey(keyring, principalKeyInfo->data.name, &keyring_ret);
 
 	if (keyring_ret != KEYRING_CODE_SUCCESS)
 		ereport(ERROR,
 				errmsg("failed to retrieve principal key \"%s\" from key provider \"%s\"", principalKeyInfo->data.name, keyring->provider_name),
 				errdetail("%s", KeyringErrorCodeToString(keyring_ret)));
 
-	if (keyInfo == NULL)
+	if (key == NULL)
 		ereport(ERROR,
 				errcode(ERRCODE_NO_DATA_FOUND),
 				errmsg("key \"%s\" not found in key provider \"%s\"",
 					   principalKeyInfo->data.name, keyring->provider_name));
 
-	if (!pg_tde_verify_principal_key_info(principalKeyInfo, &keyInfo->data))
+	if (!pg_tde_verify_principal_key_info(principalKeyInfo, key))
 		ereport(ERROR,
 				errcode(ERRCODE_DATA_CORRUPTED),
 				errmsg("Failed to verify principal key header for key %s, incorrect principal key or corrupted key file",
@@ -1055,12 +1055,12 @@ get_principal_key_from_keyring(Oid dbOid)
 	principalKey = palloc_object(TDEPrincipalKey);
 
 	principalKey->keyInfo = principalKeyInfo->data;
-	memcpy(principalKey->keyData, keyInfo->data.data, keyInfo->data.len);
-	principalKey->keyLength = keyInfo->data.len;
+	memcpy(principalKey->keyData, key->data, key->len);
+	principalKey->keyLength = key->len;
 
 	Assert(dbOid == principalKey->keyInfo.databaseId);
 
-	pfree(keyInfo);
+	pfree(key);
 	free_keyring(keyring);
 	pfree(principalKeyInfo);
 
@@ -1305,7 +1305,7 @@ pg_tde_verify_provider_keys_in_use(GenericKeyring *modified_provider)
 	{
 		char	   *key_name = existing_principal_key->data.name;
 		KeyringReturnCode return_code;
-		KeyInfo    *proposed_key;
+		KeyData    *proposed_key;
 
 		proposed_key = KeyringGetKey(modified_provider, key_name, &return_code);
 
@@ -1325,7 +1325,7 @@ pg_tde_verify_provider_keys_in_use(GenericKeyring *modified_provider)
 						   key_name, modified_provider->provider_name));
 		}
 
-		if (!pg_tde_verify_principal_key_info(existing_principal_key, &proposed_key->data))
+		if (!pg_tde_verify_principal_key_info(existing_principal_key, proposed_key))
 		{
 			ereport(ERROR,
 					errmsg("key \"%s\" from modified key provider \"%s\" does not match existing server key",
@@ -1352,7 +1352,7 @@ pg_tde_verify_provider_keys_in_use(GenericKeyring *modified_provider)
 		{
 			char	   *key_name = existing_principal_key->data.name;
 			KeyringReturnCode return_code;
-			KeyInfo    *proposed_key;
+			KeyData    *proposed_key;
 
 			proposed_key = KeyringGetKey(modified_provider, key_name, &return_code);
 			if (return_code != KEYRING_CODE_SUCCESS)
@@ -1371,7 +1371,7 @@ pg_tde_verify_provider_keys_in_use(GenericKeyring *modified_provider)
 							   key_name, database->datname.data, modified_provider->provider_name));
 			}
 
-			if (!pg_tde_verify_principal_key_info(existing_principal_key, &proposed_key->data))
+			if (!pg_tde_verify_principal_key_info(existing_principal_key, proposed_key))
 			{
 				ereport(ERROR,
 						errmsg("key \"%s\" from modified key provider \"%s\" does not match existing key used by database \"%s\"",

@@ -18,8 +18,14 @@
 #include "pg_tde_fe.h"
 #endif
 
-static KeyInfo *get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *return_code);
-static void set_key_by_name(GenericKeyring *keyring, KeyInfo *key);
+typedef struct
+{
+	char		name[TDE_KEY_NAME_LEN];
+	KeyData		key;
+} KeyRecord;
+
+static KeyData *get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *return_code);
+static void set_key_by_name(GenericKeyring *keyring, const char *key_name, KeyData *key);
 static void validate(GenericKeyring *keyring);
 
 static const TDEKeyringRoutine keyringFileRoutine = {
@@ -34,10 +40,10 @@ InstallFileKeyring(void)
 	RegisterKeyProviderType(&keyringFileRoutine, FILE_KEY_PROVIDER);
 }
 
-static KeyInfo *
+static KeyData *
 get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *return_code)
 {
-	KeyInfo    *key = NULL;
+	KeyRecord	record;
 	int			fd = -1;
 	FileKeyring *file_keyring = (FileKeyring *) keyring;
 	off_t		bytes_read = 0;
@@ -49,10 +55,9 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 	if (fd < 0)
 		return NULL;
 
-	key = palloc_object(KeyInfo);
 	while (true)
 	{
-		bytes_read = pg_pread(fd, key, sizeof(KeyInfo), curr_pos);
+		bytes_read = pg_pread(fd, &record, sizeof(record), curr_pos);
 		curr_pos += bytes_read;
 
 		if (bytes_read == 0)
@@ -62,13 +67,11 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 			 * has no keys
 			 */
 			CloseTransientFile(fd);
-			pfree(key);
 			return NULL;
 		}
-		if (bytes_read != sizeof(KeyInfo))
+		if (bytes_read != sizeof(record))
 		{
 			CloseTransientFile(fd);
-			pfree(key);
 			/* Corrupt file */
 			*return_code = KEYRING_CODE_DATA_CORRUPTED;
 			ereport(WARNING,
@@ -76,38 +79,45 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 					errmsg("keyring file \"%s\" is corrupted: %m",
 						   file_keyring->file_name),
 					errdetail("invalid key size %lld expected %lu",
-							  (long long int) bytes_read, sizeof(KeyInfo)));
+							  (long long int) bytes_read, sizeof(record)));
 			return NULL;
 		}
-		if (pg_strncasecmp(key->name, key_name, sizeof(key->name)) == 0)
+		if (pg_strncasecmp(record.name, key_name, sizeof(record.name)) == 0)
 		{
+			KeyData    *key = palloc_object(KeyData);
+
+			*key = record.key;
 			CloseTransientFile(fd);
 			return key;
 		}
 	}
 	CloseTransientFile(fd);
-	pfree(key);
 	return NULL;
 }
 
 static void
-set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
+set_key_by_name(GenericKeyring *keyring, const char *key_name, KeyData *key)
 {
+	KeyRecord	record;
 	off_t		bytes_written = 0;
 	off_t		curr_pos = 0;
 	int			fd;
 	FileKeyring *file_keyring = (FileKeyring *) keyring;
-	KeyInfo    *existing_key;
+	KeyData    *existing_key;
 	KeyringReturnCode return_code = KEYRING_CODE_SUCCESS;
 
+	Assert(key_name != NULL);
 	Assert(key != NULL);
 	/* See if the key with same name already exists */
-	existing_key = get_key_by_name(keyring, key->name, &return_code);
+	existing_key = get_key_by_name(keyring, key_name, &return_code);
 	if (existing_key)
 	{
 		ereport(ERROR,
-				errmsg("Key with name %s already exists in keyring", key->name));
+				errmsg("Key with name %s already exists in keyring", key_name));
 	}
+
+	strlcpy(record.name, key_name, sizeof(record.name));
+	record.key = *key;
 
 	fd = OpenTransientFile(file_keyring->file_name, O_CREAT | O_RDWR | PG_BINARY);
 	if (fd < 0)
@@ -118,8 +128,8 @@ set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 	}
 	/* Write key to the end of file */
 	curr_pos = lseek(fd, 0, SEEK_END);
-	bytes_written = pg_pwrite(fd, key, sizeof(KeyInfo), curr_pos);
-	if (bytes_written != sizeof(KeyInfo))
+	bytes_written = pg_pwrite(fd, &record, sizeof(record), curr_pos);
+	if (bytes_written != sizeof(record))
 	{
 		ereport(ERROR,
 				errcode_for_file_access(),

@@ -78,23 +78,23 @@ kmip_connect(KmipKeyring *kmip_keyring)
 } /* namespace */
 
 static void
-kmip_set_key(GenericKeyring *keyring, KeyInfo *key)
+kmip_set_key(GenericKeyring *keyring, const char *key_name, KeyData *key)
 {
 	KmipKeyring *kmip_keyring = (KmipKeyring *)keyring;
 
-	kmip_run(ERROR, "could not store key on KMIP server",
-	         [&]
-	         {
-		         auto kmip = kmip_connect(kmip_keyring);
-		         auto sk = kmipclient::SymmetricKey::aes_from_value(
-		             std::vector<unsigned char>(
-		                 key->data.data, key->data.data + key->data.len));
+	kmip_run(
+	    ERROR, "could not store key on KMIP server",
+	    [&]
+	    {
+		    auto kmip = kmip_connect(kmip_keyring);
+		    auto sk = kmipclient::SymmetricKey::aes_from_value(
+		        std::vector<unsigned char>(key->data, key->data + key->len));
 
-		         (void)kmip.client().op_register_key(key->name, "", sk);
-	         });
+		    (void)kmip.client().op_register_key(key_name, "", sk);
+	    });
 }
 
-static KeyInfo *
+static KeyData *
 kmip_get_key(GenericKeyring *keyring, const char *key_name,
              KeyringReturnCode *return_code)
 {
@@ -105,7 +105,7 @@ kmip_get_key(GenericKeyring *keyring, const char *key_name,
 	size_t num_found = 0;
 	bool connected = false;
 	bool oversized = false;
-	KeyInfo *key;
+	KeyData *key;
 
 	*return_code = KEYRING_CODE_SUCCESS;
 
@@ -164,10 +164,9 @@ kmip_get_key(GenericKeyring *keyring, const char *key_name,
 		return NULL;
 	}
 
-	key = palloc0_object(KeyInfo);
-	strlcpy(key->name, key_name, sizeof(key->name));
-	key->data.len = keylen;
-	memcpy(key->data.data, keydata, keylen);
+	key = palloc0_object(KeyData);
+	key->len = keylen;
+	memcpy(key->data, keydata, keylen);
 
 	return key;
 }
