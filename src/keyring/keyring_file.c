@@ -25,7 +25,7 @@ typedef struct
 } KeyRecord;
 
 static KeyData *get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *return_code);
-static void set_key_by_name(GenericKeyring *keyring, const char *key_name, KeyData *key);
+static void set_key_by_name(GenericKeyring *keyring, const char *key_name, const KeyData *key);
 static void validate(GenericKeyring *keyring);
 
 static const TDEKeyringRoutine keyringFileRoutine = {
@@ -96,7 +96,7 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 }
 
 static void
-set_key_by_name(GenericKeyring *keyring, const char *key_name, KeyData *key)
+set_key_by_name(GenericKeyring *keyring, const char *key_name, const KeyData *key)
 {
 	KeyRecord	record;
 	off_t		bytes_written = 0;

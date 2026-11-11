@@ -78,7 +78,8 @@ kmip_connect(KmipKeyring *kmip_keyring)
 } /* namespace */
 
 static void
-kmip_set_key(GenericKeyring *keyring, const char *key_name, KeyData *key)
+kmip_set_key(GenericKeyring *keyring, const char *key_name,
+             const KeyData *key)
 {
 	KmipKeyring *kmip_keyring = (KmipKeyring *)keyring;
 

@@ -27,7 +27,7 @@ static SimplePtrList registeredKeyProviderTypes = {NULL, NULL};
 #endif
 
 static RegisteredKeyProviderType *find_key_provider_type(ProviderType type);
-static bool ValidateKey(KeyData *key, const char *key_name);
+static bool ValidateKey(const KeyData *key, const char *key_name);
 static KeyData *KeyringGenerateNewKey(unsigned key_len);
 
 #ifndef FRONTEND
@@ -127,7 +127,7 @@ KeyringGetKey(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *
 }
 
 static bool
-ValidateKey(KeyData *key, const char *key_name)
+ValidateKey(const KeyData *key, const char *key_name)
 {
 	if (key->len == 0)
 	{

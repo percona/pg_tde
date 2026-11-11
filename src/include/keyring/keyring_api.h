@@ -44,7 +44,7 @@ typedef struct GenericKeyring
 typedef struct TDEKeyringRoutine
 {
 	KeyData    *(*keyring_get_key) (GenericKeyring *keyring, const char *key_name, KeyringReturnCode *returnCode);
-	void		(*keyring_store_key) (GenericKeyring *keyring, const char *key_name, KeyData *key);
+	void		(*keyring_store_key) (GenericKeyring *keyring, const char *key_name, const KeyData *key);
 	void		(*keyring_validate) (GenericKeyring *keyring);
 } TDEKeyringRoutine;
 
