@@ -282,7 +282,7 @@ set_principal_key_with_keyring(const char *key_name,
 	new_principal_key = palloc_object(TDEPrincipalKey);
 	new_principal_key->keyInfo.databaseId = dbOid;
 	new_principal_key->keyInfo.keyringId = new_keyring->keyring_id;
-	memcpy(new_principal_key->keyInfo.name, key_name, TDE_KEY_NAME_LEN);
+	memcpy(new_principal_key->keyInfo.name, key_name, PRINCIPAL_KEY_NAME_LEN);
 	gettimeofday(&new_principal_key->keyInfo.creationTime, NULL);
 	new_principal_key->keyLength = key->len;
 
@@ -358,7 +358,7 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 	new_principal_key = palloc_object(TDEPrincipalKey);
 	new_principal_key->keyInfo.databaseId = xlrec->databaseId;
 	new_principal_key->keyInfo.keyringId = new_keyring->keyring_id;
-	memcpy(new_principal_key->keyInfo.name, xlrec->keyName, TDE_KEY_NAME_LEN);
+	memcpy(new_principal_key->keyInfo.name, xlrec->keyName, PRINCIPAL_KEY_NAME_LEN);
 	gettimeofday(&new_principal_key->keyInfo.creationTime, NULL);
 	new_principal_key->keyLength = key->len;
 
