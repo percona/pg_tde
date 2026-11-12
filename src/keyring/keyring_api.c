@@ -206,7 +206,7 @@ KeyringValidate(GenericKeyring *keyring)
 	kp->routine->keyring_validate(keyring);
 }
 
-char *
+const char *
 KeyringErrorCodeToString(KeyringReturnCode code)
 {
 	switch (code)

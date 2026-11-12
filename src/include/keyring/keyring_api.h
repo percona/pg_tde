@@ -80,6 +80,6 @@ extern void RegisterKeyProviderType(const TDEKeyringRoutine *routine, ProviderTy
 extern KeyData *KeyringGetKey(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *returnCode);
 extern KeyData *KeyringGenerateNewKeyAndStore(GenericKeyring *keyring, const char *key_name, unsigned key_len);
 extern void KeyringValidate(GenericKeyring *keyring);
-extern char *KeyringErrorCodeToString(KeyringReturnCode code);
+extern const char *KeyringErrorCodeToString(KeyringReturnCode code);
 
 #endif							/* KEYRING_API_H */
