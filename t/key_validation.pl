@@ -64,13 +64,13 @@ sub corrupt_key_file
 	binmode $fh;
 
 	# Corrupt the first page of the key file  by zeroing key data length.
-	# Offset is TDE_KEY_NAME_LEN + MAX_KEY_DATA_SIZE. See keyring_api.h for details.
+	# Offset is PRINCIPAL_KEY_NAME_LEN + MAX_KEY_DATA_SIZE. See keyring_api.h for details.
 	sysseek($fh, 256 + 32, 0)
 	  or BAIL_OUT("sysseek failed: $!");
 	syswrite($fh, pack("L*", 0x00000000)) or BAIL_OUT("syswrite failed: $!");
 
 	# Corrupt the second page of the key file by setting incorrect key length.
-	# Offset is TDE_KEY_NAME_LEN + MAX_KEY_DATA_SIZE. See keyring_api.h for details.
+	# Offset is PRINCIPAL_KEY_NAME_LEN + MAX_KEY_DATA_SIZE. See keyring_api.h for details.
 	sysseek($fh, 256 + 32, SEEK_CUR)
 	  or BAIL_OUT("sysseek failed: $!");
 	syswrite($fh, pack("L*", 0xFFFFFFFF)) or BAIL_OUT("syswrite failed: $!");
