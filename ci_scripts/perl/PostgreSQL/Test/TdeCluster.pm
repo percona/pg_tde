@@ -30,6 +30,8 @@ my %smgr_skip = (
 	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
 	'src/bin/pg_dump/t/010_dump_connstr.pl' =>
 	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_dump/t/011_restore.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
 	'src/bin/pg_upgrade/t/002_pg_upgrade.pl' =>
 	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
 	'src/bin/pg_upgrade/t/003_logical_slots.pl' =>
@@ -43,6 +45,8 @@ my %smgr_skip = (
 	'src/bin/pg_upgrade/t/007_multixact_conversion.pl' =>
 	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
 	'src/bin/pg_upgrade/t/008_extension_control_path.pl' =>
+	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
+	'src/bin/pg_upgrade/t/009_composite_types.pl' =>
 	  'pg_restore fail to restore _pg_tde schema on cluster which already has it',
 	'src/bin/scripts/t/020_createdb.pl' =>
 	  'tries to use FILE_COPY strategy for database creation with encrypted objects in the template',
