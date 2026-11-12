@@ -11,6 +11,7 @@
 #include "utils/wait_event.h"
 
 #include "catalog/tde_keyring.h"
+#include "catalog/tde_principal_key.h"
 #include "keyring/keyring_api.h"
 #include "keyring/keyring_file.h"
 
@@ -20,7 +21,7 @@
 
 typedef struct
 {
-	char		name[TDE_KEY_NAME_LEN];
+	char		name[PRINCIPAL_KEY_NAME_LEN];
 	KeyData		key;
 } KeyRecord;
 
