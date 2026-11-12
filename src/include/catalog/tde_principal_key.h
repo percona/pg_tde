@@ -11,7 +11,7 @@
 #include "storage/lwlock.h"
 #endif
 
-#define PRINCIPAL_KEY_NAME_LEN TDE_KEY_NAME_LEN
+#define PRINCIPAL_KEY_NAME_LEN 256
 
 typedef struct TDEPrincipalKeyInfo
 {
