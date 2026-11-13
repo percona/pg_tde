@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   main:
-    name: Main matrix
+    name: Main
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,7 @@ jobs:
     secrets: inherit
 
   macos:
-    name: MacOS matrix
+    name: MacOS
     strategy:
       fail-fast: false
       matrix:
@@ -50,7 +50,7 @@ jobs:
     secrets: inherit
 
   arm:
-    name: ARM matrix
+    name: ARM
     strategy:
       fail-fast: false
       matrix:
@@ -67,7 +67,7 @@ jobs:
     secrets: inherit
 
   exec-backend:
-    name: EXEC_BACKEND matrix
+    name: EXEC_BACKEND
     strategy:
       fail-fast: false
       matrix:
