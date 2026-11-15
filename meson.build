@@ -383,7 +383,6 @@ tap_tests = [
   't/regress.pl',
   't/replication.pl',
   't/reuse_relfilenode_in_cache.pl',
-  't/rotate_key.pl',
   't/tde_heap_aes_256.pl',
   't/tde_heap.pl',
   't/unlogged_tables.pl',
@@ -424,6 +423,7 @@ stormweaver = find_program(get_option('stormweaver'), required: false)
 pytest_files = [
   'tests/encryption/test_recreate_storage_partitioned.py',
   'tests/encryption/test_recreate_storage.py',
+  'tests/keys/test_rotation.py',
 ]
 
 if stormweaver.found()
