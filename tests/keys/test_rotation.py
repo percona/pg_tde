@@ -1,4 +1,8 @@
+import functools
+import time
+
 import pytest
+from stormweaver.testing import InjectionPoints
 
 from pgtde.tde import KeyInfo, Provider
 
@@ -220,3 +224,378 @@ def test_standby_follows_rotation(node, make_standby, key_name):
     standby.execute("CREATE TABLE created_after_promote (x int) USING tde_heap")
     standby.execute("INSERT INTO created_after_promote VALUES (2)")
     assert standby.scalar("SELECT x FROM created_after_promote") == 2
+
+
+def setup_step(f):
+    """An AssertionError in f is a broken setup: raise it as RuntimeError, so that a strict
+    xfail(raises=AssertionError) does not take it for the expected failure."""
+
+    @functools.wraps(f)
+    def step(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except AssertionError as e:
+            raise RuntimeError(f"{f.__name__}: {e}") from e
+
+    return step
+
+
+WALWRITER_FLUSH = "walwriter-before-flush"
+
+
+def flush_wal(node):
+    # the rotation has no xid and its commit does not flush, a commit with one flushes it too
+    node.execute("CREATE TABLE flush_wal ()")
+    node.execute("DROP TABLE flush_wal")
+
+
+@pytest.fixture
+def parkable_walwriter(tde_node):
+    """InjectionPoints when the server can stop the WAL writer before a flush, else None."""
+    ip = InjectionPoints(tde_node, poll_db="template1")
+    return ip if ip.compiled_in(WALWRITER_FLUSH) and ip.available() else None
+
+
+@pytest.fixture
+def walwriter(parkable_walwriter):
+    """parkable_walwriter, skips the test on a server without the point."""
+    if parkable_walwriter is None:
+        pytest.skip(f"lost rotation WAL record not visible on a server without the {WALWRITER_FLUSH} injection point")
+    return parkable_walwriter
+
+
+def park_walwriter(node, injection_points):
+    """Stop the WAL writer before its next flush. A fast shutdown waits for it forever, only a
+    kill gets the server down."""
+    injection_points.attach(WALWRITER_FLUSH, "wait")
+    # an async commit wakes the WAL writer up if it hibernates
+    with node.connect() as conn:
+        conn.execute("SET synchronous_commit = off")
+        conn.execute("CREATE TABLE wake_walwriter ()")
+    injection_points.wait_until_reached(WALWRITER_FLUSH)
+    walwriter = node.row("SELECT wait_event_type, wait_event FROM pg_stat_activity WHERE backend_type = 'walwriter'")
+    assert walwriter == ("InjectionPoint", WALWRITER_FLUSH)
+
+
+@setup_step
+def crash_after_rotation(node, make_standby, key, walwriter, flushed_key=None):
+    """Rotate to key on db-2 and crash right after the commit, with a standby attached.
+
+    walwriter: InjectionPoints to park the WAL writer with, None for a server without the point.
+    flushed_key: rotate to it first, and flush that rotation to disk.
+    """
+    # the commit is the only thing that could flush the rotation before the kill, and it does not;
+    # keep bgwriter, checkpointer and autovacuum from flushing it by accident
+    background_flush = {
+        "bgwriter_lru_maxpages": "0",
+        "checkpoint_timeout": "1h",
+        "autovacuum": "off",
+    }
+    if walwriter is None:
+        # best effort, the WAL writer can still flush before the kill
+        background_flush["wal_writer_delay"] = "10s"
+    for name, value in background_flush.items():
+        node.execute(f"ALTER SYSTEM SET {name} = '{value}'")
+    node.restart()
+    standby = make_standby(node)
+
+    try:
+        if flushed_key is not None:
+            rotate(node, flushed_key, "db-2")
+            flush_wal(node)
+        if walwriter is not None:
+            park_walwriter(node, walwriter)
+        rotate(node, key, "db-2")
+    finally:
+        node.kill()
+    node.poll_start()
+    node.execute("ALTER SYSTEM RESET ALL")
+    node.execute("SELECT pg_reload_conf()")
+    return standby
+
+
+def test_rotation_survives_crash(node, make_standby, parkable_walwriter, key_name):
+    standby = crash_after_rotation(node, make_standby, key_name("rotated-key"), parkable_walwriter)
+
+    assert_usable(node, KeyInfo(2, "db-2", key_name("rotated-key")))
+    node.wait_for_catchup(standby)
+    assert data(standby) == ROWS
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="standby stays on the old key: rotation WAL record not flushed at commit, lost",
+)
+def test_rotation_survives_crash_on_standby(walwriter, node, make_standby, key_name):
+    standby = crash_after_rotation(node, make_standby, key_name("rotated-key"), walwriter)
+
+    node.wait_for_catchup(standby)
+    assert standby.tde.key_info() == KeyInfo(2, "db-2", key_name("rotated-key"))
+
+
+# Redo rotates from the key in the map file to the key in the record. The primary replays
+# its own, flushed, rotation record onto the map file it already renamed.
+def test_rotation_replayed_in_crash_recovery(node, make_standby, key_name):
+    rotated = KeyInfo(2, "db-2", key_name("rotated-key"))
+    node.execute("ALTER SYSTEM SET checkpoint_timeout = '1h'")
+    node.execute("SELECT pg_reload_conf()")
+    standby = make_standby(node)
+    before_rotation = node.scalar("SELECT pg_current_wal_insert_lsn()")
+
+    rotate(node, rotated.key_name, "db-2")
+    flush_wal(node)
+    assert node.scalar("SELECT redo_lsn <= $1::pg_lsn FROM pg_control_checkpoint()", (before_rotation,)), (
+        "checkpoint after the rotation, crash recovery would not replay it"
+    )
+    node.kill()
+    node.poll_start()
+
+    assert_usable(node, rotated)
+    node.wait_for_catchup(standby)
+    assert_usable(standby, rotated)
+
+
+# An older, flushed rotation record is replayed onto the map file of a newer rotation whose
+# record was lost
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="primary back on the older key: crash recovery replays the older rotation onto the newer map file",
+)
+def test_rotation_not_undone_by_older_record(walwriter, node, make_standby, key_name):
+    crash_after_rotation(node, make_standby, key_name("rotated-key"), walwriter, flushed_key=key_name("flushed-key"))
+
+    assert node.tde.key_info() == KeyInfo(2, "db-2", key_name("rotated-key"))
+
+
+def waits_for_sync_rep(node, background, timeout=30.0):
+    """True once the background statement waits for the synchronous standby, False if it returned."""
+    deadline = time.monotonic() + timeout
+    while not background.done():
+        if node.scalar("SELECT count(*) FROM pg_stat_activity WHERE wait_event = 'SyncRep'") > 0:
+            return True
+        if time.monotonic() > deadline:
+            raise TimeoutError("statement neither returned nor waits for the synchronous standby")
+        time.sleep(0.1)
+    return False
+
+
+# with remote_apply the standby is on the new key when the rotation returns
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="rotation has no xid, its commit does not wait for the synchronous standby",
+)
+def test_rotation_waits_for_sync_standby(node, make_standby, key_name):
+    rotated = KeyInfo(2, "db-2", key_name("rotated-key"))
+    standby = make_standby(node)
+    node.execute("ALTER SYSTEM SET synchronous_standby_names = 'standby'")
+    node.execute("ALTER SYSTEM SET synchronous_commit = 'remote_apply'")
+    node.execute("SELECT pg_reload_conf()")
+    node.poll_until("SELECT sync_state FROM pg_stat_replication WHERE application_name = 'standby'", "sync")
+    node.tde.create_key(rotated.key_name, "db-2")
+    standby.execute("SELECT pg_wal_replay_pause()")
+    standby.poll_until("SELECT pg_get_wal_replay_pause_state()", "paused")
+
+    rotation = node.background(f"SELECT pg_tde_set_key_using_database_key_provider('{rotated.key_name}', 'db-2')")
+    try:
+        assert waits_for_sync_rep(node, rotation), "rotation returned before the standby applied it"
+    finally:
+        standby.execute("SELECT pg_wal_replay_resume()")
+    rotation.wait()
+    assert standby.tde.key_info() == rotated
+
+
+# not transactional: a rollback keeps the new key, on the standby too
+def test_rotation_survives_rollback(node, make_standby, key_name):
+    rotated = KeyInfo(2, "db-2", key_name("rotated-key"))
+    standby = make_standby(node)
+    node.tde.create_key(rotated.key_name, "db-2")
+
+    with node.connect() as conn:
+        conn.execute("BEGIN")
+        conn.tde.set_key(rotated.key_name, "db-2")
+        conn.execute("ROLLBACK")
+
+    assert_usable(node, rotated)
+    node.execute("CREATE TABLE created_after_rollback (x int) USING tde_heap")
+    node.execute("INSERT INTO created_after_rollback VALUES (1)")
+    node.wait_for_catchup(standby)
+    assert_usable(standby, rotated)
+    assert standby.scalar("SELECT x FROM created_after_rollback") == 1
+    node.restart()
+    assert_usable(node, rotated)
+
+
+# Interrupted rotation. pg_tde_perform_rotate_key writes the re-wrapped keys to <map>.r,
+# renames it over the map file, and only then writes the WAL record.
+# The same points are passed during redo on a standby and in crash recovery, and in the
+# default key path once per database. A backend parked with "wait" holds the pg_tde key
+# lock and cannot be cancelled, only woken or killed with the server.
+ENTRY_WRITTEN = "pg-tde-rotate-key-entry-written"
+BEFORE_RENAME = "pg-tde-rotate-key-before-rename"
+AFTER_RENAME = "pg-tde-rotate-key-after-rename"
+# after the WAL record, only on the primary
+LOGGED = "pg-tde-rotate-key-logged"
+POINTS = [ENTRY_WRITTEN, BEFORE_RENAME, AFTER_RENAME]
+
+
+def broken_after_rename(reason):
+    return [
+        ENTRY_WRITTEN,
+        BEFORE_RENAME,
+        pytest.param(AFTER_RENAME, marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=reason)),
+    ]
+
+
+def initial_key(key_name):
+    return KeyInfo(1, "db-1", key_name("initial-key"))
+
+
+def interrupted_key(key_name):
+    return KeyInfo(2, "db-2", key_name("interrupted-key"))
+
+
+def key_after_crash(point, key_name):
+    # current behaviour: after the rename the new map file wins, commit or not; a fix that
+    # undoes the rename in recovery would give the initial key
+    return interrupted_key(key_name) if point == AFTER_RENAME else initial_key(key_name)
+
+
+@setup_step
+def interrupt_rotation(node, injection_points, point, action, key_name, before_kill=None):
+    """Rotate to the interrupted key on db-2, stopped at point by action.
+
+    before_kill: called while the rotation waits at point, before the crash.
+    """
+    node.tde.create_key(key_name("interrupted-key"), "db-2")
+    injection_points.attach(point, action)
+    rotation = f"SELECT pg_tde_set_key_using_database_key_provider('{key_name('interrupted-key')}', 'db-2')"
+    if action == "error":
+        node.expect_error(f"error triggered for injection point {point}", rotation)
+        injection_points.detach(point)
+        return
+    background = node.background(rotation)
+    injection_points.wait_until_reached(point)
+    if before_kill is not None:
+        before_kill()
+    node.kill()
+    assert not background.wait(check=False).success()
+    node.poll_start()
+
+
+def retry_same_rotation(node, key_name, standby=None):
+    node.tde.set_key(key_name("interrupted-key"), "db-2")
+    assert_usable(node, interrupted_key(key_name))
+    if standby is not None:
+        node.wait_for_catchup(standby)
+        assert_usable(standby, interrupted_key(key_name))
+
+
+def assert_usable(node, key):
+    assert node.tde.key_info() == key
+    verify = node.try_execute("SELECT pg_tde_verify_key()")
+    assert verify.success(), verify.error_message
+    assert data(node) == ROWS
+
+
+@pytest.mark.parametrize("point", POINTS)
+def test_rotation_crash(node, make_standby, injection_points, key_name, point):
+    standby = make_standby(node)
+    interrupt_rotation(node, injection_points, point, "wait", key_name)
+
+    assert_usable(node, key_after_crash(point, key_name))
+
+    # the standby reads everything, also relations created now
+    node.execute("CREATE TABLE created_after_crash (x int) USING tde_heap")
+    node.execute("INSERT INTO created_after_crash VALUES (1)")
+    node.wait_for_catchup(standby)
+    assert data(standby) == ROWS
+    assert standby.scalar("SELECT x FROM created_after_crash") == 1
+
+    # a leftover .r file does not block retrying the same rotation, nor the next one
+    if point != AFTER_RENAME:
+        retry_same_rotation(node, key_name, standby)
+    next_key = KeyInfo(2, "db-2", key_name("next-key"))
+    rotate(node, next_key.key_name, "db-2")
+    assert_usable(node, next_key)
+    node.wait_for_catchup(standby)
+    assert_usable(standby, next_key)
+    assert standby.scalar("SELECT x FROM created_after_crash") == 1
+
+
+@pytest.mark.parametrize(
+    "point", broken_after_rename("primary on the new key, standby stays on the old: no WAL record")
+)
+def test_rotation_crash_standby_agrees(node, make_standby, injection_points, key_name, point):
+    standby = make_standby(node)
+    interrupt_rotation(node, injection_points, point, "wait", key_name)
+
+    node.execute("CREATE TABLE created_after_crash (x int) USING tde_heap")
+    node.wait_for_catchup(standby)
+    assert standby.tde.key_info() == node.tde.key_info()
+
+
+@pytest.mark.parametrize("point", POINTS)
+def test_rotation_error(node, injection_points, key_name, point):
+    interrupt_rotation(node, injection_points, point, "error", key_name)
+
+    if point != AFTER_RENAME:
+        assert_usable(node, initial_key(key_name))
+    assert data(node) == ROWS
+    node.execute("CREATE TABLE created_after_error (x int) USING tde_heap")
+    node.execute("INSERT INTO created_after_error VALUES (1)")
+
+    # current behaviour: the initial key after a restart, also after the rename; a fix that
+    # keeps the renamed map file would give the interrupted key there
+    node.restart()
+    assert_usable(node, initial_key(key_name))
+    assert node.scalar("SELECT x FROM created_after_error") == 1
+    if point != AFTER_RENAME:
+        retry_same_rotation(node, key_name)
+
+    next_key = KeyInfo(2, "db-2", key_name("next-key"))
+    rotate(node, next_key.key_name, "db-2")
+    assert_usable(node, next_key)
+
+
+# key_info, verify_key and the map file agree right after the error, without a restart
+@pytest.mark.parametrize(
+    "point",
+    broken_after_rename(
+        "key cache keeps the old key, map file has the new one; either key would do, they have to agree"
+    ),
+)
+def test_rotation_error_session_agrees(node, injection_points, key_name, point):
+    interrupt_rotation(node, injection_points, point, "error", key_name)
+
+    assert_usable(node, node.tde.key_info())
+
+
+# The record reaches the standby once flushed; the primary renamed its map file before
+# writing it. Whatever the standby has, the primary has too: it is never ahead.
+# Without WAL encryption the walsender takes the pg_tde key lock for every read, and waits
+# for the rotation to finish; with it, it reads the WAL keys from its cache.
+def test_rotation_crash_after_record_reached_standby(node, make_standby, injection_points, key_name):
+    node.tde.create_key(key_name("server-key"), "global-1", scope="global")
+    node.execute(f"SELECT pg_tde_set_server_key_using_global_key_provider('{key_name('server-key')}', 'global-1')")
+    node.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = on")
+    node.restart()
+    standby = make_standby(node)
+    node.wait_for_catchup(standby)
+
+    def ship_record():
+        # the rotating backend holds the pg_tde key lock, flush from template1
+        with node.connect("template1") as conn:
+            conn.execute("SELECT pg_logical_emit_message(false, 'pg_tde_test', '', true)")
+        standby.poll_until("SELECT key_name FROM pg_tde_key_info()", key_name("interrupted-key"))
+
+    interrupt_rotation(node, injection_points, LOGGED, "wait", key_name, before_kill=ship_record)
+
+    assert_usable(node, interrupted_key(key_name))
+    node.execute("CREATE TABLE created_after_crash (x int) USING tde_heap")
+    node.execute("INSERT INTO created_after_crash VALUES (1)")
+    node.wait_for_catchup(standby)
+    assert_usable(standby, interrupted_key(key_name))
+    assert standby.scalar("SELECT x FROM created_after_crash") == 1
