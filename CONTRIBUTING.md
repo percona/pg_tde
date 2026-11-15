@@ -101,6 +101,24 @@ You can find the tests in the `sql` and `t` directories.
 
 The tests are run automatically with GitHub actions once you create a pull request.
 
+### pytest suite
+
+New tests are written in Python, under `tests/`, on top of [stormweaver](https://github.com/Percona-Lab/stormweaver).
+The perl TAP tests in `t/` and the sql tests in `sql/` are moved there one by one.
+
+Run them through meson (`meson setup -Dstormweaver=/path/to/stormweaver`, then `meson test --suite pytest`) or directly:
+
+    stormweaver test tests --pg-config /path/to/pg_config
+    stormweaver test tests --pg-config /path/to/pg_config --all-values    # every available keyring
+    stormweaver test tests --pg-config /path/to/pg_config --matrix keyring=vault,kmip
+
+Conventions:
+
+* One test function per intent, the intent is the function name or a one line comment above it.
+* The statement a test is about is written as plain SQL in the test body. Helpers are for setup (`tests/conftest.py` fixtures) and for oracles (`tests/pgtde/checks.py`).
+* `node.tde` (`tests/pgtde/tde.py`) has the pg_tde SQL functions, `node.execute/query/row/scalar` run SQL. Results are typed and can be compared to tuples or dicts.
+* Use the `keyring` fixture for key providers, the test then runs on every keyring kind with `--all-values`.
+
 ## Documentation contribution
 
 To contribute to the documentation, see the following [Documentation contribution guide](/documentation/documentation-contributing.md).
