@@ -422,6 +422,8 @@ endforeach
 stormweaver = find_program(get_option('stormweaver'), required: false)
 
 pytest_files = [
+  'tests/encryption/test_recreate_storage_partitioned.py',
+  'tests/encryption/test_recreate_storage.py',
 ]
 
 if stormweaver.found()

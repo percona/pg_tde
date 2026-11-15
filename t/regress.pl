@@ -24,7 +24,6 @@ my @tests = qw(
   key_provider
   partition_table
   pg_tde_is_encrypted
-  recreate_storage
   relocate
   tablespace
   toast_decrypt
