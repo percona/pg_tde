@@ -23,6 +23,7 @@
 #include "encryption/enc_tde.h"
 #include "keyring/keyring_api.h"
 #include "pg_tde.h"
+#include "pg_tde_injection.h"
 
 #ifdef FRONTEND
 #include "pg_tde_fe.h"
@@ -343,6 +344,7 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 		pg_tde_initialize_map_entry(&write_map_entry, new_principal_key, &rloc, rel_key_data);
 
 		pg_tde_write_one_map_entry(new_fd, &write_map_entry, &new_curr_pos, new_path);
+		TDE_INJECTION_POINT("pg-tde-rotate-key-entry-written");
 
 		pfree(rel_key_data);
 	}
@@ -350,11 +352,15 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 	CloseTransientFile(old_fd);
 	CloseTransientFile(new_fd);
 
+	TDE_INJECTION_POINT("pg-tde-rotate-key-before-rename");
+
 	/*
 	 * Do the final step - replace the current _keys with the file with new
 	 * data
 	 */
 	durable_rename(new_path, old_path, ERROR);
+
+	TDE_INJECTION_POINT("pg-tde-rotate-key-after-rename");
 
 	/*
 	 * We do WAL writes past the event ("the write behind logging") rather
@@ -378,6 +384,8 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 		XLogBeginInsert();
 		XLogRegisterData((char *) &xlrec, sizeof(XLogPrincipalKeyRotate));
 		XLogInsert(RM_TDERMGR_ID, XLOG_TDE_ROTATE_PRINCIPAL_KEY);
+
+		TDE_INJECTION_POINT("pg-tde-rotate-key-logged");
 	}
 }
 
