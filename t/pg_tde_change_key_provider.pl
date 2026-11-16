@@ -193,6 +193,55 @@ command_like(
 	[
 		'pg_tde_change_key_provider',
 		'-D' => $node->data_dir,
+		$db_oid,
+		'database-provider',
+		'file',
+		'/tmp/with "quote" and \\ backslash',
+	],
+	qr/Key provider updated successfully!/,
+	'updates key provider with characters needing JSON escape');
+
+$node->start;
+
+$options = decode_json(
+	$node->safe_psql(
+		'postgres',
+		q{SELECT options FROM pg_tde_list_all_database_key_providers() WHERE name = 'database-provider'}
+	));
+is( $options->{path},
+	'/tmp/with "quote" and \\ backslash',
+	'special characters in path are escaped');
+
+$node->stop;
+
+command_fails_like(
+	[
+		'pg_tde_change_key_provider',
+		'-D' => $node->data_dir,
+		$db_oid,
+		'database-provider',
+		'file',
+		'/' . ('x' x 3000),
+	],
+	qr/error: configuration too long/,
+	'gives error on too long configuration');
+
+command_fails_like(
+	[
+		'pg_tde_change_key_provider',
+		'-D' => $node->data_dir,
+		$db_oid,
+		'database-provider',
+		'file',
+		'/' . ('x' x 1012),
+	],
+	qr/error: configuration too long/,
+	'gives error on configuration not fitting by one byte');
+
+command_like(
+	[
+		'pg_tde_change_key_provider',
+		'-D' => $node->data_dir,
 		'1664',
 		'global-provider',
 		'vault-v2',

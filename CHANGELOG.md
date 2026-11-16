@@ -1,5 +1,7 @@
 # Changelog
 
+- Hardened pg_tde_change_key_provider against long JSON input
+
 ## [Unreleased]
 
 ### Added
