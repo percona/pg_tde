@@ -23,6 +23,7 @@ extern void pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, cons
 extern void pg_tde_delete_principal_key(Oid dbOid);
 extern void pg_tde_delete_principal_key_redo(Oid dbOid);
 
+extern bool pg_tde_read_key_file_entry(int fd, void *entry, size_t entry_size, off_t *offset, const char *path, int partial_elevel);
 extern void pg_tde_sign_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, const TDEPrincipalKey *principal_key);
 
 const char *tde_sprint_key(InternalKey *k);
