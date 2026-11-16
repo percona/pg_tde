@@ -3,6 +3,7 @@
 #include "common/controldata_utils.h"
 #include "common/logging.h"
 #include "getopt_long.h"
+#include "lib/stringinfo.h"
 
 #include "catalog/tde_global_space.h"
 #include "catalog/tde_keyring.h"
@@ -27,67 +28,63 @@ usage(void)
 	printf(_("  This tool only changes the values, without properly XLogging the changes, or validating that keys can be fetched using them. Only use it in case the database is inaccessible and can't be started.\n"));
 }
 
-#define BUFFER_SIZE 1024
+static void
+append_json_string(StringInfo buf, const char *str)
+{
+	appendStringInfoChar(buf, '"');
+	for (const unsigned char *p = (const unsigned char *) str; *p; p++)
+	{
+		if (*p == '"' || *p == '\\')
+		{
+			appendStringInfoChar(buf, '\\');
+			appendStringInfoChar(buf, *p);
+		}
+		else if (*p < 0x20)
+			appendStringInfo(buf, "\\u%04x", *p);
+		else
+			appendStringInfoChar(buf, *p);
+	}
+	appendStringInfoChar(buf, '"');
+}
 
-static bool
-build_json(char *buffer, int count, ...)
+/*
+ * Values starting with { or " are expected to be valid JSON and are added
+ * as is, everything else is added as a JSON string.
+ */
+static char *
+build_json(int count, ...)
 {
 	va_list		args;
-	char	   *ptr;
+	StringInfoData buf;
+
+	initStringInfo(&buf);
+	appendStringInfoChar(&buf, '{');
 
 	va_start(args, count);
-
-	ptr = strcat(buffer, "{");
-
 	for (int i = 0; i < count; ++i)
 	{
-		/* TODO: no validation about the paramters at all... */
-		/* not much we can do without a proper JSON library */
-		/* If the JSON is incorrect, it will fail a bit later when */
-		/* we try to backread it */
 		const char *key = va_arg(args, const char *);
 		const char *value = va_arg(args, const char *);
 
-		bool		addQuotes = value == NULL || (value[0] != '{' && value[0] != '"');
-
 		if (i != 0)
-		{
-			ptr = strcat(ptr, ",");
-		}
+			appendStringInfoChar(&buf, ',');
 
-		ptr = strcat(ptr, "\"");
-		ptr = strcat(ptr, key);
-		ptr = strcat(ptr, "\":");
+		append_json_string(&buf, key);
+		appendStringInfoChar(&buf, ':');
 
-		if (addQuotes)
-		{
-			ptr = strcat(ptr, "\"");
-		}
-		if (value != NULL)
-		{
-			ptr = strcat(ptr, value);
-		}
-		if (addQuotes)
-		{
-			ptr = strcat(ptr, "\"");
-		}
-		if (ptr - buffer > BUFFER_SIZE)
-		{
-			pg_log_error("configuration too long");
-			return false;
-		}
+		if (value[0] == '{' || value[0] == '"')
+			appendStringInfoString(&buf, value);
+		else
+			append_json_string(&buf, value);
 	}
 	va_end(args);
 
-	ptr = strcat(ptr, "}");
+	appendStringInfoChar(&buf, '}');
 
-	if (ptr - buffer > BUFFER_SIZE)
-	{
-		pg_log_error("configuration too long");
-		return false;
-	}
+	if (buf.len >= MAX_KEYRING_OPTION_LEN)
+		pg_fatal("configuration too long, maximum size is %d bytes", MAX_KEYRING_OPTION_LEN - 1);
 
-	return true;
+	return buf.data;
 }
 
 int
@@ -104,11 +101,10 @@ main(int argc, char *argv[])
 	Oid			db_oid;
 	char	   *provider_name;
 	char	   *new_provider_type;
-	char		json[BUFFER_SIZE * 2] = {0};
+	char	   *json;
 	ControlFileData *controlfile;
 	bool		crc_ok;
-	char		tdedir[MAXPGPATH] = {0};
-	char	   *cptr = tdedir;
+	char		tdedir[MAXPGPATH];
 	KeyringProviderRecordInFile record;
 
 	pg_logging_init(argv[0]);
@@ -176,10 +172,7 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 
-		if (!build_json(json, 1, "path", argv[optind]))
-		{
-			exit(1);
-		}
+		json = build_json(1, "path", argv[optind]);
 	}
 	else if (strcmp("vault-v2", new_provider_type) == 0)
 	{
@@ -190,14 +183,11 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 
-		if (!build_json(json, 4,
-						"url", argv[optind],
-						"mountPath", argv[optind + 1],
-						"tokenPath", argv[optind + 2],
-						"caPath", (argc - optind > 3 ? argv[optind + 3] : "")))
-		{
-			exit(1);
-		}
+		json = build_json(4,
+						  "url", argv[optind],
+						  "mountPath", argv[optind + 1],
+						  "tokenPath", argv[optind + 2],
+						  "caPath", (argc - optind > 3 ? argv[optind + 3] : ""));
 	}
 	else if (strcmp("kmip", new_provider_type) == 0)
 	{
@@ -208,15 +198,12 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 
-		if (!build_json(json, 5,
-						"host", argv[optind],
-						"port", argv[optind + 1],
-						"certPath", argv[optind + 2],
-						"keyPath", argv[optind + 3],
-						"caPath", argc - optind > 4 ? argv[optind + 4] : ""))
-		{
-			exit(1);
-		}
+		json = build_json(5,
+						  "host", argv[optind],
+						  "port", argv[optind + 1],
+						  "certPath", argv[optind + 2],
+						  "keyPath", argv[optind + 3],
+						  "caPath", argc - optind > 4 ? argv[optind + 4] : "");
 	}
 	else
 	{
@@ -239,9 +226,8 @@ main(int argc, char *argv[])
 		pg_fatal("cluster must be shut down");
 
 	pfree(controlfile);
-	cptr = strcat(cptr, datadir);
-	cptr = strcat(cptr, "/");
-	cptr = strcat(cptr, PG_TDE_DATA_DIR);
+	if (snprintf(tdedir, sizeof(tdedir), "%s/%s", datadir, PG_TDE_DATA_DIR) >= sizeof(tdedir))
+		pg_fatal("data directory path is too long");
 	pg_tde_set_data_dir(tdedir);
 
 	if (get_keyring_info_file_record_by_name(provider_name, db_oid, &record) == false)
@@ -250,6 +236,7 @@ main(int argc, char *argv[])
 	record.provider.provider_type = get_keyring_provider_from_typename(new_provider_type);
 	memset(record.provider.options, 0, sizeof(record.provider.options));
 	strlcpy(record.provider.options, json, sizeof(record.provider.options));
+	pfree(json);
 
 	write_key_provider_info(&record, false);
 
