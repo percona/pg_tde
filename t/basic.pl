@@ -36,7 +36,7 @@ is( $stdout,
 
 $stdout = $node->safe_psql('postgres',
 	"SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_tde';");
-is($stdout, 'pg_tde|2.2', 'is installed with right version');
+is($stdout, 'pg_tde|2.3', 'is installed with right version');
 
 (undef, undef, $stderr) = $node->psql('postgres',
 	'CREATE TABLE test_enc (id SERIAL, k INTEGER, PRIMARY KEY (id)) USING tde_heap;'
