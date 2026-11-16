@@ -83,7 +83,7 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 							  (long long int) bytes_read, sizeof(record)));
 			return NULL;
 		}
-		if (pg_strncasecmp(record.name, key_name, sizeof(record.name)) == 0)
+		if (strncmp(record.name, key_name, sizeof(record.name)) == 0)
 		{
 			KeyData    *key = palloc_object(KeyData);
 

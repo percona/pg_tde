@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- The file key provider no longer treats principal key names as if they were case insensitive
+
+## [Unreleased]
+
 ### Added
 
 - Support for PostgreSQL 19 RC 2 ([PG-2536](https://perconadev.atlassian.net/browse/PG-2536), [PG-2813](https://perconadev.atlassian.net/browse/PG-2813))
