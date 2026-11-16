@@ -81,7 +81,7 @@ static JsonParseErrorType json_mountinfo_scalar(void *state, char *token, JsonTo
 static JsonParseErrorType json_mountinfo_object_field_start(void *state, char *fname, bool isnull);
 static JsonParseErrorType parse_vault_mount_info(JsonVaultMountInfoState *state, JsonLexContext *lex);
 
-static char *get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size);
+static void get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size);
 static bool curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long *httpCode, const char *postData);
 
 static void set_key_by_name(GenericKeyring *keyring, KeyInfo *key);
@@ -172,19 +172,21 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 	return 1;
 }
 
-/*
- * Function builds the vault url in out parameter.
- * so enough memory should be allocated to out pointer
- */
-static char *
+static void
 get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size)
 {
+	int			len;
+
 	Assert(keyring != NULL);
 	Assert(key_name != NULL);
 	Assert(out != NULL);
 
-	snprintf(out, out_size, "%s/v1/%s/data/%s", keyring->vault_url, keyring->vault_mount_path, key_name);
-	return out;
+	len = snprintf(out, out_size, "%s/v1/%s/data/%s", keyring->vault_url, keyring->vault_mount_path, key_name);
+	if (len < 0 || len >= out_size)
+		ereport(ERROR,
+				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				errmsg("vault URL for key \"%s\" is too long", key_name),
+				errdetail("Maximum length is %zu bytes.", out_size - 1));
 }
 
 static void
