@@ -20,8 +20,6 @@
 #include "pg_tde_fe.h"
 #endif
 
-#define VAULT_URL_MAX_LEN 512
-
 /*
  * JSON parser state
  */
@@ -81,7 +79,7 @@ static JsonParseErrorType json_mountinfo_scalar(void *state, char *token, JsonTo
 static JsonParseErrorType json_mountinfo_object_field_start(void *state, char *fname, bool isnull);
 static JsonParseErrorType parse_vault_mount_info(JsonVaultMountInfoState *state, JsonLexContext *lex);
 
-static char *get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size);
+static char *get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name);
 static bool curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long *httpCode, const char *postData);
 
 static void set_key_by_name(GenericKeyring *keyring, KeyInfo *key);
@@ -105,7 +103,7 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 {
 	CURLcode	ret;
 	struct curl_slist *curlList = NULL;
-	char		tokenHeader[256];
+	char	   *header;
 
 #if KEYRING_DEBUG
 	elog(DEBUG1, "Performing Vault HTTP [%s] request to '%s'", postData != NULL ? "POST" : "GET", url);
@@ -126,14 +124,14 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 			return 0;
 	}
 
-	pg_snprintf(tokenHeader, sizeof(tokenHeader),
-				"X-Vault-Token: %s", keyring->vault_token);
-	curlList = curl_slist_append(curlList, tokenHeader);
+	header = psprintf("X-Vault-Token: %s", keyring->vault_token);
+	curlList = curl_slist_append(curlList, header);
+	pfree(header);
 	if (keyring->vault_namespace != NULL)
 	{
-		pg_snprintf(tokenHeader, sizeof(tokenHeader),
-					"X-Vault-Namespace: %s", keyring->vault_namespace);
-		curlList = curl_slist_append(curlList, tokenHeader);
+		header = psprintf("X-Vault-Namespace: %s", keyring->vault_namespace);
+		curlList = curl_slist_append(curlList, header);
+		pfree(header);
 	}
 	if (curlList == NULL)
 		return 0;
@@ -172,26 +170,24 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 	return 1;
 }
 
-/*
- * Function builds the vault url in out parameter.
- * so enough memory should be allocated to out pointer
- */
 static char *
-get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size)
+get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name)
 {
+	char	   *url;
+
 	Assert(keyring != NULL);
 	Assert(key_name != NULL);
-	Assert(out != NULL);
 
-	snprintf(out, out_size, "%s/v1/%s/data/%s", keyring->vault_url, keyring->vault_mount_path, key_name);
-	return out;
+	url = psprintf("%s/v1/%s/data/%s", keyring->vault_url, keyring->vault_mount_path, key_name);
+
+	return url;
 }
 
 static void
 set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 {
 	VaultV2Keyring *vault_keyring = (VaultV2Keyring *) keyring;
-	char		url[VAULT_URL_MAX_LEN];
+	char	   *url;
 	CurlString	str;
 	long		httpCode = 0;
 	char		jsonText[512];
@@ -218,7 +214,7 @@ set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 	elog(DEBUG1, "Sending base64 key: %s", keyData);
 #endif
 
-	get_keyring_vault_url(vault_keyring, key->name, url, sizeof(url));
+	url = get_keyring_vault_url(vault_keyring, key->name);
 
 	if (!curl_perform(vault_keyring, url, &str, &httpCode, jsonText))
 	{
@@ -226,6 +222,8 @@ set_key_by_name(GenericKeyring *keyring, KeyInfo *key)
 				errmsg("HTTP(S) request to keyring provider \"%s\" failed",
 					   vault_keyring->keyring.provider_name));
 	}
+
+	pfree(url);
 
 	if (str.ptr != NULL)
 		pfree(str.ptr);
@@ -241,7 +239,7 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 {
 	VaultV2Keyring *vault_keyring = (VaultV2Keyring *) keyring;
 	KeyInfo    *key = NULL;
-	char		url[VAULT_URL_MAX_LEN];
+	char	   *url = NULL;
 	CurlString	str;
 	long		httpCode = 0;
 	JsonParseErrorType json_error;
@@ -252,7 +250,7 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 
 	*return_code = KEYRING_CODE_SUCCESS;
 
-	get_keyring_vault_url(vault_keyring, key_name, url, sizeof(url));
+	url = get_keyring_vault_url(vault_keyring, key_name);
 
 	if (!curl_perform(vault_keyring, url, &str, &httpCode, NULL))
 	{
@@ -329,6 +327,8 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 	}
 
 cleanup:
+	if (url != NULL)
+		pfree(url);
 	if (str.ptr != NULL)
 		pfree(str.ptr);
 
@@ -344,8 +344,7 @@ static void
 validate(GenericKeyring *keyring)
 {
 	VaultV2Keyring *vault_keyring = (VaultV2Keyring *) keyring;
-	char		url[VAULT_URL_MAX_LEN];
-	int			len = 0;
+	char	   *url;
 	CurlString	str;
 	long		httpCode = 0;
 	JsonParseErrorType json_error;
@@ -355,16 +354,14 @@ validate(GenericKeyring *keyring)
 	/*
 	 * Validate that the mount has the correct engine type and version.
 	 */
-	len = snprintf(url, VAULT_URL_MAX_LEN, "%s/v1/sys/mounts/%s", vault_keyring->vault_url, vault_keyring->vault_mount_path);
-	if (len >= VAULT_URL_MAX_LEN)
-		ereport(ERROR,
-				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("vault mounts URL is too long"));
+	url = psprintf("%s/v1/sys/mounts/%s", vault_keyring->vault_url, vault_keyring->vault_mount_path);
 
 	if (!curl_perform(vault_keyring, url, &str, &httpCode, NULL))
 		ereport(ERROR,
 				errmsg("HTTP(S) request to keyring provider \"%s\" failed",
 					   vault_keyring->keyring.provider_name));
+
+	pfree(url);
 
 	if (httpCode != 200)
 	{
@@ -423,17 +420,15 @@ validate(GenericKeyring *keyring)
 	/*
 	 * Validate that we can read the secrets at the mount point.
 	 */
-	len = snprintf(url, VAULT_URL_MAX_LEN, "%s/v1/%s/metadata/?list=true",
+	url = psprintf("%s/v1/%s/metadata/?list=true",
 				   vault_keyring->vault_url, vault_keyring->vault_mount_path);
-	if (len >= VAULT_URL_MAX_LEN)
-		ereport(ERROR,
-				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("vault metadata URL is too long"));
 
 	if (!curl_perform(vault_keyring, url, &str, &httpCode, NULL))
 		ereport(ERROR,
 				errmsg("HTTP(S) request to keyring provider \"%s\" failed",
 					   vault_keyring->keyring.provider_name));
+
+	pfree(url);
 
 	/* If the mount point doesn't have any secrets yet, we'll get a 404. */
 	if (httpCode != 200 && httpCode != 404)
