@@ -131,7 +131,7 @@ tde_smgr_delete_key(const RelFileLocatorBackend *smgr_rlocator)
 	if (RelFileLocatorBackendIsTemp(*smgr_rlocator))
 		tde_smgr_delete_temp_key(&smgr_rlocator->locator);
 	else
-		pg_tde_free_key_map_entry(smgr_rlocator->locator);
+		pg_tde_delete_rel_key(smgr_rlocator->locator);
 }
 
 static void
@@ -139,7 +139,7 @@ tde_smgr_delete_leftover_key(const RelFileLocatorBackend *smgr_rlocator)
 {
 	if (!RelFileLocatorBackendIsTemp(*smgr_rlocator))
 	{
-		pg_tde_free_key_map_entry(smgr_rlocator->locator);
+		pg_tde_delete_rel_key(smgr_rlocator->locator);
 		tde_smgr_log_delete_leftover_key(&smgr_rlocator->locator);
 	}
 }
@@ -147,7 +147,7 @@ tde_smgr_delete_leftover_key(const RelFileLocatorBackend *smgr_rlocator)
 void
 tde_smgr_delete_leftover_key_redo(const RelFileLocator *rlocator)
 {
-	pg_tde_free_key_map_entry(*rlocator);
+	pg_tde_delete_rel_key(*rlocator);
 }
 
 static bool
