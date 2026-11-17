@@ -50,6 +50,59 @@ like(
 	qr/ERROR:  failed to retrieve principal key "key2" from key provider "test-file-provider"\nDETAIL:  Invalid key/,
 	'gets error');
 
+# Access problems are not reported as missing keys or corruption
+chmod 0000, "$keydir/db.keys";
+
+(undef, undef, $stderr) = $node->psql('postgres',
+	"SELECT pg_tde_set_key_using_database_key_provider('key1', 'test-file-provider');"
+);
+
+like(
+	$stderr,
+	qr/WARNING:  could not open keyring file "[^"]+": Permission denied/,
+	'gets open warning on unreadable file');
+like(
+	$stderr,
+	qr/ERROR:  failed to retrieve principal key "key1" from key provider "test-file-provider"\nDETAIL:  Resource not available/,
+	'gets error on unreadable file');
+
+chmod 0600, "$keydir/db.keys";
+rename("$keydir/db.keys", "$keydir/db.keys.bak") or die $!;
+mkdir("$keydir/db.keys") or die $!;
+
+(undef, undef, $stderr) = $node->psql('postgres',
+	"SELECT pg_tde_set_key_using_database_key_provider('key1', 'test-file-provider');"
+);
+
+like(
+	$stderr,
+	qr/WARNING:  could not read keyring file "[^"]+": /,
+	'gets read warning on directory');
+unlike($stderr, qr/corrupted/, 'read error not reported as corruption');
+like(
+	$stderr,
+	qr/ERROR:  failed to retrieve principal key "key1" from key provider "test-file-provider"\nDETAIL:  Resource not available/,
+	'gets error on directory');
+
+rmdir("$keydir/db.keys") or die $!;
+rename("$keydir/db.keys.bak", "$keydir/db.keys") or die $!;
+
+# Partial record at the end of the file
+append_to_file("$keydir/db.keys", 'x');
+
+(undef, undef, $stderr) = $node->psql('postgres',
+	"SELECT pg_tde_set_key_using_database_key_provider('key3', 'test-file-provider');"
+);
+
+like(
+	$stderr,
+	qr/WARNING:  keyring file "[^"]+" is corrupted\nDETAIL:  invalid key size 1 expected/,
+	'gets corruption warning on partial record');
+like(
+	$stderr,
+	qr/ERROR:  failed to retrieve principal key "key3" from key provider "test-file-provider"\nDETAIL:  Data corrupted/,
+	'gets error on partial record');
+
 $node->stop;
 
 done_testing();
