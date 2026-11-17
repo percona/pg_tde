@@ -6,6 +6,10 @@
 
 - The file key provider no longer treats principal key names as if they were case insensitive
 
+### Fixed
+
+- File key provider now reports file access errors instead of a missing key or a corrupted file
+
 ## 2.3.0
 
 ### Added
