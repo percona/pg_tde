@@ -84,10 +84,20 @@ like(
 	qr/ERROR:  failed to retrieve principal key "key1" from key provider "test-file-provider"\nDETAIL:  Resource not available/,
 	'gets error on directory');
 
+(undef, undef, $stderr) = $node->psql('postgres',
+	"SELECT pg_tde_create_key_using_database_key_provider('key3', 'test-file-provider');"
+);
+
+like(
+	$stderr,
+	qr/ERROR:  could not check keyring file "[^"]+" for key "key3"\nDETAIL:  Resource not available/,
+	'refuses to add key after read error');
+
 rmdir("$keydir/db.keys") or die $!;
 rename("$keydir/db.keys.bak", "$keydir/db.keys") or die $!;
 
 # Partial record at the end of the file
+my $keyfile_size = -s "$keydir/db.keys";
 append_to_file("$keydir/db.keys", 'x');
 
 (undef, undef, $stderr) = $node->psql('postgres',
@@ -102,6 +112,17 @@ like(
 	$stderr,
 	qr/ERROR:  failed to retrieve principal key "key3" from key provider "test-file-provider"\nDETAIL:  Data corrupted/,
 	'gets error on partial record');
+
+# Adding a key after a partial record would make it unreachable
+(undef, undef, $stderr) = $node->psql('postgres',
+	"SELECT pg_tde_create_key_using_database_key_provider('key3', 'test-file-provider');"
+);
+
+like(
+	$stderr,
+	qr/ERROR:  could not check keyring file "[^"]+" for key "key3"\nDETAIL:  Data corrupted/,
+	'refuses to add key after partial record');
+is(-s "$keydir/db.keys", $keyfile_size + 1, 'keyring file not extended');
 
 $node->stop;
 
