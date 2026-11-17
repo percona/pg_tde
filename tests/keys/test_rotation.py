@@ -1,8 +1,10 @@
+import contextlib
 import functools
 import time
 
 import pytest
 from stormweaver.testing import InjectionPoints
+from stormweaver.testing.background import Background
 
 from pgtde.tde import KeyInfo, Provider
 
@@ -369,14 +371,14 @@ def test_rotation_not_undone_by_older_record(walwriter, node, make_standby, key_
     assert node.tde.key_info() == KeyInfo(2, "db-2", key_name("rotated-key"))
 
 
-def waits_for_sync_rep(node, background, timeout=30.0):
-    """True once the background statement waits for the synchronous standby, False if it returned."""
+def waits_on(conn, wait_event, done, where="true", timeout=30.0):
+    """True once a backend matching where waits on wait_event, False once done() holds."""
     deadline = time.monotonic() + timeout
-    while not background.done():
-        if node.scalar("SELECT count(*) FROM pg_stat_activity WHERE wait_event = 'SyncRep'") > 0:
+    while not done():
+        if conn.scalar(f"SELECT count(*) > 0 FROM pg_stat_activity WHERE wait_event = $1 AND {where}", (wait_event,)):
             return True
         if time.monotonic() > deadline:
-            raise TimeoutError("statement neither returned nor waits for the synchronous standby")
+            raise TimeoutError(f"neither done nor waiting on {wait_event}")
         time.sleep(0.1)
     return False
 
@@ -400,7 +402,7 @@ def test_rotation_waits_for_sync_standby(node, make_standby, key_name):
 
     rotation = node.background(f"SELECT pg_tde_set_key_using_database_key_provider('{rotated.key_name}', 'db-2')")
     try:
-        assert waits_for_sync_rep(node, rotation), "rotation returned before the standby applied it"
+        assert waits_on(node, "SyncRep", rotation.done), "rotation returned before the standby applied it"
     finally:
         standby.execute("SELECT pg_wal_replay_resume()")
     rotation.wait()
@@ -599,3 +601,79 @@ def test_rotation_crash_after_record_reached_standby(node, make_standby, injecti
     node.wait_for_catchup(standby)
     assert_usable(standby, interrupted_key(key_name))
     assert standby.scalar("SELECT x FROM created_after_crash") == 1
+
+
+# A keyring is a network service. Waiting for it with the pg_tde key lock held stops
+# everything else that needs the lock, in every database. The point stands for a slow
+# keyring.
+KEYRING_GET_KEY = "pg-tde-keyring-get-key"
+KEY_LOCK = "pg_tde_tranche"
+
+
+@contextlib.contextmanager
+def slow_keyring_rotation(node, injection_points, key_name):
+    """Rotation to a new key on db-2, waiting in the keyring call. Yields a template1 connection."""
+    node.tde.create_key(key_name("slow-key"), "db-2")
+    with node.connect("template1") as conn:
+        conn.execute("CREATE EXTENSION IF NOT EXISTS injection_points")
+        injection_points.attach(KEYRING_GET_KEY, "wait")
+        rotation = node.background(
+            f"SELECT pg_tde_set_key_using_database_key_provider('{key_name('slow-key')}', 'db-2')"
+        )
+        try:
+            injection_points.wait_until_reached(KEYRING_GET_KEY)
+            yield conn
+        finally:
+            conn.execute("SELECT injection_points_detach($1)", (KEYRING_GET_KEY,))
+            conn.execute("SELECT injection_points_wakeup($1)", (KEYRING_GET_KEY,))
+        rotation.wait()
+    assert node.tde.key_info() == KeyInfo(2, "db-2", key_name("slow-key"))
+
+
+# a walsender streaming recent WAL reads it from WAL buffers, one that (re)starts reads the
+# WAL files, through pg_tde
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="keyring call with the pg_tde key lock held, a (re)connecting standby waits for the lock",
+)
+def test_slow_keyring_does_not_stop_replication(node, make_standby, injection_points, key_name):
+    standby = make_standby(node)
+    node.wait_for_catchup(standby)
+    standby.stop()
+
+    with slow_keyring_rotation(node, injection_points, key_name) as conn:
+        target = conn.scalar("SELECT pg_logical_emit_message(false, 'pg_tde_test', '', true)")
+        standby.start()
+
+        def received():
+            return standby.scalar("SELECT coalesce(pg_last_wal_receive_lsn() >= $1::pg_lsn, false)", (target,))
+
+        assert not waits_on(conn, KEY_LOCK, received, "backend_type = 'walsender'"), (
+            "walsender waits for the pg_tde key lock"
+        )
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="keyring call with the pg_tde key lock held, creating an encrypted table waits for the lock",
+)
+@pytest.mark.parametrize("database", ["postgres", "other"])
+def test_slow_keyring_does_not_stop_table_creation(node, keyring, injection_points, key_name, database):
+    if database == "other":
+        node.createdb("other")
+        with node.connect("other") as other:
+            other.tde.create_extension()
+            other.tde.add_provider("other-db", keyring)
+            other.tde.create_key(key_name("other-key"), "other-db")
+            other.tde.set_key(key_name("other-key"), "other-db")
+
+    with slow_keyring_rotation(node, injection_points, key_name) as conn:
+        create = Background(
+            node.connect(database), "CREATE TABLE /* slow keyring */ created_meanwhile (x int) USING tde_heap"
+        )
+        assert not waits_on(conn, KEY_LOCK, create.done, "query LIKE '%slow keyring%'"), (
+            "creating an encrypted table waits for the pg_tde key lock"
+        )
+    create.wait()
