@@ -1,6 +1,7 @@
 # MkDocs general configuration
 
 site_name: Percona Transparent Data Encryption for PostgreSQL
+site_url: https://docs.percona.com/pg-tde/
 site_description: Documentation
 site_author: Percona LLC
 copyright: >
@@ -136,6 +137,15 @@ plugins:
       path_to_pdf: ""
       include_css: true
       enabled: true
+  # llms.txt, llms-full.txt and a .md copy of every page, for AI agents.
+  # percona-llmstxt fills in the sections (from nav), base_url and the rest.
+  - llmstxt:
+      full_output: llms-full.txt
+      markdown_description: >-
+        Each page below is also available as markdown. For the documentation of
+        all Percona products, see https://docs.percona.com/llms.txt.
+      sections: {}
+  - percona-llmstxt
 
 extra:
   version:
