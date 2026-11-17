@@ -54,11 +54,33 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 
 	fd = OpenTransientFile(file_keyring->file_name, PG_BINARY);
 	if (fd < 0)
+	{
+		/* Missing keyring file is the same as one without keys */
+		if (errno == ENOENT)
+			return NULL;
+
+		*return_code = KEYRING_CODE_RESOURCE_NOT_AVAILABLE;
+		ereport(WARNING,
+				errcode_for_file_access(),
+				errmsg("could not open keyring file \"%s\": %m",
+					   file_keyring->file_name));
 		return NULL;
+	}
 
 	while (true)
 	{
 		bytes_read = pg_pread(fd, &record, sizeof(record), curr_pos);
+
+		if (bytes_read < 0)
+		{
+			*return_code = KEYRING_CODE_RESOURCE_NOT_AVAILABLE;
+			ereport(WARNING,
+					errcode_for_file_access(),
+					errmsg("could not read keyring file \"%s\": %m",
+						   file_keyring->file_name));
+			CloseTransientFile(fd);
+			return NULL;
+		}
 		curr_pos += bytes_read;
 
 		if (bytes_read == 0)
@@ -76,8 +98,8 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 			/* Corrupt file */
 			*return_code = KEYRING_CODE_DATA_CORRUPTED;
 			ereport(WARNING,
-					errcode_for_file_access(),
-					errmsg("keyring file \"%s\" is corrupted: %m",
+					errcode(ERRCODE_DATA_CORRUPTED),
+					errmsg("keyring file \"%s\" is corrupted",
 						   file_keyring->file_name),
 					errdetail("invalid key size %lld expected %lu",
 							  (long long int) bytes_read, sizeof(record)));
