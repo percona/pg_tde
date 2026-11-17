@@ -9,6 +9,7 @@
 ### Fixed
 
 - File key provider now reports file access errors instead of a missing key or a corrupted file
+- Key creation now errors out on corrupted data files instead of silently creating an unusable key
 
 ## 2.3.0
 
