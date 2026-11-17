@@ -50,6 +50,22 @@ like(
 	qr/ERROR:  failed to retrieve principal key "key2" from key provider "test-file-provider"\nDETAIL:  Invalid key/,
 	'gets error');
 
+# Failed lookup is not the same as a missing key
+append_to_file("$keydir/partial.keys", 'x');
+$node->safe_psql('postgres',
+	"SELECT pg_tde_add_database_key_provider_file('partial-provider', '$keydir/partial.keys');"
+);
+
+(undef, undef, $stderr) = $node->psql('postgres',
+	"SELECT pg_tde_create_key_using_database_key_provider('key1', 'partial-provider');"
+);
+
+like(
+	$stderr,
+	qr/ERROR:  failed to check for existing key "key1" in key provider "partial-provider"\nDETAIL:  Data corrupted/,
+	'refuses to create key after failed lookup');
+is(-s "$keydir/partial.keys", 1, 'keyring file not extended');
+
 $node->stop;
 
 done_testing();
