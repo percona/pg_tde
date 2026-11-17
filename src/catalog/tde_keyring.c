@@ -51,7 +51,7 @@ typedef enum ProviderScanType
 #define PG_TDE_KEYRING_FILENAME "%d_providers"
 
 #define FILE_KEYRING_TYPE "file"
-#define VAULTV2_KEYRING_TYPE "vault-v2"
+#define VAULT_V2_KEYRING_TYPE "vault-v2"
 #define KMIP_KEYRING_TYPE "kmip"
 
 static void debug_print_kerying(GenericKeyring *keyring);
@@ -60,7 +60,7 @@ static inline void get_keyring_infofile_path(char *resPath, Oid dbOid);
 static FileKeyring *load_file_keyring_provider_options(char *keyring_options);
 static GenericKeyring *load_keyring_provider_from_record(KeyringProviderRecord *provider);
 static KmipKeyring *load_kmip_keyring_provider_options(char *keyring_options);
-static VaultV2Keyring *load_vaultV2_keyring_provider_options(char *keyring_options);
+static VaultV2Keyring *load_vault_v2_keyring_provider_options(char *keyring_options);
 static int	open_keyring_infofile(Oid dbOid, int flags);
 static char *get_file_value(const char *path, const char *field_name);
 
@@ -148,7 +148,7 @@ get_keyring_provider_typename(ProviderType p_type)
 		case FILE_KEY_PROVIDER:
 			return FILE_KEYRING_TYPE;
 		case VAULT_V2_KEY_PROVIDER:
-			return VAULTV2_KEYRING_TYPE;
+			return VAULT_V2_KEYRING_TYPE;
 		case KMIP_KEY_PROVIDER:
 			return KMIP_KEYRING_TYPE;
 		default:
@@ -842,7 +842,7 @@ load_keyring_provider_from_record(KeyringProviderRecord *provider)
 			keyring = (GenericKeyring *) load_file_keyring_provider_options(provider->options);
 			break;
 		case VAULT_V2_KEY_PROVIDER:
-			keyring = (GenericKeyring *) load_vaultV2_keyring_provider_options(provider->options);
+			keyring = (GenericKeyring *) load_vault_v2_keyring_provider_options(provider->options);
 			break;
 		case KMIP_KEY_PROVIDER:
 			keyring = (GenericKeyring *) load_kmip_keyring_provider_options(provider->options);
@@ -883,7 +883,7 @@ load_file_keyring_provider_options(char *keyring_options)
 }
 
 static VaultV2Keyring *
-load_vaultV2_keyring_provider_options(char *keyring_options)
+load_vault_v2_keyring_provider_options(char *keyring_options)
 {
 	VaultV2Keyring *vaultV2_keyring = palloc0_object(VaultV2Keyring);
 
@@ -1064,7 +1064,7 @@ get_keyring_provider_from_typename(char *provider_type)
 {
 	if (strcmp(FILE_KEYRING_TYPE, provider_type) == 0)
 		return FILE_KEY_PROVIDER;
-	else if (strcmp(VAULTV2_KEYRING_TYPE, provider_type) == 0)
+	else if (strcmp(VAULT_V2_KEYRING_TYPE, provider_type) == 0)
 		return VAULT_V2_KEY_PROVIDER;
 	else if (strcmp(KMIP_KEYRING_TYPE, provider_type) == 0)
 		return KMIP_KEY_PROVIDER;
