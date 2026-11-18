@@ -18,9 +18,11 @@
 #include "commands/defrem.h"
 #include "commands/event_trigger.h"
 #include "commands/sequence.h"
+#include "commands/tablecmds.h"
 #include "fmgr.h"
 #include "funcapi.h"
 #include "miscadmin.h"
+#include "partitioning/partdesc.h"
 #include "storage/lmgr.h"
 #include "tcop/utility.h"
 #include "utils/builtins.h"
@@ -291,6 +293,28 @@ alter_table_encryption_mix(Oid relid)
 }
 
 /*
+ * Locks the tables ATTACH PARTITION locks after the parent, in the same order
+ * as core, and returns the attached table.
+ *
+ * A missing attached table is an error, core would fail on it too.
+ */
+static Oid
+lock_attached_partition(Oid parentid, PartitionCmd *cmd)
+{
+	Relation	parent = relation_open(parentid, NoLock);
+	Oid			defaultid;
+
+	defaultid = get_default_oid_from_partdesc(RelationGetPartitionDesc(parent, true));
+
+	relation_close(parent, NoLock);
+
+	if (OidIsValid(defaultid))
+		LockRelationOid(defaultid, AccessExclusiveLock);
+
+	return RangeVarGetRelid(cmd->name, AccessExclusiveLock, false);
+}
+
+/*
  * pg_tde_ddl_command_start_capture is an event trigger function triggered
  * at the start of any DDL command execution.
  *
@@ -410,25 +434,50 @@ pg_tde_ddl_command_start_capture(PG_FUNCTION_ARGS)
 	else if (IsA(parsetree, AlterTableStmt))
 	{
 		AlterTableStmt *stmt = castNode(AlterTableStmt, parsetree);
-		Oid			relid = RangeVarGetRelid(stmt->relation, AccessShareLock, true);
+		AlterTableCmd *setAccessMethod = NULL;
+		PartitionCmd *attachPartition = NULL;
+		ListCell   *lcmd;
+		Oid			relid;
+
+		foreach(lcmd, stmt->cmds)
+		{
+			AlterTableCmd *cmd = lfirst_node(AlterTableCmd, lcmd);
+
+			if (cmd->subtype == AT_SetAccessMethod)
+				setAccessMethod = cmd;
+			else if (cmd->subtype == AT_AttachPartition)
+				attachPartition = castNode(PartitionCmd, cmd->def);
+		}
+
+		/*
+		 * For ATTACH PARTITION we lock more tables below, so the parent has
+		 * to be locked first with the same lock and permission checks as core
+		 * does.
+		 */
+		if (attachPartition)
+			relid = AlterTableLookupRelation(stmt, AlterTableGetLockLevel(stmt->cmds));
+		else
+			relid = RangeVarGetRelid(stmt->relation, AccessShareLock, true);
 
 		if (relid != InvalidOid)
 		{
-			AlterTableCmd *setAccessMethod = NULL;
-			ListCell   *lcmd;
 			TdeDdlEvent event = {.parsetree = parsetree};
 			EncryptionMix encmix;
 			Relation	rel;
 
-			foreach(lcmd, stmt->cmds)
-			{
-				AlterTableCmd *cmd = lfirst_node(AlterTableCmd, lcmd);
-
-				if (cmd->subtype == AT_SetAccessMethod)
-					setAccessMethod = cmd;
-			}
-
-			encmix = alter_table_encryption_mix(relid);
+			/*
+			 * ATTACH PARTITION can create indexes on the attached table, so
+			 * the encryption mode has to come from that table and not from
+			 * the parent.
+			 *
+			 * ALTER INDEX ... ATTACH PARTITION creates nothing, skip it. We
+			 * also must not lock the attached index here, as core locks its
+			 * table first.
+			 */
+			if (attachPartition && get_rel_relkind(relid) == RELKIND_PARTITIONED_TABLE)
+				encmix = alter_table_encryption_mix(lock_attached_partition(relid, attachPartition));
+			else
+				encmix = alter_table_encryption_mix(relid);
 
 			/*
 			 * This check is very braod and could be limited only to commands
