@@ -1,7 +1,8 @@
 # MkDocs general configuration
 
 site_name: Percona Transparent Data Encryption for PostgreSQL
-site_description: Documentation
+site_url: https://docs.percona.com/pg-tde/
+site_description: Percona Transparent Data Encryption for PostgreSQL (pg_tde) is an open source PostgreSQL extension that encrypts data at rest.
 site_author: Percona LLC
 copyright: >
   <a href="https://www.percona.com/about">Percona LLC</a> and/or its affiliates © 2026 — <a href="#__consent">Cookie Consent</a>
@@ -118,6 +119,17 @@ plugins:
   - macros:
       include_yaml:
         - 'variables.yml' # Use in markdown as '{{ VAR }}'
+  # llms.txt, llms-full.txt and a .md copy of every page, for AI agents.
+  # percona-llmstxt fills in the sections (from nav), base_url and the rest.
+  - llmstxt:
+      full_output: llms-full.txt
+      markdown_description: >-
+        Each page below is also available as markdown. For the documentation of
+        all Percona products, see https://docs.percona.com/llms.txt.
+      sections: {}
+  - percona-llmstxt:
+      first_section: General  # nav already has an "Overview" group
+  # print-site must be the last plugin.
   - print-site:
       add_to_navigation: false
       print_page_title: 'Percona Transparent Data Encryption documentation'
