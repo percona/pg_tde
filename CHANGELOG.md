@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Fix bugs where subtransactions and nested statements could result in plaintext tables marked tde_heap ([PG-2946](https://perconadev.atlassian.net/browse/PG-2946)
+
+## [Unreleased]
+
 ### Added
 
 - Support for PostgreSQL 19 RC 2 ([PG-2536](https://perconadev.atlassian.net/browse/PG-2536), [PG-2813](https://perconadev.atlassian.net/browse/PG-2813))
