@@ -9,6 +9,7 @@
 - File key provider now reports file access errors instead of a missing key or a corrupted file
 - Key creation now errors out on corrupted data files instead of silently creating an unusable key
 - Hardened pg_tde_change_key_provider against long JSON input
+- Fix bugs where subtransactions and nested statements could result in plaintext tables marked tde_heap ([PG-2946](https://perconadev.atlassian.net/browse/PG-2946))
 
 ## 2.3.0
 

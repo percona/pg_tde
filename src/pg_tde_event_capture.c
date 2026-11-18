@@ -43,10 +43,16 @@ typedef struct
 	Oid			rebuildSequencesFor;
 	Oid			rebuildSequence;
 	SubTransactionId subxid;
+	int			nestLevel;
 } TdeDdlEvent;
 
-static FullTransactionId ddlEventStackTid = {0};
 static List *ddlEventStack = NIL;
+
+/*
+ * Nesting depth of utility statements. Subcommands are not counted, they are
+ * part of their parent statement.
+ */
+static int	utilityNestLevel = 0;
 
 static bool get_db_info(const char *name, Oid *dbIdP, Oid *dbTablespace);
 static Oid	get_tde_table_am_oid(void);
@@ -76,27 +82,24 @@ get_rel_relam(Oid relid)
 
 #endif
 
-static TDEEncryptMode
-currentTdeEncryptMode(void)
-{
-	if (ddlEventStack == NIL)
-		return TDE_ENCRYPT_MODE_RETAIN;
-	else
-		return ((TdeDdlEvent *) llast(ddlEventStack))->encryptMode;
-}
-
 /*
- * Make sure that even if a statement failed, and an event trigger end
- * trigger didn't fire, we don't accidentaly create encrypted files when
- * we don't have to.
+ * Statements nested in the one of the current event, e.g. run by a function,
+ * do not belong to it, so keep their existing encryption status.
  */
 TDEEncryptMode
-currentTdeEncryptModeValidated(void)
+currentTdeEncryptMode(void)
 {
-	if (!FullTransactionIdEquals(ddlEventStackTid, GetCurrentFullTransactionIdIfAny()))
+	TdeDdlEvent *event;
+
+	if (ddlEventStack == NIL)
 		return TDE_ENCRYPT_MODE_RETAIN;
 
-	return currentTdeEncryptMode();
+	event = llast(ddlEventStack);
+
+	if (event->nestLevel != utilityNestLevel)
+		return TDE_ENCRYPT_MODE_RETAIN;
+
+	return event->encryptMode;
 }
 
 static bool
@@ -144,29 +147,16 @@ clear_event_stack(void)
 }
 
 static void
-verify_event_stack(void)
-{
-	FullTransactionId tid = GetCurrentFullTransactionId();
-
-	if (!FullTransactionIdEquals(ddlEventStackTid, tid))
-	{
-		clear_event_stack();
-		ddlEventStackTid = tid;
-	}
-}
-
-static void
 push_event_stack(const TdeDdlEvent *event)
 {
 	MemoryContext oldCtx;
 	TdeDdlEvent *e;
 
-	verify_event_stack();
-
 	oldCtx = MemoryContextSwitchTo(TopMemoryContext);
 	e = palloc_object(TdeDdlEvent);
 	*e = *event;
 	e->subxid = GetCurrentSubTransactionId();
+	e->nestLevel = utilityNestLevel;
 	ddlEventStack = lappend(ddlEventStack, e);
 	MemoryContextSwitchTo(oldCtx);
 }
@@ -774,14 +764,26 @@ pg_tde_proccess_utility(PlannedStmt *pstmt,
 			break;
 	}
 
-	if (next_ProcessUtility_hook)
-		(*next_ProcessUtility_hook) (pstmt, queryString, readOnlyTree,
-									 context, params, queryEnv,
-									 dest, qc);
-	else
-		standard_ProcessUtility(pstmt, queryString, readOnlyTree,
-								context, params, queryEnv,
-								dest, qc);
+	if (context != PROCESS_UTILITY_SUBCOMMAND)
+		utilityNestLevel++;
+
+	PG_TRY();
+	{
+		if (next_ProcessUtility_hook)
+			(*next_ProcessUtility_hook) (pstmt, queryString, readOnlyTree,
+										 context, params, queryEnv,
+										 dest, qc);
+		else
+			standard_ProcessUtility(pstmt, queryString, readOnlyTree,
+									context, params, queryEnv,
+									dest, qc);
+	}
+	PG_FINALLY();
+	{
+		if (context != PROCESS_UTILITY_SUBCOMMAND)
+			utilityNestLevel--;
+	}
+	PG_END_TRY();
 }
 
 void
