@@ -16,7 +16,6 @@ mike
 mkdocs-glightbox
 Pillow > 10.1.0 # Pillow is required for mkdocs-glightbox
 mkdocs-open-in-new-tab # added to fix the open in new tab issue with mkdocs-material
-mkdocs-open-in-new-tab
 mkdocs-print-site-plugin
-mkdocs-llmstxt>=0.5.1
-mkdocs-percona-llmstxt @ git+https://github.com/EvgeniyPatlan/mkdocs-percona-llmstxt@974e4cec0cda27cf30bd997e4499054b14dd0455  # v0.3.0
+mkdocs-llmstxt>=0.5.1,<0.6
+mkdocs-percona-llmstxt @ git+https://github.com/EvgeniyPatlan/mkdocs-percona-llmstxt@8dcddd265be6f56a7fbf6c7c6a8fb6135ca31f01  # v0.3.1
