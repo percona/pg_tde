@@ -120,6 +120,10 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 	if (!curlSetupSession(url, keyring->vault_ca_path, outStr))
 		return 0;
 
+	/* Do not let curl resolve "." and ".." segments */
+	if (curl_easy_setopt(keyringCurl, CURLOPT_PATH_AS_IS, 1L) != CURLE_OK)
+		return 0;
+
 	if (postData != NULL)
 	{
 		if (curl_easy_setopt(keyringCurl, CURLOPT_POSTFIELDS, postData) != CURLE_OK)
@@ -172,16 +176,48 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 	return 1;
 }
 
+/*
+ * Percent-encode everything except RFC 3986 unreserved characters, so the
+ * name stays a single path segment.
+ */
+static void
+escape_url_segment(const char *in, char *out)
+{
+	static const char hex[] = "0123456789ABCDEF";
+
+	for (; *in; in++)
+	{
+		unsigned char c = (unsigned char) *in;
+
+		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') ||
+			c == '-' || c == '_' || c == '.' || c == '~')
+			*out++ = c;
+		else
+		{
+			*out++ = '%';
+			*out++ = hex[c >> 4];
+			*out++ = hex[c & 0xF];
+		}
+	}
+	*out = '\0';
+}
+
 static void
 get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size)
 {
 	int			len;
+	char	   *escaped_name;
 
 	Assert(keyring != NULL);
 	Assert(key_name != NULL);
 	Assert(out != NULL);
 
-	len = snprintf(out, out_size, "%s/v1/%s/data/%s", keyring->vault_url, keyring->vault_mount_path, key_name);
+	escaped_name = palloc(strlen(key_name) * 3 + 1);
+	escape_url_segment(key_name, escaped_name);
+
+	len = snprintf(out, out_size, "%s/v1/%s/data/%s", keyring->vault_url, keyring->vault_mount_path, escaped_name);
+	pfree(escaped_name);
 	if (len < 0 || len >= out_size)
 		ereport(ERROR,
 				errcode(ERRCODE_INVALID_PARAMETER_VALUE),

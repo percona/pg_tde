@@ -387,6 +387,7 @@ tap_tests = [
   't/tde_heap_aes_256.pl',
   't/tde_heap.pl',
   't/unlogged_tables.pl',
+  't/vault_key_name.pl',
   't/vault_v2.pl',
   't/wal_archiving_symlink.pl',
   't/wal_archiving.pl',
