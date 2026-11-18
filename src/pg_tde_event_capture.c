@@ -45,7 +45,6 @@ typedef struct
 	SubTransactionId subxid;
 } TdeDdlEvent;
 
-static FullTransactionId ddlEventStackTid = {0};
 static List *ddlEventStack = NIL;
 
 static bool get_db_info(const char *name, Oid *dbIdP, Oid *dbTablespace);
@@ -76,27 +75,13 @@ get_rel_relam(Oid relid)
 
 #endif
 
-static TDEEncryptMode
+TDEEncryptMode
 currentTdeEncryptMode(void)
 {
 	if (ddlEventStack == NIL)
 		return TDE_ENCRYPT_MODE_RETAIN;
 	else
 		return ((TdeDdlEvent *) llast(ddlEventStack))->encryptMode;
-}
-
-/*
- * Make sure that even if a statement failed, and an event trigger end
- * trigger didn't fire, we don't accidentaly create encrypted files when
- * we don't have to.
- */
-TDEEncryptMode
-currentTdeEncryptModeValidated(void)
-{
-	if (!FullTransactionIdEquals(ddlEventStackTid, GetCurrentFullTransactionIdIfAny()))
-		return TDE_ENCRYPT_MODE_RETAIN;
-
-	return currentTdeEncryptMode();
 }
 
 static bool
@@ -144,24 +129,10 @@ clear_event_stack(void)
 }
 
 static void
-verify_event_stack(void)
-{
-	FullTransactionId tid = GetCurrentFullTransactionId();
-
-	if (!FullTransactionIdEquals(ddlEventStackTid, tid))
-	{
-		clear_event_stack();
-		ddlEventStackTid = tid;
-	}
-}
-
-static void
 push_event_stack(const TdeDdlEvent *event)
 {
 	MemoryContext oldCtx;
 	TdeDdlEvent *e;
-
-	verify_event_stack();
 
 	oldCtx = MemoryContextSwitchTo(TopMemoryContext);
 	e = palloc_object(TdeDdlEvent);

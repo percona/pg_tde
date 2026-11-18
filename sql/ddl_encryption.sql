@@ -24,4 +24,33 @@ DROP TABLE victim;
 REVOKE CREATE ON SCHEMA public FROM regress_pg_tde_ddl;
 DROP ROLE regress_pg_tde_ddl;
 
+-- DDL in subtransactions inside another DDL statement
+CREATE TABLE plain_dup (a int) USING heap;
+CREATE SEQUENCE seq_dup;
+CREATE FUNCTION nested_ddl() RETURNS event_trigger LANGUAGE plpgsql AS $$
+BEGIN
+	BEGIN
+		CREATE SEQUENCE IF NOT EXISTS nested_seq;
+	EXCEPTION WHEN OTHERS THEN NULL;
+	END;
+	BEGIN
+		CREATE SEQUENCE seq_dup;
+	EXCEPTION WHEN duplicate_table THEN NULL;
+	END;
+END
+$$;
+CREATE EVENT TRIGGER zz_nested_ddl ON ddl_command_start
+	WHEN TAG IN ('CREATE TABLE') EXECUTE FUNCTION nested_ddl();
+CREATE TABLE enc_nested (a text) USING tde_heap;
+CREATE TABLE plain_nested (a text) USING heap;
+DROP EVENT TRIGGER zz_nested_ddl;
+SELECT pg_tde_is_encrypted('enc_nested'), pg_tde_is_encrypted('plain_nested');
+BEGIN;
+TRUNCATE enc_nested, plain_nested;
+SELECT pg_tde_is_encrypted('enc_nested'), pg_tde_is_encrypted('plain_nested');
+COMMIT;
+DROP TABLE plain_dup, enc_nested, plain_nested;
+DROP SEQUENCE seq_dup, nested_seq;
+DROP FUNCTION nested_ddl();
+
 DROP EXTENSION pg_tde;
