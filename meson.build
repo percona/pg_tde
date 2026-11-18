@@ -361,6 +361,7 @@ tap_tests = [
   't/key_validation.pl',
   't/kmip.pl',
   't/pg_basebackup.pl',
+  't/pg_basebackup_wal_segments.pl',
   't/pg_rewind_basic.pl',
   't/pg_rewind_databases.pl',
   't/pg_rewind_enc_copy_blocks.pl',
