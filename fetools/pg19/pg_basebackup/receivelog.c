@@ -1063,7 +1063,6 @@ ProcessWALDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 	int			bytes_left;
 	int			bytes_written;
 	int			hdr_len;
-	XLogSegNo	segno;
 
 	/*
 	 * Once we've decided we don't want to receive any more, just ignore any
@@ -1090,8 +1089,6 @@ ProcessWALDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 
 	/* Extract WAL location for this block */
 	xlogoff = XLogSegmentOffset(*blockpos, WalSegSz);
-
-	XLByteToSeg(*blockpos, segno, WalSegSz);
 
 	/*
 	 * Verify that the initial location in the stream matches where we think
@@ -1147,7 +1144,9 @@ ProcessWALDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 		{
 			void	   *enc_buf = copybuf + hdr_len + bytes_written;
 			WalLocation loc = {.tli = stream->timeline};
+			XLogSegNo	segno;
 
+			XLByteToSeg(*blockpos, segno, WalSegSz);
 			XLogSegNoOffsetToRecPtr(segno, xlogoff, WalSegSz, loc.lsn);
 			tde_ensure_xlog_key_location(loc);
 			TDEXLogCryptBuffer(enc_buf, enc_buf, bytes_to_write,

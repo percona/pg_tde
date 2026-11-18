@@ -10,6 +10,7 @@
 - Key creation now errors out on corrupted data files instead of silently creating an unusable key
 - Hardened pg_tde_change_key_provider against long JSON input
 - Fix bugs where subtransactions and nested statements could result in plaintext tables marked tde_heap ([PG-2946](https://perconadev.atlassian.net/browse/PG-2946))
+- Fix pg_tde_basebackup writing unreadable WAL at the start of a segment when encrypting streamed WAL ([PG-2963](https://perconadev.atlassian.net/browse/PG-2963))
 
 ## 2.3.0
 
