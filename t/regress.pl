@@ -19,6 +19,7 @@ my @tests = qw(
   alter_index
   change_access_method
   create_database
+  ddl_encryption
   delete_principal_key
   insert_update_delete
   key_provider

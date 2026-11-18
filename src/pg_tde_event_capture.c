@@ -9,6 +9,7 @@
 #include "access/relation.h"
 #include "access/table.h"
 #include "access/tableam.h"
+#include "access/xact.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_database.h"
@@ -41,6 +42,7 @@ typedef struct
 	TDEEncryptMode encryptMode;
 	Oid			rebuildSequencesFor;
 	Oid			rebuildSequence;
+	SubTransactionId subxid;
 } TdeDdlEvent;
 
 static FullTransactionId ddlEventStackTid = {0};
@@ -130,18 +132,25 @@ checkEncryptionStatus(void)
 }
 
 static void
+clear_event_stack(void)
+{
+	ListCell   *lc;
+
+	foreach(lc, ddlEventStack)
+		pfree(lfirst(lc));
+
+	list_free(ddlEventStack);
+	ddlEventStack = NIL;
+}
+
+static void
 verify_event_stack(void)
 {
 	FullTransactionId tid = GetCurrentFullTransactionId();
 
 	if (!FullTransactionIdEquals(ddlEventStackTid, tid))
 	{
-		ListCell   *lc;
-
-		foreach(lc, ddlEventStack)
-			pfree(lfirst(lc));
-
-		ddlEventStack = NIL;
+		clear_event_stack();
 		ddlEventStackTid = tid;
 	}
 }
@@ -157,8 +166,47 @@ push_event_stack(const TdeDdlEvent *event)
 	oldCtx = MemoryContextSwitchTo(TopMemoryContext);
 	e = palloc_object(TdeDdlEvent);
 	*e = *event;
+	e->subxid = GetCurrentSubTransactionId();
 	ddlEventStack = lappend(ddlEventStack, e);
 	MemoryContextSwitchTo(oldCtx);
+}
+
+/*
+ * The ddl_command_end trigger does not fire for failed statements, so drop
+ * their events when the (sub)transaction they were pushed in ends.
+ */
+static void
+tde_ddl_xact_callback(XactEvent event, void *arg)
+{
+	switch (event)
+	{
+		case XACT_EVENT_COMMIT:
+		case XACT_EVENT_PARALLEL_COMMIT:
+		case XACT_EVENT_ABORT:
+		case XACT_EVENT_PARALLEL_ABORT:
+		case XACT_EVENT_PREPARE:
+			clear_event_stack();
+			break;
+		default:
+			break;
+	}
+}
+
+static void
+tde_ddl_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
+						 SubTransactionId parentSubid, void *arg)
+{
+	if (event != SUBXACT_EVENT_ABORT_SUB)
+		return;
+
+	while (ddlEventStack != NIL &&
+		   ((TdeDdlEvent *) llast(ddlEventStack))->subxid >= mySubid)
+	{
+		TdeDdlEvent *e = llast(ddlEventStack);
+
+		ddlEventStack = list_delete_last(ddlEventStack);
+		pfree(e);
+	}
 }
 
 static List *
@@ -568,10 +616,14 @@ pg_tde_ddl_command_end_capture(PG_FUNCTION_ARGS)
 	trigdata = castNode(EventTriggerData, fcinfo->context);
 	parsetree = trigdata->parsetree;
 
-	if (ddlEventStack == NIL || ((TdeDdlEvent *) llast(ddlEventStack))->parsetree != parsetree)
+	if (ddlEventStack == NIL)
 		PG_RETURN_VOID();
 
 	event = (TdeDdlEvent *) llast(ddlEventStack);
+
+	if (event->parsetree != parsetree ||
+		event->subxid != GetCurrentSubTransactionId())
+		PG_RETURN_VOID();
 
 	if (event->rebuildSequencesFor != InvalidOid)
 	{
@@ -737,6 +789,9 @@ TdeEventCaptureInit(void)
 {
 	next_ProcessUtility_hook = ProcessUtility_hook;
 	ProcessUtility_hook = pg_tde_proccess_utility;
+
+	RegisterXactCallback(tde_ddl_xact_callback, NULL);
+	RegisterSubXactCallback(tde_ddl_subxact_callback, NULL);
 }
 
 /*
