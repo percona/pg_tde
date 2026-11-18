@@ -10,6 +10,7 @@
 - Key creation now errors out on corrupted data files instead of silently creating an unusable key
 - Hardened pg_tde_change_key_provider against long JSON input
 - Fix bugs where subtransactions and nested statements could result in plaintext tables marked tde_heap ([PG-2946](https://perconadev.atlassian.net/browse/PG-2946))
+- Fix ALTER INDEX and ALTER SEQUENCE, e.g. SET TABLESPACE or SET UNLOGGED, rewriting indexes and sequences of encrypted tables unencrypted ([PG-2961](https://perconadev.atlassian.net/browse/PG-2961))
 
 ## 2.3.0
 
