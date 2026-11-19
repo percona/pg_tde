@@ -216,6 +216,7 @@ nav:
   - faq.md
   - "Release notes":
     - "Release notes index": release-notes/release-notes.md
+    - "2.3.0 ({{date.2_3_0}})": release-notes/release-notes-v2.3.0.md
     - "2.2.2 ({{date.2_2_2}})": release-notes/release-notes-v2.2.2.md
     - "2.2.1 ({{date.2_2_1}})": release-notes/release-notes-v2.2.1.md
     - "2.2.0 ({{date.2_2_0}})": release-notes/release-notes-v2.2.0.md
