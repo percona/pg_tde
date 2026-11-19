@@ -54,11 +54,33 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 
 	fd = OpenTransientFile(file_keyring->file_name, PG_BINARY);
 	if (fd < 0)
+	{
+		/* Missing keyring file is the same as one without keys */
+		if (errno == ENOENT)
+			return NULL;
+
+		*return_code = KEYRING_CODE_RESOURCE_NOT_AVAILABLE;
+		ereport(WARNING,
+				errcode_for_file_access(),
+				errmsg("could not open keyring file \"%s\": %m",
+					   file_keyring->file_name));
 		return NULL;
+	}
 
 	while (true)
 	{
 		bytes_read = pg_pread(fd, &record, sizeof(record), curr_pos);
+
+		if (bytes_read < 0)
+		{
+			*return_code = KEYRING_CODE_RESOURCE_NOT_AVAILABLE;
+			ereport(WARNING,
+					errcode_for_file_access(),
+					errmsg("could not read keyring file \"%s\": %m",
+						   file_keyring->file_name));
+			CloseTransientFile(fd);
+			return NULL;
+		}
 		curr_pos += bytes_read;
 
 		if (bytes_read == 0)
@@ -76,8 +98,8 @@ get_key_by_name(GenericKeyring *keyring, const char *key_name, KeyringReturnCode
 			/* Corrupt file */
 			*return_code = KEYRING_CODE_DATA_CORRUPTED;
 			ereport(WARNING,
-					errcode_for_file_access(),
-					errmsg("keyring file \"%s\" is corrupted: %m",
+					errcode(ERRCODE_DATA_CORRUPTED),
+					errmsg("keyring file \"%s\" is corrupted",
 						   file_keyring->file_name),
 					errdetail("invalid key size %lld expected %lu",
 							  (long long int) bytes_read, sizeof(record)));
@@ -116,6 +138,13 @@ set_key_by_name(GenericKeyring *keyring, const char *key_name, const KeyData *ke
 		ereport(ERROR,
 				errmsg("Key with name %s already exists in keyring", key_name));
 	}
+	if (return_code != KEYRING_CODE_SUCCESS)
+	{
+		ereport(ERROR,
+				errmsg("could not check keyring file \"%s\" for key \"%s\"",
+					   file_keyring->file_name, key_name),
+				errdetail("%s", KeyringErrorCodeToString(return_code)));
+	}
 
 	strlcpy(record.name, key_name, sizeof(record.name));
 	record.key = *key;
@@ -129,6 +158,22 @@ set_key_by_name(GenericKeyring *keyring, const char *key_name, const KeyData *ke
 	}
 	/* Write key to the end of file */
 	curr_pos = lseek(fd, 0, SEEK_END);
+	if (curr_pos < 0)
+	{
+		ereport(ERROR,
+				errcode_for_file_access(),
+				errmsg("could not seek in keyring file \"%s\": %m",
+					   file_keyring->file_name));
+	}
+	if (curr_pos % sizeof(record) != 0)
+	{
+		ereport(ERROR,
+				errcode(ERRCODE_DATA_CORRUPTED),
+				errmsg("cannot add key to corrupted keyring file \"%s\"",
+					   file_keyring->file_name),
+				errdetail("File size %lld is not a multiple of the key size %zu.",
+						  (long long) curr_pos, sizeof(record)));
+	}
 	bytes_written = pg_pwrite(fd, &record, sizeof(record), curr_pos);
 	if (bytes_written != sizeof(record))
 	{

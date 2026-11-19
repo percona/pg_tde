@@ -13,6 +13,11 @@
 - Support for PostgreSQL 19 ([PG-2536](https://perconadev.atlassian.net/browse/PG-2536), [PG-2813](https://perconadev.atlassian.net/browse/PG-2813))
 - Make pg_tde_waldump recognise and print proper data for the pg_tde custom resource manager ([PG-2754](https://perconadev.atlassian.net/browse/PG-2754))
 
+### Fixed
+
+- File key provider now reports file access errors instead of a missing key or a corrupted file
+- Key creation now errors out on corrupted data files instead of silently creating an unusable key
+
 ## 2.2.2
 
 ### Fixed
