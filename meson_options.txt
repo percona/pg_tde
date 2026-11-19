@@ -1,2 +1,4 @@
 option('pg_config', type: 'string', value: 'pg_config',
   description: 'Path to pg_config executable')
+option('stormweaver', type: 'string', value: 'stormweaver',
+  description: 'Path to the stormweaver executable used to run the pytest suite')

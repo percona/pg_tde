@@ -8,6 +8,7 @@
 
 #include "keyring/keyring_api.h"
 #include "pg_tde_guc.h"
+#include "pg_tde_injection.h"
 
 #ifdef FRONTEND
 #include "fe_utils/simple_list.h"
@@ -111,6 +112,7 @@ KeyringGetKey(GenericKeyring *keyring, const char *key_name, KeyringReturnCode *
 		*returnCode = KEYRING_CODE_INVALID_PROVIDER;
 		return NULL;
 	}
+	TDE_INJECTION_POINT("pg-tde-keyring-get-key");
 	key = kp->routine->keyring_get_key(keyring, key_name, returnCode);
 
 	if (*returnCode != KEYRING_CODE_SUCCESS || key == NULL)

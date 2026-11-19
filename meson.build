@@ -384,7 +384,6 @@ tap_tests = [
   't/regress.pl',
   't/replication.pl',
   't/reuse_relfilenode_in_cache.pl',
-  't/rotate_key.pl',
   't/tde_heap_aes_256.pl',
   't/tde_heap.pl',
   't/unlogged_tables.pl',
@@ -419,3 +418,26 @@ foreach test : tap_tests
     ],
   )
 endforeach
+
+stormweaver = find_program(get_option('stormweaver'), required: false)
+
+pytest_files = [
+  'tests/encryption/test_recreate_storage_partitioned.py',
+  'tests/encryption/test_recreate_storage.py',
+  'tests/keys/test_rotation.py',
+]
+
+if stormweaver.found()
+  foreach f : pytest_files
+    test(fs.name(fs.parent(f)) / fs.stem(fs.name(f)).substring(5),
+      stormweaver,
+      suite: ['pytest', fs.name(fs.parent(f))],
+      workdir: meson.project_build_root(),
+      timeout: 1800,
+      args: ['test', meson.project_source_root() / f, '-q', '--pg-config', pg_config.full_path()],
+    )
+  endforeach
+else
+  warning('stormweaver not found, meson test does not run these pytest tests: ' +
+    ', '.join(pytest_files) + ' (pass -Dstormweaver=/path/to/stormweaver)')
+endif
