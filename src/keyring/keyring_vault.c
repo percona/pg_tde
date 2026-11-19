@@ -81,7 +81,7 @@ static JsonParseErrorType json_mountinfo_scalar(void *state, char *token, JsonTo
 static JsonParseErrorType json_mountinfo_object_field_start(void *state, char *fname, bool isnull);
 static JsonParseErrorType parse_vault_mount_info(JsonVaultMountInfoState *state, JsonLexContext *lex);
 
-static char *get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size);
+static void get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size);
 static bool curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long *httpCode, const char *postData);
 
 static void set_key_by_name(GenericKeyring *keyring, const char *key_name, const KeyData *key);
@@ -118,6 +118,10 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 	outStr->len = 0;
 
 	if (!curlSetupSession(url, keyring->vault_ca_path, outStr))
+		return 0;
+
+	/* Do not let curl resolve "." and ".." segments */
+	if (curl_easy_setopt(keyringCurl, CURLOPT_PATH_AS_IS, 1L) != CURLE_OK)
 		return 0;
 
 	if (postData != NULL)
@@ -173,18 +177,52 @@ curl_perform(VaultV2Keyring *keyring, const char *url, CurlString *outStr, long 
 }
 
 /*
- * Function builds the vault url in out parameter.
- * so enough memory should be allocated to out pointer
+ * Percent-encode everything except RFC 3986 unreserved characters, so the
+ * name stays a single path segment.
  */
-static char *
+static void
+escape_url_segment(const char *in, char *out)
+{
+	static const char hex[] = "0123456789ABCDEF";
+
+	for (; *in; in++)
+	{
+		unsigned char c = (unsigned char) *in;
+
+		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') ||
+			c == '-' || c == '_' || c == '.' || c == '~')
+			*out++ = c;
+		else
+		{
+			*out++ = '%';
+			*out++ = hex[c >> 4];
+			*out++ = hex[c & 0xF];
+		}
+	}
+	*out = '\0';
+}
+
+static void
 get_keyring_vault_url(VaultV2Keyring *keyring, const char *key_name, char *out, size_t out_size)
 {
+	int			len;
+	char	   *escaped_name;
+
 	Assert(keyring != NULL);
 	Assert(key_name != NULL);
 	Assert(out != NULL);
 
-	snprintf(out, out_size, "%s/v1/%s/data/%s", keyring->vault_url, keyring->vault_mount_path, key_name);
-	return out;
+	escaped_name = palloc(strlen(key_name) * 3 + 1);
+	escape_url_segment(key_name, escaped_name);
+
+	len = snprintf(out, out_size, "%s/v1/%s/data/%s", keyring->vault_url, keyring->vault_mount_path, escaped_name);
+	pfree(escaped_name);
+	if (len < 0 || len >= out_size)
+		ereport(ERROR,
+				errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				errmsg("vault URL for key \"%s\" is too long", key_name),
+				errdetail("Maximum length is %zu bytes.", out_size - 1));
 }
 
 static void
