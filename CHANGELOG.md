@@ -1,12 +1,12 @@
 # Changelog
 
-## 2.3.0
+## [Unreleased]
 
 ### Changed
 
 - The file key provider no longer treats principal key names as if they were case insensitive
 
-## [Unreleased]
+## 2.3.0
 
 ### Added
 
