@@ -82,7 +82,7 @@ static InternalKey *tde_decrypt_rel_key(const TDEPrincipalKey *principal_key, TD
 static int	pg_tde_open_file_basic(const char *tde_filename, int fileFlags, bool ignore_missing);
 static int	pg_tde_open_file_read(const char *tde_filename, bool ignore_missing, off_t *curr_pos);
 static void pg_tde_file_header_read(const char *tde_filename, int fd, TDEFileHeader *fheader, off_t *bytes_read);
-static bool pg_tde_read_one_map_entry(int fd, TDEMapEntry *map_entry, off_t *offset);
+static bool pg_tde_read_one_map_entry(int fd, TDEMapEntry *map_entry, off_t *offset, const char *path, int partial_elevel);
 static void pg_tde_write_one_map_entry(int fd, const TDEMapEntry *map_entry, off_t *offset, const char *db_map_path);
 static int	pg_tde_file_header_write(const char *tde_filename, int fd, const TDESignedPrincipalKeyInfo *signed_key_info, off_t *bytes_written);
 static void pg_tde_initialize_map_entry(TDEMapEntry *map_entry, const TDEPrincipalKey *principal_key, const RelFileLocator *rlocator, const InternalKey *rel_key_data);
@@ -132,7 +132,7 @@ pg_tde_save_smgr_key(RelFileLocator rel,
 		TDEMapEntry entry;
 		off_t		entry_offset = scan_offset;
 
-		if (!pg_tde_read_one_map_entry(fd, &entry, &scan_offset))
+		if (!pg_tde_read_one_map_entry(fd, &entry, &scan_offset, file_path, LOG))
 		{
 			/*
 			 * If we're through the whole file without having found an empty
@@ -275,7 +275,7 @@ pg_tde_free_key_map_entry(const RelFileLocator rlocator)
 		TDEMapEntry map_entry;
 		off_t		prev_pos = curr_pos;
 
-		if (!pg_tde_read_one_map_entry(map_fd, &map_entry, &curr_pos))
+		if (!pg_tde_read_one_map_entry(map_fd, &map_entry, &curr_pos, db_map_path, DEBUG1))
 			break;
 
 		if (map_entry.type == MAP_ENTRY_TYPE_KEY && map_entry.spcOid == rlocator.spcOid && map_entry.relNumber == rlocator.relNumber)
@@ -328,7 +328,7 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 					write_map_entry;
 		RelFileLocator rloc;
 
-		if (!pg_tde_read_one_map_entry(old_fd, &read_map_entry, &old_curr_pos))
+		if (!pg_tde_read_one_map_entry(old_fd, &read_map_entry, &old_curr_pos, old_path, LOG))
 			break;
 
 		if (read_map_entry.type == MAP_ENTRY_TYPE_EMPTY)
@@ -505,7 +505,7 @@ pg_tde_find_map_entry(const RelFileLocator *rlocator, char *db_map_path, TDEMapE
 
 	map_fd = pg_tde_open_file_read(db_map_path, false, &curr_pos);
 
-	while (pg_tde_read_one_map_entry(map_fd, map_entry, &curr_pos))
+	while (pg_tde_read_one_map_entry(map_fd, map_entry, &curr_pos, db_map_path, DEBUG1))
 	{
 		if (map_entry->type == MAP_ENTRY_TYPE_KEY && map_entry->spcOid == rlocator->spcOid && map_entry->relNumber == rlocator->relNumber)
 		{
@@ -544,7 +544,7 @@ pg_tde_count_encryption_keys(Oid dbOid, Oid spcOid)
 	if (map_fd < 0)
 		return count;
 
-	while (pg_tde_read_one_map_entry(map_fd, &map_entry, &curr_pos))
+	while (pg_tde_read_one_map_entry(map_fd, &map_entry, &curr_pos, db_map_path, WARNING))
 	{
 		if (map_entry.type == MAP_ENTRY_TYPE_KEY &&
 			(spcOid == InvalidOid || map_entry.spcOid == spcOid))
@@ -733,26 +733,51 @@ pg_tde_file_header_write(const char *tde_filename, int fd, const TDESignedPrinci
 }
 
 /*
- * Returns true if a map entry if found or false if we have reached the end of
- * the file.
+ * Reads one fixed size entry of a key file.
+ *
+ * Returns true if a complete entry was read, false at the end of the file.
+ * Read errors are always reported as ERROR. An incomplete entry at the end
+ * of the file, which can be the result of a failed write, is reported with
+ * partial_elevel and treated as end of file if that returns.
  */
-static bool
-pg_tde_read_one_map_entry(int map_file, TDEMapEntry *map_entry, off_t *offset)
+bool
+pg_tde_read_key_file_entry(int fd, void *entry, size_t entry_size, off_t *offset,
+						   const char *path, int partial_elevel)
 {
-	off_t		bytes_read = 0;
+	ssize_t		bytes_read;
 
-	Assert(map_entry);
+	Assert(entry);
 	Assert(offset);
 
-	bytes_read = pg_pread(map_file, map_entry, sizeof(TDEMapEntry), *offset);
+	bytes_read = pg_pread(fd, entry, entry_size, *offset);
 
-	/* We've reached the end of the file. */
-	if (bytes_read != sizeof(TDEMapEntry))
+	if (bytes_read < 0)
+		ereport(ERROR,
+				errcode_for_file_access(),
+				errmsg("could not read key file \"%s\": %m", path));
+
+	if (bytes_read == 0)
 		return false;
+
+	if (bytes_read != entry_size)
+	{
+		ereport(partial_elevel,
+				errcode(ERRCODE_DATA_CORRUPTED),
+				errmsg("key file \"%s\" has an incomplete entry at offset %lld",
+					   path, (long long) *offset),
+				errdetail("Read %zd of %zu bytes.", bytes_read, entry_size));
+		return false;
+	}
 
 	*offset += bytes_read;
 
 	return true;
+}
+
+static bool
+pg_tde_read_one_map_entry(int map_file, TDEMapEntry *map_entry, off_t *offset, const char *path, int partial_elevel)
+{
+	return pg_tde_read_key_file_entry(map_file, map_entry, sizeof(TDEMapEntry), offset, path, partial_elevel);
 }
 
 /*
@@ -907,7 +932,7 @@ pg_tde_get_smgr_key(RelFileLocator rel)
  * version from the given fd and offset, and transforms it into
  * TDEMapEntry (current version)
  */
-typedef bool (*MapFromDiskEntry) (int fd, off_t *entry_offset, const TDEPrincipalKey *principal_key, TDEMapEntry *out);
+typedef bool (*MapFromDiskEntry) (int fd, off_t *entry_offset, const char *path, const TDEPrincipalKey *principal_key, TDEMapEntry *out);
 
 typedef struct TDEMapEntryV3
 {
@@ -929,22 +954,9 @@ typedef struct TDEMapEntryV3
 } TDEMapEntryV3;
 
 static bool
-read_one_map_entry_v3(int fd, TDEMapEntryV3 *entry, off_t *offset)
+read_one_map_entry_v3(int fd, TDEMapEntryV3 *entry, off_t *offset, const char *path)
 {
-	off_t		bytes_read = 0;
-
-	Assert(entry);
-	Assert(offset);
-
-	bytes_read = pg_pread(fd, entry, sizeof(TDEMapEntryV3), *offset);
-
-	/* We've reached the end of the file. */
-	if (bytes_read != sizeof(TDEMapEntryV3))
-		return false;
-
-	*offset += bytes_read;
-
-	return true;
+	return pg_tde_read_key_file_entry(fd, entry, sizeof(TDEMapEntryV3), offset, path, LOG);
 }
 
 static void
@@ -964,13 +976,13 @@ ikey_from_map_entry_v3(TDEMapEntryV3 *entry, const TDEPrincipalKey *principal_ke
 }
 
 static bool
-map_from_disk_entry_v3(int fd, off_t *entry_offset, const TDEPrincipalKey *principal_key, TDEMapEntry *out)
+map_from_disk_entry_v3(int fd, off_t *entry_offset, const char *path, const TDEPrincipalKey *principal_key, TDEMapEntry *out)
 {
 	TDEMapEntryV3 disk_entry;
 	InternalKey key;
 	RelFileLocator rloc;
 
-	if (!read_one_map_entry_v3(fd, &disk_entry, entry_offset))
+	if (!read_one_map_entry_v3(fd, &disk_entry, entry_offset, path))
 		return false;
 
 	/* Decrypting empty entries would fail, so just return an empty entry. */
@@ -1069,7 +1081,7 @@ pg_tde_migrate_smgr_keys_file(void)
 
 		new_fd = pg_tde_open_file_write(tmp_db_map_path, &signed_key_info, true, &write_pos);
 
-		while (read_map_entry(old_fd, &read_pos, principal_key, &new_entry))
+		while (read_map_entry(old_fd, &read_pos, db_map_path, principal_key, &new_entry))
 		{
 			if (new_entry.type == MAP_ENTRY_TYPE_EMPTY)
 				continue;
