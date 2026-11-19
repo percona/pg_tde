@@ -50,6 +50,10 @@ case "$1" in
         ;;
 esac
 
+if [ -f "$PG_SOURCE_DIR/.git-revision" ]; then
+    echo "PostgreSQL revision: $(cat "$PG_SOURCE_DIR/.git-revision")"
+fi
+
 echo "# pg_config"
 "$PG_CONFIG"
 
