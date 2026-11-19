@@ -36,13 +36,13 @@ For more information about `pg_tde`, [see the official documentation](https://do
 
 ## Percona Server for PostgreSQL
 
-Percona provides binary packages of `pg_tde` extension only for Percona Server for PostgreSQL. Learn how to install them or build `pg_tde` from sources for PSPG in the [documentation](https://docs.percona.com/pg-tde/install.html).
+Percona provides binary packages of `pg_tde` extension only for Percona Server for PostgreSQL. Learn how to install them in the [documentation](https://docs.percona.com/pg-tde/install.html) or build `pg_tde` from sources for PSP in the [contributing guide](CONTRIBUTING.md#build-pg_tde).
 
 ## Run in Docker
 
 To run `pg_tde` in Docker, follow the instructions in the [official pg_tde Docker documentation](https://docs.percona.com/postgresql/17/docker.html#enable-encryption).
 
-_For details on the build process and developer setup, see [Make Builds for Developers](https://github.com/percona/pg_tde/wiki/Make-builds-for-developers)._
+_For details on the build process and developer setup, see the [contributing guide](CONTRIBUTING.md#build-pg_tde)._
 
 ## Set up pg_tde
 

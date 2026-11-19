@@ -45,7 +45,7 @@ If the bug hasn’t been reported / addressed, or we’ve agreed on the enhancem
 
 4. Make your changes. Follow the guidelines outlined in the [PostgreSQL Coding Standard](https://www.postgresql.org/docs/current/source.html) to improve code readability.
 
-5. Test your changes locally. See the [Running tests](#running-tests) section for more information.
+5. Test your changes locally. See the [Running tests](#run-tests) section for more information.
 
 6. To update the documentation describing your changes, see [Documentation contribution](#documentation-contribution).
 
@@ -68,10 +68,13 @@ To build `pg_tde` from source code, you require the following:
 
 * git
 * Meson
+* CMake
+* pkg-config
 * gcc or clang
-* Percona Server for PostgreSQL 17 or later
+* Percona Server for PostgreSQL 17 or later with development files
+* OpenSSL, libcurl, zlib, LZ4 and Zstandard development files
 
-Refer to the [Building from source code](https://github.com/percona/pg_tde?tab=readme-ov-file#building-from-sources-for-community-postgresql) section for guidelines.
+Refer to the [Run manually](#run-manually) section for guidelines.
 
 ### Run tests
 
@@ -89,12 +92,10 @@ You can find the tests in the `sql` and `t` directories.
     meson install
     ```
 
-3. Start OpenKMIP
-
-4. Run the tests using the following command:
+3. Run the tests using the following command:
 
     ```sh
-    meson install && meson test --print-errorlogs
+    meson install && meson test --print-errorlogs --timeout-multiplier=0
     ```
 
 #### Run automatically

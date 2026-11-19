@@ -42,7 +42,7 @@ If the bug hasn't been reported / addressed, or we've agreed on the enhancement 
     - [C style and Coding rules](https://github.com/MaJerle/c-code-style) 
 
 6. Write the documentation for your changes. See the [Write the docs](#write-the-docs) cheat sheet for details.
-7. [Build the code](https://github.com/percona/postgres/wiki/Howtos) and [test your changes locally](#run-local-tests). 
+7. [Build the code](https://github.com/percona/pg_tde/blob/main/CONTRIBUTING.md#build-pg_tde) and [test your changes locally](#run-local-tests). 
 8. Commit the changes. The [commit message guidelines](https://gist.github.com/robertpainsi/b632364184e70900af4ab688decf6f53) will help you with writing great commit messages
 9. Open a pull request to Percona.
 10. Our team will review your code and documentation. If everything is correct, will merge it. 
@@ -55,7 +55,7 @@ When you work, you should periodically run tests to check that your changes donâ
 To run the tests, use the following command:
 
 ```sh
-ci_scripts/test.sh all
+meson install -C build && meson test -C build --print-errorlogs --timeout-multiplier=0
 ```
 
 You can run tests on your local machine with whatever operating system you have. After you submit the pull request, we will check your patch on multiple operating systems.
