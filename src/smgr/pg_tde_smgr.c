@@ -175,7 +175,7 @@ tde_smgr_should_encrypt(const RelFileLocatorBackend *smgr_rlocator, RelFileLocat
 	if (IsCatalogRelationOid(smgr_rlocator->locator.relNumber))
 		return false;
 
-	switch (currentTdeEncryptModeValidated())
+	switch (currentTdeEncryptMode())
 	{
 		case TDE_ENCRYPT_MODE_PLAIN:
 			return false;

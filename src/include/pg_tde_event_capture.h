@@ -9,6 +9,6 @@ typedef enum
 } TDEEncryptMode;
 
 extern void TdeEventCaptureInit(void);
-extern TDEEncryptMode currentTdeEncryptModeValidated(void);
+extern TDEEncryptMode currentTdeEncryptMode(void);
 
 #endif
