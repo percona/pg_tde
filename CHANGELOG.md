@@ -10,6 +10,7 @@
 
 - File key provider now reports file access errors instead of a missing key or a corrupted file
 - Key creation now errors out on corrupted data files instead of silently creating an unusable key
+- Standbys could receive unreadable WAL when streaming from a primary which was just restarted with WAL encryption enabled
 
 ## 2.3.0
 

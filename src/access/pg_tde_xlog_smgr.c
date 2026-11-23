@@ -37,6 +37,9 @@ static ssize_t tdeheap_xlog_seg_read(int fd, void *buf, size_t count, off_t offs
 static ssize_t tdeheap_xlog_seg_write(int fd, const void *buf, size_t count,
 									  off_t offset, TimeLineID tli,
 									  XLogSegNo segno, int segSize);
+static void TDEXLogCryptBufferWithKeys(WALKeyCacheRec *keys, const void *buf,
+									   void *out_buf, size_t count, off_t offset,
+									   TimeLineID tli, XLogSegNo segno, int segSize);
 
 static const XLogSmgr tde_xlog_smgr = {
 	.seg_read = tdeheap_xlog_seg_read,
@@ -387,6 +390,47 @@ TDEXLogWriteEncryptedPages(int fd, const void *buf, size_t count, off_t offset,
 }
 
 /*
+ * Write XLog page(s) which start before the current range to the segment file.
+ * The part before the range's start is encrypted with the older keys which are
+ * always in the cache, so no keys have to be fetched.
+ */
+static ssize_t
+TDEXLogWriteEncryptedPagesSplit(int fd, const void *buf, size_t count, off_t offset,
+								TimeLineID tli, XLogSegNo segno, int segSize,
+								size_t old_count)
+{
+	char		iv_prefix[16];
+	WalEncryptionRange *range = &CurrentWalEncryptionRange;
+	char	   *enc_buff = EncryptionBuf;
+
+#ifndef FRONTEND
+	Assert(count <= TDEXLogEncryptBuffSize());
+#endif
+	Assert(old_count > 0 && old_count < count);
+
+	memcpy(enc_buff, buf, count);
+
+	TDEXLogCryptBufferWithKeys(pg_tde_get_wal_cache_keys(), buf, enc_buff,
+							   old_count, offset, tli, segno, segSize);
+
+	if (range->type == WAL_ENCRYPTION_RANGE_ENCRYPTED)
+	{
+		CalcXLogPageIVPrefix(tli, segno, range->key.base_iv, iv_prefix);
+
+		pg_tde_stream_crypt(iv_prefix,
+							offset + old_count,
+							(char *) buf + old_count,
+							count - old_count,
+							enc_buff + old_count,
+							range->key.key,
+							range->key.key_len,
+							&EncryptionCryptCtx);
+	}
+
+	return pg_pwrite(fd, enc_buff, count, offset);
+}
+
+/*
  * Set the last (most recent) key's start location if not set.
  */
 bool
@@ -415,13 +459,25 @@ tde_ensure_xlog_key_location(WalLocation loc)
 	if (CurrentWalEncryptionRange.type != WAL_ENCRYPTION_RANGE_INVALID && !lastKeyUsable && afterWriteKey && !crashRecovery)
 	{
 		WALKeyCacheRec *last_key = pg_tde_get_last_wal_key();
+		WalLocation start = loc;
 
-		if (last_key == NULL || wal_location_cmp(last_key->range.start, loc) < 0)
+#ifndef FRONTEND
+
+		/*
+		 * The write starts at a page boundary, so it may rewrite WAL which is
+		 * already on disk. That WAL can be read concurrently or after a crash
+		 * using the previous key, so the new key must start after it.
+		 */
+		start.lsn = Max(loc.lsn, GetXLogWriteRecPtr());
+#endif
+
+		if (last_key == NULL || wal_location_cmp(last_key->range.start, start) < 0)
 		{
-			pg_tde_wal_last_range_set_location(loc);
-			CurrentWalEncryptionRange.start = loc;
+			pg_tde_wal_last_range_set_location(start);
+			CurrentWalEncryptionRange.start = start;
 			TDEXLogSetEncKeyLocation(CurrentWalEncryptionRange.start);
 			lastKeyUsable = true;
+			afterWriteKey = wal_location_cmp(start, loc) <= 0;
 		}
 	}
 
@@ -440,6 +496,21 @@ tdeheap_xlog_seg_write(int fd, const void *buf, size_t count, off_t offset,
 
 	if (!lastKeyUsable && CurrentWalEncryptionRange.type != WAL_ENCRYPTION_RANGE_INVALID)
 	{
+		WalLocation key_start;
+		WalLocation end = {.tli = tli, .lsn = loc.lsn + count};
+
+		key_start.lsn = TDEXLogGetEncKeyLsn();
+		pg_read_barrier();
+		key_start.tli = TDEXLogGetEncKeyTli();
+
+		if (!XLogRecPtrIsInvalid(key_start.lsn) &&
+			wal_location_cmp(key_start, loc) > 0 &&
+			wal_location_cmp(key_start, end) < 0)
+		{
+			return TDEXLogWriteEncryptedPagesSplit(fd, buf, count, offset, tli, segno, segSize,
+												   key_start.lsn - loc.lsn);
+		}
+
 		return TDEXLogWriteEncryptedPagesOldKeys(fd, buf, count, offset, tli, segno, segSize);
 	}
 	else if (CurrentWalEncryptionRange.type == WAL_ENCRYPTION_RANGE_ENCRYPTED)
@@ -471,6 +542,8 @@ tdeheap_xlog_seg_read(int fd, void *buf, size_t count, off_t offset,
 	if (readsz <= 0)
 		return readsz;
 
+	TDE_INJECTION_POINT("pg-tde-xlog-seg-read-before-decrypt");
+
 	TDEXLogCryptBuffer(buf, buf, count, offset, tli, segno, segSize);
 
 	return readsz;
@@ -485,8 +558,6 @@ TDEXLogCryptBuffer(const void *buf, void *out_buf, size_t count, off_t offset,
 {
 	WALKeyCacheRec *keys = pg_tde_get_wal_cache_keys();
 	XLogRecPtr	write_key_lsn;
-	WalLocation data_end = {.tli = tli};
-	WalLocation data_start = {.tli = tli};
 
 	if (keys == NULL)
 	{
@@ -517,6 +588,20 @@ TDEXLogCryptBuffer(const void *buf, void *out_buf, size_t count, off_t offset,
 			keys = pg_tde_get_wal_cache_keys();
 		}
 	}
+
+	TDEXLogCryptBufferWithKeys(keys, buf, out_buf, count, offset, tli, segno, segSize);
+}
+
+/*
+ * [De]Crypt buffer using the given keys only, never fetching new keys
+ */
+static void
+TDEXLogCryptBufferWithKeys(WALKeyCacheRec *keys, const void *buf, void *out_buf,
+						   size_t count, off_t offset, TimeLineID tli,
+						   XLogSegNo segno, int segSize)
+{
+	WalLocation data_end = {.tli = tli};
+	WalLocation data_start = {.tli = tli};
 
 	XLogSegNoOffsetToRecPtr(segno, offset, segSize, data_start.lsn);
 	XLogSegNoOffsetToRecPtr(segno, offset + count, segSize, data_end.lsn);
