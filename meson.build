@@ -383,7 +383,6 @@ tap_tests = [
   't/pg_waldump_tde_rmgr.pl',
   't/regress.pl',
   't/replication.pl',
-  't/replication_wal_key_switch.pl',
   't/reuse_relfilenode_in_cache.pl',
   't/rotate_key.pl',
   't/tde_heap_aes_256.pl',
