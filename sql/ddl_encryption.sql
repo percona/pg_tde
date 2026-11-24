@@ -96,4 +96,32 @@ SELECT pg_tde_is_encrypted('ctas_plain'), pg_tde_is_encrypted('ctas_enc');
 DROP TABLE enc_nest, plain_nest, ctas_plain, ctas_enc;
 DROP FUNCTION truncate_nest();
 
+-- ALTER INDEX and ALTER SEQUENCE keep encryption
+SET allow_in_place_tablespaces = true;
+CREATE TABLESPACE ddl_ts LOCATION '';
+CREATE TABLE enc_idx_tbl (id serial, a text) USING tde_heap;
+CREATE INDEX enc_idx ON enc_idx_tbl (a);
+CREATE TABLE plain_idx_tbl (id serial, a text) USING heap;
+CREATE INDEX plain_idx ON plain_idx_tbl (a);
+ALTER INDEX enc_idx SET TABLESPACE ddl_ts;
+ALTER INDEX plain_idx SET TABLESPACE ddl_ts;
+SELECT pg_tde_is_encrypted('enc_idx'), pg_tde_is_encrypted('plain_idx');
+SELECT pg_tde_is_encrypted('enc_idx_tbl_id_seq'), pg_tde_is_encrypted('plain_idx_tbl_id_seq');
+ALTER SEQUENCE enc_idx_tbl_id_seq SET UNLOGGED;
+ALTER SEQUENCE plain_idx_tbl_id_seq SET UNLOGGED;
+SELECT pg_tde_is_encrypted('enc_idx_tbl_id_seq'), pg_tde_is_encrypted('plain_idx_tbl_id_seq');
+ALTER SEQUENCE enc_idx_tbl_id_seq SET LOGGED;
+ALTER SEQUENCE plain_idx_tbl_id_seq SET LOGGED;
+SELECT pg_tde_is_encrypted('enc_idx_tbl_id_seq'), pg_tde_is_encrypted('plain_idx_tbl_id_seq');
+SET pg_tde.enforce_encryption = on;
+ALTER INDEX enc_idx SET TABLESPACE pg_default;
+ALTER SEQUENCE enc_idx_tbl_id_seq SET UNLOGGED;
+ALTER INDEX plain_idx SET TABLESPACE pg_default;
+ALTER SEQUENCE plain_idx_tbl_id_seq SET UNLOGGED;
+RESET pg_tde.enforce_encryption;
+SELECT pg_tde_is_encrypted('enc_idx'), pg_tde_is_encrypted('enc_idx_tbl_id_seq');
+DROP TABLE enc_idx_tbl, plain_idx_tbl;
+DROP TABLESPACE ddl_ts;
+RESET allow_in_place_tablespaces;
+
 DROP EXTENSION pg_tde;

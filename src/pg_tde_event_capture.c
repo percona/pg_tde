@@ -10,6 +10,7 @@
 #include "access/table.h"
 #include "access/tableam.h"
 #include "access/xact.h"
+#include "catalog/index.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_database.h"
@@ -35,6 +36,7 @@
 #include "common/pg_tde_utils.h"
 #include "pg_tde_event_capture.h"
 #include "pg_tde_guc.h"
+#include "smgr/pg_tde_smgr.h"
 
 typedef struct
 {
@@ -261,7 +263,12 @@ alter_table_encryption_mix(Oid relid)
 
 	rel = relation_open(relid, NoLock);
 
-	if (RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
+	/* Indexes follow their table, sequences keep their current status. */
+	if (rel->rd_rel->relkind == RELKIND_INDEX)
+		enc = get_rel_relam(IndexGetRelation(relid, false)) == get_tde_table_am_oid() ? ENC_MIX_ENCRYPTED : ENC_MIX_PLAIN;
+	else if (rel->rd_rel->relkind == RELKIND_SEQUENCE)
+		enc = tde_smgr_rel_is_encrypted(RelationGetSmgr(rel)) ? ENC_MIX_ENCRYPTED : ENC_MIX_PLAIN;
+	else if (RELKIND_HAS_STORAGE(rel->rd_rel->relkind))
 		enc = rel->rd_rel->relam == get_tde_table_am_oid() ? ENC_MIX_ENCRYPTED : ENC_MIX_PLAIN;
 
 	if (rel->rd_rel->relkind == RELKIND_COMPOSITE_TYPE)
