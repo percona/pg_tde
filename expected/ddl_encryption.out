@@ -151,4 +151,37 @@ SELECT pg_tde_is_encrypted('ctas_plain'), pg_tde_is_encrypted('ctas_enc');
 
 DROP TABLE enc_nest, plain_nest, ctas_plain, ctas_enc;
 DROP FUNCTION truncate_nest();
+-- Indexes created by ATTACH PARTITION follow the attached table
+CREATE TABLE parted (a int) PARTITION BY RANGE (a);
+CREATE INDEX parted_idx ON parted (a);
+CREATE TABLE part_plain PARTITION OF parted FOR VALUES FROM (0) TO (10) USING heap;
+CREATE TABLE part_enc (a int) USING tde_heap;
+ALTER TABLE parted ATTACH PARTITION part_enc FOR VALUES FROM (10) TO (20);
+SELECT pg_tde_is_encrypted('part_plain_a_idx'), pg_tde_is_encrypted('part_enc_a_idx');
+ pg_tde_is_encrypted | pg_tde_is_encrypted 
+---------------------+---------------------
+ f                   | t
+(1 row)
+
+CREATE TABLE part_sub (a int) PARTITION BY RANGE (a);
+CREATE TABLE part_sub_enc PARTITION OF part_sub FOR VALUES FROM (20) TO (30) USING tde_heap;
+ALTER TABLE parted ATTACH PARTITION part_sub FOR VALUES FROM (20) TO (30);
+SELECT pg_tde_is_encrypted('part_sub_enc_a_idx');
+ pg_tde_is_encrypted 
+---------------------
+ t
+(1 row)
+
+-- ALTER INDEX ... ATTACH PARTITION attaches an existing index, creates nothing
+-- ON ONLY skips creating the index on the partitions
+CREATE INDEX part_sub_idx ON ONLY part_sub (a);
+CREATE INDEX part_sub_enc_idx ON part_sub_enc (a);
+ALTER INDEX part_sub_idx ATTACH PARTITION part_sub_enc_idx;
+SELECT pg_tde_is_encrypted('part_sub_enc_idx');
+ pg_tde_is_encrypted 
+---------------------
+ t
+(1 row)
+
+DROP TABLE parted;
 DROP EXTENSION pg_tde;
