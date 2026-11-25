@@ -356,6 +356,7 @@ tap_tests = [
   't/change_key_provider.pl',
   't/crash_recovery.pl',
   't/default_principal_key.pl',
+  't/key_file_partial_entry.pl',
   't/key_rotate_tablespace.pl',
   't/keys_update.pl',
   't/key_validation.pl',

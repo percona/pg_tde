@@ -62,7 +62,7 @@ static void pg_tde_initialize_wal_key_file_entry(WalKeyFileEntry *entry, const T
 static int	pg_tde_open_wal_key_file_basic(const char *filename, int flags, bool ignore_missing);
 static int	pg_tde_open_wal_key_file_read(const char *filename, bool ignore_missing, off_t *curr_pos);
 static int	pg_tde_open_wal_key_file_write(const char *filename, const TDESignedPrincipalKeyInfo *signed_key_info, bool truncate, off_t *curr_pos);
-static bool pg_tde_read_one_wal_key_file_entry(int fd, WalKeyFileEntry *entry, off_t *offset);
+static bool pg_tde_read_one_wal_key_file_entry(int fd, WalKeyFileEntry *entry, off_t *offset, int partial_elevel);
 static void pg_tde_read_one_wal_key_file_entry2(int fd, int32 key_index, WalKeyFileEntry *entry);
 static void pg_tde_wal_key_file_header_read(const char *filename, int fd, WalKeyFileHeader *fheader, off_t *bytes_read);
 static int	pg_tde_wal_key_file_header_write(const char *filename, int fd, const TDESignedPrincipalKeyInfo *signed_key_info, off_t *bytes_written);
@@ -215,10 +215,9 @@ pg_tde_read_last_wal_range(void)
 	LWLock	   *lock_pk = tde_lwlock_enc_keys();
 	TDEPrincipalKey *principal_key;
 	int			fd;
-	int			file_idx;
+	int			keys_count;
 	WalKeyFileEntry entry;
 	WalEncryptionRange *range;
-	off_t		fsize;
 
 	LWLockAcquire(lock_pk, LW_EXCLUSIVE);
 	principal_key = GetPrincipalKey(GLOBAL_DATA_TDE_OID, LW_EXCLUSIVE);
@@ -230,9 +229,9 @@ pg_tde_read_last_wal_range(void)
 	}
 
 	fd = pg_tde_open_wal_key_file_read(get_wal_key_file_path(), false, &read_pos);
-	fsize = lseek(fd, 0, SEEK_END);
+	keys_count = (lseek(fd, 0, SEEK_END) - sizeof(WalKeyFileHeader)) / sizeof(WalKeyFileEntry);
 	/* No keys */
-	if (fsize == sizeof(WalKeyFileHeader))
+	if (keys_count == 0)
 	{
 #ifdef FRONTEND
 		pfree(principal_key);
@@ -242,8 +241,7 @@ pg_tde_read_last_wal_range(void)
 		return NULL;
 	}
 
-	file_idx = ((fsize - sizeof(WalKeyFileHeader)) / sizeof(WalKeyFileEntry)) - 1;
-	pg_tde_read_one_wal_key_file_entry2(fd, file_idx, &entry);
+	pg_tde_read_one_wal_key_file_entry2(fd, keys_count - 1, &entry);
 
 	range = pg_tde_wal_range_from_entry(principal_key, &entry);
 #ifdef FRONTEND
@@ -526,29 +524,14 @@ pg_tde_wal_key_file_header_write(const char *filename,
 	return fd;
 }
 
-/*
- * Returns true if an entry is found or false if we have reached the end of the
- * file.
- */
 static bool
 pg_tde_read_one_wal_key_file_entry(int fd,
 								   WalKeyFileEntry *entry,
-								   off_t *offset)
+								   off_t *offset,
+								   int partial_elevel)
 {
-	off_t		bytes_read = 0;
-
-	Assert(entry);
-	Assert(offset);
-
-	bytes_read = pg_pread(fd, entry, sizeof(WalKeyFileEntry), *offset);
-
-	/* We've reached the end of the file. */
-	if (bytes_read != sizeof(WalKeyFileEntry))
-		return false;
-
-	*offset += bytes_read;
-
-	return true;
+	return pg_tde_read_key_file_entry(fd, entry, sizeof(WalKeyFileEntry), offset,
+									  get_wal_key_file_path(), partial_elevel);
 }
 
 static void
@@ -582,8 +565,17 @@ pg_tde_write_wal_key_file_entry(const WalEncryptionRange *range,
 	/* Open and validate file for basic correctness. */
 	fd = pg_tde_open_wal_key_file_write(get_wal_key_file_path(), &signed_key_Info, false, &curr_pos);
 
-	/* WAL keys are always added at the end of the file */
+	/*
+	 * WAL keys are always added at the end of the file. Entries are addressed
+	 * by index, so overwrite an incomplete last entry instead of writing
+	 * after it.
+	 */
 	curr_pos = lseek(fd, 0, SEEK_END);
+	if (curr_pos < 0)
+		ereport(ERROR,
+				errcode_for_file_access(),
+				errmsg("could not seek in WAL key file \"%s\": %m", get_wal_key_file_path()));
+	curr_pos -= (curr_pos - sizeof(WalKeyFileHeader)) % sizeof(WalKeyFileEntry);
 
 	/* Initialize WAL key file entry and encrypt key */
 	pg_tde_initialize_wal_key_file_entry(&write_entry, principal_key, range);
@@ -717,7 +709,7 @@ pg_tde_perform_rotate_server_key(const TDEPrincipalKey *principal_key,
 		WalKeyFileEntry read_map_entry;
 		WalKeyFileEntry write_map_entry;
 
-		if (!pg_tde_read_one_wal_key_file_entry(old_fd, &read_map_entry, &old_curr_pos))
+		if (!pg_tde_read_one_wal_key_file_entry(old_fd, &read_map_entry, &old_curr_pos, LOG))
 			break;
 
 		/* Decrypt and re-encrypt key */
@@ -874,7 +866,7 @@ pg_tde_count_wal_ranges_in_file(void)
 	if (fd < 0)
 		return count;
 
-	while (pg_tde_read_one_wal_key_file_entry(fd, &entry, &curr_pos))
+	while (pg_tde_read_one_wal_key_file_entry(fd, &entry, &curr_pos, WARNING))
 		count++;
 
 	CloseTransientFile(fd);
@@ -933,20 +925,8 @@ pg_tde_read_one_wal_key_file_entry_v1(int fd,
 									  WalKeyFileEntryV1 *entry,
 									  off_t *offset)
 {
-	off_t		bytes_read = 0;
-
-	Assert(entry);
-	Assert(offset);
-
-	bytes_read = pg_pread(fd, entry, sizeof(WalKeyFileEntryV1), *offset);
-
-	/* We've reached the end of the file. */
-	if (bytes_read != sizeof(WalKeyFileEntryV1))
-		return false;
-
-	*offset += bytes_read;
-
-	return true;
+	return pg_tde_read_key_file_entry(fd, entry, sizeof(WalKeyFileEntryV1), offset,
+									  get_wal_key_file_path(), LOG);
 }
 
 static void
