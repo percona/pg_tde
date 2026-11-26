@@ -577,7 +577,7 @@ pg_tde_write_wal_key_file_entry(const WalEncryptionRange *range,
 	WalKeyFileEntry write_entry;
 	TDESignedPrincipalKeyInfo signed_key_Info;
 
-	pg_tde_sign_principal_key_info(&signed_key_Info, principal_key);
+	pg_tde_sign_principal_key_info(GLOBAL_DATA_TDE_OID, &signed_key_Info, principal_key);
 
 	/* Open and validate file for basic correctness. */
 	fd = pg_tde_open_wal_key_file_write(get_wal_key_file_path(), &signed_key_Info, false, &curr_pos);
@@ -701,9 +701,8 @@ pg_tde_perform_rotate_server_key(const TDEPrincipalKey *principal_key,
 	char		tmp_path[MAXPGPATH];
 
 	Assert(principal_key);
-	Assert(principal_key->keyInfo.databaseId == GLOBAL_DATA_TDE_OID);
 
-	pg_tde_sign_principal_key_info(&new_signed_key_info, new_principal_key);
+	pg_tde_sign_principal_key_info(GLOBAL_DATA_TDE_OID, &new_signed_key_info, new_principal_key);
 
 	snprintf(tmp_path, MAXPGPATH, "%s.r", get_wal_key_file_path());
 
@@ -751,7 +750,7 @@ pg_tde_perform_rotate_server_key(const TDEPrincipalKey *principal_key,
 	{
 		XLogPrincipalKeyRotate xlrec;
 
-		xlrec.databaseId = new_principal_key->keyInfo.databaseId;
+		xlrec.databaseId = GLOBAL_DATA_TDE_OID;
 		xlrec.keyringId = new_principal_key->keyInfo.keyringId;
 		memcpy(xlrec.keyName, new_principal_key->keyInfo.name, sizeof(new_principal_key->keyInfo.name));
 
@@ -797,7 +796,7 @@ pg_tde_save_server_key(const TDEPrincipalKey *principal_key, bool write_xlog)
 	off_t		curr_pos = 0;
 	TDESignedPrincipalKeyInfo signed_key_Info;
 
-	pg_tde_sign_principal_key_info(&signed_key_Info, principal_key);
+	pg_tde_sign_principal_key_info(GLOBAL_DATA_TDE_OID, &signed_key_Info, principal_key);
 
 #ifndef FRONTEND
 	if (write_xlog)
@@ -1039,7 +1038,7 @@ pg_tde_update_wal_keys_file(void)
 				errmsg("could not get server principal key"),
 				errdetail("Failed to updated format of WAL keys."));
 	}
-	pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
+	pg_tde_sign_principal_key_info(GLOBAL_DATA_TDE_OID, &signed_key_info, principal_key);
 
 	new_fd = pg_tde_open_wal_key_file_write(tmp_wal_key_file_path, &signed_key_info, true, &write_pos);
 

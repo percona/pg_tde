@@ -112,9 +112,9 @@ tdeheap_rmgr_desc(StringInfo buf, XLogReaderState *record)
 	}
 	else if (info == XLOG_TDE_ADD_PRINCIPAL_KEY)
 	{
-		TDEPrincipalKeyInfo *xlrec = (TDEPrincipalKeyInfo *) XLogRecGetData(record);
+		TDESignedPrincipalKeyInfo *xlrec = (TDESignedPrincipalKeyInfo *) XLogRecGetData(record);
 
-		appendStringInfo(buf, "db: %u", xlrec->databaseId);
+		appendStringInfo(buf, "db: %u", xlrec->data.databaseId);
 	}
 	else if (info == XLOG_TDE_ROTATE_PRINCIPAL_KEY)
 	{

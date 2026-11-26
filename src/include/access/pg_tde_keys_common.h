@@ -8,7 +8,14 @@
 
 typedef struct
 {
-	TDEPrincipalKeyInfo data;
+	/* Old version of TDEPrincipalKeyInfo */
+	struct
+	{
+		Oid			databaseId; /* Remove this on next format bump */
+		Oid			keyringId;
+		struct timeval creationTime;
+		char		name[PRINCIPAL_KEY_NAME_LEN];
+	}			data;
 	unsigned char sign_iv[MAP_ENTRY_IV_SIZE];
 	unsigned char aead_tag[MAP_ENTRY_AEAD_TAG_SIZE];
 } TDESignedPrincipalKeyInfo;
