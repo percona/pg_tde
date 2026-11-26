@@ -6,7 +6,7 @@
 #define MAP_ENTRY_IV_SIZE 16
 #define MAP_ENTRY_AEAD_TAG_SIZE 16
 
-typedef struct pg_attribute_packed()
+typedef struct
 {
 	/* Old version of TDEPrincipalKeyInfo */
 	struct

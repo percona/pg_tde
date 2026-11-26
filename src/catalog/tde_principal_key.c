@@ -300,7 +300,6 @@ set_principal_key_with_keyring(const char *key_name,
 			pg_tde_save_server_key(new_principal_key, true);
 		else
 			pg_tde_save_principal_key(dbOid, new_principal_key, true);
-		push_principal_key_to_cache(dbOid, new_principal_key);
 	}
 	else
 	{
@@ -311,8 +310,9 @@ set_principal_key_with_keyring(const char *key_name,
 			pg_tde_perform_rotate_key(dbOid, curr_principal_key, new_principal_key, true);
 
 		clear_principal_key_cache(dbOid);
-		push_principal_key_to_cache(dbOid, new_principal_key);
 	}
+
+	push_principal_key_to_cache(dbOid, new_principal_key);
 
 	LWLockRelease(lock_files);
 
