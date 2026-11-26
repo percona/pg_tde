@@ -72,10 +72,16 @@ typedef struct TdePrincipalKeylocalState
 	dshash_table *sharedHash;
 } TdePrincipalKeylocalState;
 
+typedef struct TDEPrincipalKeyCacheEntry
+{
+	Oid			databaseId;
+	TDEPrincipalKey key;
+} TDEPrincipalKeyCacheEntry;
+
 /* Parameters for the principal key info shared hash */
 static dshash_parameters principal_key_dsh_params = {
 	.key_size = sizeof(Oid),
-	.entry_size = sizeof(TDEPrincipalKey),
+	.entry_size = sizeof(TDEPrincipalKeyCacheEntry),
 	.compare_function = dshash_memcmp,
 	.hash_function = dshash_memhash,
 #if PG_VERSION_NUM >= 170000
@@ -91,13 +97,13 @@ static inline dshash_table *get_principal_key_hash(void);
 static TDEPrincipalKey *get_principal_key_from_cache(Oid dbOid);
 static bool pg_tde_is_same_principal_key(TDEPrincipalKey *a, TDEPrincipalKey *b);
 static void pg_tde_update_default_principal_key_everywhere(TDEPrincipalKey *oldKey, TDEPrincipalKey *newKey);
-static void push_principal_key_to_cache(TDEPrincipalKey *principalKey);
+static void push_principal_key_to_cache(Oid databaseId, TDEPrincipalKey *principalKey);
 static Datum pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid);
 static TDEPrincipalKey *get_principal_key_from_keyring(Oid dbOid);
 static TDEPrincipalKey *GetPrincipalKeyNoDefault(Oid dbOid, LWLockMode lockMode);
 static bool pg_tde_verify_principal_key_internal(Oid databaseOid);
 static void pg_tde_create_principal_key_internal(Oid providerOid, const char *key_name, const char *provider_name);
-static void pg_tde_rotate_default_key_for_database(TDEPrincipalKey *oldKey, TDEPrincipalKey *newKeyTemplate);
+static void pg_tde_rotate_default_key_for_database(Oid dbOid, TDEPrincipalKey *oldKey, TDEPrincipalKey *newKeyTemplate);
 static void pg_tde_set_principal_key_internal(Oid providerOid, Oid dbOid, const char *principal_key_name, const char *provider_name);
 static void set_principal_key_with_keyring(const char *key_name, const char *provider_name, Oid providerOid, Oid dbOid);
 
@@ -280,7 +286,6 @@ set_principal_key_with_keyring(const char *key_name,
 	}
 
 	new_principal_key = palloc0_object(TDEPrincipalKey);
-	new_principal_key->keyInfo.databaseId = dbOid;
 	new_principal_key->keyInfo.keyringId = new_keyring->keyring_id;
 	strlcpy(new_principal_key->keyInfo.name, key_name, PRINCIPAL_KEY_NAME_LEN);
 	gettimeofday(&new_principal_key->keyInfo.creationTime, NULL);
@@ -294,8 +299,8 @@ set_principal_key_with_keyring(const char *key_name,
 		if (dbOid == GLOBAL_DATA_TDE_OID)
 			pg_tde_save_server_key(new_principal_key, true);
 		else
-			pg_tde_save_principal_key(new_principal_key, true);
-		push_principal_key_to_cache(new_principal_key);
+			pg_tde_save_principal_key(dbOid, new_principal_key, true);
+		push_principal_key_to_cache(dbOid, new_principal_key);
 	}
 	else
 	{
@@ -303,10 +308,10 @@ set_principal_key_with_keyring(const char *key_name,
 		if (dbOid == GLOBAL_DATA_TDE_OID)
 			pg_tde_perform_rotate_server_key(curr_principal_key, new_principal_key, true);
 		else
-			pg_tde_perform_rotate_key(curr_principal_key, new_principal_key, true);
+			pg_tde_perform_rotate_key(dbOid, curr_principal_key, new_principal_key, true);
 
-		clear_principal_key_cache(curr_principal_key->keyInfo.databaseId);
-		push_principal_key_to_cache(new_principal_key);
+		clear_principal_key_cache(dbOid);
+		push_principal_key_to_cache(dbOid, new_principal_key);
 	}
 
 	LWLockRelease(lock_files);
@@ -356,7 +361,6 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 	}
 
 	new_principal_key = palloc0_object(TDEPrincipalKey);
-	new_principal_key->keyInfo.databaseId = xlrec->databaseId;
 	new_principal_key->keyInfo.keyringId = new_keyring->keyring_id;
 	strlcpy(new_principal_key->keyInfo.name, xlrec->keyName, PRINCIPAL_KEY_NAME_LEN);
 	gettimeofday(&new_principal_key->keyInfo.creationTime, NULL);
@@ -367,10 +371,10 @@ xl_tde_perform_rotate_key(XLogPrincipalKeyRotate *xlrec)
 	if (xlrec->databaseId == GLOBAL_DATA_TDE_OID)
 		pg_tde_perform_rotate_server_key(curr_principal_key, new_principal_key, false);
 	else
-		pg_tde_perform_rotate_key(curr_principal_key, new_principal_key, false);
+		pg_tde_perform_rotate_key(xlrec->databaseId, curr_principal_key, new_principal_key, false);
 
-	clear_principal_key_cache(curr_principal_key->keyInfo.databaseId);
-	push_principal_key_to_cache(new_principal_key);
+	clear_principal_key_cache(xlrec->databaseId);
+	push_principal_key_to_cache(xlrec->databaseId, new_principal_key);
 
 	LWLockRelease(tde_lwlock_enc_keys());
 
@@ -398,14 +402,14 @@ get_principal_key_hash(void)
 static TDEPrincipalKey *
 get_principal_key_from_cache(Oid dbOid)
 {
-	TDEPrincipalKey *cacheEntry = NULL;
+	TDEPrincipalKeyCacheEntry *cacheEntry = NULL;
 
-	cacheEntry = (TDEPrincipalKey *) dshash_find(get_principal_key_hash(),
-												 &dbOid, false);
+	cacheEntry = (TDEPrincipalKeyCacheEntry *) dshash_find(get_principal_key_hash(),
+														   &dbOid, false);
 	if (cacheEntry)
 		dshash_release_lock(get_principal_key_hash(), cacheEntry);
 
-	return cacheEntry;
+	return cacheEntry ? &cacheEntry->key : NULL;
 }
 
 /*
@@ -419,21 +423,23 @@ get_principal_key_from_cache(Oid dbOid)
  * remove the cache entry when the database is dropped.
  */
 static void
-push_principal_key_to_cache(TDEPrincipalKey *principalKey)
+push_principal_key_to_cache(Oid databaseId, TDEPrincipalKey *principalKey)
 {
-	TDEPrincipalKey *cacheEntry = NULL;
-	Oid			databaseId = principalKey->keyInfo.databaseId;
+	TDEPrincipalKeyCacheEntry *cacheEntry = NULL;
 	bool		found = false;
 
 	cacheEntry = dshash_find_or_insert(get_principal_key_hash(),
 									   &databaseId, &found);
 
 	if (!found)
-		*cacheEntry = *principalKey;
+	{
+		cacheEntry->databaseId = databaseId;
+		cacheEntry->key = *principalKey;
+	}
 	dshash_release_lock(get_principal_key_hash(), cacheEntry);
 
 	/* we don't want principal keys to end up paged to the swap */
-	if (mlock(cacheEntry, sizeof(TDEPrincipalKey)) == -1)
+	if (mlock(cacheEntry, sizeof(TDEPrincipalKeyCacheEntry)) == -1)
 		elog(ERROR, "could not mlock principal key cache entry: %m");
 }
 
@@ -458,11 +464,11 @@ principal_key_startup_cleanup(Oid databaseId)
 static void
 clear_principal_key_cache(Oid databaseId)
 {
-	TDEPrincipalKey *cache_entry;
+	TDEPrincipalKeyCacheEntry *cache_entry;
 
 	/* Start with deleting the cache entry for the database */
-	cache_entry = (TDEPrincipalKey *) dshash_find(get_principal_key_hash(),
-												  &databaseId, true);
+	cache_entry = (TDEPrincipalKeyCacheEntry *) dshash_find(get_principal_key_hash(),
+															&databaseId, true);
 	if (cache_entry)
 	{
 		dshash_delete_entry(get_principal_key_hash(), cache_entry);
@@ -761,7 +767,7 @@ pg_tde_delete_key(PG_FUNCTION_ARGS)
 					errdetail("There are encrypted tables in the database."));
 		}
 
-		pg_tde_rotate_default_key_for_database(principal_key, default_principal_key);
+		pg_tde_rotate_default_key_for_database(MyDatabaseId, principal_key, default_principal_key);
 
 		LWLockRelease(tde_lwlock_enc_keys());
 		PG_RETURN_VOID();
@@ -961,7 +967,7 @@ pg_tde_get_key_info(PG_FUNCTION_ARGS, Oid dbOid)
 	}
 	else
 	{
-		GenericKeyring *keyring = GetKeyProviderByID(principal_key->keyInfo.keyringId, principal_key->keyInfo.databaseId);
+		GenericKeyring *keyring = GetKeyProviderByID(principal_key->keyInfo.keyringId, dbOid);
 		TimestampTz ts;
 
 		values[0] = CStringGetTextDatum(principal_key->keyInfo.name);
@@ -1058,12 +1064,11 @@ get_principal_key_from_keyring(Oid dbOid)
 					   principalKeyInfo->data.name));
 
 	principalKey = palloc_object(TDEPrincipalKey);
-
-	principalKey->keyInfo = principalKeyInfo->data;
+	principalKey->keyInfo.keyringId = principalKeyInfo->data.keyringId;
+	principalKey->keyInfo.creationTime = principalKeyInfo->data.creationTime;
+	memcpy(principalKey->keyInfo.name, principalKeyInfo->data.name, sizeof(principalKey->keyInfo.name));
 	memcpy(principalKey->keyData, key->data, key->len);
 	principalKey->keyLength = key->len;
-
-	Assert(dbOid == principalKey->keyInfo.databaseId);
 
 	pfree(key);
 	free_keyring(keyring);
@@ -1127,7 +1132,7 @@ GetPrincipalKeyNoDefault(Oid dbOid, LWLockMode lockMode)
 #ifndef FRONTEND
 	if (principalKey)
 	{
-		push_principal_key_to_cache(principalKey);
+		push_principal_key_to_cache(dbOid, principalKey);
 
 		/*
 		 * If we do store key in cache we want to return a cache reference
@@ -1172,7 +1177,6 @@ GetPrincipalKey(Oid dbOid, LWLockMode lockMode)
 
 		newPrincipalKey = palloc_object(TDEPrincipalKey);
 		*newPrincipalKey = *principalKey;
-		newPrincipalKey->keyInfo.databaseId = dbOid;
 
 		/*
 		 * We have to write default principal key info to database keys file.
@@ -1183,9 +1187,9 @@ GetPrincipalKey(Oid dbOid, LWLockMode lockMode)
 		if (dbOid == GLOBAL_DATA_TDE_OID)
 			pg_tde_save_server_key(newPrincipalKey, false);
 		else
-			pg_tde_save_principal_key(newPrincipalKey, false);
+			pg_tde_save_principal_key(dbOid, newPrincipalKey, false);
 
-		push_principal_key_to_cache(newPrincipalKey);
+		push_principal_key_to_cache(dbOid, newPrincipalKey);
 
 		pfree(newPrincipalKey);
 
@@ -1402,20 +1406,19 @@ pg_tde_is_same_principal_key(TDEPrincipalKey *a, TDEPrincipalKey *b)
 }
 
 static void
-pg_tde_rotate_default_key_for_database(TDEPrincipalKey *oldKey, TDEPrincipalKey *newKeyTemplate)
+pg_tde_rotate_default_key_for_database(Oid dbOid, TDEPrincipalKey *oldKey, TDEPrincipalKey *newKeyTemplate)
 {
 	TDEPrincipalKey *newKey = palloc_object(TDEPrincipalKey);
 
 	*newKey = *newKeyTemplate;
-	newKey->keyInfo.databaseId = oldKey->keyInfo.databaseId;
 
-	if (oldKey->keyInfo.databaseId == GLOBAL_DATA_TDE_OID)
+	if (dbOid == GLOBAL_DATA_TDE_OID)
 		pg_tde_perform_rotate_server_key(oldKey, newKey, true);
 	else
-		pg_tde_perform_rotate_key(oldKey, newKey, true);
+		pg_tde_perform_rotate_key(dbOid, oldKey, newKey, true);
 
-	clear_principal_key_cache(oldKey->keyInfo.databaseId);
-	push_principal_key_to_cache(newKey);
+	clear_principal_key_cache(dbOid);
+	push_principal_key_to_cache(dbOid, newKey);
 
 	pfree(newKey);
 }
@@ -1442,7 +1445,7 @@ pg_tde_update_default_principal_key_everywhere(TDEPrincipalKey *oldKey, TDEPrinc
 
 	if (pg_tde_is_same_principal_key(oldKey, principal_key))
 	{
-		pg_tde_rotate_default_key_for_database(principal_key, newKey);
+		pg_tde_rotate_default_key_for_database(GLOBAL_DATA_TDE_OID, principal_key, newKey);
 	}
 
 	/*
@@ -1460,7 +1463,7 @@ pg_tde_update_default_principal_key_everywhere(TDEPrincipalKey *oldKey, TDEPrinc
 		principal_key = GetPrincipalKeyNoDefault(dbOid, LW_EXCLUSIVE);
 		if (pg_tde_is_same_principal_key(oldKey, principal_key))
 		{
-			pg_tde_rotate_default_key_for_database(principal_key, newKey);
+			pg_tde_rotate_default_key_for_database(dbOid, principal_key, newKey);
 		}
 	}
 

@@ -15,7 +15,6 @@
 
 typedef struct TDEPrincipalKeyInfo
 {
-	Oid			databaseId;
 	Oid			keyringId;
 	struct timeval creationTime;
 	char		name[PRINCIPAL_KEY_NAME_LEN];

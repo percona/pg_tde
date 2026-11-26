@@ -117,7 +117,7 @@ pg_tde_save_smgr_key(RelFileLocator rel,
 	}
 
 	pg_tde_set_db_file_path(rel.dbOid, file_path);
-	pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
+	pg_tde_sign_principal_key_info(rel.dbOid, &signed_key_info, principal_key);
 
 	fd = pg_tde_open_file_write(file_path, &signed_key_info, false, &scan_offset);
 
@@ -228,16 +228,16 @@ pg_tde_save_principal_key_redo(const TDESignedPrincipalKeyInfo *signed_key_info)
  * or in some other cases when WAL writes are not allowed.
  */
 void
-pg_tde_save_principal_key(const TDEPrincipalKey *principal_key, bool write_xlog)
+pg_tde_save_principal_key(Oid dbOid, const TDEPrincipalKey *principal_key, bool write_xlog)
 {
 	int			map_fd;
 	off_t		curr_pos = 0;
 	char		db_map_path[MAXPGPATH];
 	TDESignedPrincipalKeyInfo signed_key_Info;
 
-	pg_tde_set_db_file_path(principal_key->keyInfo.databaseId, db_map_path);
+	pg_tde_set_db_file_path(dbOid, db_map_path);
 
-	pg_tde_sign_principal_key_info(&signed_key_Info, principal_key);
+	pg_tde_sign_principal_key_info(dbOid, &signed_key_Info, principal_key);
 
 	if (write_xlog)
 	{
@@ -298,7 +298,7 @@ pg_tde_free_key_map_entry(const RelFileLocator rlocator)
  * Rotate keys and generates the WAL record for it.
  */
 void
-pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincipalKey *new_principal_key, bool write_xlog)
+pg_tde_perform_rotate_key(Oid dbOid, const TDEPrincipalKey *principal_key, const TDEPrincipalKey *new_principal_key, bool write_xlog)
 {
 	TDESignedPrincipalKeyInfo new_signed_key_info;
 	off_t		old_curr_pos,
@@ -310,11 +310,11 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 
 	/* This function cannot be used to rotate the server key. */
 	Assert(principal_key);
-	Assert(principal_key->keyInfo.databaseId != GLOBAL_DATA_TDE_OID);
+	Assert(dbOid != GLOBAL_DATA_TDE_OID);
 
-	pg_tde_sign_principal_key_info(&new_signed_key_info, new_principal_key);
+	pg_tde_sign_principal_key_info(dbOid, &new_signed_key_info, new_principal_key);
 
-	pg_tde_set_db_file_path(principal_key->keyInfo.databaseId, old_path);
+	pg_tde_set_db_file_path(dbOid, old_path);
 	snprintf(new_path, MAXPGPATH, "%s.r", old_path);
 
 	old_fd = pg_tde_open_file_read(old_path, false, &old_curr_pos);
@@ -335,7 +335,7 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 			continue;
 
 		rloc.spcOid = read_map_entry.spcOid;
-		rloc.dbOid = principal_key->keyInfo.databaseId;
+		rloc.dbOid = dbOid;
 		rloc.relNumber = read_map_entry.relNumber;
 
 		/* Decrypt and re-encrypt key */
@@ -371,7 +371,7 @@ pg_tde_perform_rotate_key(const TDEPrincipalKey *principal_key, const TDEPrincip
 	{
 		XLogPrincipalKeyRotate xlrec;
 
-		xlrec.databaseId = new_principal_key->keyInfo.databaseId;
+		xlrec.databaseId = dbOid;
 		xlrec.keyringId = new_principal_key->keyInfo.keyringId;
 		memcpy(xlrec.keyName, new_principal_key->keyInfo.name, sizeof(new_principal_key->keyInfo.name));
 
@@ -424,9 +424,13 @@ pg_tde_set_db_file_path(Oid dbOid, char *path)
 }
 
 void
-pg_tde_sign_principal_key_info(TDESignedPrincipalKeyInfo *signed_key_info, const TDEPrincipalKey *principal_key)
+pg_tde_sign_principal_key_info(Oid dbOid, TDESignedPrincipalKeyInfo *signed_key_info, const TDEPrincipalKey *principal_key)
 {
-	signed_key_info->data = principal_key->keyInfo;
+	signed_key_info->data.databaseId = dbOid;	/* Legacy field */
+	signed_key_info->data.keyringId = principal_key->keyInfo.keyringId;
+	signed_key_info->data.creationTime = principal_key->keyInfo.creationTime;
+	memcpy(signed_key_info->data.name, principal_key->keyInfo.name, sizeof(signed_key_info->data.name));
+
 
 	if (!RAND_bytes(signed_key_info->sign_iv, MAP_ENTRY_IV_SIZE))
 		ereport(ERROR,
@@ -907,7 +911,7 @@ pg_tde_get_smgr_key(RelFileLocator rel)
  * version from the given fd and offset, and transforms it into
  * TDEMapEntry (current version)
  */
-typedef bool (*MapFromDiskEntry) (int fd, off_t *entry_offset, const TDEPrincipalKey *principal_key, TDEMapEntry *out);
+typedef bool (*MapFromDiskEntry) (int fd, off_t *entry_offset, Oid dbOid, const TDEPrincipalKey *principal_key, TDEMapEntry *out);
 
 typedef struct TDEMapEntryV3
 {
@@ -964,7 +968,7 @@ ikey_from_map_entry_v3(TDEMapEntryV3 *entry, const TDEPrincipalKey *principal_ke
 }
 
 static bool
-map_from_disk_entry_v3(int fd, off_t *entry_offset, const TDEPrincipalKey *principal_key, TDEMapEntry *out)
+map_from_disk_entry_v3(int fd, off_t *entry_offset, Oid dbOid, const TDEPrincipalKey *principal_key, TDEMapEntry *out)
 {
 	TDEMapEntryV3 disk_entry;
 	InternalKey key;
@@ -983,7 +987,7 @@ map_from_disk_entry_v3(int fd, off_t *entry_offset, const TDEPrincipalKey *princ
 	ikey_from_map_entry_v3(&disk_entry, principal_key, &key);
 
 	rloc.spcOid = disk_entry.spcOid;
-	rloc.dbOid = principal_key->keyInfo.databaseId;
+	rloc.dbOid = dbOid;
 	rloc.relNumber = disk_entry.relNumber;
 
 	pg_tde_initialize_map_entry(out, principal_key, &rloc, &key);
@@ -1065,11 +1069,11 @@ pg_tde_migrate_smgr_keys_file(void)
 					errmsg("failed to retrieve principal key for database %u", dbOid),
 					errdetail("Failed to migrate the keys file of database %u.", dbOid));
 		}
-		pg_tde_sign_principal_key_info(&signed_key_info, principal_key);
+		pg_tde_sign_principal_key_info(dbOid, &signed_key_info, principal_key);
 
 		new_fd = pg_tde_open_file_write(tmp_db_map_path, &signed_key_info, true, &write_pos);
 
-		while (read_map_entry(old_fd, &read_pos, principal_key, &new_entry))
+		while (read_map_entry(old_fd, &read_pos, dbOid, principal_key, &new_entry))
 		{
 			if (new_entry.type == MAP_ENTRY_TYPE_EMPTY)
 				continue;
